@@ -1,10 +1,10 @@
 {
   "name": "llmos",
   "description": "Vault-root resolution and automation for the shared llmOS Obsidian vault used across agent sessions",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": { "name": "kpeez", "url": "https://github.com/kpeez" },
-  "homepage": "https://github.com/kpeez/agent-toolbox",
-  "repository": "https://github.com/kpeez/agent-toolbox",
+  "homepage": "https://github.com/kpeez/llmos-vault",
+  "repository": "https://github.com/kpeez/llmos-vault",
   "license": "MIT",
   "keywords": ["llmos", "obsidian", "vault", "config", "automation"],
   "skills": "./skills/",

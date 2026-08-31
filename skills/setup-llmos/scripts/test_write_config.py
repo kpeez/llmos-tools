@@ -5,11 +5,17 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 MODULE_PATH = Path(__file__).parent / "write_config.py"
+SYSTEM_PYTHON = Path("/usr/bin/python3")
+if not SYSTEM_PYTHON.is_file():
+    SYSTEM_PYTHON = Path(sys.executable)
 _spec = importlib.util.spec_from_file_location("write_config", MODULE_PATH)
 assert _spec is not None and _spec.loader is not None
 write_config_module = importlib.util.module_from_spec(_spec)
@@ -22,14 +28,23 @@ def make_vault(root: Path) -> Path:
     return root
 
 
-def test_writes_config_for_a_valid_vault(tmp_path, monkeypatch):
+def test_documented_command_writes_config_with_system_python(tmp_path):
     vault = make_vault(tmp_path / "vault")
-    config_path = tmp_path / "config" / "config.json"
-    monkeypatch.setattr(write_config_module.vault_root, "CONFIG_PATH", config_path)
+    config_path = tmp_path / ".config" / "llmos" / "config.json"
+    env = os.environ.copy()
+    env["HOME"] = str(tmp_path)
+    env.pop("PYTHONPATH", None)
 
-    resolved = write_config_module.write_config(vault)
+    result = subprocess.run(
+        [str(SYSTEM_PYTHON), str(MODULE_PATH), str(vault)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
-    assert resolved == vault.resolve()
+    assert result.returncode == 0, result.stdout + result.stderr
     written = json.loads(config_path.read_text())
     assert written == {"vault_root": str(vault.resolve())}
 

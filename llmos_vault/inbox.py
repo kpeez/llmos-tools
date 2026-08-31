@@ -36,7 +36,7 @@ def destination_properties(vault_root: Path, destination: str) -> dict[str, list
     """Derive the `categories`/`project` properties a destination path implies.
 
     Use when a filing verb needs to know what graph properties a note's new
-    home implies -- the same derivation `scripts/audit_metadata.py --fix`
+    home implies -- the same derivation as `llmos-audit --fix`
     uses for specs, generalized to every recognized top-level vault area. A
     project's own landing page (`projects/<slug>/<slug>.md`) gets
     `[[Projects]]` with no self-referential `project` link, per schema.md; a

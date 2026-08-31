@@ -1,23 +1,52 @@
-# llmos plugin
+# llmos-vault
 
-Tooling for the shared **llmOS Obsidian vault** — the durable knowledge base
-agent sessions read from and write to across machines. The plugin bundles
-three skills, a set of lifecycle hooks that keep vault writes well-formed and
-indexed, and `llmos_vault`, a Python library with a `llmos-vault` CLI that
-gives agents deterministic verbs against the vault instead of hand-rolled
-file operations.
+The standalone plugin and maintenance tool for the shared **llmOS Obsidian
+vault**. It bundles three skills, lifecycle hooks that keep vault writes
+well-formed and indexed, and `llmos_vault`, a Python library with deterministic
+CLI verbs for vault operations.
+
+## Install the maintenance tool
+
+Install the reusable vault maintenance commands with uv:
+
+```sh
+# From a checkout
+uv tool install --editable /path/to/llmos-vault
+
+# Directly from GitHub
+uv tool install git+https://github.com/kpeez/llmos-vault
+```
+
+This installs `llmos-vault`, `llmos-audit`, `llmos-daily-activity`, and
+`llmos-doctor` from the same repository that provides the plugin assets.
+
+## Install the agent plugin
+
+Claude Code:
+
+```text
+/plugin marketplace add kpeez/llmos-vault
+/plugin install llmos@llmos-vault
+```
+
+Codex CLI:
+
+```text
+codex plugin marketplace add kpeez/llmos-vault
+codex plugin add llmos@llmos-vault
+```
 
 ## Contents
 
 ```text
-plugins/llmos/
+llmos-vault/
 ├── skills/
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
 ├── hooks/                 # session/tool lifecycle hooks (see below)
 ├── llmos_vault/           # Python library + `llmos-vault` cyclopts CLI
-├── scripts/               # audit, doctor, daily-activity utilities
+├── scripts/               # source-checkout compatibility shims
 └── tests/                 # pytest suite with fixture vaults
 ```
 
@@ -64,19 +93,19 @@ vault is.
 
 ## Scripts
 
-- **`scripts/doctor.sh`** — end-to-end health check: is the vault root valid,
-  are the CLI and `qmd` reachable, is the collection indexed.
-- **`scripts/audit_metadata.py`** — audits frontmatter contracts across the
-  vault; read-only unless `--fix` is passed.
-- **`scripts/write_daily_activity.py`** — writes the machine-owned
-  `## Projects` block of daily notes from GitHub activity. Deterministic
-  script, not an agent: fetch → hash → one model call → verify → write.
-- **`scripts/vault_root.py`** — back-compat shim over `llmos_vault.root` for
-  callers that import by file path.
+- **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
+  the CLI and `qmd` reachable, and is the collection indexed.
+- **`llmos-audit`** — audits frontmatter contracts across the vault; read-only
+  unless `--fix` is passed.
+- **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
+  daily notes from GitHub activity. Deterministic: fetch → hash → one model
+  call → verify → write.
+- **`scripts/`** — compatibility entry points for source-checkout users and
+  plugin helpers.
 
 ## Tests
 
-`tests/` is a pytest suite run from the plugin directory (`uv run pytest`),
+`tests/` is a pytest suite run from the repository root (`uv run pytest`),
 covering the hooks (gating, guards, stamp format, reindex), root resolution,
 the CLI's backends, and vault health — against committed fixture vaults in
 `tests/fixtures/`.

@@ -71,7 +71,11 @@ if args[:2] == ["get", "qmd://llmos/llmOS.md"]:
     if mode == "retrieval-mismatch":
         print("# Wrong document")
     else:
-        print((root / "llmOS.md").read_text(encoding="utf-8"))
+        print("qmd://llmos/llmOS.md  # test")
+        print("Context")
+        print("---")
+        print()
+        print((root / "llmOS.md").read_text(encoding="utf-8"), end="")
     raise SystemExit(0)
 
 print(f"unsupported qmd arguments: {args}", file=sys.stderr)
@@ -96,6 +100,7 @@ class DoctorTests(unittest.TestCase):
                 self.fail(f"required test tool not found: {tool}")
             (self.bin / tool).symlink_to(tool_path)
         (self.root / "llmOS.md").write_text(SENTINEL, encoding="utf-8")
+        (self.root / "AGENTS.md").write_text("# llmOS test vault\n", encoding="utf-8")
         self.write_executable("obsidian-cli", FAKE_OBSIDIAN)
         self.write_executable("qmd", FAKE_QMD)
 
@@ -174,6 +179,22 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(f"PASS vault-root: {self.root}", result.stdout)
 
+    def test_empty_env_uses_config(self) -> None:
+        result = self.run_doctor(
+            resolution="config",
+            extra_env={"LLMOS_ROOT": ""},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"PASS vault-root: {self.root}", result.stdout)
+
+    def test_vault_root_requires_agents_sentinel(self) -> None:
+        (self.root / "AGENTS.md").unlink()
+
+        result = self.run_doctor()
+
+        self.assert_failed(result, "vault-root", "Run /setup-llmos")
+
     def test_wrong_obsidian_sentinel_fails(self) -> None:
         result = self.run_doctor(
             extra_env={"FAKE_OBSIDIAN_MODE": "wrong", "LLMOS_DOCTOR_OS": "Darwin"}
@@ -185,9 +206,7 @@ class DoctorTests(unittest.TestCase):
     def test_wrong_qmd_collection_path_fails(self) -> None:
         wrong_root = self.base / "other-vault"
         wrong_root.mkdir()
-        result = self.run_doctor(
-            extra_env={"FAKE_QMD_COLLECTION_PATH": str(wrong_root)}
-        )
+        result = self.run_doctor(extra_env={"FAKE_QMD_COLLECTION_PATH": str(wrong_root)})
 
         self.assert_failed(
             result,

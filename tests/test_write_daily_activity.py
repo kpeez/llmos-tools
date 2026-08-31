@@ -2,21 +2,14 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-SCRIPT = Path(__file__).parents[1] / "scripts" / "write_daily_activity.py"
-spec = importlib.util.spec_from_file_location("write_daily_activity", SCRIPT)
-assert spec is not None and spec.loader is not None
-wda = importlib.util.module_from_spec(spec)
-sys.modules["write_daily_activity"] = wda
-spec.loader.exec_module(wda)
+from llmos_vault import daily_activity as wda
 
 
 def make_vault(tmp_path: Path) -> Path:

@@ -137,7 +137,7 @@ Do NOT use when you only want to preview the output without writing it
 -- call `llmos_vault.docs.render_reference(app)` directly.
 
 Example output:
-    wrote plugins/llmos/skills/vault-cli/references/commands.md
+    wrote skills/vault-cli/references/commands.md
 
 Example invocation:
     llmos-vault docs

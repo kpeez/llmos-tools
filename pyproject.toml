@@ -2,6 +2,7 @@
 name = "llmos-vault"
 version = "0.1.0"
 description = "Vault-root resolution and canonical frontmatter for the llmOS Obsidian vault"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "cyclopts>=4.21.1",
@@ -9,6 +10,13 @@ dependencies = [
 
 [project.scripts]
 llmos-vault = "llmos_vault.cli:main"
+llmos-audit = "llmos_vault.audit:main"
+llmos-daily-activity = "llmos_vault.daily_activity:main"
+llmos-doctor = "llmos_vault.doctor:main"
+
+[project.urls]
+Homepage = "https://github.com/kpeez/llmos-vault"
+Repository = "https://github.com/kpeez/llmos-vault"
 
 [build-system]
 requires = ["hatchling"]
@@ -17,9 +25,18 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["llmos_vault"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"skills/vault-cli" = "skills/vault-cli"
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "ty>=0.0.1a1"]
+
+[tool.ty.environment]
+extra-paths = ["scripts"]

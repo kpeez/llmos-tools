@@ -22,7 +22,13 @@ property's type on every normalize.
 
 from __future__ import annotations
 
-Property = str | list[str]
+from typing import Union
+
+# Hook entry points run under the host's plain ``python3``.  macOS currently
+# ships Python 3.9, where PEP 604's ``str | list[str]`` is not evaluable at
+# module import time.  Keep this alias runtime-compatible without lowering the
+# package's own ``requires-python`` declaration.
+Property = Union[str, list[str]]  # noqa: UP007
 
 
 def _is_wikilink(value: str) -> bool:
