@@ -16,6 +16,9 @@ from datetime import date
 from pathlib import Path
 
 HOOK_PATH = Path(__file__).parent.parent / "hooks" / "llmos_hook.py"
+SYSTEM_PYTHON = Path("/usr/bin/python3")
+if not SYSTEM_PYTHON.is_file():
+    SYSTEM_PYTHON = Path(sys.executable)
 
 MEMORY_SENTINEL = "MEMORY-SENTINEL-DO-NOT-LEAK"
 SCHEMA_SENTINEL = "SCHEMA-CONTRACT-SENTINEL"
@@ -47,7 +50,7 @@ def run_hook(
     if llmos_root is not None:
         env["LLMOS_ROOT"] = str(llmos_root)
     return subprocess.run(
-        [sys.executable, str(HOOK_PATH), event],
+        [str(SYSTEM_PYTHON), str(HOOK_PATH), event],
         input=json.dumps(payload),
         env=env,
         cwd=cwd,

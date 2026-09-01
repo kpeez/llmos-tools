@@ -11,10 +11,22 @@ still change behavior.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from llmos_vault.root import DEFAULT_CONFIG_PATH, validated
-from llmos_vault.root import vault_root as _vault_root
+# This shim is also invoked directly by plugin hooks and skill helpers with a
+# system Python that does not have the package installed.  Add the checkout's
+# package root before importing the canonical implementation.  Normal imports
+# provide the module origin through ``__spec__``; direct script execution and
+# embedders that omit a module spec use the executable path as a fallback.
+_module_spec = globals().get("__spec__")
+_module_origin = getattr(_module_spec, "origin", None) or sys.argv[0]
+_plugin_root = Path(_module_origin).resolve().parents[1]
+if str(_plugin_root) not in sys.path:
+    sys.path.insert(0, str(_plugin_root))
+
+from llmos_vault.root import DEFAULT_CONFIG_PATH, validated  # noqa: E402
+from llmos_vault.root import vault_root as _vault_root  # noqa: E402
 
 CONFIG_PATH = DEFAULT_CONFIG_PATH
 __all__ = ["CONFIG_PATH", "validated", "vault_root"]

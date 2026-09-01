@@ -8,14 +8,23 @@ description: Diagnose whether a machine can use the llmOS vault through Obsidian
 Use this workflow on macOS or Linux, the supported llmOS desktop environments.
 The doctor detects the OS and prints platform-specific repairs.
 
-Resolve `<llmos-plugin-root>` as the directory two levels above this
-`SKILL.md` (its `scripts/` holds `doctor.sh`, `vault_root.py`, and this
-skill's `write_config.py` lives alongside it under `skills/setup-llmos/`).
+The reusable maintenance commands are installed with the `llmos-vault` uv tool.
+The plugin root still owns this skill's `write_config.py` helper and the
+lifecycle hooks.
+When invoking that helper, `<llmos-plugin-root>` means the directory two levels
+above this `SKILL.md`.
 
 Run the bundled doctor before changing the machine:
 
 ```sh
-bash "<llmos-plugin-root>/scripts/doctor.sh"
+llmos-doctor
+```
+
+If `llmos-doctor` is unavailable, install the tool from the llmos plugin
+package before continuing:
+
+```sh
+uv tool install --editable "<llmos-plugin-root>"
 ```
 
 The doctor is read-only. It reports `PASS` or `FAIL` for each available
@@ -66,12 +75,12 @@ On Codex, installing the plugin is not enough to make its hooks run. Codex
 records each hook in `~/.codex/config.toml` under `[hooks.state]` with a
 `trusted_hash` before it will execute it, and **an untrusted hook is skipped
 silently** — no error, no warning. `codex plugin list` still reports
-`llmos@agent-toolbox  installed, enabled`, and the session receives nothing.
+`llmos@llmos-vault  installed, enabled`, and the session receives nothing.
 
 Check whether this machine has trusted it:
 
 ```sh
-grep -q 'llmos@agent-toolbox:hooks' ~/.codex/config.toml && echo trusted || echo NOT-trusted
+grep -q 'llmos@llmos-vault:hooks' ~/.codex/config.toml && echo trusted || echo NOT-trusted
 ```
 
 If it is not trusted, the repair is a human one: open Codex interactively and

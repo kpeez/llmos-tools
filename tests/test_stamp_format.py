@@ -16,6 +16,9 @@ from datetime import date
 from pathlib import Path
 
 HOOK_PATH = Path(__file__).parent.parent / "hooks" / "llmos_stamp_hook.py"
+SYSTEM_PYTHON = Path("/usr/bin/python3")
+if not SYSTEM_PYTHON.is_file():
+    SYSTEM_PYTHON = Path(sys.executable)
 
 MESSY_NOTE = (
     "---\n"
@@ -56,7 +59,7 @@ def run_hook(
     if provider_env:
         env.update(provider_env)
     return subprocess.run(
-        [sys.executable, str(HOOK_PATH)],
+        [str(SYSTEM_PYTHON), str(HOOK_PATH)],
         input=json.dumps(payload),
         env=env,
         text=True,
@@ -195,10 +198,8 @@ def test_non_blocking_when_vault_unconfigured(tmp_path):
     }
 
     result = subprocess.run(
-        [sys.executable, str(HOOK_PATH)],
-        input=json.dumps(
-            {"session_id": "sess-1", "tool_input": {"file_path": str(target)}}
-        ),
+        [str(SYSTEM_PYTHON), str(HOOK_PATH)],
+        input=json.dumps({"session_id": "sess-1", "tool_input": {"file_path": str(target)}}),
         env=env,
         text=True,
         capture_output=True,

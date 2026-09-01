@@ -1,7 +1,17 @@
-# Changelog — llmos plugin
+# Changelog — llmos-vault
 
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
+The Python package version lives in `pyproject.toml`.
+
+## 1.0.5 — 2026-08-30
+
+- Move the plugin and `llmos-vault` uv tool into the standalone `llmos-vault`
+  repository with independent marketplace catalogs, CI, and package checks.
+- Package all four maintenance commands while retaining source-checkout
+  compatibility shims.
+- Align the setup doctor with the canonical `AGENTS.md` vault sentinel.
+- Keep failed qmd reindexing retryable with a non-blocking diagnostic.
 
 ## 1.0.4 — 2026-08-01
 
