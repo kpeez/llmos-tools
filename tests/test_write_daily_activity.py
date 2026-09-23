@@ -157,6 +157,17 @@ def test_hash_gate_skips_model_call_and_is_byte_stable(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_coverage_change_regenerates_block(tmp_path, monkeypatch):
+    root = make_vault(tmp_path)
+    monkeypatch.setattr(wda, "summarize", fake_ok)
+    wda.process_day(date(2026, 7, 16), root, gh=gh_with_activity)
+    (root / "projects" / "norepo" / "norepo.md").write_text(
+        "---\nstatus: archived\n---\n\n# Norepo Project\n", encoding="utf-8"
+    )
+    assert wda.process_day(date(2026, 7, 16), root, gh=gh_with_activity) == "updated"
+    assert "Norepo Project" not in (root / "reviews" / "daily" / "2026-07-16.md").read_text()
+
+
 def test_completeness_check_fails_on_omission(tmp_path, monkeypatch):
     root = make_vault(tmp_path)
     monkeypatch.setattr(wda, "summarize", fake_incomplete)

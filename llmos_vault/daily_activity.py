@@ -178,9 +178,11 @@ def group_by_project(activity: dict, projects: list[Project]) -> dict[str, dict]
     return grouped
 
 
-def normalized_hash(grouped: dict) -> str:
+def normalized_hash(grouped: dict, unseen: list[Project]) -> str:
+    """Hash everything the block renders, so a coverage change regenerates it."""
+    payload = {"activity": grouped, "unseen": [p.slug for p in unseen]}
     return hashlib.sha256(
-        json.dumps(grouped, sort_keys=True, ensure_ascii=True).encode()
+        json.dumps(payload, sort_keys=True, ensure_ascii=True).encode()
     ).hexdigest()
 
 
@@ -317,7 +319,7 @@ def process_day(day: date, root: Path, gh=run_gh, opencode_bin: str = "opencode"
     if not grouped:
         return "silent (no note created)" if not note_path.exists() else "silent (note untouched)"
 
-    digest_hash = normalized_hash(grouped)
+    digest_hash = normalized_hash(grouped, unseen)
     text = note_path.read_text(encoding="utf-8") if note_path.exists() else ""
     if existing_hash(text) == digest_hash:
         return "unchanged (hash match, no model call)"
