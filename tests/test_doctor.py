@@ -32,6 +32,9 @@ if sys.argv[1:] != ["vault=llmOS", "read", "path=llmOS.md"]:
 if mode == "wrong":
     print("# Not llmOS")
     raise SystemExit(0)
+if mode == "hang":
+    import time
+    time.sleep(30)
 root = Path(os.environ["FAKE_VAULT_ROOT"])
 print((root / "llmOS.md").read_text(encoding="utf-8"), end="")
 """
@@ -202,6 +205,31 @@ class DoctorTests(unittest.TestCase):
 
         self.assert_failed(result, "obsidian-vault", f'open -a Obsidian "{self.root}"')
         self.assertIn("content does not match", result.stdout)
+
+    def test_hung_obsidian_cli_times_out(self) -> None:
+        result = self.run_doctor(
+            extra_env={
+                "FAKE_OBSIDIAN_MODE": "hang",
+                "LLMOS_DOCTOR_OS": "Linux",
+                "LLMOS_DOCTOR_TIMEOUT": "1",
+            }
+        )
+
+        self.assert_failed(result, "obsidian-vault", f'obsidian "{self.root}"')
+        self.assertIn("obsidian-cli timed out after 1s", result.stdout)
+        self.assertIn("PASS qmd:", result.stdout)
+
+    def test_linux_repair_links_snap_cli(self) -> None:
+        (self.bin / "obsidian-cli").unlink()
+
+        result = self.run_doctor(extra_env={"LLMOS_DOCTOR_OS": "Linux"})
+
+        self.assert_failed(
+            result,
+            "obsidian-cli",
+            'sudo snap install obsidian --classic && mkdir -p "$HOME/.local/bin" && '
+            'ln -sf /snap/obsidian/current/app/obsidian-cli "$HOME/.local/bin/obsidian-cli"',
+        )
 
     def test_wrong_qmd_collection_path_fails(self) -> None:
         wrong_root = self.base / "other-vault"

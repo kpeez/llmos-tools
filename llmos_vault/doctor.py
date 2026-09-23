@@ -13,7 +13,11 @@ from pathlib import Path
 
 
 def _run(command: list[str]) -> tuple[int, str]:
-    result = subprocess.run(command, capture_output=True, text=True)
+    timeout = float(os.environ.get("LLMOS_DOCTOR_TIMEOUT", "30"))
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return 124, f"{Path(command[0]).name} timed out after {timeout:g}s"
     output = result.stdout
     if result.stderr:
         output += result.stderr
@@ -78,8 +82,7 @@ def main() -> int:
         platform_name = "linux"
         obsidian_repair = (
             'sudo snap install obsidian --classic && mkdir -p "$HOME/.local/bin" && '
-            "printf '#!/usr/bin/env bash\\nexec obsidian \"$@\"\\n' > "
-            '"$HOME/.local/bin/obsidian-cli" && chmod +x "$HOME/.local/bin/obsidian-cli"'
+            'ln -sf /snap/obsidian/current/app/obsidian-cli "$HOME/.local/bin/obsidian-cli"'
         )
     else:
         print("FAIL platform: setup-llmos supports macOS and Linux only")

@@ -63,8 +63,10 @@ Advanced → Command line interface).
 
 - **macOS** ships the `obsidian-cli` binary inside the app bundle; the repair
   symlinks it onto `PATH`.
-- **Linux** exposes the CLI as `obsidian`; the repair installs the snap and
-  writes an `obsidian-cli` shim to `~/.local/bin` that execs `obsidian`. Run
+- **Linux** ships the `obsidian-cli` binary inside the snap
+  (`/snap/obsidian/current/app/obsidian-cli`); the repair installs the snap and
+  symlinks it into `~/.local/bin`. Do not wrap `obsidian` itself: with no
+  running app it launches Obsidian instead of failing, and never returns. Run
   the doctor from within the desktop session so `DISPLAY`/`WAYLAND_DISPLAY`
   and the session D-Bus address are set; otherwise the CLI cannot reach the
   running app.
