@@ -24,6 +24,7 @@ from llmos_vault.root import vault_root
 
 LOCAL_TZ = ZoneInfo("America/Los_Angeles")
 MODEL = "opencode-go/deepseek-v4-flash"
+ORGS = ("kpeez", "linux-host-ucdavis")
 MARKER_START = "<!-- llmos-activity:start"
 MARKER_END = "<!-- llmos-activity:end -->"
 TRANSFORM_INSTRUCTIONS = (
@@ -45,8 +46,24 @@ class DigestError(RuntimeError):
     pass
 
 
-def read_projects(root: Path) -> tuple[list[Project], list[Project]]:
-    """Return (monitored, active_but_unseen) projects from projects/*/<slug>.md."""
+def list_org_repos(gh=None) -> dict[str, list[str]]:
+    """Map lowercased repo name -> every ``owner/name`` with that name across ORGS."""
+    gh = gh or run_gh
+    names: dict[str, list[str]] = {}
+    for org in ORGS:
+        for repo in gh(["repo", "list", org, "--limit", "1000", "--json", "nameWithOwner"]):
+            full = repo["nameWithOwner"]
+            names.setdefault(full.split("/", 1)[1].lower(), []).append(full)
+    return names
+
+
+def read_projects(
+    root: Path, org_repos: dict[str, list[str]]
+) -> tuple[list[Project], list[Project]]:
+    """Return (monitored, active_but_unseen) projects from projects/*/<slug>.md.
+
+    A project is monitored when a repository in ORGS has its folder name (ADR 0009).
+    """
     monitored: list[Project] = []
     unseen: list[Project] = []
     for note_path in sorted(root.glob("projects/*/*.md")):
@@ -55,18 +72,20 @@ def read_projects(root: Path) -> tuple[list[Project], list[Project]]:
         props, body = frontmatter.parse(note_path.read_text(encoding="utf-8"))
         if props.get("status") != "active":
             continue
-        repos_value = props.get("repositories") or []
-        if isinstance(repos_value, str):
-            repos_value = [repos_value] if repos_value else []
+        repos = org_repos.get(note_path.stem.lower(), [])
+        if len(repos) > 1:
+            raise DigestError(
+                f"project {note_path.stem!r} matches several repos: {', '.join(repos)}"
+            )
         title_match = re.search(r"^# (.+)$", body, flags=re.MULTILINE)
         title = title_match.group(1).strip() if title_match else note_path.stem
-        project = Project(slug=note_path.stem, title=title, repos=tuple(repos_value))
+        project = Project(slug=note_path.stem, title=title, repos=tuple(repos))
         if project.repos:
             monitored.append(project)
         else:
             unseen.append(project)
     if not monitored:
-        raise DigestError("no monitored projects found -- allowlist is empty")
+        raise DigestError("no monitored projects found -- no active project matches a repo")
     return monitored, unseen
 
 
@@ -290,7 +309,7 @@ def atomic_write(path: Path, content: str) -> None:
 
 
 def process_day(day: date, root: Path, gh=run_gh, opencode_bin: str = "opencode") -> str:
-    monitored, unseen = read_projects(root)
+    monitored, unseen = read_projects(root, list_org_repos(gh))
     repos = [repo for project in monitored for repo in project.repos]
     grouped = group_by_project(fetch_activity(day, repos, gh=gh), monitored)
     note_path = root / "reviews" / "daily" / f"{day.isoformat()}.md"

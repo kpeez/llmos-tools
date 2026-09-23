@@ -4,6 +4,14 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
+## Unreleased
+
+- The daily activity digest derives each active project's repository from its
+  folder name across `kpeez` and `linux-host-ucdavis` instead of reading a
+  `repositories:` allowlist; a name found in both orgs is a hard failure.
+- Replace the nightly closeout and weekly synthesis docs, which never ran, with
+  the digest's systemd user timer.
+
 ## 1.0.5 — 2026-08-30
 
 - Move the plugin and `llmos-vault` uv tool into the standalone `llmos-vault`

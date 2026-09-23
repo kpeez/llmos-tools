@@ -1,6 +1,6 @@
 ---
 name: maintain-llmos
-description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs or specs, writes daily or weekly reviews, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill.
+description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs or specs, writes daily-note Thoughts, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill.
 ---
 
 # Maintain llmOS
@@ -30,6 +30,6 @@ Commit routine work straight to `main`. Cut a branch only when a diff is worth r
 
 `llmos-audit` does not stamp `authors`/`updated` — the PostToolUse hook owns those. It is read-only unless you pass `--fix`.
 
-What the nightly and weekly runs audit, and what neither may ever do, is specified in `references/automation.md`. Read it before acting as either one.
+The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer.
 
 Every canonical spec (`projects/<project>/specs/NNNN-<slug>.md`) carries the minimal `Specifications` category and project ownership. Both are implied by the file's own path, so `--fix` stamps them rather than any agent hand-typing them — run it after `/write-spec` creates a spec, since that command is vault-agnostic and writes only the workflow properties (`status`, `desc`, `blocked`). Legacy supporting notes may remain unclassified until materially edited.

@@ -15,9 +15,9 @@ from llmos_vault import daily_activity as wda
 def make_vault(tmp_path: Path) -> Path:
     root = tmp_path / "vault"
     for slug, extra in [
-        ("alpha", "repositories:\n  - kpeez/alpha\n"),
+        ("alpha", ""),
         ("norepo", ""),
-        ("archived", "repositories:\n  - kpeez/archived\n"),
+        ("archived", ""),
     ]:
         note = root / "projects" / slug / f"{slug}.md"
         note.parent.mkdir(parents=True)
@@ -55,7 +55,20 @@ COMMIT = {
 }
 
 
+ORG_REPOS = {
+    "kpeez": [{"nameWithOwner": "kpeez/alpha"}, {"nameWithOwner": "kpeez/archived"}],
+    "linux-host-ucdavis": [{"nameWithOwner": "linux-host-ucdavis/other"}],
+}
+
+
+def gh_repo_list(args):
+    assert args[:2] == ["repo", "list"]
+    return ORG_REPOS[args[2]]
+
+
 def gh_with_activity(args):
+    if args[0] == "repo":
+        return gh_repo_list(args)
     if args[1] == "prs" and "--merged-at" in args:
         return [PR]
     if args[1] == "commits":
@@ -72,13 +85,20 @@ def fake_incomplete(grouped, day, opencode_bin=""):
 
 
 def gh_silent(args):
-    return []
+    return gh_repo_list(args) if args[0] == "repo" else []
 
 
-def test_allowlist_splits_monitored_and_unseen(tmp_path):
-    monitored, unseen = wda.read_projects(make_vault(tmp_path))
-    assert [p.slug for p in monitored] == ["alpha"]
+def test_repo_name_match_splits_monitored_and_unseen(tmp_path):
+    org_repos = wda.list_org_repos(gh_repo_list)
+    monitored, unseen = wda.read_projects(make_vault(tmp_path), org_repos)
+    assert [(p.slug, p.repos) for p in monitored] == [("alpha", ("kpeez/alpha",))]
     assert [p.slug for p in unseen] == ["norepo"]  # archived is silently excluded
+
+
+def test_name_in_both_orgs_is_hard_failure(tmp_path):
+    org_repos = {"alpha": ["kpeez/alpha", "linux-host-ucdavis/alpha"]}
+    with pytest.raises(wda.DigestError, match="several repos"):
+        wda.read_projects(make_vault(tmp_path), org_repos)
 
 
 def test_day_range_tracks_dst_offset():
@@ -164,6 +184,8 @@ def test_unmapped_repo_activity_is_hard_failure(tmp_path):
     rogue = dict(PR, repository={"nameWithOwner": "kpeez/dotfiles"})
 
     def gh_rogue(args):
+        if args[0] == "repo":
+            return gh_repo_list(args)
         return [rogue] if args[1] == "prs" and "--merged-at" in args else []
 
     with pytest.raises(wda.DigestError, match="unmapped repo"):

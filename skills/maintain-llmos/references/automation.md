@@ -4,24 +4,59 @@ authors:
   - codex
   - claude
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-09-22
 ---
 
-# Scheduled review lifecycle
+# Scheduled jobs
 
-Two active local Codex automations maintain llmOS:
+One scheduled job maintains llmOS: the evening daily activity digest. It is a
+script, not an agent — fetch, hash, one model call, verify, write — so it cannot
+drift, half-finish, or decide to do something else. It processes both today and
+yesterday on each run, because an evening pass cannot see work that lands after
+it.
 
-- `llmOS nightly daily closeout` at 23:30 local time every day.
-- `llmOS Sunday weekly synthesis` at 23:50 local time each Sunday.
+The digest monitors every project whose landing note has `status: active` and
+whose folder name matches a repository in `kpeez` or `linux-host-ucdavis` (vault
+ADR 0009). It writes only between the `llmos-activity` markers in
+`reviews/daily/YYYY-MM-DD.md`, creates a note only on a day with activity, and
+never touches `## Thoughts`.
 
-The daily run verifies the vault: the metadata, Base, backlink, Obsidian, qmd, skill, secret, Git, and commit checks. It has no branch to close — routine work commits straight to `main` — so it audits state, repairs what it can, and reports what it cannot. A quiet day is a valid state, not a failure: run the verification, report what landed, exit clean.
+There is no nightly closeout and no weekly synthesis (vault ADR 0010). Neither
+ever ran on a schedule. After a vault change, run `llmos-vault health` yourself.
 
-What *is* a signal is a branch that has merged nowhere and is no longer being worked. Report it; never delete it, never force-merge it.
+## Timer
 
-The `## Projects` digest that fills `reviews/daily/YYYY-MM-DD.md` is **not** this agent's job. It is a separate scheduled script — fetch, hash, one model call, write — precisely so it cannot drift, half-finish, or decide to do something else. It processes both today and yesterday on each run, because an evening pass cannot see work that lands after it.
+A systemd user timer runs `llmos-daily-activity` at 22:30 local time.
 
-The weekly run starts only after Sunday's daily closeout. It writes `reviews/weekly/YYYY-Www.md`, synthesizing the week's daily notes, repairing contradictions or missing connections, promoting reusable knowledge and skills, and verifying the vault. Like the daily note, the synthesis is generated prose committed to `main` — there is no week branch and nothing to squash.
+`~/.config/systemd/user/llmos-daily-activity.service`:
 
-Both runs skip pushing when `origin` is absent. Neither may force-push, discard work, or merge after a failed check.
+```ini
+[Unit]
+Description=llmOS daily activity digest
 
-See also: [[projects/llmos/adrs/0008-commit-to-main-and-branch-only-for-review|Commit to main; branch only for review]]
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/bin:/bin
+ExecStart=%h/.local/bin/llmos-daily-activity
+```
+
+`~/.config/systemd/user/llmos-daily-activity.timer`:
+
+```ini
+[Unit]
+Description=Run the llmOS daily activity digest each evening
+
+[Timer]
+OnCalendar=*-*-* 22:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable it with `systemctl --user enable --now llmos-daily-activity.timer`. Read
+failures with `journalctl --user -u llmos-daily-activity`. The job needs `gh`
+authenticated with read access to both orgs, `opencode` authenticated for the
+pinned model, and the vault root in `~/.config/llmos/config.json` or
+`$LLMOS_ROOT`. A failed run exits non-zero and writes nothing for the failed
+day.
