@@ -22,7 +22,7 @@ from pathlib import Path
 
 from llmos_vault import daily, mutations
 from llmos_vault.notes import read_note
-from llmos_vault.schema import SPEC_NAME, project_alias
+from llmos_vault.schema import project_alias
 
 RECOGNIZED_AREAS = frozenset({"knowledge", "projects", "sources", "archive"})
 AREA_CATEGORIES = {
@@ -36,23 +36,20 @@ def destination_properties(vault_root: Path, destination: str) -> dict[str, list
     """Derive the `categories`/`project` properties a destination path implies.
 
     Use when a filing verb needs to know what graph properties a note's new
-    home implies -- the same derivation as `llmos-audit --fix`
-    uses for specs, generalized to every recognized top-level vault area. A
-    project's own landing page (`projects/<slug>/<slug>.md`) gets
-    `[[Projects]]` with no self-referential `project` link, per schema.md; a
-    canonical spec gets `[[Specifications]]` plus the project link; any other
-    project-owned note gets the project link alone.
+    home implies, for every recognized top-level vault area. A project's own
+    landing page (`projects/<slug>/<slug>.md`) gets `[[Projects]]` with no
+    self-referential `project` link, per schema.md; any other project-owned
+    note gets the project link alone.
     Do NOT use when `destination`'s top-level folder is not one of
     `knowledge`, `projects`, `sources`, `archive` -- that raises `ValueError`
     rather than guess a category.
 
     Example output:
-        {'categories': ['[[Specifications]]'],
-         'project': ['[[projects/demo/demo|Demo]]']}
+        {'project': ['[[projects/demo/demo|Demo]]']}
 
     Example invocation:
         from llmos_vault.inbox import destination_properties
-        destination_properties(vault_root, "projects/demo/specs/0001-thing.md")
+        destination_properties(vault_root, "projects/demo/research/thing.md")
 
     Args:
         vault_root: Root directory of the llmOS vault.
@@ -81,8 +78,6 @@ def destination_properties(vault_root: Path, destination: str) -> dict[str, list
         return {"categories": ["[[Projects]]"]}
 
     project_link = f"[[projects/{slug}/{slug}|{project_alias(vault_root, slug)}]]"
-    if "specs" in parts and SPEC_NAME.fullmatch(Path(target).name):
-        return {"categories": ["[[Specifications]]"], "project": [project_link]}
     return {"project": [project_link]}
 
 

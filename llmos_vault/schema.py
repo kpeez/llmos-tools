@@ -2,8 +2,8 @@
 `scripts/audit_metadata.py` so `vault_health`'s schema-violations section and
 the standalone audit CLI share one check, never two (issue #31: "reusing the
 existing audit logic rather than duplicating it"). This module is llmOS-
-profile-specific (specs, dailies, the canonical property set); a plain vault
-like second-vault has no schema layer and never calls it.
+profile-specific (dailies, project ownership, the canonical property set); a
+plain vault like second-vault has no schema layer and never calls it.
 
 Frontmatter parsing itself is never hand-rolled here -- `_properties_or_none`
 routes through `llmos_vault.frontmatter.parse`, the one canonical
@@ -22,14 +22,23 @@ from pathlib import Path
 from llmos_vault.frontmatter import Property
 from llmos_vault.frontmatter import parse as parse_frontmatter
 
-# Specs advance draft -> active -> review -> done; ADRs use proposed/accepted/superseded.
-SPEC_STATUSES = {"draft", "active", "review", "done", "archived"}
-STATUSES = SPEC_STATUSES | {"proposed", "accepted", "superseded"}
+# ADRs use proposed/accepted/superseded; other notes use the rest.
+STATUSES = {
+    "draft",
+    "active",
+    "review",
+    "done",
+    "archived",
+    "proposed",
+    "accepted",
+    "superseded",
+}
 AUTHORS = {"claude", "codex", "gemini", "human"}
 LINK_FIELDS = {"categories", "topics", "project"}
 WIKILINK = re.compile(r'^"?\[\[[^\]]+\]\]"?$')
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-SPEC_NAME = re.compile(r"^\d{4}-[A-Za-z0-9][A-Za-z0-9_-]*\.md$")
+# Retired specs wait here for manual pruning; they predate the current contract.
+RETIRED_SPECS = ("archive", "specs")
 
 
 def _properties_or_none(path: Path) -> dict[str, Property] | None:
@@ -129,8 +138,10 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
     new_notes = untracked_markdown(root)
     for path in sorted(root.rglob("*.md")):
         relative = path.relative_to(root)
-        if relative.parts[0] == "templates" or any(
-            part.startswith(".") for part in relative.parts
+        if (
+            relative.parts[0] == "templates"
+            or relative.parts[:2] == RETIRED_SPECS
+            or any(part.startswith(".") for part in relative.parts)
         ):
             continue
         if not path.is_file():
@@ -146,24 +157,9 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
             ):
                 errors.append(f"{relative}: invalid skill frontmatter")
             continue
-        is_canonical_spec_or_status = (
-            len(relative.parts) >= 3
-            and relative.parts[0] == "projects"
-            and "specs" in relative.parts
-            and SPEC_NAME.fullmatch(relative.name) is not None
-        )
-        is_legacy_spec = "specs" in relative.parts
-
         if properties is None:
-            if is_canonical_spec_or_status:
-                errors.append(f"{relative}: missing frontmatter")
-                checked += 1
-            elif is_legacy_spec:
-                # legacy supporting notes without frontmatter remain allowed
-                continue
-            else:
-                errors.append(f"{relative}: missing frontmatter")
-                checked += 1
+            errors.append(f"{relative}: missing frontmatter")
+            checked += 1
             continue
 
         checked += 1
@@ -221,30 +217,6 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
             and not is_project_entrypoint
         )
 
-        if is_canonical_spec_or_status:
-            # Must have category [[Specifications]]
-            categories = properties.get("categories")
-            if (
-                not isinstance(categories, list)
-                or "[[Specifications]]" not in categories
-            ):
-                errors.append(
-                    f"{relative}: categories must be a list containing [[Specifications]]"
-                )
-            # Must have correct project ownership wikilink
-            project_dir = relative.parts[1]
-            expected_project_prefix = f"[[projects/{project_dir}/{project_dir}|"
-            project_val = properties.get("project")
-            has_expected_project = isinstance(project_val, list) and any(
-                value.startswith(expected_project_prefix) and value.endswith("]]")
-                for value in project_val
-            )
-            if not has_expected_project:
-                errors.append(
-                    f"{relative}: project must link "
-                    f"projects/{project_dir}/{project_dir} with an alias"
-                )
-        elif is_project_owned:
-            if not properties.get("project"):
-                errors.append(f"{relative}: project-owned note lacks project link")
+        if is_project_owned and not properties.get("project"):
+            errors.append(f"{relative}: project-owned note lacks project link")
     return errors, checked

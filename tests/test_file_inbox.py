@@ -1,8 +1,7 @@
 """Prove the llmOS-profile inbox-filing verb (spec 0014 behavior 6):
 `file_inbox_item` moves an inbox note via obsidian-cli (mocked subprocess,
 the same boundary `test_obsidian_backend.py`/`test_daily_helpers.py` use),
-stamps `categories`/`project` derived from the destination path the same way
-`scripts/audit_metadata.py --fix` does for specs, appends the acting
+stamps `categories`/`project` derived from the destination path, appends the acting
 provider to `authors`, and appends a filed-note line to today's daily note
 outside the `llmos-activity` markers. A destination outside the recognized
 vault areas (knowledge, projects, sources, archive) is rejected before any
@@ -138,18 +137,6 @@ def test_destination_properties_project_landing_page_omits_self_link(tmp_path):
     result = destination_properties(vault, "projects/demo/demo.md")
 
     assert result == {"categories": ["[[Projects]]"]}
-
-
-def test_destination_properties_project_spec_stamps_specifications_and_project(tmp_path):
-    vault = make_vault(tmp_path / "vault")
-    seed_project_landing(vault, "demo", "Demo")
-
-    result = destination_properties(vault, "projects/demo/specs/0001-thing.md")
-
-    assert result == {
-        "categories": ["[[Specifications]]"],
-        "project": ["[[projects/demo/demo|Demo]]"],
-    }
 
 
 def test_destination_properties_project_other_note_stamps_project_only(tmp_path):

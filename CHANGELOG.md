@@ -4,8 +4,12 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
-## Unreleased
+## 1.0.6 — 2026-09-25
 
+- Retire spec handling now that the vault holds no specs: the audit skips the
+  `archive/specs/` deletion queue, a `specs/` folder no longer earns its own
+  rules, inbox filing no longer stamps `[[Specifications]]`, and
+  `llmos-audit --fix`, which only stamped specs, is removed.
 - The daily activity digest derives each active project's repository from its
   folder name across `kpeez` and `linux-host-ucdavis` instead of reading a
   `repositories:` allowlist; a name found in both orgs is a hard failure.

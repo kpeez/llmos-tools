@@ -95,8 +95,7 @@ vault is.
 
 - **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
   the CLI and `qmd` reachable, and is the collection indexed.
-- **`llmos-audit`** — audits frontmatter contracts across the vault; read-only
-  unless `--fix` is passed.
+- **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
   call → verify → write.

@@ -1,11 +1,11 @@
 ---
 name: maintain-llmos
-description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs or specs, writes daily-note Thoughts, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill.
+description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs, writes daily-note Thoughts, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill.
 ---
 
 # Maintain llmOS
 
-Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003) — `agents/` holds only `references/`. Canonical project specifications and ADRs live under `projects/<project>/specs/` and `projects/<project>/adrs/`.
+Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003) — `agents/` holds only `references/`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs; `archive/specs/` is a deletion queue of retired ones, and the audit skips it.
 
 ## Workflow
 
@@ -24,12 +24,10 @@ When a workflow or hard-won lesson will recur across projects or providers, crea
 
 ## Git
 
-Commit routine work straight to `main`. Cut a branch only when a diff is worth reading before it lands — a multi-session spec, or a change worth a pull request — and name it `<agent>/<slug>`, with no date. There is no daily branch and no squash-merge closeout; see the vault's ADR 0008.
+Commit routine work straight to `main`. Cut a branch only when a diff is worth reading before it lands — a multi-session migration, or a change worth a pull request — and name it `<agent>/<slug>`, with no date. There is no daily branch and no squash-merge closeout; see the vault's ADR 0008.
 
 ## Scripts
 
-`llmos-audit` does not stamp `authors`/`updated` — the PostToolUse hook owns those. It is read-only unless you pass `--fix`.
+`llmos-audit` is read-only. It does not stamp `authors`/`updated` — the PostToolUse hook owns those.
 
 The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer.
-
-Every canonical spec (`projects/<project>/specs/NNNN-<slug>.md`) carries the minimal `Specifications` category and project ownership. Both are implied by the file's own path, so `--fix` stamps them rather than any agent hand-typing them — run it after `/write-spec` creates a spec, since that command is vault-agnostic and writes only the workflow properties (`status`, `desc`, `blocked`). Legacy supporting notes may remain unclassified until materially edited.

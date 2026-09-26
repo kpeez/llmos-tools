@@ -7,8 +7,8 @@ JSON payload arrives on stdin the same way on both harnesses.
 
 SessionStart gates on the session cwd; PreToolUse gates on the *resolved*
 target path, symlinks followed first -- that is what makes an edit to
-`docs/agents/specs/*.md` from another repo, which is a symlink into the
-vault, still fire (ADR-0002). Outside its gate each event is silent.
+`.agents/docs/*.md` from another repo, which is a symlink into the vault,
+still fire (ADR-0002). Outside its gate each event is silent.
 
 This hook runs on every Write/Edit in every repo, so failure must never
 block the tool call: an unconfigured vault root makes `vault_root()` raise
