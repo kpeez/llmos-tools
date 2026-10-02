@@ -70,7 +70,9 @@ def extract_wikilinks(text: str) -> list[str]:
     Args:
         text: Markdown body text or a single frontmatter property value.
     """
-    return [match.group(1).strip() for match in WIKILINK_RE.finditer(text)]
+    # Obsidian requires the alias separator to be escaped inside Markdown
+    # tables; the backslash belongs to the separator, not the note's name.
+    return [match.group(1).strip() for match in WIKILINK_RE.finditer(text.replace("\\|", "|"))]
 
 
 def resolve_note(index: VaultIndex, target: str) -> Path:

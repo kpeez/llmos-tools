@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook (Write|Edit): normalize + stamp vault markdown notes.
+"""PostToolUse hook: normalize, stamp, and check vault markdown notes.
 
 One process: normalizes frontmatter, stamps `updated` with today's date,
 appends the invoking provider to `authors` if detectable and absent, and
@@ -21,7 +21,7 @@ sys.path.insert(0, str(HOOKS_DIR.parent))  # llmos_vault package
 
 from llmos_dirty_flag import flag_path  # noqa: E402
 from llmos_hook import (  # noqa: E402
-    _is_note,
+    _emit,
     _is_under,
     _read_payload,
     _resolved_root,
@@ -43,14 +43,61 @@ def stamp_vault_note(path: Path, provider: str | None) -> None:
     path.write_text(frontmatter.serialize(properties, body), encoding="utf-8")
 
 
-def post_tool_use(data: dict) -> None:
+def _authoring_diagnostics(root: Path, paths: list[Path]) -> str | None:
+    """Return concise guidance from the shared checker; never edit or block."""
+    try:
+        from llmos_vault.authoring import check_notes
+
+        checks = check_notes(root, paths)
+    except (ImportError, OSError, ValueError):
+        return None
+
+    lines: list[str] = []
+    max_findings = 8
+    for check in checks:
+        for finding in check.findings:
+            location = f":{finding.line}" if finding.line else ""
+            target = f" -> {finding.target}" if finding.target else ""
+            message = " ".join(str(finding.message).split())
+            line = f"{check.path}{location} [{finding.code}]{target}: {message}"
+            if len(line) > 240:
+                line = line[:237].rstrip() + "..."
+            lines.append(line)
+            if len(lines) >= max_findings:
+                break
+        if len(lines) >= max_findings:
+            break
+
+    if not lines:
+        return None
+    return (
+        "llmOS authoring check (informational; this checker did not block the "
+        "write or rewrite note content):\n"
+        + "\n".join(lines)
+        + "\nRun `llmos-vault check <note>` for complete findings."
+    )
+
+
+def post_tool_use(data: dict) -> str | None:
     root = _resolved_root()
     if root is None:
-        return
-    targets = [Path(p).resolve() for p in _target_paths(data.get("tool_input") or {})]
-    vault_targets = [t for t in targets if _is_under(t, root) and _is_note(t) and t.is_file()]
+        return None
+    tool_input = data.get("tool_input") or data.get("input") or {}
+    if not isinstance(tool_input, dict):
+        return None
+    targets = _target_paths(
+        tool_input,
+        cwd=data.get("cwd"),
+        tool_name=data.get("tool_name") or "",
+        root=root,
+    )
+    vault_targets = [
+        target
+        for target in targets
+        if _is_under(target, root) and target.suffix.lower() == ".md" and target.is_file()
+    ]
     if not vault_targets:
-        return
+        return None
     provider = detect_provider()
     stamped = False
     for target in vault_targets:
@@ -62,13 +109,16 @@ def post_tool_use(data: dict) -> None:
     if stamped:
         session_id = data.get("session_id") or "default"
         flag_path(session_id, COLLECTION).touch()
+    return _authoring_diagnostics(root, vault_targets)
 
 
 def main() -> None:
     try:
-        post_tool_use(_read_payload())
+        output = post_tool_use(_read_payload())
     except Exception:
         return  # hook failure must never block the tool call
+    if output:
+        print(_emit("post-tool-use", output))
 
 
 if __name__ == "__main__":

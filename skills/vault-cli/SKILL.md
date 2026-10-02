@@ -16,6 +16,7 @@ tells you everything else.
 | verb | summary |
 | --- | --- |
 | `append` | Append content to an existing note via obsidian-cli. |
+| `check` | Review one note for unlinked references to existing vault notes. |
 | `create` | Create a new note, optionally from a vault template, via obsidian-cli. |
 | `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading via obsidian-cli. |
 | `daily get-or-create` | Print today's daily note's frontmatter and body as JSON, creating it |

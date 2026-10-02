@@ -22,6 +22,7 @@ if not SYSTEM_PYTHON.is_file():
 
 MEMORY_SENTINEL = "MEMORY-SENTINEL-DO-NOT-LEAK"
 SCHEMA_SENTINEL = "SCHEMA-CONTRACT-SENTINEL"
+AUTHORING_SENTINEL = "OBSIDIAN-AUTHORING-CONTRACT-SENTINEL"
 
 
 def make_vault(root: Path) -> Path:
@@ -31,6 +32,9 @@ def make_vault(root: Path) -> Path:
     references = root / "agents" / "references"
     references.mkdir(parents=True)
     (references / "schema.md").write_text(SCHEMA_SENTINEL + "\n")
+    (references / "authoring.md").write_text(
+        AUTHORING_SENTINEL + "\nUse [[wikilinks]], Bases, and Canvas where useful.\n"
+    )
     memory_dir = root / "agents" / "claude"
     memory_dir.mkdir(parents=True)
     (memory_dir / "MEMORY.md").write_text(MEMORY_SENTINEL + "\n")
@@ -100,6 +104,23 @@ def test_session_start_names_daily_note_by_absolute_path(tmp_path):
     result = run_hook("session-start", {"cwd": str(vault)}, tmp_path, vault)
 
     assert str(daily_note) in result.stdout
+    assert result.returncode == 0
+
+
+def test_session_start_from_linked_repo_injects_vault_authoring_routes(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    project_docs = vault / "projects" / "testproj"
+    project_docs.mkdir(parents=True)
+    repo = tmp_path / "repo"
+    nested_cwd = repo / "src" / "tests"
+    nested_cwd.mkdir(parents=True)
+    (repo / ".agents").mkdir()
+    (repo / ".agents" / "docs").symlink_to(project_docs, target_is_directory=True)
+
+    result = run_hook("session-start", {"cwd": str(nested_cwd)}, tmp_path, vault)
+
+    assert str(vault) in result.stdout
+    assert "agents/references/authoring.md" in result.stdout
     assert result.returncode == 0
 
 
@@ -184,6 +205,173 @@ def test_pre_write_injects_for_symlinked_spec(tmp_path):
     )
 
     assert SCHEMA_SENTINEL in result.stdout
+    assert AUTHORING_SENTINEL in result.stdout
+    assert "obsidian-markdown" in result.stdout
+    assert result.returncode == 0
+
+
+def test_pre_read_injects_authoring_context_for_symlinked_note(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    project_docs = vault / "projects" / "testproj"
+    project_docs.mkdir(parents=True)
+    note = project_docs / "note.md"
+    note.write_text("# Note\n")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".agent").mkdir()
+    (repo / ".agent" / "docs").symlink_to(project_docs, target_is_directory=True)
+
+    result = run_hook(
+        "pre-tool-use",
+        {
+            "tool_name": "Read",
+            "tool_input": {"file_path": str(repo / ".agent" / "docs" / "note.md")},
+        },
+        tmp_path,
+        vault,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "Obsidian vault note" in specific["additionalContext"]
+    assert "agents/references/authoring.md" in specific["additionalContext"]
+    assert "llmos-vault read" in specific["additionalContext"]
+    assert "qmd" in specific["additionalContext"]
+    assert SCHEMA_SENTINEL not in specific["additionalContext"]
+    assert result.returncode == 0
+
+
+def test_pre_write_injects_authoring_context_for_obsidian_canvas(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    canvas = vault / "projects" / "testproj" / "map.canvas"
+    canvas.parent.mkdir(parents=True)
+    canvas.write_text('{"nodes": [], "edges": []}\n')
+
+    result = run_hook(
+        "pre-tool-use",
+        {"tool_name": "Write", "tool_input": {"file_path": str(canvas)}},
+        tmp_path,
+        vault,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    context = specific["additionalContext"]
+    assert AUTHORING_SENTINEL in context
+    assert "json-canvas" in context
+    assert SCHEMA_SENTINEL not in context
+    assert result.returncode == 0
+
+
+def test_pre_shell_read_injects_context_for_explicit_linked_path(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    project_docs = vault / "projects" / "testproj"
+    project_docs.mkdir(parents=True)
+    note = project_docs / "note.md"
+    note.write_text("# Note\n")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".agents").mkdir()
+    (repo / ".agents" / "docs").symlink_to(project_docs, target_is_directory=True)
+    linked_note = repo / ".agents" / "docs" / "note.md"
+
+    result = run_hook(
+        "pre-tool-use",
+        {"tool_name": "Bash", "tool_input": {"command": f"cat {linked_note}"}},
+        tmp_path,
+        vault,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "Obsidian vault note" in specific["additionalContext"]
+    assert "agents/references/authoring.md" in specific["additionalContext"]
+    assert result.returncode == 0
+
+
+def test_pre_shell_llmos_vault_read_injects_context_with_equals_flag(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+
+    result = run_hook(
+        "pre-tool-use",
+        {
+            "tool_name": "Bash",
+            "tool_input": {"command": "llmos-vault neighbors projects/testproj --vault=llmos"},
+        },
+        tmp_path,
+        vault,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "Obsidian vault note" in specific["additionalContext"]
+    assert "agents/references/authoring.md" in specific["additionalContext"]
+    assert result.returncode == 0
+
+
+def test_pre_shell_llmos_vault_ignores_other_registered_vault(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+
+    result = run_hook(
+        "pre-tool-use",
+        {
+            "tool_name": "Bash",
+            "tool_input": {"command": "llmos-vault read note --vault second-vault"},
+        },
+        tmp_path,
+        vault,
+    )
+
+    assert result.stdout == ""
+    assert result.returncode == 0
+
+
+def test_pre_shell_rg_files_injects_context_for_explicit_linked_directory(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    project_docs = vault / "projects" / "testproj"
+    project_docs.mkdir(parents=True)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".agents").mkdir()
+    (repo / ".agents" / "docs").symlink_to(project_docs, target_is_directory=True)
+
+    result = run_hook(
+        "pre-tool-use",
+        {
+            "tool_name": "Bash",
+            "tool_input": {"command": "rg --files .agents/docs"},
+        },
+        tmp_path,
+        vault,
+        cwd=repo,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "Obsidian vault note" in specific["additionalContext"]
+    assert "agents/references/authoring.md" in specific["additionalContext"]
+    assert result.returncode == 0
+
+
+def test_pre_tool_use_anchors_relative_path_to_payload_cwd(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    project_docs = vault / "projects" / "testproj"
+    project_docs.mkdir(parents=True)
+    (project_docs / "note.md").write_text("# Note\n")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".agents").mkdir()
+    (repo / ".agents" / "docs").symlink_to(project_docs, target_is_directory=True)
+
+    result = run_hook(
+        "pre-tool-use",
+        {
+            "cwd": str(repo),
+            "tool_name": "Read",
+            "tool_input": {"file_path": ".agents/docs/note.md"},
+        },
+        tmp_path,
+        vault,
+    )
+
+    specific = json.loads(result.stdout)["hookSpecificOutput"]
+    assert "Obsidian vault note" in specific["additionalContext"]
+    assert "agents/references/authoring.md" in specific["additionalContext"]
     assert result.returncode == 0
 
 

@@ -1,6 +1,6 @@
 ---
 name: maintain-llmos
-description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs, writes daily-note Thoughts, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill.
+description: Maintain the shared llmOS Obsidian vault. Use when an agent files or retrieves durable knowledge, updates project docs, writes daily-note Thoughts, migrates documents into llmOS, repairs links or properties, or extracts a recurring workflow into a shared skill. Also use when editing llmOS notes through a repository's .agents/docs or .agent/docs symlink.
 ---
 
 # Maintain llmOS
@@ -10,13 +10,36 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. No pr
 ## Workflow
 
 1. Use the installed `llmos-vault` and `llmos-audit` commands for vault resolution and maintenance. Never derive the vault from the working directory or a file's location (ADR-0001).
-2. Read `[[llmOS]]`, `AGENTS.md`, and the nearest area or canonical project note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
+2. Read `[[llmOS]]`, `AGENTS.md`, `agents/references/schema.md`, and
+   `agents/references/authoring.md`, then the nearest area or canonical project
+   note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
 3. Delegate broad vault exploration (multi-note reads, wide `qmd` sweeps) to a bounded subagent; keep synthesis and cross-cutting decisions with the primary agent.
 4. Use `qmd search -c llmos` for exact retrieval or `qmd query -c llmos` for semantic and cross-note retrieval. Fetch full hits with `qmd get` before using them.
-5. Classify linked `categories`, linked `topics`, and linked `project` (omitting empty properties), then file the result with the matching template using the schema and directory map at `$LLMOS_ROOT/agents/references/schema.md`, which the vault single-sources (ADR-0002).
-6. The PostToolUse format+stamp hook appends the current provider to `authors` and bumps `updated` on every vault edit — no manual stamping needed. `authors` means "touched the file," not meaningful contribution. Codex only gets this for free once its hook-trust is configured for the llmos plugin; until then, stamp by hand on Codex.
-7. Record insight, not activity. GitHub already holds what happened, and the evening digest writes it into each daily note's `## Projects` block. When a day produces a lesson, an open question, or a decision with no ADR yet, write it under `## Thoughts` in `reviews/daily/YYYY-MM-DD.md` — prose, in your own words. Never restate commits, issues, or PRs there. The `## Projects` block is machine-owned — the digest regenerates it wholesale, so never hand-write the day's activity into it.
-8. Verify changed notes through Obsidian CLI. Query changed Base views, confirm project backlinks, run `llmos-audit`, check unresolved links, update qmd, retrieve a representative full note, and review Git status.
+5. Classify linked `categories`, linked `topics`, and linked `project` (omitting
+   empty properties), then file the result with the matching template using the
+   schema and directory map at `$LLMOS_ROOT/agents/references/schema.md`; use
+   `$LLMOS_ROOT/agents/references/authoring.md` for body links and Obsidian
+   features. These vault files remain canonical through a repository's
+   `.agents/docs` symlink.
+6. In body prose, label internal links with a readable title, concept, or phrase
+   that fits the sentence. Keep `.md` extensions and vault paths out of visible
+   text unless the literal filename or path is itself the subject.
+7. A configured and trusted PostToolUse hook stamps `authors` and `updated`
+   after supported Write/Edit/apply_patch operations. It does not cover shell or
+   MCP writes, or an inactive hook; stamp those edits manually. `authors` means
+   "touched the file," not meaningful contribution.
+8. Record insight, not activity. GitHub already holds what happened, and the
+   evening digest writes it into each daily note's `## Projects` block. When a
+   day produces a lesson, an open question, or a decision with no ADR yet, write
+   it under `## Thoughts` in `reviews/daily/YYYY-MM-DD.md` — prose, in your own
+   words. Never restate commits, issues, or PRs there. The `## Projects` block is
+   machine-owned — the digest regenerates it wholesale, so never hand-write the
+   day's activity into it.
+9. After each changed note, regardless of write tool, run
+   `llmos-vault check <vault-relative-path> --vault llmos` to inspect body links,
+   property links, and unlinked note references. Then verify the rendered note
+   and any changed Base views in Obsidian, confirm project backlinks, run
+   `llmos-audit`, check unresolved links, update qmd, and review Git status.
 
 ## Promote recurring patterns
 

@@ -1,6 +1,6 @@
 [project]
 name = "llmos-vault"
-version = "0.1.0"
+version = "0.2.0"
 description = "Vault-root resolution and canonical frontmatter for the llmOS Obsidian vault"
 readme = "README.md"
 requires-python = ">=3.11"

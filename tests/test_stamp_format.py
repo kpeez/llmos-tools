@@ -169,6 +169,52 @@ def test_non_vault_write_untouched_and_sets_no_flag(tmp_path):
     assert not dirty_flag(tmp_path, "sess-1").exists()
 
 
+def test_obsidian_base_and_canvas_are_not_frontmatter_stamped(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    for suffix, original in (
+        (".base", "filters:\n  and: []\n"),
+        (".canvas", '{"nodes": [], "edges": []}\n'),
+    ):
+        artifact = vault / f"map{suffix}"
+        artifact.write_text(original)
+
+        result = run_hook(
+            {"session_id": "sess-1", "tool_input": {"file_path": str(artifact)}},
+            tmp_path,
+            vault,
+        )
+
+        assert result.returncode == 0
+        assert artifact.read_text() == original
+    assert not dirty_flag(tmp_path, "sess-1").exists()
+
+
+def test_post_write_emits_informational_authoring_findings(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    folder = vault / "projects" / "testproj"
+    folder.mkdir(parents=True)
+    (folder / "target.md").write_text("# Target\n")
+    note = folder / "source.md"
+    note.write_text(
+        "---\ncreated: 2026-07-01\n---\n# Source\n\nSee target.md for the explanation.\n"
+    )
+
+    result = run_hook(
+        {"session_id": "sess-1", "tool_input": {"file_path": str(note)}},
+        tmp_path,
+        vault,
+    )
+
+    output = json.loads(result.stdout)["hookSpecificOutput"]
+    assert output["hookEventName"] == "PostToolUse"
+    assert "informational" in output["additionalContext"]
+    assert "projects/testproj/source.md" in output["additionalContext"]
+    assert "unlinked-note" in output["additionalContext"]
+    assert "llmos-vault check <note>" in output["additionalContext"]
+    assert "See target.md for the explanation." in note.read_text()
+    assert result.returncode == 0
+
+
 def test_note_without_frontmatter_is_untouched(tmp_path):
     vault = make_vault(tmp_path / "vault")
     note = vault / "plain.md"

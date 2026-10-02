@@ -15,6 +15,7 @@ from typing import Annotated, Literal
 
 import cyclopts
 
+from llmos_vault.authoring import check_notes
 from llmos_vault.daily import (
     MachineOwnedBlock,
     append_thought,
@@ -25,6 +26,7 @@ from llmos_vault.docs import write_reference
 from llmos_vault.graph import get_neighbors, get_subgraph
 from llmos_vault.health import summary, vault_health
 from llmos_vault.inbox import file_inbox_item
+from llmos_vault.links import build_index, resolve_note
 from llmos_vault.mutations import (
     append_note,
     create_note,
@@ -133,6 +135,38 @@ def list_(*, vault: Vault = "llmos") -> None:
             indent=2,
         )
     )
+
+
+@app.command
+def check(note: str, *, vault: Vault = "llmos") -> None:
+    """Review one note for unlinked references to existing vault notes.
+
+    Reports body links separately from frontmatter links, plus the first
+    unlinked .md reference to each known target. Exits 1 when findings need
+    review, 0 otherwise. Never rewrites content; works with Obsidian closed.
+    This is a conservative authoring aid: code examples, missing files, and
+    ambiguous filenames are ignored. A clean result does not certify useful
+    connections, link resolution, Base formulas, or rendering. Use `neighbors`
+    and Obsidian for those checks.
+
+    Example output:
+        {"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
+         "findings": [{"code": "unlinked-note", "line": 7, "target": "notes/beta",
+                       "message": "Link to notes/beta using the note title or a natural phrase."}]}
+
+    Example invocation:
+        llmos-vault check projects/study/manuscript/README.md --vault llmos
+
+    Args:
+        note: Note basename or vault-relative path.
+        vault: Which registered vault to check.
+    """
+    root = resolve_vault_root(vault)
+    path = resolve_note(build_index(root), note)
+    report = check_notes(root, [path])[0]
+    print(json.dumps(dataclasses.asdict(report), indent=2))
+    if report.findings:
+        raise SystemExit(1)
 
 
 @app.command

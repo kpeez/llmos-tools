@@ -8,6 +8,7 @@ agents/codex/hooks.json payloads.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
@@ -32,8 +33,24 @@ def test_codex_manifest_omits_hooks_key() -> None:
 def test_hooks_declare_session_start_and_pre_tool_use() -> None:
     hooks = json.loads((PLUGIN_ROOT / "hooks" / "hooks.json").read_text())["hooks"]
     assert set(hooks) == {"SessionStart", "PreToolUse", "PostToolUse", "Stop"}
-    assert hooks["PreToolUse"][0]["matcher"] == "Write|Edit"
-    assert hooks["PostToolUse"][0]["matcher"] == "Write|Edit"
+    pre_tool_matchers = [entry["matcher"] for entry in hooks["PreToolUse"]]
+    post_tool_matchers = [entry["matcher"] for entry in hooks["PostToolUse"]]
+    pre_tool_names = (
+        "Read",
+        "Write",
+        "Edit",
+        "MultiEdit",
+        "Grep",
+        "Glob",
+        "LS",
+        "apply_patch",
+        "Bash",
+    )
+    for tool_name in pre_tool_names:
+        assert any(re.fullmatch(matcher, tool_name) for matcher in pre_tool_matchers), tool_name
+    for tool_name in ("Write", "Edit", "MultiEdit", "apply_patch"):
+        assert any(re.fullmatch(matcher, tool_name) for matcher in post_tool_matchers), tool_name
+    assert not any(re.fullmatch(matcher, "TaskCreate") for matcher in pre_tool_matchers)
 
 
 def test_hook_commands_use_the_plugin_root_variable() -> None:

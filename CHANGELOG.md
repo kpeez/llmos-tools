@@ -4,6 +4,18 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
+## 1.1.0 — 2026-10-01
+
+- Recognize linked project documentation at startup and inject retrieval or
+  authoring guidance for supported reads and writes after resolving symlinks.
+- Deliver the vault's canonical Obsidian authoring contract for Markdown,
+  Bases, and Canvas work; keep knowledge and syntax guidance discoverable
+  through the existing skills.
+- Add `llmos-vault check` and post-write feedback for unlinked references to
+  existing notes, with body links reported separately from frontmatter links.
+- Document per-host Codex and Claude activation, current hook trust, fresh
+  session verification, and the limits of tool-call coverage.
+
 ## 1.0.6 — 2026-09-25
 
 - Retire spec handling now that the vault holds no specs: the audit skips the

@@ -1,6 +1,6 @@
 ---
 name: setup-llmos
-description: Diagnose whether a machine can use the llmOS vault through Obsidian CLI and qmd, and configure the vault root when it is missing. Use when setting up llmOS, checking provider prerequisites, repairing vault access, or verifying that the canonical llmos qmd collection is correctly rooted and can return complete notes.
+description: Set up and verify llmOS access, agent-plugin activation, and hook coverage on a Mac or Linux host. Use when installing the llmOS integration for Codex or Claude, repairing missing vault guidance through project symlinks, or checking the vault root, Obsidian CLI, and qmd retrieval.
 ---
 
 # Setup llmOS
@@ -29,7 +29,9 @@ uv tool install --editable "<llmos-plugin-root>"
 
 The doctor is read-only. It reports `PASS` or `FAIL` for each available
 prerequisite, prints an exact `REPAIR` command after every failure, and exits
-nonzero when setup is incomplete.
+nonzero when setup is incomplete. It checks vault, Obsidian, and qmd access;
+it does not establish that either agent has loaded the plugin or trusted its
+hooks. Verify those separately below.
 
 ## Workflow
 
@@ -79,11 +81,11 @@ records each hook in `~/.codex/config.toml` under `[hooks.state]` with a
 silently** — no error, no warning. `codex plugin list` still reports
 `llmos@llmos-vault  installed, enabled`, and the session receives nothing.
 
-Check whether this machine has trusted it:
-
-```sh
-grep -q 'llmos@llmos-vault:hooks' ~/.codex/config.toml && echo trusted || echo NOT-trusted
-```
+Inspect `codex plugin list --marketplace llmos-vault --json` and the llmOS
+entries under `hooks.state` in the current Codex configuration. Parse JSON
+and TOML with the host's structured-data tooling. A stale cache directory,
+plugin list entry, or nonempty trust record alone is insufficient: trust is
+for the current hook definition and can become stale after an update.
 
 If it is not trusted, the repair is a human one: open Codex interactively and
 approve the llmOS hook when prompted. It persists, and only that machine's
@@ -102,3 +104,38 @@ codex exec --sandbox read-only "Do not use any tools. Did you receive a startup 
 ```
 
 `no` means the hook did not fire, whatever `plugin list` claims.
+
+## Activate and verify each agent and host
+
+The Python tool and the agent plugin are separate installations. Repeat this
+checklist on each requested host; a successful Mac check says nothing about
+Linux, and Claude activation says nothing about Codex.
+
+- Inspect the agent's plugin list and configured marketplace source. Preserve
+  existing sources and unrelated settings. Use the provider's supported
+  marketplace/install/update commands from `--help`; never modify an active
+  plugin cache in place or delete an old version to force reloading.
+- For a local source checkout, both providers accept a local marketplace:
+  `codex plugin marketplace add <checkout>` followed by
+  `codex plugin add llmos@llmos-vault`, or
+  `claude plugin marketplace add <checkout>` followed by
+  `claude plugin install llmos@llmos-vault`. Inspect existing registrations
+  before replacing them. Changes to an existing installation may require the
+  provider's update command and a fresh session.
+- Verify that `maintain-llmos`, `vault-cli`, and `setup-llmos` are available in
+  the fresh agent session. Resolve the configured root, then verify that its
+  `agents/references/authoring.md` exists. Do not create a rival copy inside
+  the code repository or installed plugin cache.
+- From a repository with a real `.agents/docs` or `.agent/docs` symlink into
+  the vault, verify startup guidance, a supported read, and a disposable edit
+  through that symlink. Confirm the read receives retrieval guidance and the
+  edit receives the authoring contract and post-write findings. Keep fixture
+  output in the code repository's `artifacts/`, outside the real vault; use a
+  temporary configured vault for the edit probe.
+- Run `llmos-vault check` for a representative changed note. Validate Base
+  queries and rendering through the explicitly targeted Obsidian CLI when
+  available. Report headless checks separately when the desktop app is closed.
+
+Hooks see tool calls, not arbitrary filesystem access. Document the tested
+tools and the unobserved routes; absence of a hook diagnostic is not proof
+that a shell script or external tool followed the authoring contract.

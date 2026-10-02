@@ -19,6 +19,19 @@ def test_get_neighbors_returns_outgoing_links():
     assert neighbors.outgoing == ["beta"]
 
 
+def test_table_alias_links_produce_the_same_graph_connections_as_prose(tmp_path):
+    (tmp_path / "index.md").write_text(
+        "| Document | Purpose |\n| --- | --- |\n"
+        "| [[methods\\|Methods]] | Protocol |\n"
+    )
+    (tmp_path / "methods.md").write_text("# Methods\n")
+
+    index = get_neighbors(tmp_path, "index")
+    assert index.outgoing == ["methods"]
+    assert index.unresolved_outgoing == []
+    assert get_neighbors(tmp_path, "methods").backlinks == ["index"]
+
+
 def test_get_neighbors_reports_unresolved_outgoing_links():
     neighbors = get_neighbors(VAULT, "alpha")
 

@@ -58,6 +58,20 @@ llmos-vault/
 | `setup-llmos`    | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing |
 | `vault-cli`      | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI |
 
+The authoring contract lives in the vault at
+`agents/references/authoring.md`. It guides meaningful wikilinks, heading and
+block references, aliases, embeds, Bases, callouts, and diagrams. The plugin
+delivers that contract when a tool targets vault content, including through a
+repository's `.agents/docs` or `.agent/docs` symlink. The generic Obsidian
+skills provide syntax help when installed; they do not replace the vault's
+own conventions.
+
+After editing a note, run `llmos-vault check <vault-relative-note.md>`.
+It reports body links separately from frontmatter links and flags explicit
+references to existing notes that are not links. Findings need author review;
+the command never rewrites content or invents relationships. A clean check is
+not a guarantee of useful connections or correct Obsidian rendering.
+
 ## Hooks
 
 `hooks/hooks.json` wires four lifecycle events. One script per concern, and
@@ -67,15 +81,28 @@ way on both harnesses.
 
 | Event                  | Script                | Purpose                                                                                                     |
 | ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart           | `llmos_hook.py`       | Injects vault context at session start (startup, resume, clear, compact)                                    |
-| PreToolUse (Write/Edit)| `llmos_hook.py`       | Gates direct writes into the vault so they follow its conventions                                           |
+| SessionStart           | `llmos_hook.py`       | Supplies vault context inside the vault and repositories with linked vault docs                            |
+| PreToolUse (reads/edits)| `llmos_hook.py`       | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (Bash)      | `guard_bash.py`       | Guards `obsidian-cli` targeting and vault-unsafe `mv`/`rm`; a cheap pre-filter keeps the fast path silent   |
-| PostToolUse (Write/Edit)| `llmos_stamp_hook.py`| Normalizes frontmatter, stamps `updated`, appends the writing provider to `authors`, flags the index dirty  |
+| PostToolUse (Write/Edit)| `llmos_stamp_hook.py`| Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
 | Stop                   | `llmos_qmd_hook.py`   | Reindexes the `qmd` llmos collection **iff** this turn dirtied the vault; a vault-untouched turn spawns nothing |
 
 The stamp and reindex hooks share a session-scoped dirty flag
 (`llmos_dirty_flag.py`), so concurrent sessions never collide or leak a stale
 flag into each other.
+
+Hooks observe supported tool calls, not all filesystem access. Direct file
+tools and patch edits have explicit targets; simple shell reads can be
+recognized, but arbitrary scripts, pipelines, and other tools may not expose
+their targets. Run the authoring check on changed notes at completion even
+when a hook produced no diagnostic. `.base` and `.canvas` writes receive
+authoring guidance; their format and rendering require their own checks.
+
+Install the plugin separately from the Python tool, on each host and for each
+agent. Codex requires review and trust of the current hook definitions; an
+installed CLI or an old trust entry does not prove active hooks. See the
+`setup-llmos` skill for activation and fresh-session verification. Existing
+sessions may retain their previous plugin definitions.
 
 ## The `llmos_vault` library and CLI
 
