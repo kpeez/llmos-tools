@@ -26,7 +26,7 @@ DEFAULT_REGISTRY_PATH = (
 
 REPAIR_MESSAGE = (
     "llmOS vault root is not configured. Run /setup-llmos, or set it manually:\n"
-    "  export LLMOS_ROOT=/path/to/your/llmos-vault"
+    "  export LLMOS_ROOT=/path/to/llmos/llmOS"
 )
 
 

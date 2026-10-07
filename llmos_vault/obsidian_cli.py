@@ -6,7 +6,7 @@ in the library allowed to call `subprocess`.
 
 Invocation shape matches obsidian-cli's own convention: `vault=<name>` first
 (the registered vault's directory basename, e.g. "llmOS" for
-`/Users/user/code/llmOS` -- confirmed against a live `obsidian-cli` install),
+`<checkout>/llmOS` -- confirmed against a live `obsidian-cli` install),
 then the verb, then `file=`/`path=` targeting, then remaining `key=value`
 params -- always an argv list passed straight to `subprocess.run`, never a
 shell string, so no value needs shell-quoting regardless of length or

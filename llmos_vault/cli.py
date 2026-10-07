@@ -234,7 +234,7 @@ def health(
     """Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema
     violations, stale inbox items, and qmd index gaps.
 
-    Use when starting a vault-maintenance pass -- e.g. the nightly cron --
+    Use when starting a vault-maintenance pass -- e.g. after a vault change --
     to see every hygiene defect in one headless call. Each section
     degrades independently: a missing qmd binary reports a notice instead of
     failing the whole command. Works with Obsidian closed. Exits 1 if any

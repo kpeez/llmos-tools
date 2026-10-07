@@ -1,8 +1,17 @@
-# Changelog — llmos-vault
+# Changelog — llmOS tools
 
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
+
+## 1.2.0 — 2026-10-07
+
+- Move into the `kpeez/llmos` repository as `tools/`, beside the vault in
+  `llmOS/`; `kpeez/llmos-vault` is retired. Marketplace catalogs move to the
+  repository root and point at `./tools`; the marketplace keeps the
+  `llmos-vault` name, so the plugin ID stays `llmos@llmos-vault`.
+- `llmos-doctor` targets Obsidian by the vault folder's name instead of a
+  fixed `llmOS`.
 
 ## 1.1.0 — 2026-10-01
 

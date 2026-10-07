@@ -90,7 +90,7 @@ class DoctorTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory(prefix="setup-llmos-")
         self.base = Path(self.temporary_directory.name)
-        self.root = self.base / "vault"
+        self.root = self.base / "llmOS"
         self.bin = self.base / "bin"
         self.home = self.base / "home"
         (self.root / ".obsidian").mkdir(parents=True)

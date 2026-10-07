@@ -15,8 +15,8 @@ llmos-daily-activity = "llmos_vault.daily_activity:main"
 llmos-doctor = "llmos_vault.doctor:main"
 
 [project.urls]
-Homepage = "https://github.com/kpeez/llmos-vault"
-Repository = "https://github.com/kpeez/llmos-vault"
+Homepage = "https://github.com/kpeez/llmos"
+Repository = "https://github.com/kpeez/llmos"
 
 [build-system]
 requires = ["hatchling"]

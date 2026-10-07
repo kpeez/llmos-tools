@@ -25,8 +25,7 @@ def catalogs() -> tuple[dict, dict]:
     plugin_name = manifest["name"]
     marketplace_name = "llmos-vault"
     description = (
-        "llmOS Obsidian vault plugin and deterministic maintenance tooling "
-        "for AI coding agents"
+        "llmOS Obsidian vault plugin and deterministic maintenance tooling for AI coding agents"
     )
     return (
         {

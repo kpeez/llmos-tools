@@ -115,7 +115,8 @@ Linux, and Claude activation says nothing about Codex.
   existing sources and unrelated settings. Use the provider's supported
   marketplace/install/update commands from `--help`; never modify an active
   plugin cache in place or delete an old version to force reloading.
-- For a local source checkout, both providers accept a local marketplace:
+- For a local source checkout, both providers accept a local marketplace at
+  the repository root (not `tools/`):
   `codex plugin marketplace add <checkout>` followed by
   `codex plugin add llmos@llmos-vault`, or
   `claude plugin marketplace add <checkout>` followed by

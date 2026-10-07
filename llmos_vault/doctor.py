@@ -66,7 +66,7 @@ def main() -> int:
     argparse.ArgumentParser(description=__doc__).parse_args()
     failures = 0
     root_repair = (
-        'Run /setup-llmos, or set it manually: export LLMOS_ROOT="/absolute/path/to/llmOS"'
+        'Run /setup-llmos, or set it manually: export LLMOS_ROOT="/absolute/path/to/llmos/llmOS"'
     )
     qmd_repair = "npm install -g @tobilu/qmd"
 
@@ -123,7 +123,8 @@ def main() -> int:
         failures += 1
 
     if obsidian_cli and root_valid:
-        code, output = _run([obsidian_cli, "vault=llmOS", "read", "path=llmOS.md"])
+        vault_name = Path(resolved_root).name
+        code, output = _run([obsidian_cli, f"vault={vault_name}", "read", "path=llmOS.md"])
         sentinel = Path(resolved_root, "llmOS.md")
         expected = sentinel.read_text(encoding="utf-8") if sentinel.is_file() else None
         if code == 0 and expected is not None and output + "\n" == expected:
@@ -132,7 +133,7 @@ def main() -> int:
             detail = (
                 f"llmOS.md content does not match {resolved_root}/llmOS.md"
                 if code == 0
-                else f"Obsidian app or vault llmOS is unavailable: {output}"
+                else f"Obsidian app or vault {vault_name} is unavailable: {output}"
             )
             print(f"FAIL obsidian-vault: {detail}")
             print(f"REPAIR {obsidian_app_repair}")

@@ -1,6 +1,6 @@
 """The vault link graph: outgoing links, backlinks, and shared-topic
 siblings, built by walking the vault fresh on every call (ADR-0004 --
-headless reads, safe for the nightly cron with Obsidian closed). A note's
+headless reads, safe with Obsidian closed). A note's
 `topics` frontmatter property is the sibling key; it is a generic vault
 convention, not an llmOS-specific schema assumption, so the same code path
 serves any vault selected via `--vault`.

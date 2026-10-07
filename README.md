@@ -1,7 +1,7 @@
-# llmos-vault
+# llmOS tools
 
-The standalone plugin and maintenance tool for the shared **llmOS Obsidian
-vault**. It bundles three skills, lifecycle hooks that keep vault writes
+The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
+lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
 well-formed and indexed, and `llmos_vault`, a Python library with deterministic
 CLI verbs for vault operations.
 
@@ -11,10 +11,10 @@ Install the reusable vault maintenance commands with uv:
 
 ```sh
 # From a checkout
-uv tool install --editable /path/to/llmos-vault
+uv tool install --editable <checkout>/tools
 
-# Directly from GitHub
-uv tool install git+https://github.com/kpeez/llmos-vault
+# Directly from GitHub (clones the whole repository, notes included)
+uv tool install "git+https://github.com/kpeez/llmos#subdirectory=tools"
 ```
 
 This installs `llmos-vault`, `llmos-audit`, `llmos-daily-activity`, and
@@ -25,21 +25,21 @@ This installs `llmos-vault`, `llmos-audit`, `llmos-daily-activity`, and
 Claude Code:
 
 ```text
-/plugin marketplace add kpeez/llmos-vault
+/plugin marketplace add kpeez/llmos
 /plugin install llmos@llmos-vault
 ```
 
 Codex CLI:
 
 ```text
-codex plugin marketplace add kpeez/llmos-vault
+codex plugin marketplace add kpeez/llmos
 codex plugin add llmos@llmos-vault
 ```
 
 ## Contents
 
 ```text
-llmos-vault/
+tools/
 ├── skills/
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
@@ -131,7 +131,7 @@ vault is.
 
 ## Tests
 
-`tests/` is a pytest suite run from the repository root (`uv run pytest`),
+`tests/` is a pytest suite run from `tools/` (`uv run pytest`),
 covering the hooks (gating, guards, stamp format, reindex), root resolution,
 the CLI's backends, and vault health — against committed fixture vaults in
 `tests/fixtures/`.
