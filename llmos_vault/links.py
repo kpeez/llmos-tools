@@ -108,8 +108,14 @@ def resolve_note(index: VaultIndex, target: str) -> Path:
     return matches[0]
 
 
-def resolve_link(index: VaultIndex, target: str) -> Path | None:
-    """Resolve one wikilink target found in vault content; never raises.
+def resolve_link(index: VaultIndex, target: str, source: Path | None = None) -> Path | None:
+    """Resolve one wikilink target found in vault content the way Obsidian
+    does; never raises.
+
+    Order: an explicit vault-relative path, then the only note with that
+    basename, then the match in the linking note's own folder, then the match
+    with the strictly shortest path (Obsidian's tie-break, confirmed against a
+    live obsidian-cli). Equal-length matches stay unresolved rather than guessed.
 
     Use when building the link graph (`get_neighbors`/`get_subgraph`) -- a
     link to a missing, renamed, or ambiguous note must be reported as
@@ -128,12 +134,20 @@ def resolve_link(index: VaultIndex, target: str) -> Path | None:
     Args:
         index: Vault index built by `build_index`.
         target: Raw wikilink target text, as returned by `extract_wikilinks`.
+        source: The note that contains the link; enables same-folder matching.
     """
     direct = _direct_path(index, target)
     if direct is not None:
         return direct
     matches = index.by_stem.get(_stem(target), [])
-    return matches[0] if len(matches) == 1 else None
+    if len(matches) <= 1:
+        return matches[0] if matches else None
+    if source is not None:
+        same_folder = [m for m in matches if m.parent == source.parent]
+        if len(same_folder) == 1:
+            return same_folder[0]
+    lengths = sorted((len(str(m.relative_to(index.root))), m) for m in matches)
+    return lengths[0][1] if lengths[0][0] < lengths[1][0] else None
 
 
 def read_frontmatter(path: Path) -> tuple[dict[str, Property], str]:

@@ -119,7 +119,7 @@ def _link_findings(
     unresolved: list[UnresolvedLink] = []
     for path, targets in targets_by_path.items():
         for target in targets:
-            hit = resolve_link(index, target)
+            hit = resolve_link(index, target, source=path)
             if hit is None:
                 unresolved.append(UnresolvedLink(referrer=path.stem, target=target))
             elif hit != path:

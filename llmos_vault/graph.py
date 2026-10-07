@@ -147,7 +147,7 @@ def _outgoing(index: VaultIndex, path: Path) -> tuple[list[Path], list[str]]:
     resolved: list[Path] = []
     unresolved: list[str] = []
     for target in _linked_targets(path):
-        hit = resolve_link(index, target)
+        hit = resolve_link(index, target, source=path)
         if hit is None:
             unresolved.append(target)
         elif hit != path:
@@ -160,7 +160,9 @@ def _backlinks(index: VaultIndex, path: Path) -> list[Path]:
         other
         for other in index.paths
         if other != path
-        and any(resolve_link(index, target) == path for target in _linked_targets(other))
+        and any(
+            resolve_link(index, target, source=other) == path for target in _linked_targets(other)
+        )
     ]
 
 

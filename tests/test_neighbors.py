@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from llmos_vault.graph import get_neighbors, get_subgraph
+from llmos_vault.links import build_index, resolve_link
 from llmos_vault.notes import list_notes, read_note
 
 VAULT = Path(__file__).parent / "fixtures" / "vault"
@@ -90,3 +91,34 @@ def test_list_notes_enumerates_every_note_including_those_without_frontmatter():
     names = {n.name for n in notes}
     assert {"alpha", "beta", "gamma", "delta", "epsilon"} <= names
     assert "AGENTS" in names
+
+
+def _notes(root: Path, *relative: str) -> None:
+    for rel in relative:
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text("# note\n")
+
+
+def test_ambiguous_link_prefers_the_linking_notes_folder(tmp_path):
+    _notes(tmp_path, "projects/a/CONTEXT.md", "projects/longer-name/CONTEXT.md")
+    source = tmp_path / "projects/longer-name/overview.md"
+
+    hit = resolve_link(build_index(tmp_path), "CONTEXT", source=source)
+
+    assert hit == tmp_path / "projects/longer-name/CONTEXT.md"
+
+
+def test_ambiguous_link_falls_back_to_the_shortest_path(tmp_path):
+    # Mirrors Obsidian: [[Knowledge]] reached templates/knowledge.md, not
+    # categories/Knowledge.md, because its path is one character shorter.
+    _notes(tmp_path, "categories/Knowledge.md", "templates/knowledge.md")
+
+    hit = resolve_link(build_index(tmp_path), "Knowledge", source=tmp_path / "note.md")
+
+    assert hit == tmp_path / "templates/knowledge.md"
+
+
+def test_ambiguous_link_with_equal_length_paths_stays_unresolved(tmp_path):
+    _notes(tmp_path, "aa/shared.md", "bb/shared.md")
+
+    assert resolve_link(build_index(tmp_path), "shared", source=tmp_path / "note.md") is None
