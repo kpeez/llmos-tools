@@ -1,4 +1,4 @@
-# Task runner for llmos-vault.
+# Task runner for the llmOS tools (run from tools/).
 
 _default:
     @just --list
@@ -7,7 +7,7 @@ gen:
     uv run python scripts/gen-marketplaces.py
 
 drift: gen
-    git diff --exit-code .claude-plugin/marketplace.json .agents/plugins/marketplace.json
+    git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
 
 lint:
     uv run ruff check

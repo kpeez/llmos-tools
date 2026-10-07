@@ -1,6 +1,6 @@
 {
   "name": "llmos-vault",
-  "description": "Standalone llmOS Obsidian vault plugin and deterministic maintenance tooling for AI coding agents",
+  "description": "llmOS Obsidian vault plugin and deterministic maintenance tooling for AI coding agents",
   "owner": {
     "name": "kpeez",
     "email": "25070796+kpeez@users.noreply.github.com"
@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "llmos",
-      "source": "./"
+      "source": "./tools"
     }
   ]
 }

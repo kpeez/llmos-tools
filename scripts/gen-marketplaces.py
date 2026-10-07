@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Generate the Claude and Codex catalogs for this standalone plugin repo."""
+"""Generate the Claude and Codex catalogs at the llmos repository root.
+
+The plugin lives in tools/; both harnesses read their catalog from the root.
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PLUGIN_ROOT.parent
 CLAUDE_MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 AGENTS_MARKETPLACE = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
-PLUGIN_MANIFEST = REPO_ROOT / ".claude-plugin" / "plugin.json"
+PLUGIN_MANIFEST = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
+PLUGIN_SOURCE = "./" + PLUGIN_ROOT.name
 
 DEFAULT_POLICY = {"installation": "AVAILABLE", "authentication": "ON_USE"}
 DEFAULT_CATEGORY = "Productivity"
@@ -20,15 +25,15 @@ def catalogs() -> tuple[dict, dict]:
     plugin_name = manifest["name"]
     marketplace_name = "llmos-vault"
     description = (
-        "Standalone llmOS Obsidian vault plugin and deterministic maintenance "
-        "tooling for AI coding agents"
+        "llmOS Obsidian vault plugin and deterministic maintenance tooling "
+        "for AI coding agents"
     )
     return (
         {
             "name": marketplace_name,
             "description": description,
             "owner": {"name": "kpeez", "email": "25070796+kpeez@users.noreply.github.com"},
-            "plugins": [{"name": plugin_name, "source": "./"}],
+            "plugins": [{"name": plugin_name, "source": PLUGIN_SOURCE}],
         },
         {
             "name": marketplace_name,
@@ -36,7 +41,7 @@ def catalogs() -> tuple[dict, dict]:
             "plugins": [
                 {
                     "name": plugin_name,
-                    "source": {"source": "local", "path": "./"},
+                    "source": {"source": "local", "path": PLUGIN_SOURCE},
                     "policy": DEFAULT_POLICY,
                     "category": DEFAULT_CATEGORY,
                 }
