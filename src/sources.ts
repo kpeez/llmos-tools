@@ -480,6 +480,72 @@ function syncFolder(folder: string): void {
   }
 }
 
+const WHITESPACE = /\s/;
+const isSpace = (char: string | undefined): boolean => char !== undefined && WHITESPACE.test(char);
+const isTargetEnd = (char: string): boolean =>
+  isSpace(char) || char === "<" || char === ">" || char === ")";
+
+/**
+ * Point Markdown images at their local copies: in `![alt](url)`,
+ * `![alt](<url>)`, and `![alt](url "title")`, a `url` that equals a
+ * downloaded image URL exactly becomes `assets/<name>`. Links and longer
+ * URLs stay as they are. This is one forward scan with no backtracking, so
+ * it takes time proportional to the text length times the longest asset URL;
+ * an earlier regex took quadratic time on text such as `![a](` repeated.
+ * Unlike that regex, an image written inside the target of a non-asset image
+ * is also rewritten.
+ */
+export function pointImagesAtAssets(
+  text: string,
+  assets: ReadonlyMap<string, { name: string }>,
+): string {
+  const longest = [...assets.keys()].reduce((most, url) => Math.max(most, url.length), 0);
+  const pieces: string[] = [];
+  let copied = 0; // text before this index is already in `pieces`
+  let from = 0; // an image may not start before the end of the last rewrite
+  let label = -1; // the start of an open `![` label with no `]` after it, or -1
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === "[") {
+      if (text[i - 1] === "!" && i - 1 >= from) label = i - 1;
+      continue;
+    }
+    if (char !== "]") continue;
+    const open = label;
+    label = -1;
+    if (open === -1 || text[i + 1] !== "(") continue;
+
+    let at = i + 2;
+    while (isSpace(text[at])) at++;
+    if (text[at] === "<") at++;
+    const start = at;
+    while (at < text.length && at - start <= longest && !isTargetEnd(text[at] as string)) at++;
+    const url = text.slice(start, at);
+    const asset = assets.get(url);
+    if (asset === undefined) continue;
+    if (text[at] === ">") at++;
+
+    // An optional title, then the closing parenthesis.
+    let close = at;
+    while (isSpace(text[close])) close++;
+    if (close > at && text[close] === '"') {
+      const quote = text.indexOf('"', close + 1);
+      if (quote !== -1) {
+        close = quote + 1;
+        while (isSpace(text[close])) close++;
+      }
+    }
+    if (text[close] !== ")") continue;
+
+    pieces.push(text.slice(copied, start), `assets/${asset.name}`);
+    copied = start + url.length;
+    from = close + 1;
+    i = close;
+  }
+  pieces.push(text.slice(copied));
+  return pieces.join("");
+}
+
 /**
  * Capture `argument` (an arXiv ID or URL, a web URL, or an inbox note that
  * holds only a URL) into `sources/<slug>/`. When the source is already
@@ -587,15 +653,7 @@ export async function captureSource(
     useAsync: false,
   });
   let content = converted.content.trim();
-  // Only a Markdown image whose target is exactly a downloaded URL is pointed at the
-  // local copy: `![alt](url)` or `![alt](<url> "title")`. Links and longer URLs stay.
-  content = content.replace(
-    /(!\[[^\]]*\]\(\s*)(<?)([^\s<>)]+)(>?)((?:\s+"[^"]*")?\s*\))/g,
-    (whole, open: string, lt: string, url: string, gt: string, close: string) => {
-      const asset = assets.get(url);
-      return asset ? `${open}${lt}assets/${asset.name}${gt}${close}` : whole;
-    },
-  );
+  content = pointImagesAtAssets(content, assets);
   const sections = [`# ${converted.title || sourceId}`, content];
   if (figures.length > 0) {
     const entries = figures.map((figure) =>

@@ -11,6 +11,11 @@ Newest first. Versions are the `version` field shared by
 - The schema audit rejects the retired `repositories` property.
 - `file-inbox` no longer stamps `[[Archive]]` when filing into `archive/`;
   no such hub exists.
+- `source add` points Markdown images at their downloaded copies with a
+  single forward scan instead of a regular expression that took quadratic
+  time on text such as `![a](` repeated (13.7 s for 200 KB; now about 15 ms).
+  The result is the same, except that an image that starts inside another
+  match's target is now also rewritten.
 
 ## 2.3.1 — 2026-10-08
 
