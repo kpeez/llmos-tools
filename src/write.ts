@@ -222,7 +222,7 @@ export function appendContent(root: string, relative: string, content: string): 
  * Add `thought` as a paragraph under the daily note's `## Thoughts` heading.
  * Everything from the `llmos-activity` start marker onward is kept (see
  * `bodyWithThought`); like every write, the note is saved in canonical form,
- * which trims trailing spaces from body lines.
+ * which trims trailing whitespace from body lines but keeps hard line breaks.
  */
 export function appendThought(root: string, relative: string, thought: string): void {
   editBody(root, relative, (body) => bodyWithThought(body, thought));

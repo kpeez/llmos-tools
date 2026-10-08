@@ -23,7 +23,11 @@
  *   inside the value) kept byte for byte from the source, or, after a
  *   change, written by the `yaml` package;
  * - comments before a key kept above that key; one blank line after the
- *   closing `---`; no trailing whitespace in the body; one final newline.
+ *   closing `---`; one final newline;
+ * - no trailing whitespace on body lines, except a Markdown hard line break:
+ *   a line with content that ends in two or more spaces keeps that run of
+ *   spaces (and loses any other whitespace before it). A single trailing
+ *   space, trailing tabs, and lines of only whitespace are still trimmed.
  *
  * Before it returns, `toString` parses its own output and refuses (throws
  * `UnsupportedFrontmatter`) unless it reads back as the current values,
@@ -420,9 +424,20 @@ function split(text: string): { block: string; body: string } {
   };
 }
 
+/**
+ * A body line without trailing whitespace, except that a line with content
+ * keeps a final run of two or more spaces: CommonMark reads that run as a
+ * hard line break. Tabs and a single space never make one.
+ */
+function bodyLine(line: string): string {
+  const content = rstrip(line);
+  if (content === "") return "";
+  return content + (/ {2,}$/.exec(line)?.[0] ?? "");
+}
+
 /** The canonical note text for frontmatter lines and a body. */
 function assemble(lines: string[], body: string): string {
-  const bodyLines = body.split(LINE_BREAK).map((line) => rstrip(line));
+  const bodyLines = body.split(LINE_BREAK).map(bodyLine);
   while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1] === "") bodyLines.pop();
   // Reading drops leading blank lines, so writing one would not be idempotent.
   while (bodyLines.length > 0 && bodyLines[0] === "") bodyLines.shift();

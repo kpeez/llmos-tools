@@ -31,6 +31,8 @@ export interface Difference {
   typescript: unknown;
   /** For `normalize`: the YAML features of the note's frontmatter block. */
   features?: string[];
+  /** For `normalize`: the note's text on disk. */
+  text?: string;
   /** For `health.stale_inbox`: each inbox note's `created` property, as the TypeScript run read it. */
   created?: Record<string, unknown>;
 }
@@ -64,6 +66,46 @@ function withoutBlankLinesAfterBlock(text: string): string {
   if (end === -1) return text;
   const head = text.slice(0, end + 5);
   return `${head}${text.slice(end + 5).replace(/^\n+/, "\n")}`;
+}
+
+/** Canonical note text split into the frontmatter block (through `---`) and the body lines. */
+function canonicalParts(text: string): { block: string; body: string[] } | null {
+  const end = text.startsWith("---\n---\n") ? 3 : text.indexOf("\n---\n", 4);
+  if (!text.startsWith("---\n") || end === -1) return null;
+  return { block: text.slice(0, end + 5), body: text.slice(end + 5).split("\n") };
+}
+
+// The line breaks the canonical writer splits a body on.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: these control characters are line breaks.
+const BODY_LINE_BREAK = /\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/;
+
+/**
+ * The TypeScript text is the Python text with a run of two or more spaces
+ * added at the end of some body lines that have content, and each such line,
+ * with its spaces, is a line of the note on disk. Nothing else differs.
+ */
+function onlyKeepsHardBreaks(python: string, typescript: string, original: string): boolean {
+  const p = canonicalParts(python);
+  const t = canonicalParts(typescript);
+  if (p === null || t === null || p.block !== t.block || p.body.length !== t.body.length) {
+    return false;
+  }
+  const sourceLines = new Set(original.split(BODY_LINE_BREAK));
+  let kept = 0;
+  for (const [i, line] of t.body.entries()) {
+    const before = p.body[i] as string;
+    if (line === before) continue;
+    if (
+      before === "" ||
+      !line.startsWith(before) ||
+      !/^ {2,}$/.test(line.slice(before.length)) ||
+      !sourceLines.has(line)
+    ) {
+      return false;
+    }
+    kept++;
+  }
+  return kept > 0;
 }
 
 // A Python `repr` string literal, and a JSON one.
@@ -195,6 +237,21 @@ export const ALLOWLIST: AllowlistEntry[] = [
       typeof difference.python === "string" &&
       typeof difference.typescript === "string" &&
       withoutBlankLinesAfterBlock(difference.python) === difference.typescript,
+  },
+  {
+    id: "body-hard-line-break",
+    reason:
+      "Python trims all trailing whitespace from body lines, which deletes Markdown hard " +
+      "line breaks (two or more spaces before a line ending) and changes how the note " +
+      "renders. TypeScript keeps a final run of two or more spaces on a body line that " +
+      "has content (kpeez/llmos#44). The texts must differ only in those runs.",
+    matches: (difference) =>
+      difference.comparison === "python-vs-compatible" &&
+      difference.section === "normalize" &&
+      typeof difference.python === "string" &&
+      typeof difference.typescript === "string" &&
+      typeof difference.text === "string" &&
+      onlyKeepsHardBreaks(difference.python, difference.typescript, difference.text),
   },
   {
     id: "empty-frontmatter-block",

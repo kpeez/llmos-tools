@@ -202,7 +202,8 @@ plugin hooks, and the MCP server.
 
 - `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
   and writes the canonical form: sorted keys, block-style lists, quoted
-  wikilinks, one blank line after `---`, no trailing whitespace, one final
+  wikilinks, one blank line after `---`, no trailing whitespace except a
+  Markdown hard line break (two or more spaces) on a body line, one final
   newline. Block scalars, comments, and nested maps survive; a block with YAML
   errors is never rewritten; `created` is immutable and `authors` append-only.
   Every scalar reads as a string, as in the Python package.

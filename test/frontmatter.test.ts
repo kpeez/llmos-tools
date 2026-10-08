@@ -16,7 +16,7 @@ describe("normalize writes the canonical form", () => {
   const cases: [string, string, string][] = [
     [
       "sorted keys, flow list to block, quoted wikilink, body whitespace",
-      note("updated: 2026-07-17\ntopics: [b, '[[A]]']\ncreated: '2026-07-16'\n", "# T   \n\n\n"),
+      note("updated: 2026-07-17\ntopics: [b, '[[A]]']\ncreated: '2026-07-16'\n", "# T \t\n\n\n"),
       '---\ncreated: 2026-07-16\ntopics:\n  - b\n  - "[[A]]"\nupdated: 2026-07-17\n---\n\n# T\n',
     ],
     [
@@ -93,6 +93,20 @@ describe("normalize keeps YAML the Python parser refused", () => {
 
   test("copied properties lose trailing spaces outside block scalars", () => {
     expect(normalize(note("n:   \n  k: v   \n"))).toBe("---\nn:\n  k: v\n---\n\n# Body\n");
+  });
+
+  test("body lines keep a hard line break of two or more spaces and lose other trailing whitespace", () => {
+    // CommonMark reads two or more spaces before a line ending as a hard
+    // line break; a single space, tabs, and other whitespace are not one.
+    const input = note(
+      "a: x\n",
+      "two  \nthree   \none \ntab\t\ntab then two\t  \ntwo then tab  \t\nnbsp\u00a0\n   \nback\\\ncrlf  \r\nend  \n",
+    );
+    const once = normalize(input);
+    expect(once).toBe(
+      "---\na: x\n---\n\ntwo  \nthree   \none\ntab\ntab then two  \ntwo then tab\nnbsp\n\nback\\\ncrlf  \nend  \n",
+    );
+    expect(normalize(once)).toBe(once);
   });
 
   test("a whitespace-only first body line does not survive as a blank line", () => {

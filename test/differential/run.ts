@@ -357,6 +357,7 @@ async function main(): Promise<void> {
       for (const difference of differences) {
         if (difference.section === "normalize") {
           difference.features = yamlFeatures(texts.get(difference.key) ?? "");
+          difference.text = texts.get(difference.key);
         }
         if (difference.section === "health.stale_inbox") {
           const model = difference.comparison === "compatible-vs-full" ? full : compatible;

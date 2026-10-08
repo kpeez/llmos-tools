@@ -166,10 +166,9 @@ describe("headless writes", () => {
     expect(obsidian.calls).toEqual([]);
     const after = read(root, DAILY);
     expect(after).toContain("## Thoughts\n\nEarlier thought.\n\nA new thought.\n\n## Projects");
-    // Everything from the marker on is kept, apart from the canonical form's
-    // trailing-space trim (which the Python writer applied too).
-    const trimmed = before.slice(before.indexOf(marker)).replace(/ +\n/g, "\n");
-    expect(after.slice(after.indexOf(marker))).toBe(trimmed);
+    // Everything from the marker on is kept byte for byte, including the
+    // hard line break (two trailing spaces) in the machine-owned block.
+    expect(after.slice(after.indexOf(marker))).toBe(before.slice(before.indexOf(marker)));
   });
 
   test("daily append-thought refuses marker syntax before creating anything", async () => {

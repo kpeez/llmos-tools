@@ -4,6 +4,16 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
+## Unreleased
+
+- The canonical note writer keeps Markdown hard line breaks: a body line
+  with content that ends in two or more spaces keeps that run of spaces when
+  a note is stamped or normalized. It still trims a single trailing space,
+  trailing tabs, other trailing whitespace, and lines of only whitespace, and
+  the frontmatter block's canonical form is unchanged. The Python writer
+  (frozen) still trims them; the differential allowlist lists this as an
+  intended difference (`body-hard-line-break`).
+
 ## 2.1.0 — 2026-10-07
 
 Codex hooks must be approved again: `hooks/hooks.json` gains a PreToolUse
