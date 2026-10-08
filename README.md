@@ -3,7 +3,10 @@
 The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
 lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
 well-formed and indexed, and `llmos_vault`, a Python library with deterministic
-CLI verbs for vault operations.
+CLI verbs for vault operations. A TypeScript core run by Bun (`src/`) is
+replacing the Python library in phases
+([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md));
+until the CLI phase lands, the installed commands are still the Python ones.
 
 ## Install the maintenance tool
 
@@ -45,7 +48,9 @@ tools/
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
 ├── hooks/                 # session/tool lifecycle hooks (see below)
-├── llmos_vault/           # Python library + `llmos-vault` cyclopts CLI
+├── llmos_vault/           # Python library + `llmos-vault` cyclopts CLI (frozen)
+├── src/                   # TypeScript core: frontmatter, vault model, root, llmOS profile
+├── test/                  # bun tests and the differential harness
 ├── scripts/               # source-checkout compatibility shims
 └── tests/                 # pytest suite with fixture vaults
 ```
@@ -118,6 +123,28 @@ Vault-root resolution lives in `llmos_vault/root.py` and is shared by the
 hooks, the CLI, and the setup skill, so every entry point agrees on where the
 vault is.
 
+## The TypeScript core
+
+`src/` is the TypeScript core that later phases build the hooks, CLI, digest,
+and MCP server on. It reads; writing verbs come with the CLI phase.
+
+- `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
+  and writes the canonical form: sorted keys, block-style lists, quoted
+  wikilinks, one blank line after `---`, no trailing whitespace, one final
+  newline. Block scalars, comments, and nested maps survive; a block with YAML
+  errors is never rewritten; `created` is immutable and `authors` append-only.
+  Every scalar reads as a string, as in the Python package.
+- `vault.ts` loads every note once into one `VaultModel` with Obsidian's link
+  resolution, and answers `read`, `list`, `neighbors`, `subgraph`, and the
+  health link findings from it.
+- `root.ts` resolves the vault root and Obsidian's vault registry, and throws
+  `VaultRootError` instead of exiting.
+- `schema.ts`, `authoring.ts`, `health.ts`, `daily.ts`, and `inbox.ts` port the
+  llmOS-profile reads and computations.
+
+Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
+`just ts-lint`, and `just ts-test`.
+
 ## Scripts
 
 - **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
@@ -135,3 +162,9 @@ vault is.
 covering the hooks (gating, guards, stamp format, reindex), root resolution,
 the CLI's backends, and vault health — against committed fixture vaults in
 `tests/fixtures/`.
+
+`test/` holds the `bun test` unit tests for the TypeScript core and the
+differential harness (`just differential`). The harness runs the Python CLI
+and the TypeScript core on the fixture vaults and a generated edge-case vault
+and fails on any difference not listed, with its reason, in
+`test/differential/allowlist.ts`.

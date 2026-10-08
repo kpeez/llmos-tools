@@ -4,6 +4,15 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
+## Unreleased
+
+- Add the TypeScript core in `src/` (ADR 0012, first phase): frontmatter on
+  the `yaml` Document API that keeps block scalars, comments, and nested maps;
+  one vault model for reads and the link graph; root resolution with a typed
+  error; and the llmOS-profile reads. A differential harness compares it with
+  the Python CLI, and CI runs the Bun checks beside the Python ones. The
+  installed commands are unchanged.
+
 ## 1.2.0 — 2026-10-07
 
 - Move into the `kpeez/llmos` repository as `tools/`, beside the vault in

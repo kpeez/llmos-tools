@@ -24,4 +24,20 @@ test:
 build:
     uv build
 
-check: drift lint types test
+# TypeScript core (Bun); `bun install --frozen-lockfile` first.
+ts-types:
+    bun run typecheck
+
+ts-lint:
+    bun run lint
+
+ts-test:
+    bun test
+
+# Compare the TypeScript core with the Python CLI on the fixture vaults and
+# a generated edge-case vault. For the real vault, copy it outside llmOS/
+# first and pass the copy: bun test/differential/run.ts --report FILE COPY
+differential:
+    bun run differential
+
+check: drift lint types test ts-types ts-lint ts-test differential

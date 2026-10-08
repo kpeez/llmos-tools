@@ -26,6 +26,15 @@ jobs:
       - run: uv run ruff check
       - run: uv run ty check
       - run: uv run pytest
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bunx biome ci
+      - run: bun test
+      - name: Differential harness (Python CLI vs TypeScript core)
+        run: bun run differential
       - run: uv build
       - name: Smoke installed wheel
         run: |
