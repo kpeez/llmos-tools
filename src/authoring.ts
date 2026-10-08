@@ -9,6 +9,7 @@
 
 import { lstatSync, readlinkSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
+import { markdownFindings } from "./markdown-lint.ts";
 import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./vault.ts";
 
 // A word character in any script, so note names need not be ASCII (`\w` is).
@@ -253,6 +254,12 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
         `Existing note reference ${JSON.stringify(reference)}: link to ${JSON.stringify(targetName)} ` +
         "using the note title or a natural phrase, not the filename.",
     });
+  }
+  // Captured sources are frozen and hash-checked, and dot folders are not notes.
+  if (
+    !note.path.split("/").some((part, i) => part.startsWith(".") || (i === 0 && part === "sources"))
+  ) {
+    for (const found of markdownFindings(note.text)) findings.push({ ...found, target: "" });
   }
   return {
     path: note.path,

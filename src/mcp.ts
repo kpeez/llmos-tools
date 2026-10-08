@@ -286,7 +286,7 @@ function describe(tool: Tool): string {
 
 export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vault in $LLMOS_ROOT or ~/.config/llmos/config.json).
 Prefer them to the llmos-vault command line: arguments need no shell quoting, and the vault model and search models stay loaded.
-Read: read (one note), neighbors and subgraph (links), check (unlinked references), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
+Read: read (one note), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated and authors themselves.
 Before creating or materially editing a note, follow the vault's AGENTS.md and agents/references/authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 

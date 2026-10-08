@@ -3,6 +3,15 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- `llmos-vault check` also reports Markdown that makes Obsidian render a note
+  wrongly: `table-column-count`, `empty-link`, `reversed-link` (markdownlint
+  rules MD056, MD042, MD011), and `table-wikilink-pipe`, an unescaped alias
+  pipe in a table wikilink that splits the cell (write `[[target\|label]]`).
+  Notes under `sources/` and dot folders are skipped. The PostToolUse hook and
+  the MCP `check` tool report them too. Adds the `markdownlint` dependency.
+
 ## 2.3.2 — 2026-10-08
 
 - New `consolidate-knowledge` skill. It takes one cluster of related notes and

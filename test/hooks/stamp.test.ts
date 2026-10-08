@@ -238,6 +238,16 @@ describe("authoring findings", () => {
     expect(result.exitCode).toBe(0);
   });
 
+  test("reports a Markdown defect in a note that mentions no .md file", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "plain.md"), "# Plain\n\nSee [the paper]().\n");
+
+    const result = stamp(note, tmp, vault);
+
+    expect(additionalContext(result, "PostToolUse")).toContain("plain.md:3 [empty-link]");
+  });
+
   test("reports findings for a note without frontmatter, which it does not stamp", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));

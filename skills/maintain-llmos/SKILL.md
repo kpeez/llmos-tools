@@ -38,7 +38,7 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. No pr
    day's activity into it.
 9. After each changed note, regardless of write tool, run
    `llmos-vault check <vault-relative-path> --vault llmos` to inspect body links,
-   property links, and unlinked note references. Then verify the rendered note
+   property links, unlinked note references, and Markdown that renders wrongly. Then verify the rendered note
    and any changed Base views in Obsidian, confirm project backlinks, run
    `llmos-audit`, check unresolved links, update qmd, and review Git status.
 

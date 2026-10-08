@@ -8,7 +8,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | verb | summary |
 | --- | --- |
 | `append` | Append content to the end of an existing note. |
-| `check` | Review one note for unlinked references to existing vault notes. |
+| `check` | Review one note for unlinked references and Markdown that renders wrongly. |
 | `claims lint` | Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote. |
 | `config set-root` | Validate a vault root and write it to the llmOS config file. |
 | `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
@@ -63,15 +63,21 @@ Example:
 ```text
 Usage: llmos-vault check <note> [--vault llmos|second-vault]
 
-Review one note for unlinked references to existing vault notes.
+Review one note for unlinked references and Markdown that renders wrongly.
 
 Reports body links separately from frontmatter links, plus the first
-unlinked .md reference to each known target. Exits 1 when findings need
-review, 0 otherwise. Never rewrites content; works with Obsidian closed.
-This is a conservative authoring aid: code examples, missing files, and
-ambiguous filenames are ignored. A clean result does not certify useful
-connections, link resolution, Base formulas, or rendering. Use `neighbors`
-and Obsidian for those checks.
+unlinked .md reference to each known target (code unlinked-note). It also
+reports Markdown that makes Obsidian render the note wrongly: a table row
+with the wrong number of cells (table-column-count), an empty link
+(empty-link), a reversed link (reversed-link), and an unescaped alias pipe
+in a table wikilink, which splits the cell (table-wikilink-pipe; write
+[[target\|label]]). Notes under sources/ and dot folders get no Markdown
+findings. Exits 1 when findings need review, 0 otherwise. Never rewrites
+content; works with Obsidian closed. This is a conservative authoring aid,
+not a style linter: code examples, missing files, and ambiguous filenames
+are ignored. A clean result does not certify useful connections, link
+resolution, Base formulas, or rendering. Use `neighbors` and Obsidian for
+those checks.
 
 Arguments:
   note  Note basename or vault-relative path.

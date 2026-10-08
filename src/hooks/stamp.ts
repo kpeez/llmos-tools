@@ -139,8 +139,8 @@ function collapseWhitespace(text: string): string {
   return text.trim().split(/\s+/).join(" ");
 }
 
-/** Whether a note mentions `.md`, which every authoring finding needs. */
-function mayHaveFindings(path: string): boolean {
+/** Whether a note mentions `.md`, which every unlinked-reference finding needs. */
+function mentionsNotePath(path: string): boolean {
   try {
     return readText(path).includes(".md");
   } catch {
@@ -187,10 +187,12 @@ export async function postToolUse(data: Payload): Promise<string | null> {
     (target) => isUnder(target, root) && suffix(target) === ".md" && isFile(target),
   );
   if (targets.length === 0) return null;
-  // List the vault only when a note could have findings (the listing is the
-  // slowest part of this hook), and start it before stamping so it overlaps.
-  const checked = targets.filter(mayHaveFindings);
-  const listing = checked.length > 0 ? listNotes(root).catch(() => null) : null;
+  // List the vault only when a note could have an unlinked-reference finding
+  // (the listing is the slowest part of this hook), and start it before
+  // stamping so it overlaps. Markdown findings need no listing.
+  const listing = targets.some(mentionsNotePath)
+    ? listNotes(root).catch(() => null)
+    : Promise.resolve<Listed[]>([]);
   const provider = detectProvider(process.env);
   let stamped = false;
   for (const target of targets) {
@@ -198,5 +200,5 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   }
   if (stamped) closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
   const listed = await listing;
-  return listed ? authoringDiagnostics(root, checked, listed) : null;
+  return listed ? authoringDiagnostics(root, targets, listed) : null;
 }

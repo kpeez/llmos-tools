@@ -224,14 +224,20 @@ Do NOT use when you already know which note you want -- use \`read\`.`,
 
 const check: Command = {
   name: "check",
-  summary: "Review one note for unlinked references to existing vault notes.",
+  summary: "Review one note for unlinked references and Markdown that renders wrongly.",
   description: `Reports body links separately from frontmatter links, plus the first
-unlinked .md reference to each known target. Exits 1 when findings need
-review, 0 otherwise. Never rewrites content; works with Obsidian closed.
-This is a conservative authoring aid: code examples, missing files, and
-ambiguous filenames are ignored. A clean result does not certify useful
-connections, link resolution, Base formulas, or rendering. Use \`neighbors\`
-and Obsidian for those checks.`,
+unlinked .md reference to each known target (code unlinked-note). It also
+reports Markdown that makes Obsidian render the note wrongly: a table row
+with the wrong number of cells (table-column-count), an empty link
+(empty-link), a reversed link (reversed-link), and an unescaped alias pipe
+in a table wikilink, which splits the cell (table-wikilink-pipe; write
+[[target\\|label]]). Notes under sources/ and dot folders get no Markdown
+findings. Exits 1 when findings need review, 0 otherwise. Never rewrites
+content; works with Obsidian closed. This is a conservative authoring aid,
+not a style linter: code examples, missing files, and ambiguous filenames
+are ignored. A clean result does not certify useful connections, link
+resolution, Base formulas, or rendering. Use \`neighbors\` and Obsidian for
+those checks.`,
   arguments: [{ name: "note", help: "Note basename or vault-relative path." }],
   options: vaultOption("Which registered vault to check."),
   exampleOutput: `{"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
