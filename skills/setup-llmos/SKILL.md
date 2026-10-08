@@ -46,14 +46,16 @@ The doctor is read-only. It reports `PASS` or `FAIL` for each available
 prerequisite, prints an exact `REPAIR` command after every failure, and exits
 nonzero when setup is incomplete. It checks the vault root, Obsidian, that
 exactly one `qmd` is on `PATH` and it is this install's, and that the qmd
-index holds and returns the vault's `llmOS.md`. For each agent with the
-plugin installed, it also checks that the agent's hooks have run (see
-"Verify the hooks" below).
+index holds and returns the vault's `llmOS.md`. Its `mcp-server` check starts
+the MCP server the plugin's launcher would start (the install that
+`~/.local/bin/llmos-vault` links to) and passes only when it lists every
+tool. For each agent with the plugin installed, it also checks that the
+agent's hooks have run (see "Verify the hooks" below).
 
 The plugin's Stop hook keeps qmd's keyword index current after each turn
 that changed the vault (`llmos-vault reindex --no-embed`). It never embeds,
 because loading the embedding model takes seconds. Embedding for
-`search --semantic` is done by running `llmos-vault reindex` by hand;
+`search --semantic` and `--hybrid` is done by running `llmos-vault reindex` by hand;
 `llmos-vault health` reports how many documents still need it
 (`qmd_unembedded`).
 
@@ -165,6 +167,18 @@ claude -p "Do not use any tools. Did you receive a startup message mentioning 'l
 ```
 
 `no` means the hook did not fire, whatever `plugin list` claims.
+
+## Verify the MCP server in a session
+
+The plugin declares an MCP server named `llmos` (`.mcp.json` for Claude Code,
+`.codex-mcp.json` for Codex). It needs `bun` on the `PATH` the agent gives
+its MCP servers and the CLI install. Without the install it offers only a
+`setup` tool, which means: run `scripts/install.ts`, then start a new
+session. In Claude Code, `/mcp` lists the server as `plugin:llmos:llmos`; in
+Codex, `/mcp` lists `llmos`. Codex runs the read tools without a prompt and
+asks before each write tool (`daily_append_thought`, `file_inbox`,
+`set_property`); a user entry for that server in `config.toml` replaces those
+settings.
 
 ## Activate and verify each agent and host
 

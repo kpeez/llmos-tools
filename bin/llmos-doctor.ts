@@ -10,8 +10,9 @@ const { values } = parseArgs({
 if (values.help) {
   console.log(
     "Usage: llmos-doctor\n\n" +
-      "Check the vault root, Obsidian, and qmd on this host. Prints PASS or FAIL per\n" +
-      "check and a REPAIR command after each failure; exits 0 only when all pass.",
+      "Check the vault root, Obsidian, qmd, the MCP server, and the plugin hooks on\n" +
+      "this host. Prints PASS or FAIL per check and a REPAIR command after each\n" +
+      "failure; exits 0 only when all pass.",
   );
   process.exit(0);
 }

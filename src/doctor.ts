@@ -8,7 +8,10 @@
  * install's: two qmd versions would write the same `~/.cache/qmd` index.
  *
  * The hook checks read the heartbeat the session-start hook records
- * (`heartbeat.ts`), because a hook that cannot start fails silently.
+ * (`heartbeat.ts`), because a hook that cannot start fails silently. The
+ * MCP check starts the server the plugin's launcher would start and lists
+ * its tools (`mcp-check.ts`), because the launcher falls back to a setup
+ * tool instead of failing.
  */
 
 import {
@@ -23,6 +26,7 @@ import {
 import { homedir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
 import { fileSha256, heartbeatPath, readHeartbeats } from "./heartbeat.ts";
+import { mcpCheck } from "./mcp-check.ts";
 import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -250,6 +254,11 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
     fail("qmd-index", "blocked by qmd-collection failure", collectionRepair);
     fail("qmd-retrieval", "blocked by qmd-collection failure", collectionRepair);
   }
+
+  // mcp-server: what the plugin's MCP launcher starts on this host.
+  const mcp = await mcpCheck(env, Number(env.LLMOS_DOCTOR_TIMEOUT ?? "30") * 1000);
+  if (mcp.ok) pass("mcp-server", mcp.detail);
+  else fail("mcp-server", mcp.detail, INSTALL_REPAIR);
 
   const hooks = hookChecks(env);
   lines.push(...hooks.lines);

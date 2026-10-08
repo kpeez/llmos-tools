@@ -106,14 +106,21 @@ export interface SearchHit {
 }
 
 /**
- * Search one collection. Keyword (BM25) search needs no model. Semantic
- * search is qmd's hybrid search: query expansion, keyword and vector
- * retrieval, and reranking; its first call in a process loads the models.
+ * How to search: keyword (BM25, no model), semantic (vector similarity; the
+ * embedding model only), or hybrid (qmd's full pipeline: query expansion,
+ * keyword and vector retrieval, and reranking; three models).
+ */
+export type SearchMode = "keyword" | "semantic" | "hybrid";
+
+/**
+ * Search one collection in `mode`. The first model-backed call in a
+ * process loads its models; on mac-host a semantic search then takes about
+ * 0.8 s, a hybrid one 13 to 22 s.
  */
 export async function search(
   store: QMDStore,
   query: string,
-  options: { collection: string; limit: number; semantic: boolean },
+  options: { collection: string; limit: number; mode: SearchMode },
 ): Promise<SearchHit[]> {
   await requireCollection(store, options.collection);
   const { extractSnippet } = await import("@tobilu/qmd");
@@ -130,18 +137,16 @@ export async function search(
     const { line, snippet } = extractSnippet(body, query, 300, chunk);
     return { path: relative(file), title, score: Math.round(score * 100) / 100, line, snippet };
   };
-  if (options.semantic) {
-    const results = await store.search({
-      query,
-      collection: options.collection,
-      limit: options.limit,
-    });
+  const scope = { collection: options.collection, limit: options.limit };
+  if (options.mode === "hybrid") {
+    const results = await store.search({ query, ...scope });
     return results.map((r) => hit(r.file, r.title, r.score, r.body, r.bestChunkPos));
   }
-  const results = await store.searchLex(query, {
-    collection: options.collection,
-    limit: options.limit,
-  });
+  if (options.mode === "semantic") {
+    const results = await store.searchVector(query, scope);
+    return results.map((r) => hit(r.filepath, r.title, r.score, r.body ?? "", r.chunkPos));
+  }
+  const results = await store.searchLex(query, scope);
   return results.map((r) => hit(r.filepath, r.title, r.score, r.body ?? ""));
 }
 

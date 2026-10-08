@@ -47,12 +47,14 @@ differential:
 differential-digest:
     bun test/differential/digest.ts --edge
 
-# Rebuild the committed plugin hook bundle (dist/hooks.js) from src/hooks/.
+# Rebuild the committed plugin bundles: the hooks (dist/hooks.js, from
+# src/hooks/) and the MCP launcher (dist/mcp.js, from src/mcp-launcher.ts).
 hooks:
     bun run build:hooks
+    bun run build:mcp
 
-# Fail when the committed hook bundle differs from a fresh build.
+# Fail when a committed bundle differs from a fresh build.
 hooks-drift: hooks
-    git diff --exit-code dist/hooks.js
+    git diff --exit-code dist/hooks.js dist/mcp.js
 
 check: drift lint types test ts-types ts-lint ts-test differential differential-digest hooks-drift

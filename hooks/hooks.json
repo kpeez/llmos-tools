@@ -24,6 +24,16 @@
         ]
       },
       {
+        "matcher": "^mcp__(?:plugin_llmos_)?llmos__(?:daily_append_thought|file_inbox|set_property)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js pre-tool-use",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {

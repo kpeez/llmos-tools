@@ -6,9 +6,10 @@ __pycache__/
 .ty_cache/
 *.egg-info/
 build/
-# Wheels from `uv build`; the hook bundle is committed.
+# Wheels from `uv build`; the hook and MCP launcher bundles are committed.
 dist/*
 !dist/hooks.js
+!dist/mcp.js
 .DS_Store
 artifacts
 node_modules/

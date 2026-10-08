@@ -7,7 +7,9 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { openQmd, qmdLocation } from "../src/qmd.ts";
+import type { QMDStore } from "@tobilu/qmd";
+import { searchMode } from "../src/commands.ts";
+import { openQmd, qmdLocation, search } from "../src/qmd.ts";
 import { cli, isolatedEnv, makeVault, writeFiles } from "./helpers.ts";
 
 const NOTES = {
@@ -93,5 +95,51 @@ describe("qmd", () => {
       "qmd unavailable or collection 'llmos' not found; qmd-gap section skipped",
     );
     expect(existsSync(env.INDEX_PATH as string)).toBe(false);
+  });
+});
+
+describe("search modes", () => {
+  /** A store stand-in that records which search ran; the real ones need models. */
+  function recordingStore(calls: string[]): QMDStore {
+    const doc = { title: "Alpha", body: "# Alpha\n\nThe zebrafish tank.\n", score: 0.5 };
+    return {
+      listCollections: async () => [{ name: "llmos" }],
+      searchLex: async () => {
+        calls.push("lex");
+        return [{ ...doc, filepath: "qmd://llmos/notes/alpha.md" }];
+      },
+      searchVector: async (_query: string, options: object) => {
+        calls.push(`vector ${JSON.stringify(options)}`);
+        return [{ ...doc, filepath: "qmd://llmos/notes/alpha.md", chunkPos: 0 }];
+      },
+      search: async (options: object) => {
+        calls.push(`hybrid ${JSON.stringify(options)}`);
+        return [{ ...doc, file: "qmd://llmos/notes/alpha.md", bestChunkPos: 0 }];
+      },
+    } as unknown as QMDStore;
+  }
+
+  test("keyword, semantic (vector only), and hybrid each run their own qmd search", async () => {
+    for (const [mode, expected] of [
+      ["keyword", "lex"],
+      ["semantic", 'vector {"collection":"llmos","limit":3}'],
+      ["hybrid", 'hybrid {"query":"zebrafish","collection":"llmos","limit":3}'],
+    ] as const) {
+      const calls: string[] = [];
+      const hits = await search(recordingStore(calls), "zebrafish", {
+        collection: "llmos",
+        limit: 3,
+        mode,
+      });
+      expect(calls).toEqual([expected]);
+      expect(hits[0]).toMatchObject({ path: "notes/alpha.md", title: "Alpha", score: 0.5 });
+    }
+  });
+
+  test("--hybrid wins over --semantic, which wins over keyword", () => {
+    expect(searchMode({})).toBe("keyword");
+    expect(searchMode({ semantic: true })).toBe("semantic");
+    expect(searchMode({ hybrid: true })).toBe("hybrid");
+    expect(searchMode({ semantic: true, hybrid: true })).toBe("hybrid");
   });
 });

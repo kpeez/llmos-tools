@@ -37,10 +37,11 @@ jobs:
         run: bun run differential
       - name: Digest parity (Python digest vs TypeScript digest)
         run: bun test/differential/digest.ts --edge
-      - name: Hook bundle matches its source
+      - name: Hook and MCP launcher bundles match their source
         run: |
           bun run build:hooks
-          git diff --exit-code dist/hooks.js
+          bun run build:mcp
+          git diff --exit-code dist/hooks.js dist/mcp.js
       - run: uv build
       - name: Smoke installed wheel
         run: |

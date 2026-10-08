@@ -8,7 +8,7 @@ const argv = process.argv.slice(2);
 // resident (ggml-org/llama.cpp#22593) unless GGML_METAL_NO_RESIDENCY is set
 // before the native library loads; setting process.env at run time does not
 // reach it. The verbs that can load a model run again with it set.
-const loadsModels = argv[0] === "search" || argv[0] === "reindex";
+const loadsModels = argv[0] === "search" || argv[0] === "reindex" || argv[0] === "mcp";
 if (process.platform === "darwin" && loadsModels && !process.env.GGML_METAL_NO_RESIDENCY) {
   const child = Bun.spawn([process.execPath, import.meta.path, ...argv], {
     env: { ...process.env, GGML_METAL_NO_RESIDENCY: "1" },

@@ -1,0 +1,388 @@
+/**
+ * The llmOS MCP server over its real protocol (in process, on stream
+ * pairs): the tool list, each tool against a temporary vault, the stamps
+ * the write tools add, the warm vault model, and the refusal of every
+ * hostile argument. Never the real vault or the real qmd index.
+ */
+
+import { describe, expect, test } from "bun:test";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
+import type { Context } from "../src/cli.ts";
+import { COMMANDS } from "../src/commands.ts";
+import { Frontmatter } from "../src/frontmatter.ts";
+import { INSTRUCTIONS, providerFor, WarmVault } from "../src/mcp.ts";
+import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
+import type { ObsidianRunner } from "../src/obsidian.ts";
+import { openQmd, qmdLocation } from "../src/qmd.ts";
+import { VaultModel } from "../src/vault.ts";
+import {
+  dailyNote,
+  isolatedEnv,
+  makeVault,
+  read,
+  recordedObsidian,
+  scratch,
+  TODAY,
+  writeFiles,
+} from "./helpers.ts";
+import { connect } from "./mcp-client.ts";
+
+const NOTE = "---\nstatus: draft\ntopics:\n  - garden\n---\n\n# Alpha\n\nSee [[beta]].\n";
+const BETA = "---\nstatus: draft\ntopics:\n  - garden\n---\n\n# Beta\n\nThe zebrafish tank.\n";
+const CAPTURE = "---\nstatus: draft\n---\n\n# Capture\n\nA loose idea.\n";
+const SECRET = "---\nstatus: draft\n---\n\n# Secret\n\nTOPSECRET\n";
+const DAILY = `reviews/daily/${TODAY}.md`;
+
+function vault(files: Record<string, string> = {}): string {
+  return makeVault({
+    "notes/alpha.md": NOTE,
+    "notes/beta.md": BETA,
+    "inbox/capture.md": CAPTURE,
+    ...files,
+  });
+}
+
+function contextFor(
+  root: string,
+  options: { env?: Record<string, string>; obsidian?: ObsidianRunner } = {},
+): Context {
+  return {
+    env: options.env ?? isolatedEnv(),
+    root: () => root,
+    model: (path) => VaultModel.load(path),
+    today: () => TODAY,
+    obsidian: options.obsidian ?? recordedObsidian(root).runner,
+  };
+}
+
+function properties(root: string, path: string): Record<string, unknown> {
+  return Frontmatter.parse(read(root, path)).properties;
+}
+
+describe("the tool list", () => {
+  test("lists the read and write tools with their registry help and hints", async () => {
+    const { client, close } = await connect(contextFor(vault()));
+    const tools = await client.tools();
+    await close();
+    expect(tools.map((tool) => tool.name)).toEqual([...READ_TOOLS, ...WRITE_TOOLS]);
+    const commandOf: Record<string, string> = {
+      daily_append_thought: "daily append-thought",
+      file_inbox: "file-inbox",
+      set_property: "set-property",
+    };
+    for (const tool of tools) {
+      const name = tool.name as string;
+      const command = COMMANDS.find((entry) => entry.name === (commandOf[name] ?? name));
+      expect(tool.description as string).toStartWith(
+        `${command?.summary}\n\n${command?.description}`,
+      );
+      const hints = tool.annotations as Record<string, boolean>;
+      expect(hints.readOnlyHint).toBe((READ_TOOLS as readonly string[]).includes(name));
+      expect(hints.openWorldHint).toBe(false);
+      expect((tool.inputSchema as { additionalProperties?: boolean }).additionalProperties).toBe(
+        false,
+      );
+    }
+  });
+
+  test("the server instructions fit Claude Code's 2,048-character limit", () => {
+    expect(INSTRUCTIONS.length).toBeLessThanOrEqual(2048);
+  });
+});
+
+describe("read tools", () => {
+  test("read, neighbors, subgraph, check, and health answer from the vault", async () => {
+    const root = vault();
+    const { client, close } = await connect(contextFor(root));
+    const note = JSON.parse((await client.call("read", { note: "alpha" })).text);
+    expect(note.properties.status).toBe("draft");
+    expect(note.body).toContain("# Alpha");
+    const neighbors = JSON.parse((await client.call("neighbors", { note: "alpha" })).text);
+    expect(neighbors).toMatchObject({ note: "alpha", outgoing: ["beta"], backlinks: [] });
+    const subgraph = JSON.parse((await client.call("subgraph", { note: "alpha", depth: 2 })).text);
+    expect(subgraph.nodes).toEqual(["alpha", "beta"]);
+    const check = await client.call("check", { note: "notes/alpha.md" });
+    expect(check.isError).toBe(false);
+    expect(JSON.parse(check.text).findings).toEqual([]);
+    const health = await client.call("health", {});
+    expect(health.isError).toBe(false);
+    expect(JSON.parse(health.text)).toHaveProperty("orphans");
+    await close();
+  });
+
+  test("an edit made outside the server is visible to the next read", async () => {
+    const root = vault();
+    const { client, close } = await connect(contextFor(root));
+    expect((await client.call("read", { note: "alpha" })).text).toContain("See [[beta]].");
+    writeFileSync(join(root, "notes/alpha.md"), NOTE.replace("See [[beta]].", "Edited outside."));
+    writeFiles(root, { "notes/gamma.md": "# Gamma\n" });
+    expect((await client.call("read", { note: "alpha" })).text).toContain("Edited outside.");
+    expect((await client.call("read", { note: "gamma" })).isError).toBe(false);
+    await close();
+  });
+
+  test("search runs keyword search on the llmos collection of the qmd index", async () => {
+    const root = vault();
+    const env = isolatedEnv();
+    const config = join(env.QMD_CONFIG_DIR as string, "index.yml");
+    mkdirSync(dirname(config), { recursive: true });
+    writeFileSync(config, `collections:\n  llmos:\n    path: ${root}\n    pattern: "**/*.md"\n`);
+    mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
+    const store = await openQmd(qmdLocation(env), true);
+    await store.update({ collections: ["llmos"] });
+    await store.close();
+
+    const { client, close } = await connect(contextFor(root, { env }));
+    for (let i = 0; i < 2; i++) {
+      const hits = JSON.parse((await client.call("search", { query: "zebrafish" })).text);
+      expect(hits.map((hit: { path: string }) => hit.path)).toEqual(["notes/beta.md"]);
+    }
+    await close();
+  });
+
+  test("search without a qmd index is a tool error, and no index is created", async () => {
+    const env = isolatedEnv();
+    const { client, close } = await connect(contextFor(vault(), { env }));
+    const result = await client.call("search", { query: "zebrafish" });
+    await close();
+    expect(result.isError).toBe(true);
+    expect(result.text).toContain("no qmd index");
+    expect(existsSync(env.INDEX_PATH as string)).toBe(false);
+  });
+});
+
+describe("write tools stamp updated and authors", () => {
+  test("daily_append_thought creates today's note when missing and stamps it", async () => {
+    const root = vault();
+    const obsidian = recordedObsidian(root);
+    const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
+    const result = await client.call("daily_append_thought", {
+      text: 'A lesson with `code`, "quotes", and $dollars.\nSecond line.',
+    });
+    await close();
+    expect(result).toEqual({ isError: false, text: `Appended to: ${DAILY}` });
+    expect(read(root, DAILY)).toContain(
+      '## Thoughts\n\nA lesson with `code`, "quotes", and $dollars.\nSecond line.\n',
+    );
+    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY, authors: ["codex"] });
+    expect(obsidian.calls).toHaveLength(1);
+  });
+
+  test("set_property stamps the note with the client's provider", async () => {
+    const root = vault();
+    const { client, close } = await connect(contextFor(root), "claude-code");
+    const result = await client.call("set_property", {
+      note: "alpha",
+      key: "status",
+      value: "active",
+    });
+    await close();
+    expect(result).toEqual({ isError: false, text: "Set: status = active" });
+    expect(properties(root, "notes/alpha.md")).toMatchObject({
+      status: "active",
+      updated: TODAY,
+      authors: ["claude"],
+    });
+  });
+
+  test("file_inbox files the note and stamps it and today's note", async () => {
+    const root = vault({ [DAILY]: dailyNote(TODAY) });
+    const obsidian = recordedObsidian(root);
+    const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
+    const result = await client.call("file_inbox", {
+      note: "capture",
+      destination: "knowledge/capture",
+    });
+    await close();
+    expect(result).toEqual({
+      isError: false,
+      text: "Filed: capture -> knowledge/capture.md",
+    });
+    expect(existsSync(join(root, "inbox/capture.md"))).toBe(false);
+    expect(properties(root, "knowledge/capture.md")).toMatchObject({
+      categories: ["[[Knowledge]]"],
+      updated: TODAY,
+      authors: ["codex"],
+    });
+    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY, authors: ["codex"] });
+    expect(read(root, DAILY)).toContain("Filed `capture` from inbox -> `knowledge/capture.md`.");
+  });
+
+  test("file_inbox reports a closed Obsidian app as a tool error", async () => {
+    const root = vault();
+    const obsidian = recordedObsidian(root, true);
+    const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
+    const result = await client.call("file_inbox", {
+      note: "capture",
+      destination: "knowledge/capture.md",
+    });
+    await close();
+    expect(result.isError).toBe(true);
+    expect(result.text).toContain("Obsidian");
+    expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+  });
+
+  test("the provider comes from the client name, else the environment", () => {
+    expect(providerFor("codex-mcp-client", {})).toBe("codex");
+    expect(providerFor("claude-code", {})).toBe("claude");
+    expect(providerFor("codex-mcp-client", { CLAUDECODE: "1" })).toBe("codex");
+    expect(providerFor("some-client", { CLAUDECODE: "1" })).toBe("claude");
+    expect(providerFor(undefined, {})).toBeNull();
+  });
+});
+
+describe("the warm vault model", () => {
+  test("is read once while no note changes, and again after any change", () => {
+    const root = vault();
+    const warm = new WarmVault();
+    const first = warm.model(root);
+    expect(warm.model(root)).toBe(first);
+    expect(warm.loads).toBe(1);
+    writeFileSync(join(root, "notes/alpha.md"), `${NOTE}More.\n`);
+    expect(warm.model(root).resolveNote("alpha").body).toContain("More.");
+    expect(warm.loads).toBe(2);
+    writeFiles(root, { "notes/gamma.md": "# Gamma\n" });
+    expect(warm.model(root).resolveNote("gamma").name).toBe("gamma");
+    unlinkSync(join(root, "notes/gamma.md"));
+    expect(() => warm.model(root).resolveNote("gamma")).toThrow();
+    expect(warm.loads).toBe(4);
+  });
+});
+
+describe("hostile arguments are refused", () => {
+  /**
+   * In the vault, `link.md` links to a note outside it, and `linkdir/` and
+   * `knowledge/linkdir/` link to the outside folder. `{away}` is that folder.
+   */
+  function hostileVault(): { root: string; away: string } {
+    const away = scratch("away");
+    writeFileSync(join(away, "secret.md"), SECRET);
+    const root = vault({ "knowledge/existing.md": NOTE });
+    symlinkSync(join(away, "secret.md"), join(root, "link.md"));
+    symlinkSync(away, join(root, "linkdir"));
+    symlinkSync(away, join(root, "knowledge", "linkdir"));
+    return { root, away };
+  }
+
+  const NOTE_ESCAPES = [
+    "../escape.md",
+    "../escape",
+    "notes/../../escape.md",
+    "{away}/secret.md",
+    "{away}/secret",
+    "/etc/passwd",
+    "link.md",
+    "link",
+    "linkdir/secret.md",
+    "linkdir/secret",
+  ];
+  const DESTINATION_ESCAPES = [
+    "../escape.md",
+    "knowledge/../../escape.md",
+    "knowledge/../linkdir/new.md",
+    "knowledge/linkdir/new.md",
+    "linkdir/new.md",
+    "{away}/new.md",
+    "/tmp/new.md",
+  ];
+  const cases: [string, string, (path: string) => Record<string, unknown>][] = [];
+  for (const path of NOTE_ESCAPES) {
+    cases.push(
+      ["read", path, (note) => ({ note })],
+      ["neighbors", path, (note) => ({ note })],
+      ["subgraph", path, (note) => ({ note, depth: 1 })],
+      ["check", path, (note) => ({ note })],
+      ["set_property", path, (note) => ({ note, key: "status", value: "x" })],
+      ["file_inbox", path, (note) => ({ note, destination: "knowledge/filed.md" })],
+    );
+  }
+  for (const path of DESTINATION_ESCAPES) {
+    cases.push(["file_inbox", path, (destination) => ({ note: "capture", destination })]);
+  }
+
+  for (const [tool, path, args] of cases) {
+    test(`${tool} refuses ${JSON.stringify(args(path))}`, async () => {
+      const { root, away } = hostileVault();
+      const obsidian = recordedObsidian(root);
+      const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
+      const result = await client.call(tool, args(path.replace("{away}", away)));
+      await close();
+      expect(result.isError).toBe(true);
+      expect(result.text).not.toContain("TOPSECRET");
+      expect(obsidian.calls).toEqual([]);
+      expect(readdirSync(away).sort()).toEqual(["secret.md"]);
+      expect(readFileSync(join(away, "secret.md"), "utf8")).toBe(SECRET);
+      expect(existsSync(join(root, "..", "escape.md"))).toBe(false);
+      expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+    });
+  }
+
+  test("daily_append_thought refuses a daily note linked out of the vault", async () => {
+    const { root, away } = hostileVault();
+    mkdirSync(join(root, "reviews", "daily"), { recursive: true });
+    writeFileSync(join(away, "daily.md"), dailyNote(TODAY));
+    symlinkSync(join(away, "daily.md"), join(root, DAILY));
+    const { client, close } = await connect(contextFor(root));
+    const result = await client.call("daily_append_thought", { text: "Escape?" });
+    await close();
+    expect(result.isError).toBe(true);
+    expect(readFileSync(join(away, "daily.md"), "utf8")).toBe(dailyNote(TODAY));
+  });
+
+  const SHAPES: [string, unknown][] = [
+    ["read", {}],
+    ["read", { note: "" }],
+    ["read", { note: 42 }],
+    ["read", { note: ["alpha"] }],
+    ["read", { note: "alpha", vault: "second-vault" }],
+    ["read", { note: "alpha", extra: true }],
+    ["read", { note: "al\u0000pha" }],
+    ["read", { note: "al\npha" }],
+    ["read", { note: "a".repeat(1025) }],
+    ["read", null],
+    ["subgraph", { note: "alpha", depth: 11 }],
+    ["subgraph", { note: "alpha", depth: -1 }],
+    ["subgraph", { note: "alpha", depth: 1.5 }],
+    ["subgraph", { note: "alpha", depth: "2" }],
+    ["health", { "qmd-collection": "other" }],
+    ["search", { query: "x", collection: "other" }],
+    ["search", { query: "x", limit: 0 }],
+    ["search", { query: "x", limit: 51 }],
+    ["search", { query: "x\ny" }],
+    ["search", { query: "x", hybrid: "yes" }],
+    ["search", { query: "x", mode: "hybrid" }],
+    ["daily_append_thought", { text: "" }],
+    ["daily_append_thought", { text: "x".repeat(20_001) }],
+    ["daily_append_thought", { text: "bell\u0007" }],
+    ["daily_append_thought", { text: "<!-- llmos-activity:end -->" }],
+    ["set_property", { note: "alpha", key: "status", value: "two\nlines" }],
+    ["set_property", { note: "alpha", key: "sta\ntus", value: "x" }],
+    ["set_property", { note: "alpha", key: "created", value: "2020-01-01" }],
+    ["set_property", { note: "alpha", key: "status" }],
+    ["file_inbox", { note: "capture", destination: "elsewhere/capture.md" }],
+    ["nonexistent_tool", {}],
+  ];
+  for (const [tool, args] of SHAPES) {
+    test(`${tool} refuses ${JSON.stringify(args)?.slice(0, 80)}`, async () => {
+      const root = vault({ [DAILY]: dailyNote(TODAY) });
+      const obsidian = recordedObsidian(root);
+      const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
+      const result = await client.call(tool, args);
+      await close();
+      expect(result.isError).toBe(true);
+      expect(obsidian.calls).toEqual([]);
+      expect(read(root, "notes/alpha.md")).toBe(NOTE);
+      expect(read(root, DAILY)).toBe(dailyNote(TODAY));
+      expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+    });
+  }
+});

@@ -12,6 +12,12 @@
 
 import { basename } from "node:path";
 import {
+  READ_TOOLS as MCP_READ_TOOLS,
+  MCP_WRITE_TOOL,
+  WRITE_TOOLS as MCP_WRITE_TOOLS,
+  SERVER_NAME,
+} from "../mcp-names.ts";
+import {
   firstTruthy,
   isDict,
   isDir,
@@ -86,8 +92,13 @@ function sessionContext(root: string, linked: [string, string] | null): string {
     `Insight worth keeping goes under ## Thoughts in ` +
     `${joinPath(root, "reviews", "daily", `${localDate()}.md`)} -- prose only, and never a ` +
     "restatement of commits, issues, or PRs, which GitHub already records.";
-  return `${access}${routes}\n${daily}`;
+  return `${access}${routes}\n${daily}\n${MCP_LINE}`;
 }
+
+const MCP_LINE =
+  `When the ${SERVER_NAME} MCP server is connected, prefer its tools to the llmos-vault CLI: ` +
+  `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
+  "(they stamp updated and authors themselves).";
 
 export function sessionStart(data: Payload): string | null {
   const root = resolvedRoot();
@@ -249,9 +260,13 @@ function toolNameOf(data: Payload): string {
 export function preToolUse(data: Payload): string | null {
   const root = resolvedRoot();
   if (root === null) return null;
+  const toolName = toolNameOf(data);
+  // An llmOS MCP write tool names no file; it always writes vault notes.
+  if (MCP_WRITE_TOOL.test(toolName)) {
+    return withSchema(root, writeContext(root, [joinPath(root, "note.md")]));
+  }
   const toolInput = toolInputOf(data);
   if (toolInput === null) return null;
-  const toolName = toolNameOf(data);
   const targets = targetPaths(toolInput, { cwd: data.cwd, toolName, root });
   const relevant = targets.filter(
     (target) =>
@@ -263,16 +278,19 @@ export function preToolUse(data: Payload): string | null {
   // An empty tool name keeps older Codex payloads working: they carry a
   // path but no tool_name, and their path is the write target.
   const writeIntent = WRITE_TOOLS.has(toolName) || !toolName;
-  let context = writeIntent ? writeContext(root, relevant) : readContext(root);
-  if (writeIntent && relevant.some((target) => suffix(target) === ".md")) {
-    const schema = joinPath(root, "agents", "references", "schema.md");
-    if (isFile(schema)) {
-      try {
-        context = `${readText(schema).trim()}\n\n${context}`;
-      } catch (error) {
-        if (!isOSError(error)) throw error;
-      }
-    }
+  if (!writeIntent) return readContext(root);
+  const context = writeContext(root, relevant);
+  return relevant.some((target) => suffix(target) === ".md") ? withSchema(root, context) : context;
+}
+
+/** `context` after the vault's note schema, when the schema file can be read. */
+function withSchema(root: string, context: string): string {
+  const schema = joinPath(root, "agents", "references", "schema.md");
+  if (!isFile(schema)) return context;
+  try {
+    return `${readText(schema).trim()}\n\n${context}`;
+  } catch (error) {
+    if (!isOSError(error)) throw error;
+    return context;
   }
-  return context;
 }

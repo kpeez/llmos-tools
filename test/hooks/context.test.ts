@@ -73,6 +73,9 @@ describe("session-start", () => {
     expect(result.stdout).toContain(vault);
     expect(result.stdout.toLowerCase()).toContain("thoughts");
     expect(result.stdout).toContain(join(vault, "reviews", "daily", `${todayIso()}.md`));
+    // Agents see only the deferred MCP tool names, so the context names them.
+    expect(result.stdout).toContain("llmos MCP server");
+    expect(result.stdout).toContain("daily_append_thought");
     expect(result.stdout).not.toContain("hookSpecificOutput");
     expect(result.stdout).not.toContain(MEMORY_SENTINEL);
     expect(result.exitCode).toBe(0);
@@ -392,6 +395,42 @@ describe("pre-tool-use", () => {
 
     for (const result of [update, add, relative]) {
       expect(additionalContext(result, "PreToolUse")).toContain(SCHEMA_SENTINEL);
+      expect(result.exitCode).toBe(0);
+    }
+  });
+
+  test("adds the schema and authoring contract before an llmOS MCP write tool", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    // Claude Code's and Codex's names for the plugin server's tools; the
+    // committed bundle is what the harnesses run.
+    for (const [toolName, script] of [
+      ["mcp__plugin_llmos_llmos__daily_append_thought", undefined],
+      ["mcp__llmos__set_property", BUNDLE],
+      ["mcp__plugin_llmos_llmos__file_inbox", BUNDLE],
+    ] as const) {
+      const payload = { tool_name: toolName, tool_input: { text: "A thought." }, cwd: tmp };
+      const result = runHook("pre-tool-use", payload, tmp, { root: vault, script });
+      const context = additionalContext(result, "PreToolUse");
+      expect(context).toContain(SCHEMA_SENTINEL);
+      expect(context).toContain(AUTHORING_SENTINEL);
+      expect(context).toContain("obsidian-markdown");
+      expect(result.exitCode).toBe(0);
+    }
+  });
+
+  test("is silent for the MCP read tools and for other servers' tools", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    for (const toolName of [
+      "mcp__plugin_llmos_llmos__read",
+      "mcp__llmos__search",
+      "mcp__other__set_property",
+      "mcp__plugin_other_llmos__set_property",
+    ]) {
+      const payload = { tool_name: toolName, tool_input: { note: "alpha" } };
+      const result = runHook("pre-tool-use", payload, tmp, { root: vault });
+      expect(result.stdout).toBe("");
       expect(result.exitCode).toBe(0);
     }
   });

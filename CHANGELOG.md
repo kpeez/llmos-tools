@@ -4,7 +4,10 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
-## Unreleased
+## 2.1.0 — 2026-10-07
+
+Codex hooks must be approved again: `hooks/hooks.json` gains a PreToolUse
+matcher.
 
 - Fix the activity digest hiding a newly opened PR when a PR with the same
   number merged that day in another repository. A merged PR now hides only
@@ -28,6 +31,31 @@ The Python package version lives in `pyproject.toml`.
 - The schema audit finds new (untracked) notes with non-ASCII names; git's
   path quoting hid them before. A link property value ending in a newline is
   no longer a wikilink, and `created` must use ASCII digits.
+- Add the plugin-declared `llmos` MCP server (ADR 0012, MCP phase):
+  `llmos-vault mcp` on stdio, built on the official TypeScript MCP SDK
+  (`@modelcontextprotocol/server` 2.0.0, the version qmd already installs).
+  Read tools `read`, `neighbors`, `subgraph`, `check`, `health`, `search`;
+  write tools `daily_append_thought`, `file_inbox`, `set_property`, which
+  stamp `updated` and `authors` on the notes they change. Each tool runs the
+  matching command's handler and takes its help. One vault model stays
+  loaded and is read again when a note file changes; the qmd search models
+  stay loaded after the first semantic search. Only the llmOS vault is
+  served, and every note must resolve inside the real vault root.
+- Claude Code starts it from `.mcp.json` and Codex from `.codex-mcp.json`,
+  through the bundled launcher `dist/mcp.js`, with Bun's project `.env`,
+  `bunfig.toml`, and auto-install off. Without an installed CLI the launcher
+  serves a single `setup` tool. Codex runs the read tools without a prompt
+  and asks before each write tool.
+- The PreToolUse hook gives the MCP write tools the note schema and the
+  authoring contract, under Claude Code's and Codex's tool names; the
+  SessionStart context names the MCP tools.
+- `llmos-doctor` gains an `mcp-server` check that starts the server and
+  lists its tools.
+- Changed: `llmos-vault search --semantic` is now vector search with the
+  embedding model (about 0.8 s on mac-host), not qmd's hybrid pipeline. The new
+  `--hybrid` flag runs the full pipeline (query expansion, keyword and vector
+  retrieval, reranking; 13 to 22 s per query with the models loaded). The
+  MCP `search` tool takes `semantic` and `hybrid` the same way.
 
 ## 2.0.0 — 2026-10-07
 

@@ -2,11 +2,11 @@
 
 The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
 lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
-well-formed and indexed, and the llmOS CLI: deterministic verbs for vault
-operations, written in TypeScript and run by Bun (`src/`, `bin/`). The Python
-library `llmos_vault` is frozen and is being retired in phases
-([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md));
-the hooks still run from it.
+well-formed and indexed, an MCP server with typed vault tools, and the llmOS
+CLI: deterministic verbs for vault operations, written in TypeScript and run
+by Bun (`src/`, `bin/`). The Python library `llmos_vault` is frozen and is
+being retired in phases
+([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md)).
 
 ## Install the maintenance tools
 
@@ -51,6 +51,8 @@ tools/
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
 ├── hooks/                 # session/tool lifecycle hooks (see below)
+├── dist/                  # committed bundles: hooks.js and the MCP launcher mcp.js
+├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex)
 ├── llmos_vault/           # Python library and CLI (frozen; differential-test oracle)
 ├── src/                   # TypeScript core and the CLI's command registry
 ├── bin/                   # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
@@ -100,6 +102,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
 | SessionStart             | `session-start` | `context.ts`  | Supplies vault context inside the vault and repositories with linked vault docs                            |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
+| PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
 | Stop                     | `stop`          | `stop.ts`     | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds |
@@ -120,8 +123,8 @@ records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.
 for an agent whose installed hooks have not run. See the `setup-llmos`
 skill.
 
-After changing `src/hooks/`, rebuild the bundle with `just hooks` and commit
-it; `just check` and CI fail when it is stale. `bun test/hooks/bench.ts
+After changing `src/hooks/` or `src/mcp-launcher.ts`, rebuild both bundles
+with `just hooks` and commit them; `just check` and CI fail when one is stale. `bun test/hooks/bench.ts
 <vault-copy>` times every event. The Python scripts in `hooks/` are frozen
 and no longer wired; they remain as the reference until the Python package is
 retired.
@@ -140,6 +143,44 @@ change to `hooks.json` needs a new approval. See the
 `setup-llmos` skill for activation and fresh-session verification. Existing
 sessions may retain their previous plugin definitions.
 
+## MCP server
+
+The plugin declares an MCP server named `llmos`, which starts in every Claude
+Code and Codex session where the plugin is enabled. Its tools are typed, so
+multi-line text needs no shell quoting, and it keeps one vault model and the
+qmd search models loaded between calls.
+
+| Tools | Kind |
+| --- | --- |
+| `read`, `neighbors`, `subgraph`, `check`, `health`, `search` | Read |
+| `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` and `authors` on the notes it changes |
+
+Each tool runs the handler of the matching `llmos-vault` command, and its
+description comes from that command's help. The server serves only the llmOS
+vault and its `llmos` qmd collection. Arguments come from a model, so each
+handler checks them again, every note must resolve to a real path inside the
+real vault root (symbolic links resolved), and there is no shell, move, create,
+or arbitrary-file tool. The vault model is read again when a note file
+changes on disk, so an edit made with `Write` is visible to the next `read`.
+
+Claude Code reads `.mcp.json`, which runs the committed launcher
+`${CLAUDE_PLUGIN_ROOT}/dist/mcp.js`. Codex reads `.codex-mcp.json` (named in
+`.codex-plugin/plugin.json`): Codex does not expand plugin-root variables, so
+it uses `cwd: "."`, which Codex joins to the plugin root, and it sets the
+approvals: read tools run without a prompt, write tools prompt. Both run
+`bun --no-install --no-env-file --config=/dev/null`, so a session's project
+can never load its `.env`, `bunfig.toml` preload, or packages into the server.
+
+The launcher (`src/mcp-launcher.ts`) runs `llmos-vault mcp` from the install
+that `~/.local/bin/llmos-vault` links to, with `GGML_METAL_NO_RESIDENCY=1` (on
+macOS a process that loaded a qmd model aborts at exit without it). When the
+CLI is missing or predates the server, it serves one tool, `setup`, that says
+to run `setup-llmos`, so a session never shows a failed server. `llmos-doctor`
+starts the same server and fails when it does not list every tool.
+
+Claude Code names the tools `mcp__plugin_llmos_llmos__<tool>` and Codex
+`mcp__llmos__<tool>`; the PreToolUse matcher covers both.
+
 ## The `llmos_vault` library and CLI
 
 `llmos_vault/` is a Python package (see `pyproject.toml`) exposing the
@@ -156,8 +197,8 @@ point agrees on where the vault is.
 
 ## The TypeScript core
 
-`src/` is the TypeScript core: the vault model, the CLI, the digest, and the
-plugin hooks; the MCP server comes in a later phase.
+`src/` is the TypeScript core: the vault model, the CLI, the digest, the
+plugin hooks, and the MCP server.
 
 - `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
   and writes the canonical form: sorted keys, block-style lists, quoted
@@ -183,6 +224,9 @@ plugin hooks; the MCP server comes in a later phase.
   number opened in another.
 - `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` (see
   [Hooks](#hooks)).
+- `mcp.ts` is the `llmos-vault mcp` server, `mcp-launcher.ts` the launcher
+  bundled into `dist/mcp.js`, `mcp-check.ts` the doctor's server check, and
+  `mcp-names.ts` the tool names the hooks share (see [MCP server](#mcp-server)).
 
 Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 `just ts-lint`, and `just ts-test`.
@@ -190,8 +234,9 @@ Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 ## Scripts
 
 - **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
-  the CLI and `qmd` reachable, is the collection indexed, and have the
-  installed plugin hooks run for each agent.
+  the CLI and `qmd` reachable, is the collection indexed, does the MCP server
+  start and list its tools, and have the installed plugin hooks run for each
+  agent.
 - **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model

@@ -16,7 +16,15 @@ import { isClean, qmdSection, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { runObsidian } from "./obsidian.ts";
 import { detectProvider } from "./provider.ts";
-import { indexedPaths, openQmd, qmdLocation, reindex, search, unembeddedCount } from "./qmd.ts";
+import {
+  indexedPaths,
+  openQmd,
+  qmdLocation,
+  reindex,
+  type SearchMode,
+  search,
+  unembeddedCount,
+} from "./qmd.ts";
 import { validated } from "./root.ts";
 import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
 import {
@@ -602,20 +610,39 @@ Do NOT use when you need today's note created if it is absent -- use
   },
 };
 
+/** The search mode of `--semantic` and `--hybrid`; hybrid includes vector retrieval, so it wins. */
+export function searchMode(values: Values): SearchMode {
+  if (values.hybrid === true) return "hybrid";
+  return values.semantic === true ? "semantic" : "keyword";
+}
+
 const searchCommand: Command = {
   name: "search",
-  summary: "Search a qmd collection for notes; keyword search by default, --semantic for hybrid.",
+  summary:
+    "Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline.",
   description: `Use when an agent needs notes about a topic and does not know their names.
 Searches the qmd index through the qmd SDK, the same index the \`qmd\`
-command uses. Keyword (BM25) search needs no model and returns in tens of
-milliseconds. --semantic runs qmd's hybrid search (query expansion,
-keyword and vector retrieval, reranking). Each semantic call first loads
-three models: about 30 s on mac-host (an M-series Mac), so use it only when
-keyword search misses.
+command uses. Three modes; times are for mac-host (an M-series Mac):
+- keyword (default): BM25 on the query's words. No model, tens of
+  milliseconds. Best when you know words the note uses.
+- --semantic: vector similarity with the embedding model. About 0.8 s,
+  plus about 2 s to load the model on the first call in a process. Finds
+  notes by meaning when the words differ.
+- --hybrid: qmd's full pipeline: query expansion, keyword and vector
+  retrieval, and reranking, with three models. About 13 to 22 s per query
+  with the models loaded, and up to 35 s when it loads them. Use it only
+  when the other modes miss. It includes vector retrieval, so --semantic
+  adds nothing to it.
+Semantic and hybrid search see only embedded notes; \`health\` counts the
+notes that still need \`reindex\`.
 Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
   arguments: [{ name: "query", help: "What to search for." }],
   options: {
-    semantic: { type: "boolean", help: "Hybrid search with query expansion and reranking." },
+    semantic: { type: "boolean", help: "Vector search with the embedding model." },
+    hybrid: {
+      type: "boolean",
+      help: "qmd's full pipeline: query expansion, keyword and vector retrieval, reranking.",
+    },
     collection: {
       type: "string",
       default: "llmos",
@@ -633,7 +660,7 @@ Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
     const options = {
       collection: str(values, "collection"),
       limit: count(values, "limit", 1),
-      semantic: values.semantic === true,
+      mode: searchMode(values),
     };
     const location = qmdLocation(context.env);
     if (!existsSync(location.dbPath)) {
@@ -719,6 +746,31 @@ config file.`,
   },
 };
 
+const mcp: Command = {
+  name: "mcp",
+  summary: "Serve the llmOS vault tools to an agent over MCP on stdin and stdout.",
+  description: `Use when an agent harness starts the llmOS MCP server -- the plugin's
+\`.mcp.json\` starts it in every session through \`dist/mcp.js\`. Read tools:
+read, neighbors, subgraph, check, health, search. Write tools:
+daily_append_thought, file_inbox, set_property; each stamps \`updated\` and
+\`authors\` on the notes it changes. It serves only the llmOS vault and its
+\`llmos\` qmd collection, and refuses any note whose real path is outside the
+vault. One vault model stays loaded (read again when a note file changes),
+and so do the search models after the first semantic search. Runs until
+stdin closes.
+Do NOT use when you want one answer in a shell -- run that verb instead.`,
+  arguments: [],
+  options: {},
+  exampleOutput: "(MCP JSON-RPC messages on stdout until stdin closes)",
+  example: "llmos-vault mcp",
+  async run(_values, context) {
+    // Imported here: the server module imports this registry.
+    const { serve } = await import("./mcp.ts");
+    await serve(context);
+    return {};
+  },
+};
+
 const docs: Command = {
   name: "docs",
   summary: "Regenerate the vault-cli skill's command reference and verb table from this CLI.",
@@ -775,6 +827,7 @@ export const COMMANDS: readonly Command[] = [
   dailyRecent,
   searchCommand,
   reindexCommand,
+  mcp,
   configSetRoot,
   docs,
 ];

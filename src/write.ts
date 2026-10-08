@@ -229,6 +229,34 @@ export function appendThought(root: string, relative: string, thought: string): 
 }
 
 /**
+ * Stamp a note as the PostToolUse hook stamps a `Write`: `updated` set to
+ * `date` and `provider` added to `authors` once. A note without a
+ * frontmatter block is left as it is. Returns whether it wrote.
+ */
+export function stampNote(
+  root: string,
+  relative: string,
+  date: string,
+  provider: string | null,
+): boolean {
+  const real = realTarget(root, relative);
+  const text = readText(real);
+  let frontmatter: Frontmatter;
+  try {
+    frontmatter = Frontmatter.parse(text);
+  } catch (error) {
+    if (error instanceof MissingFrontmatter) return false;
+    throw error;
+  }
+  frontmatter.setScalar("updated", date);
+  if (provider !== null) frontmatter.appendUnique("authors", provider);
+  const stamped = frontmatter.toString();
+  if (stamped === text) return false;
+  atomicReplace(real, stamped);
+  return true;
+}
+
+/**
  * Add each property in `stamps` that the note does not have yet, and add
  * `provider` to `authors`. Writes only when something changes; returns
  * whether it wrote.

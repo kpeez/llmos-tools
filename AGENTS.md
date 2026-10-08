@@ -35,10 +35,18 @@ Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
 Python checks, the Bun type check, Biome, `bun test`, the differential
 harness on the fixture vaults, and the activity-digest parity check, and it
-fails when the committed hook bundle `dist/hooks.js` is stale. After changing
-`src/hooks/` (or core code the hooks import), run `just hooks` and commit the
-rebuilt bundle. Changing `hooks/hooks.json` means every host must approve the
-Codex hooks again. Package artifacts are checked with `uv build`.
+fails when a committed bundle (`dist/hooks.js`, or the MCP launcher
+`dist/mcp.js`) is stale. After changing `src/hooks/`, `src/mcp-launcher.ts`,
+or core code they import, run `just hooks` and commit the rebuilt bundles.
+Changing `hooks/hooks.json` means every host must approve the Codex hooks
+again. Package artifacts are checked with `uv build`.
+
+The MCP server (`src/mcp.ts`, `llmos-vault mcp`) takes its arguments from a
+model: keep every tool's arguments checked in its handler, every path inside
+the real vault root through `write.ts`, and add no shell or arbitrary-file
+tool. Claude Code reads `.mcp.json` and Codex `.codex-mcp.json`; keep the
+Bun flags `--no-install --no-env-file --config=/dev/null` in both, so a
+session's project cannot load code or config into the server.
 
 To run the differential harness on the real vault, copy `../llmOS/` to a
 directory outside it, pass the copy, and write the report to

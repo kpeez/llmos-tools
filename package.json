@@ -8,11 +8,14 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
     "differential": "bun test/differential/run.ts --edge-vault tests/fixtures/vault tests/fixtures/health_vault",
-    "build:hooks": "bun build src/hooks/main.ts --target bun --minify --outfile dist/hooks.js"
+    "build:hooks": "bun build src/hooks/main.ts --target bun --minify --outfile dist/hooks.js",
+    "build:mcp": "bun build src/mcp-launcher.ts --target bun --minify --outfile dist/mcp.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
     "@tobilu/qmd": "2.8.3",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "zod": "4.2.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

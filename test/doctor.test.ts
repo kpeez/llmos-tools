@@ -56,6 +56,12 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
     await store.close();
   }
   if (options.sentinelIndexed === false) writeFiles(root, { "llmOS.md": SENTINEL });
+  // The CLI installed: the link the plugin's MCP launcher follows.
+  mkdirSync(join(env.HOME as string, ".local", "bin"), { recursive: true });
+  symlinkSync(
+    join(TOOLS, "bin", "llmos-vault.ts"),
+    join(env.HOME as string, ".local", "bin", "llmos-vault"),
+  );
   // The plugin installed for Claude Code, and its hooks seen running.
   const plugin = join(
     env.HOME as string,
@@ -113,12 +119,29 @@ describe("llmos-doctor", () => {
       "qmd-collection",
       "qmd-index",
       "qmd-retrieval",
+      "mcp-server",
       "hooks-claude",
     ]) {
       expect(result.stdout).toContain(`PASS ${check}:`);
     }
     expect(result.stdout).toContain("(qmd 2.8.3");
+    expect(result.stdout).toContain("mcp lists 9 tools");
     expect(result.exitCode).toBe(0);
+  });
+
+  test("an MCP server the launcher cannot start fails with the install repair", async () => {
+    const { env } = await setup();
+    rmSync(join(env.HOME as string, ".local", "bin", "llmos-vault"));
+    failed(doctor(env), "mcp-server", "Run /setup-llmos");
+    const old = scratch("old-install");
+    writeFiles(old, { "bin/llmos-vault.ts": "process.exit(1);\n", "src/mcp.ts": "" });
+    symlinkSync(
+      join(old, "bin", "llmos-vault.ts"),
+      join(env.HOME as string, ".local", "bin", "llmos-vault"),
+    );
+    const broken = doctor(env);
+    failed(broken, "mcp-server", "Run /setup-llmos");
+    expect(broken.stdout).toContain("exited before listing its tools");
   });
 
   test("hooks that never ran fail with the repair", async () => {
