@@ -1,7 +1,7 @@
 /**
  * The session-start and pre-tool-use hooks gate on paths, not on intent,
  * and never read provider memory (ADR-0003). Ported from
- * `tests/test_hook_gating.py`.
+ * the retired Python test `test_hook_gating.py`.
  */
 
 import { afterEach, describe, expect, spyOn, test } from "bun:test";

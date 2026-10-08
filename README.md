@@ -4,8 +4,7 @@ The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
 lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
 well-formed and indexed, an MCP server with typed vault tools, and the llmOS
 CLI: deterministic verbs for vault operations, written in TypeScript and run
-by Bun (`src/`, `bin/`). The Python library `llmos_vault` is frozen and is
-being retired in phases
+by Bun (`src/`, `bin/`). It replaced an earlier Python package
 ([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md)).
 
 ## Install the maintenance tools
@@ -21,10 +20,7 @@ This copies `tools/` to `~/.local/share/llmos/<version>/`, installs its
 dependencies there, and links `llmos-vault`, `llmos-doctor`, `llmos-audit`,
 `llmos-daily-activity` (`src/digest.ts`), and `qmd` into `~/.local/bin/`. The
 `qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
-`package.json`); keep it the only `qmd` on `PATH`. On a host that still has
-the retired Python uv tool, run `uv tool uninstall llmos-vault` first: uv
-removes the command paths it recorded, which would otherwise delete the new
-links.
+`package.json`); keep it the only `qmd` on `PATH`.
 
 ## Install the agent plugin
 
@@ -50,15 +46,13 @@ tools/
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
-├── hooks/                 # session/tool lifecycle hooks (see below)
+├── hooks/                 # hooks.json: session/tool lifecycle hooks (see below)
 ├── dist/                  # committed bundles: hooks.js and the MCP launcher mcp.js
 ├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex)
-├── llmos_vault/           # Python library and CLI (frozen; differential-test oracle)
 ├── src/                   # TypeScript core and the CLI's command registry
 ├── bin/                   # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
-├── test/                  # bun tests and the differential harness
-├── scripts/               # install.ts (the CLI install) and source-checkout shims
-└── tests/                 # pytest suite with fixture vaults
+├── test/                  # bun tests, contract snapshots, and fixture vaults
+└── scripts/               # install.ts (the CLI install) and gen-marketplaces.ts
 ```
 
 ## Skills
@@ -125,9 +119,7 @@ skill.
 
 After changing `src/hooks/` or `src/mcp-launcher.ts`, rebuild both bundles
 with `just hooks` and commit them; `just check` and CI fail when one is stale. `bun test/hooks/bench.ts
-<vault-copy>` times every event. The Python scripts in `hooks/` are frozen
-and no longer wired; they remain as the reference until the Python package is
-retired.
+<vault-copy>` times every event.
 
 Hooks observe supported tool calls, not all filesystem access. Direct file
 tools and patch edits have explicit targets; simple shell reads can be
@@ -136,7 +128,7 @@ their targets. Run the authoring check on changed notes at completion even
 when a hook produced no diagnostic. `.base` and `.canvas` writes receive
 authoring guidance; their format and rendering require their own checks.
 
-Install the plugin separately from the Python tool, on each host and for each
+Install the plugin separately from the CLI, on each host and for each
 agent. Codex requires review and trust of the current hook definitions; an
 installed CLI or an old trust entry does not prove active hooks, and any
 change to `hooks.json` needs a new approval. See the
@@ -181,19 +173,18 @@ starts the same server and fails when it does not list every tool.
 Claude Code names the tools `mcp__plugin_llmos_llmos__<tool>` and Codex
 `mcp__llmos__<tool>`; the PreToolUse matcher covers both.
 
-## The `llmos_vault` library and CLI
+## The `llmos-vault` CLI
 
-`llmos_vault/` is a Python package (see `pyproject.toml`) exposing the
-`llmos-vault` CLI. Every command is a thin wrapper: resolve `--vault` to a
-root path, call a framework-free function, print JSON — so agents get
-predictable, parseable output for reads, listings, moves, links, daily notes,
-inbox filing, graph neighbors, and vault health checks. Command help renders
-straight from docstrings; `skills/vault-cli/references/commands.md` is the
-routing table skills use to pick the right verb.
+Every `llmos-vault` command resolves the vault root, runs a handler that
+returns a result, and prints JSON, so agents get predictable, parseable
+output for reads, listings, moves, links, daily notes, inbox filing, graph
+neighbors, search, and vault health checks. The command registry
+(`src/commands.ts`) is the one source of each command's help and of
+`skills/vault-cli/references/commands.md`, the routing table skills use to
+pick the right verb (`bun bin/llmos-vault.ts docs` renders it).
 
-Vault-root resolution lives in `llmos_vault/root.py` and is shared by the
-CLI and the setup skill; the hooks use its port in `src/root.ts`. Every entry
-point agrees on where the vault is.
+Vault-root resolution lives in `src/root.ts`, which the CLI, the digest, the
+hooks, and the MCP server share, so they agree on where the vault is.
 
 ## The TypeScript core
 
@@ -206,7 +197,7 @@ plugin hooks, and the MCP server.
   Markdown hard line break (two or more spaces) on a body line, one final
   newline. Block scalars, comments, and nested maps survive; a block with YAML
   errors is never rewritten; `created` is immutable and `authors` append-only.
-  Every scalar reads as a string, as in the Python package.
+  Every scalar reads as a string.
 - `vault.ts` loads every note once into one `VaultModel` with Obsidian's link
   resolution, and answers `read`, `list`, `neighbors`, `subgraph`, and the
   health link findings from it.
@@ -219,18 +210,18 @@ plugin hooks, and the MCP server.
   obsidian-cli writes (`move`, `create --template`), `qmd.ts` search and
   reindex through the qmd SDK, and `doctor.ts` the `llmos-doctor` checks.
 - `digest.ts` is the `llmos-daily-activity` command (run it with
-  `bun src/digest.ts`). It replaces `llmos_vault/daily_activity.py` and
-  writes the same block hash and markers for the same GitHub activity, with
-  one fix: a PR merged in one repository no longer hides a PR with the same
-  number opened in another.
+  `bun src/digest.ts`). It writes the block hash and markers the earlier
+  Python digest wrote for the same GitHub activity, with one fix: a PR
+  merged in one repository no longer hides a PR with the same number opened
+  in another.
 - `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` (see
   [Hooks](#hooks)).
 - `mcp.ts` is the `llmos-vault mcp` server, `mcp-launcher.ts` the launcher
   bundled into `dist/mcp.js`, `mcp-check.ts` the doctor's server check, and
   `mcp-names.ts` the tool names the hooks share (see [MCP server](#mcp-server)).
 
-Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
-`just ts-lint`, and `just ts-test`.
+Set up with `bun install --frozen-lockfile`; check with `just types`,
+`just lint`, and `just test`, or all of them with `just check`.
 
 ## Scripts
 
@@ -241,23 +232,28 @@ Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 - **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
-  call → verify → write. The TypeScript version (`src/digest.ts`) runs the
-  model as an opencode agent with every tool denied.
-- **`scripts/`** — compatibility entry points for source-checkout users and
-  plugin helpers.
+  call → verify → write. It runs the model as an opencode agent with every
+  tool denied.
+- **`scripts/`** — `install.ts`, the CLI install, and `gen-marketplaces.ts`,
+  which writes the marketplace catalogs at the repository root (`just gen`;
+  `just check` and CI fail when a catalog is stale).
 
 ## Tests
 
-`tests/` is a pytest suite run from `tools/` (`uv run pytest`),
-covering the frozen Python hooks, root resolution, the CLI's backends, and
-vault health — against committed fixture vaults in `tests/fixtures/`.
-
-`test/` holds the `bun test` unit tests for the TypeScript core, the hook
+`test/` holds the `bun test` unit tests for the TypeScript core and the hook
 tests in `test/hooks/` (gating, guards, stamp format, reindex; each runs the
-hook as a `bun` process, as the harnesses do), and the differential harness (`just differential`). The harness runs the Python CLI
-and the TypeScript core on the fixture vaults and a generated edge-case vault
-and fails on any difference not listed, with its reason, in
-`test/differential/allowlist.ts`. `just differential-digest` runs both
-activity digests on a generated vault with the same `gh` output and requires
-the same block hash, markers, and note text, except on a day with that fix's
-difference, where it checks that the difference is exactly that PR.
+hook as a `bun` process, as the harnesses do). `test/contract/` pins the
+external contract with committed snapshots: the CLI's JSON output and exit
+codes (except `list`'s exit code), the canonical `normalize` output, and the
+schema audit on the fixture vaults in `test/fixtures/` and a generated
+edge-case vault, and the activity
+digest's outcomes, block hashes, markers, and notes on generated edge days
+with a stand-in `gh` and model. The snapshots were recorded while the Python
+package was still the reference and checked against it; each result where
+TypeScript intentionally differs names the reason. After an intended contract
+change, `just contract-record` records them again for review.
+
+The same tests check the frontmatter invariants on every note: reading never
+fails with an untyped error, `normalize` refuses no valid YAML, keeps every
+value, and is idempotent. `just invariants <vault-copy>` checks them on a
+copy of the real vault.

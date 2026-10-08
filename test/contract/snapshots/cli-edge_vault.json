@@ -1,0 +1,6742 @@
+{
+  "about": "Contract results of the TypeScript CLI on this vault, read on `today`; see test/contract/snapshot.ts. A key in differs_from_python is a result where the retired Python CLI gave something else, for the reasons of the named allowlist entries.",
+  "today": "2026-10-07",
+  "allowlist": {
+    "block-scalar": "Python refuses a block scalar (`key: |` or `key: >`). The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "comment": "Python refuses a YAML comment. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "nested-collection": "Python refuses a nested map or a list inside a list. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "anchor-or-alias": "Python refuses YAML anchors and aliases. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "quoted-typed-scalar": "Python refuses a quoted value that bare YAML reads as a null, bool, or number (\"true\", \"3\"), because its serializer would drop the quotes. TypeScript keeps the quotes. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "quoted-key": "Python refuses a quoted property name. TypeScript writes it bare when bare YAML reads the same name, and keeps the quotes when it would not (`\"null\"`). The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "multi-line-scalar": "Python refuses a plain or quoted value written across several lines. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "escape-sequence": "Python refuses double-quoted escapes other than \\\\ and \\\". The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "tab-separator": "Python refuses a tab in the block; YAML allows one as a separator. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "list-indent": "Python reads list items only when indented by exactly two spaces (`  - item`); YAML also allows other indents, such as `- item` under its key. The TypeScript normalizer parses it with the yaml Document API, keeps such properties byte for byte, and returns text only after reading back the same values and comments; the harness also checks that the output keeps the values and does not change when normalized again.",
+    "body-leading-blank-line": "When the body starts with a line of only spaces, Python writes it as an extra blank line after `---`, which its own reader then drops, so normalizing again changes the note. TypeScript drops that line, so normalizing is idempotent.",
+    "body-hard-line-break": "Python trims all trailing whitespace from body lines, which deletes Markdown hard line breaks (two or more spaces before a line ending) and changes how the note renders. TypeScript keeps a final run of two or more spaces on a body line that has content (kpeez/llmos#44). The texts must differ only in those runs.",
+    "empty-frontmatter-block": "A note that starts with `---` then `---` has an empty frontmatter block. Python sees no block there (or takes the next `---` as its end), so its own canonical form of a note with no properties could not be normalized again; TypeScript reads the empty block, so normalizing is idempotent and a later stamp can add properties.",
+    "refusal-reason": "Both refuse to rewrite the note. The TypeScript message names the YAML error; the Python message names the line-parser rule.",
+    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd.",
+    "message-quotes-json": "Finding and schema messages quote a value as JSON, not as a Python `repr` (message wording is not contract); the quoted values and all other text must be equal.",
+    "created-not-yyyy-mm-dd": "An inbox note whose `created` is not `YYYY-MM-DD` is stale, like one without a date (Python also read `date.fromisoformat` forms such as `20261005` and `2026-W40-3`).",
+    "properties-python-cannot-read": "Python reads a note whose frontmatter it refuses (or an empty block) as having no properties; TypeScript reads the properties of valid YAML. The differences in read, list, links, topic siblings, health, and the schema audit that follow from those properties are intended. Each one is shown to follow from them: the run that reads those notes as Python does matches Python with no other difference."
+  },
+  "differs_from_python": {
+    "by_name anchor": [
+      "properties-python-cannot-read"
+    ],
+    "by_name block-scalar": [
+      "properties-python-cannot-read"
+    ],
+    "by_name comment": [
+      "properties-python-cannot-read"
+    ],
+    "by_name double-marker": [
+      "properties-python-cannot-read"
+    ],
+    "by_name escape": [
+      "properties-python-cannot-read"
+    ],
+    "by_name folded": [
+      "properties-python-cannot-read"
+    ],
+    "by_name multi-line": [
+      "properties-python-cannot-read"
+    ],
+    "by_name nested": [
+      "properties-python-cannot-read"
+    ],
+    "by_name nested-link": [
+      "properties-python-cannot-read"
+    ],
+    "by_name never-closed": [
+      "properties-python-cannot-read"
+    ],
+    "by_name quoted-typed-key": [
+      "properties-python-cannot-read"
+    ],
+    "by_name tab": [
+      "properties-python-cannot-read"
+    ],
+    "by_name top-level-item": [
+      "properties-python-cannot-read"
+    ],
+    "by_name typed": [
+      "properties-python-cannot-read"
+    ],
+    "by_name unquoted-wikilink": [
+      "properties-python-cannot-read"
+    ],
+    "check fm/block-scalar.md": [
+      "properties-python-cannot-read"
+    ],
+    "check fm/nested-link.md": [
+      "properties-python-cannot-read"
+    ],
+    "check links/alias.md": [
+      "message-quotes-json"
+    ],
+    "check notes/references.md": [
+      "message-quotes-json"
+    ],
+    "check notes/𝔘nicode.md": [
+      "message-quotes-json"
+    ],
+    "health.dead_ends": [
+      "properties-python-cannot-read"
+    ],
+    "health.qmd_unembedded": [
+      "health-qmd-unembedded"
+    ],
+    "health.schema_violations": [
+      "message-quotes-json",
+      "properties-python-cannot-read"
+    ],
+    "health.stale_inbox": [
+      "created-not-yyyy-mm-dd"
+    ],
+    "list": [
+      "properties-python-cannot-read"
+    ],
+    "neighbors fm/block-scalar.md": [
+      "properties-python-cannot-read"
+    ],
+    "neighbors fm/folded.md": [
+      "properties-python-cannot-read"
+    ],
+    "neighbors fm/nested-link.md": [
+      "properties-python-cannot-read"
+    ],
+    "neighbors notes/alpha.md": [
+      "properties-python-cannot-read"
+    ],
+    "neighbors notes/beta.md": [
+      "properties-python-cannot-read"
+    ],
+    "normalize fm/anchor.md": [
+      "anchor-or-alias"
+    ],
+    "normalize fm/block-scalar.md": [
+      "block-scalar"
+    ],
+    "normalize fm/comment.md": [
+      "comment"
+    ],
+    "normalize fm/double-marker.md": [
+      "empty-frontmatter-block"
+    ],
+    "normalize fm/duplicate.md": [
+      "refusal-reason"
+    ],
+    "normalize fm/empty-item.md": [
+      "refusal-reason"
+    ],
+    "normalize fm/escape.md": [
+      "escape-sequence"
+    ],
+    "normalize fm/folded.md": [
+      "block-scalar"
+    ],
+    "normalize fm/item-after-flow.md": [
+      "refusal-reason"
+    ],
+    "normalize fm/leading-space-body.md": [
+      "body-leading-blank-line"
+    ],
+    "normalize fm/line-separator.md": [
+      "refusal-reason"
+    ],
+    "normalize fm/messy.md": [
+      "body-hard-line-break"
+    ],
+    "normalize fm/multi-line.md": [
+      "multi-line-scalar"
+    ],
+    "normalize fm/nested-link.md": [
+      "nested-collection"
+    ],
+    "normalize fm/nested.md": [
+      "nested-collection"
+    ],
+    "normalize fm/never-closed.md": [
+      "empty-frontmatter-block"
+    ],
+    "normalize fm/quoted-typed-key.md": [
+      "quoted-key"
+    ],
+    "normalize fm/tab.md": [
+      "tab-separator"
+    ],
+    "normalize fm/top-level-item.md": [
+      "list-indent"
+    ],
+    "normalize fm/typed.md": [
+      "quoted-typed-scalar"
+    ],
+    "normalize fm/unquoted-wikilink.md": [
+      "nested-collection"
+    ],
+    "read fm/anchor.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/block-scalar.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/comment.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/double-marker.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/escape.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/folded.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/multi-line.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/nested-link.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/nested.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/never-closed.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/quoted-typed-key.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/tab.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/top-level-item.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/typed.md": [
+      "properties-python-cannot-read"
+    ],
+    "read fm/unquoted-wikilink.md": [
+      "properties-python-cannot-read"
+    ],
+    "schema.errors": [
+      "message-quotes-json",
+      "properties-python-cannot-read"
+    ],
+    "subgraph1 fm/block-scalar.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph1 fm/folded.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph1 fm/nested-link.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph1 notes/alpha.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph1 notes/beta.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 .trash/discarded.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 fm/block-scalar.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 fm/folded.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 fm/nested-link.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 fm/no-frontmatter.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 notes/alpha.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 notes/beta.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 notes/café.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 notes/gamma.md": [
+      "properties-python-cannot-read"
+    ],
+    "subgraph2 projects/llmos/llmos.md": [
+      "properties-python-cannot-read"
+    ]
+  },
+  "results": {
+    "list": [
+      {
+        "name": "discarded",
+        "path": "<vault>/.trash/discarded.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Links to [[alpha]].\n"
+      },
+      {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# Edge vault\n"
+      },
+      {
+        "name": "dup",
+        "path": "<vault>/a/dup.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "A dup.\n"
+      },
+      {
+        "name": "linker",
+        "path": "<vault>/a/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Same folder [[dup]], explicit [[b/dup]].\n"
+      },
+      {
+        "name": "a-c",
+        "path": "<vault>/a-c.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[a/dup]]\n"
+      },
+      {
+        "name": "old",
+        "path": "<vault>/archive/specs/old.md",
+        "properties": {},
+        "body": "# Retired spec\n"
+      },
+      {
+        "name": "dup",
+        "path": "<vault>/b/dup.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "B dup.\n"
+      },
+      {
+        "name": "linker2",
+        "path": "<vault>/c/linker2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Ambiguous [[dup]] and [[DUP]].\n"
+      },
+      {
+        "name": "anchor",
+        "path": "<vault>/fm/anchor.md",
+        "properties": {
+          "a": "one",
+          "b": "one"
+        },
+        "body": "# Anchor\n"
+      },
+      {
+        "name": "block-scalar",
+        "path": "<vault>/fm/block-scalar.md",
+        "properties": {
+          "method": "see [[alpha]]\n"
+        },
+        "body": "# Block [[beta]]\n"
+      },
+      {
+        "name": "body-separators",
+        "path": "<vault>/fm/body-separators.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "line one line two\fform feed\u001cgroup \n"
+      },
+      {
+        "name": "bom",
+        "path": "<vault>/fm/bom.md",
+        "properties": {},
+        "body": "﻿---\ncreated: 2026-07-01\n---\n\n# BOM\n"
+      },
+      {
+        "name": "comment",
+        "path": "<vault>/fm/comment.md",
+        "properties": {
+          "status": "active"
+        },
+        "body": "# Comment\n"
+      },
+      {
+        "name": "crlf",
+        "path": "<vault>/fm/crlf.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# CRLF\n"
+      },
+      {
+        "name": "double-marker",
+        "path": "<vault>/fm/double-marker.md",
+        "properties": {},
+        "body": "status: draft\n---\n# Double marker\n"
+      },
+      {
+        "name": "duplicate",
+        "path": "<vault>/fm/duplicate.md",
+        "properties": {},
+        "body": "# Duplicate\n"
+      },
+      {
+        "name": "empty-block",
+        "path": "<vault>/fm/empty-block.md",
+        "properties": {},
+        "body": "# Empty block\n"
+      },
+      {
+        "name": "empty-item",
+        "path": "<vault>/fm/empty-item.md",
+        "properties": {},
+        "body": "# Empty item\n"
+      },
+      {
+        "name": "escape",
+        "path": "<vault>/fm/escape.md",
+        "properties": {
+          "a": "x\ny"
+        },
+        "body": "# Escape\n"
+      },
+      {
+        "name": "folded",
+        "path": "<vault>/fm/folded.md",
+        "properties": {
+          "z": "a long paragraph",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Folded\n"
+      },
+      {
+        "name": "item-after-flow",
+        "path": "<vault>/fm/item-after-flow.md",
+        "properties": {},
+        "body": "# Item after flow\n"
+      },
+      {
+        "name": "leading-space-body",
+        "path": "<vault>/fm/leading-space-body.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "   \n# Leading space\n"
+      },
+      {
+        "name": "line-separator",
+        "path": "<vault>/fm/line-separator.md",
+        "properties": {},
+        "body": "# Separator\n"
+      },
+      {
+        "name": "messy",
+        "path": "<vault>/fm/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-16",
+          "authors": [
+            "claude",
+            "co'dex"
+          ],
+          "empty": "",
+          "none": [],
+          "quoted": "say \"hi\" \\ there",
+          "comma": [
+            "a",
+            "b, c"
+          ],
+          "key with space": "v"
+        },
+        "body": "# Messy   \n\n\nBody line with trailing spaces   \n\n\n\n"
+      },
+      {
+        "name": "multi-line",
+        "path": "<vault>/fm/multi-line.md",
+        "properties": {
+          "title": "one two"
+        },
+        "body": "# Multi-line\n"
+      },
+      {
+        "name": "needs-quotes",
+        "path": "<vault>/fm/needs-quotes.md",
+        "properties": {
+          "a": "[[Knowledge]]",
+          "b": "x: y",
+          "c": "x #y",
+          "d": "- x",
+          "e": "`code`",
+          "f": "end:",
+          "g": "@at"
+        },
+        "body": "body\n"
+      },
+      {
+        "name": "nested-link",
+        "path": "<vault>/fm/nested-link.md",
+        "properties": {
+          "source": {
+            "note": "[[beta]]"
+          }
+        },
+        "body": "# Nested link\n"
+      },
+      {
+        "name": "nested",
+        "path": "<vault>/fm/nested.md",
+        "properties": {
+          "nested": {
+            "key": "value"
+          }
+        },
+        "body": "# Nested\n"
+      },
+      {
+        "name": "never-closed",
+        "path": "<vault>/fm/never-closed.md",
+        "properties": {},
+        "body": "# Never closed\n"
+      },
+      {
+        "name": "no-frontmatter",
+        "path": "<vault>/fm/no-frontmatter.md",
+        "properties": {},
+        "body": "# No frontmatter [[alpha]]\n"
+      },
+      {
+        "name": "quoted-typed-key",
+        "path": "<vault>/fm/quoted-typed-key.md",
+        "properties": {
+          "null": "y",
+          "a": "x"
+        },
+        "body": "# Quoted key\n"
+      },
+      {
+        "name": "tab",
+        "path": "<vault>/fm/tab.md",
+        "properties": {
+          "a": "b"
+        },
+        "body": "# Tab\n"
+      },
+      {
+        "name": "top-level-item",
+        "path": "<vault>/fm/top-level-item.md",
+        "properties": {
+          "tags": [
+            "top"
+          ]
+        },
+        "body": "# Top-level item\n"
+      },
+      {
+        "name": "typed",
+        "path": "<vault>/fm/typed.md",
+        "properties": {
+          "flag": "true"
+        },
+        "body": "# Typed\n"
+      },
+      {
+        "name": "unquoted-wikilink",
+        "path": "<vault>/fm/unquoted-wikilink.md",
+        "properties": {
+          "project": [
+            [
+              "X"
+            ]
+          ]
+        },
+        "body": "# Unquoted\n"
+      },
+      {
+        "name": "sam3.1-fine-tune",
+        "path": "<vault>/human/sam3.1-fine-tune.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Fine tune.\n"
+      },
+      {
+        "name": "basic-date",
+        "path": "<vault>/inbox/basic-date.md",
+        "properties": {
+          "created": "20261005"
+        },
+        "body": "Basic date.\n"
+      },
+      {
+        "name": "fresh",
+        "path": "<vault>/inbox/fresh.md",
+        "properties": {
+          "created": "2026-10-06"
+        },
+        "body": "Fresh.\n"
+      },
+      {
+        "name": "invalid-date",
+        "path": "<vault>/inbox/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      },
+      {
+        "name": "deep",
+        "path": "<vault>/inbox/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      },
+      {
+        "name": "no-created",
+        "path": "<vault>/inbox/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      },
+      {
+        "name": "stale",
+        "path": "<vault>/inbox/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      },
+      {
+        "name": "trailing-date",
+        "path": "<vault>/inbox/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      },
+      {
+        "name": "week-date-tail",
+        "path": "<vault>/inbox/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      },
+      {
+        "name": "week-date",
+        "path": "<vault>/inbox/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
+      },
+      {
+        "name": "alias",
+        "path": "<vault>/links/alias.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      },
+      {
+        "name": "llmOS",
+        "path": "<vault>/llmOS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Root\n\nSee [[projects/llmos/llmos|the project]].\n"
+      },
+      {
+        "name": "AGENTS.v2",
+        "path": "<vault>/notes/AGENTS.v2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Version two.\n"
+      },
+      {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\n[[notes/alpha.md]] [[beta#Heading|label]] [[ALPHA]] ![[beta]]\n\n| a | b |\n| - | - |\n| [[beta\\|escaped]] | [[ghost note]] |\n"
+      },
+      {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening",
+            "b, c"
+          ],
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# Beta\n\n## Heading\n\nNo body links.\n"
+      },
+      {
+        "name": "café",
+        "path": "<vault>/notes/café.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Accented [[notes/alpha]].\n"
+      },
+      {
+        "name": "dotted-links",
+        "path": "<vault>/notes/dotted-links.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[AGENTS.v2]] [[human/sam3.1-fine-tune]] [[sam3.1-fine-tune]] [[AGENTS]]\n"
+      },
+      {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": "b, c"
+        },
+        "body": "# Gamma\n"
+      },
+      {
+        "name": "references",
+        "path": "<vault>/notes/references.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      },
+      {
+        "name": "𝔘nicode",
+        "path": "<vault>/notes/𝔘nicode.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "𝔘𝔘 before a reference: notes/alpha.md and [[café]].\n"
+      },
+      {
+        "name": "demo",
+        "path": "<vault>/projects/demo/demo.md",
+        "properties": {
+          "categories": [
+            "[[Projects]]"
+          ]
+        },
+        "body": "# Demo Project\n"
+      },
+      {
+        "name": "unowned",
+        "path": "<vault>/projects/demo/notes/unowned.md",
+        "properties": {
+          "status": "someday",
+          "authors": [
+            "claude",
+            "robot"
+          ],
+          "type": "x",
+          "categories": "Knowledge",
+          "topics": [
+            "plain",
+            "[[ok]]"
+          ],
+          "blank": ""
+        },
+        "body": "# Unowned\n"
+      },
+      {
+        "name": "llmos",
+        "path": "<vault>/projects/llmos/llmos.md",
+        "properties": {
+          "categories": [
+            "[[Projects]]"
+          ],
+          "created": "2026-07-01"
+        },
+        "body": "# llmOS\n\nBack to [[llmOS]] and [[llmos]].\n"
+      },
+      {
+        "name": "2026-10-01",
+        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      },
+      {
+        "name": "2026-10-02",
+        "path": "<vault>/reviews/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
+      },
+      {
+        "name": "SKILL",
+        "path": "<vault>/skills/tool/SKILL.md",
+        "properties": {
+          "name": "tool"
+        },
+        "body": "# Missing description\n"
+      },
+      {
+        "name": "skip",
+        "path": "<vault>/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      },
+      {
+        "name": "short",
+        "path": "<vault>/x/short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Short.\n"
+      },
+      {
+        "name": "short",
+        "path": "<vault>/x/yy/short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Longer.\n"
+      },
+      {
+        "name": "uses-short",
+        "path": "<vault>/z/uses-short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Shortest wins [[short]].\n"
+      }
+    ],
+    "daily_recent": {
+      "exit": 0,
+      "json": [
+        {
+          "name": "2026-10-02",
+          "path": "<vault>/reviews/daily/2026-10-02.md",
+          "properties": {
+            "created": "10/02/2026"
+          },
+          "body": "# 2026-10-02\n"
+        },
+        {
+          "name": "2026-10-01",
+          "path": "<vault>/reviews/daily/2026-10-01.md",
+          "properties": {
+            "created": "2026-10-01",
+            "project": [
+              "[[projects/llmos/llmos|llmOS]]"
+            ]
+          },
+          "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+        }
+      ]
+    },
+    "read .trash/discarded.md": {
+      "exit": 0,
+      "json": {
+        "name": "discarded",
+        "path": "<vault>/.trash/discarded.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Links to [[alpha]].\n"
+      }
+    },
+    "neighbors .trash/discarded.md": {
+      "exit": 0,
+      "json": {
+        "note": "discarded",
+        "outgoing": [
+          "alpha"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 .trash/discarded.md": {
+      "exit": 0,
+      "json": {
+        "root": "discarded",
+        "nodes": [
+          "alpha",
+          "discarded"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check .trash/discarded.md": {
+      "exit": 0,
+      "json": {
+        "path": ".trash/discarded.md",
+        "body_links": [
+          "alpha"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize .trash/discarded.md": "---\ncreated: 2026-07-01\n---\n\nLinks to [[alpha]].\n",
+    "subgraph2 .trash/discarded.md": {
+      "exit": 0,
+      "json": {
+        "root": "discarded",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "no-frontmatter"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# Edge vault\n"
+      }
+    },
+    "neighbors AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "note": "AGENTS",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "dotted-links"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS",
+          "dotted-links"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "path": "AGENTS.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize AGENTS.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS",
+          "AGENTS.v2",
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read a/dup.md": {
+      "exit": 0,
+      "json": {
+        "name": "dup",
+        "path": "<vault>/a/dup.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "A dup.\n"
+      }
+    },
+    "neighbors a/dup.md": {
+      "exit": 0,
+      "json": {
+        "note": "dup",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "a-c",
+          "linker"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 a/dup.md": {
+      "exit": 0,
+      "json": {
+        "root": "dup",
+        "nodes": [
+          "a-c",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "a-c",
+            "dup",
+            "link"
+          ],
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check a/dup.md": {
+      "exit": 0,
+      "json": {
+        "path": "a/dup.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize a/dup.md": "---\ncreated: 2026-07-01\n---\n\nA dup.\n",
+    "subgraph2 a/dup.md": {
+      "exit": 0,
+      "json": {
+        "root": "dup",
+        "nodes": [
+          "a-c",
+          "dup",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "a-c",
+            "dup",
+            "link"
+          ],
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read a/linker.md": {
+      "exit": 0,
+      "json": {
+        "name": "linker",
+        "path": "<vault>/a/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Same folder [[dup]], explicit [[b/dup]].\n"
+      }
+    },
+    "neighbors a/linker.md": {
+      "exit": 0,
+      "json": {
+        "note": "linker",
+        "outgoing": [
+          "dup"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 a/linker.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker",
+        "nodes": [
+          "dup",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check a/linker.md": {
+      "exit": 0,
+      "json": {
+        "path": "a/linker.md",
+        "body_links": [
+          "b/dup",
+          "dup"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize a/linker.md": "---\ncreated: 2026-07-01\n---\n\nSame folder [[dup]], explicit [[b/dup]].\n",
+    "subgraph2 a/linker.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker",
+        "nodes": [
+          "a-c",
+          "dup",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "a-c",
+            "dup",
+            "link"
+          ],
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read a-c.md": {
+      "exit": 0,
+      "json": {
+        "name": "a-c",
+        "path": "<vault>/a-c.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[a/dup]]\n"
+      }
+    },
+    "neighbors a-c.md": {
+      "exit": 0,
+      "json": {
+        "note": "a-c",
+        "outgoing": [
+          "dup"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 a-c.md": {
+      "exit": 0,
+      "json": {
+        "root": "a-c",
+        "nodes": [
+          "a-c",
+          "dup"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "a-c",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check a-c.md": {
+      "exit": 0,
+      "json": {
+        "path": "a-c.md",
+        "body_links": [
+          "a/dup"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize a-c.md": "---\ncreated: 2026-07-01\n---\n\n[[a/dup]]\n",
+    "subgraph2 a-c.md": {
+      "exit": 0,
+      "json": {
+        "root": "a-c",
+        "nodes": [
+          "a-c",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "a-c",
+            "dup",
+            "link"
+          ],
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read archive/specs/old.md": {
+      "exit": 0,
+      "json": {
+        "name": "old",
+        "path": "<vault>/archive/specs/old.md",
+        "properties": {},
+        "body": "# Retired spec\n"
+      }
+    },
+    "neighbors archive/specs/old.md": {
+      "exit": 0,
+      "json": {
+        "note": "old",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 archive/specs/old.md": {
+      "exit": 0,
+      "json": {
+        "root": "old",
+        "nodes": [
+          "old"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check archive/specs/old.md": {
+      "exit": 0,
+      "json": {
+        "path": "archive/specs/old.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize archive/specs/old.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 archive/specs/old.md": {
+      "exit": 0,
+      "json": {
+        "root": "old",
+        "nodes": [
+          "old"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read b/dup.md": {
+      "exit": 0,
+      "json": {
+        "name": "dup",
+        "path": "<vault>/b/dup.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "B dup.\n"
+      }
+    },
+    "neighbors b/dup.md": {
+      "exit": 0,
+      "json": {
+        "note": "dup",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "linker"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 b/dup.md": {
+      "exit": 0,
+      "json": {
+        "root": "dup",
+        "nodes": [
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check b/dup.md": {
+      "exit": 0,
+      "json": {
+        "path": "b/dup.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize b/dup.md": "---\ncreated: 2026-07-01\n---\n\nB dup.\n",
+    "subgraph2 b/dup.md": {
+      "exit": 0,
+      "json": {
+        "root": "dup",
+        "nodes": [
+          "dup",
+          "dup",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "linker",
+            "dup",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read c/linker2.md": {
+      "exit": 0,
+      "json": {
+        "name": "linker2",
+        "path": "<vault>/c/linker2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Ambiguous [[dup]] and [[DUP]].\n"
+      }
+    },
+    "neighbors c/linker2.md": {
+      "exit": 0,
+      "json": {
+        "note": "linker2",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "DUP",
+          "dup"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 c/linker2.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker2",
+        "nodes": [
+          "linker2"
+        ],
+        "unresolved": [
+          "DUP",
+          "dup"
+        ],
+        "edges": []
+      }
+    },
+    "check c/linker2.md": {
+      "exit": 0,
+      "json": {
+        "path": "c/linker2.md",
+        "body_links": [
+          "DUP",
+          "dup"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize c/linker2.md": "---\ncreated: 2026-07-01\n---\n\nAmbiguous [[dup]] and [[DUP]].\n",
+    "subgraph2 c/linker2.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker2",
+        "nodes": [
+          "linker2"
+        ],
+        "unresolved": [
+          "DUP",
+          "dup"
+        ],
+        "edges": []
+      }
+    },
+    "read fm/anchor.md": {
+      "exit": 0,
+      "json": {
+        "name": "anchor",
+        "path": "<vault>/fm/anchor.md",
+        "properties": {
+          "a": "one",
+          "b": "one"
+        },
+        "body": "# Anchor\n"
+      }
+    },
+    "neighbors fm/anchor.md": {
+      "exit": 0,
+      "json": {
+        "note": "anchor",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/anchor.md": {
+      "exit": 0,
+      "json": {
+        "root": "anchor",
+        "nodes": [
+          "anchor"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/anchor.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/anchor.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/anchor.md": "---\na: &x one\nb: *x\n---\n\n# Anchor\n",
+    "subgraph2 fm/anchor.md": {
+      "exit": 0,
+      "json": {
+        "root": "anchor",
+        "nodes": [
+          "anchor"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/block-scalar.md": {
+      "exit": 0,
+      "json": {
+        "name": "block-scalar",
+        "path": "<vault>/fm/block-scalar.md",
+        "properties": {
+          "method": "see [[alpha]]\n"
+        },
+        "body": "# Block [[beta]]\n"
+      }
+    },
+    "neighbors fm/block-scalar.md": {
+      "exit": 0,
+      "json": {
+        "note": "block-scalar",
+        "outgoing": [
+          "alpha",
+          "beta"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/block-scalar.md": {
+      "exit": 0,
+      "json": {
+        "root": "block-scalar",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check fm/block-scalar.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/block-scalar.md",
+        "body_links": [
+          "beta"
+        ],
+        "property_links": [
+          "alpha"
+        ],
+        "findings": []
+      }
+    },
+    "normalize fm/block-scalar.md": "---\nmethod: |\n  see [[alpha]]\n---\n\n# Block [[beta]]\n",
+    "subgraph2 fm/block-scalar.md": {
+      "exit": 0,
+      "json": {
+        "root": "block-scalar",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link",
+          "no-frontmatter"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read fm/body-separators.md": {
+      "exit": 0,
+      "json": {
+        "name": "body-separators",
+        "path": "<vault>/fm/body-separators.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "line one line two\fform feed\u001cgroup \n"
+      }
+    },
+    "neighbors fm/body-separators.md": {
+      "exit": 0,
+      "json": {
+        "note": "body-separators",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/body-separators.md": {
+      "exit": 0,
+      "json": {
+        "root": "body-separators",
+        "nodes": [
+          "body-separators"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/body-separators.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/body-separators.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/body-separators.md": "---\ncreated: 2026-07-01\n---\n\nline one\nline two\nform feed\ngroup\n",
+    "subgraph2 fm/body-separators.md": {
+      "exit": 0,
+      "json": {
+        "root": "body-separators",
+        "nodes": [
+          "body-separators"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/bom.md": {
+      "exit": 0,
+      "json": {
+        "name": "bom",
+        "path": "<vault>/fm/bom.md",
+        "properties": {},
+        "body": "﻿---\ncreated: 2026-07-01\n---\n\n# BOM\n"
+      }
+    },
+    "neighbors fm/bom.md": {
+      "exit": 0,
+      "json": {
+        "note": "bom",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/bom.md": {
+      "exit": 0,
+      "json": {
+        "root": "bom",
+        "nodes": [
+          "bom"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/bom.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/bom.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/bom.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 fm/bom.md": {
+      "exit": 0,
+      "json": {
+        "root": "bom",
+        "nodes": [
+          "bom"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/comment.md": {
+      "exit": 0,
+      "json": {
+        "name": "comment",
+        "path": "<vault>/fm/comment.md",
+        "properties": {
+          "status": "active"
+        },
+        "body": "# Comment\n"
+      }
+    },
+    "neighbors fm/comment.md": {
+      "exit": 0,
+      "json": {
+        "note": "comment",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/comment.md": {
+      "exit": 0,
+      "json": {
+        "root": "comment",
+        "nodes": [
+          "comment"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/comment.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/comment.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/comment.md": "---\nstatus: active # revisit\n---\n\n# Comment\n",
+    "subgraph2 fm/comment.md": {
+      "exit": 0,
+      "json": {
+        "root": "comment",
+        "nodes": [
+          "comment"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/crlf.md": {
+      "exit": 0,
+      "json": {
+        "name": "crlf",
+        "path": "<vault>/fm/crlf.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# CRLF\n"
+      }
+    },
+    "neighbors fm/crlf.md": {
+      "exit": 0,
+      "json": {
+        "note": "crlf",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/crlf.md": {
+      "exit": 0,
+      "json": {
+        "root": "crlf",
+        "nodes": [
+          "crlf"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/crlf.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/crlf.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/crlf.md": "---\ncreated: 2026-07-01\n---\n\n# CRLF\n",
+    "subgraph2 fm/crlf.md": {
+      "exit": 0,
+      "json": {
+        "root": "crlf",
+        "nodes": [
+          "crlf"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/double-marker.md": {
+      "exit": 0,
+      "json": {
+        "name": "double-marker",
+        "path": "<vault>/fm/double-marker.md",
+        "properties": {},
+        "body": "status: draft\n---\n# Double marker\n"
+      }
+    },
+    "neighbors fm/double-marker.md": {
+      "exit": 0,
+      "json": {
+        "note": "double-marker",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/double-marker.md": {
+      "exit": 0,
+      "json": {
+        "root": "double-marker",
+        "nodes": [
+          "double-marker"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/double-marker.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/double-marker.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/double-marker.md": "---\n---\n\nstatus: draft\n---\n# Double marker\n",
+    "subgraph2 fm/double-marker.md": {
+      "exit": 0,
+      "json": {
+        "root": "double-marker",
+        "nodes": [
+          "double-marker"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/duplicate.md": {
+      "exit": 0,
+      "json": {
+        "name": "duplicate",
+        "path": "<vault>/fm/duplicate.md",
+        "properties": {},
+        "body": "# Duplicate\n"
+      }
+    },
+    "neighbors fm/duplicate.md": {
+      "exit": 0,
+      "json": {
+        "note": "duplicate",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/duplicate.md": {
+      "exit": 0,
+      "json": {
+        "root": "duplicate",
+        "nodes": [
+          "duplicate"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/duplicate.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/duplicate.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/duplicate.md": {
+      "error": "UnsupportedFrontmatter",
+      "message": "frontmatter is not valid YAML (DUPLICATE_KEY: Map keys must be unique at line 2, column 1:)"
+    },
+    "subgraph2 fm/duplicate.md": {
+      "exit": 0,
+      "json": {
+        "root": "duplicate",
+        "nodes": [
+          "duplicate"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/empty-block.md": {
+      "exit": 0,
+      "json": {
+        "name": "empty-block",
+        "path": "<vault>/fm/empty-block.md",
+        "properties": {},
+        "body": "# Empty block\n"
+      }
+    },
+    "neighbors fm/empty-block.md": {
+      "exit": 0,
+      "json": {
+        "note": "empty-block",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/empty-block.md": {
+      "exit": 0,
+      "json": {
+        "root": "empty-block",
+        "nodes": [
+          "empty-block"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/empty-block.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/empty-block.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/empty-block.md": "---\n---\n\n# Empty block\n",
+    "subgraph2 fm/empty-block.md": {
+      "exit": 0,
+      "json": {
+        "root": "empty-block",
+        "nodes": [
+          "empty-block"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/empty-item.md": {
+      "exit": 0,
+      "json": {
+        "name": "empty-item",
+        "path": "<vault>/fm/empty-item.md",
+        "properties": {},
+        "body": "# Empty item\n"
+      }
+    },
+    "neighbors fm/empty-item.md": {
+      "exit": 0,
+      "json": {
+        "note": "empty-item",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/empty-item.md": {
+      "exit": 0,
+      "json": {
+        "root": "empty-item",
+        "nodes": [
+          "empty-item"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/empty-item.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/empty-item.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/empty-item.md": {
+      "error": "UnsupportedFrontmatter",
+      "message": "frontmatter is not supported: a list item is empty"
+    },
+    "subgraph2 fm/empty-item.md": {
+      "exit": 0,
+      "json": {
+        "root": "empty-item",
+        "nodes": [
+          "empty-item"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/escape.md": {
+      "exit": 0,
+      "json": {
+        "name": "escape",
+        "path": "<vault>/fm/escape.md",
+        "properties": {
+          "a": "x\ny"
+        },
+        "body": "# Escape\n"
+      }
+    },
+    "neighbors fm/escape.md": {
+      "exit": 0,
+      "json": {
+        "note": "escape",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/escape.md": {
+      "exit": 0,
+      "json": {
+        "root": "escape",
+        "nodes": [
+          "escape"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/escape.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/escape.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/escape.md": "---\na: \"x\\ny\"\n---\n\n# Escape\n",
+    "subgraph2 fm/escape.md": {
+      "exit": 0,
+      "json": {
+        "root": "escape",
+        "nodes": [
+          "escape"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/folded.md": {
+      "exit": 0,
+      "json": {
+        "name": "folded",
+        "path": "<vault>/fm/folded.md",
+        "properties": {
+          "z": "a long paragraph",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Folded\n"
+      }
+    },
+    "neighbors fm/folded.md": {
+      "exit": 0,
+      "json": {
+        "note": "folded",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    "subgraph1 fm/folded.md": {
+      "exit": 0,
+      "json": {
+        "root": "folded",
+        "nodes": [
+          "alpha",
+          "beta",
+          "folded"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ]
+        ]
+      }
+    },
+    "check fm/folded.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/folded.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/folded.md": "---\ntopics:\n  - gardening\nz: >-\n  a long\n  paragraph\n---\n\n# Folded\n",
+    "subgraph2 fm/folded.md": {
+      "exit": 0,
+      "json": {
+        "root": "folded",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link",
+          "no-frontmatter"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read fm/item-after-flow.md": {
+      "exit": 0,
+      "json": {
+        "name": "item-after-flow",
+        "path": "<vault>/fm/item-after-flow.md",
+        "properties": {},
+        "body": "# Item after flow\n"
+      }
+    },
+    "neighbors fm/item-after-flow.md": {
+      "exit": 0,
+      "json": {
+        "note": "item-after-flow",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/item-after-flow.md": {
+      "exit": 0,
+      "json": {
+        "root": "item-after-flow",
+        "nodes": [
+          "item-after-flow"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/item-after-flow.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/item-after-flow.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/item-after-flow.md": {
+      "error": "UnsupportedFrontmatter",
+      "message": "frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: A block sequence may not be used as an implicit map key at line 2, column 1:)"
+    },
+    "subgraph2 fm/item-after-flow.md": {
+      "exit": 0,
+      "json": {
+        "root": "item-after-flow",
+        "nodes": [
+          "item-after-flow"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/leading-space-body.md": {
+      "exit": 0,
+      "json": {
+        "name": "leading-space-body",
+        "path": "<vault>/fm/leading-space-body.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "   \n# Leading space\n"
+      }
+    },
+    "neighbors fm/leading-space-body.md": {
+      "exit": 0,
+      "json": {
+        "note": "leading-space-body",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/leading-space-body.md": {
+      "exit": 0,
+      "json": {
+        "root": "leading-space-body",
+        "nodes": [
+          "leading-space-body"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/leading-space-body.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/leading-space-body.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/leading-space-body.md": "---\ncreated: 2026-07-01\n---\n\n# Leading space\n",
+    "subgraph2 fm/leading-space-body.md": {
+      "exit": 0,
+      "json": {
+        "root": "leading-space-body",
+        "nodes": [
+          "leading-space-body"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/line-separator.md": {
+      "exit": 0,
+      "json": {
+        "name": "line-separator",
+        "path": "<vault>/fm/line-separator.md",
+        "properties": {},
+        "body": "# Separator\n"
+      }
+    },
+    "neighbors fm/line-separator.md": {
+      "exit": 0,
+      "json": {
+        "note": "line-separator",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/line-separator.md": {
+      "exit": 0,
+      "json": {
+        "root": "line-separator",
+        "nodes": [
+          "line-separator"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/line-separator.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/line-separator.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/line-separator.md": {
+      "error": "UnsupportedFrontmatter",
+      "message": "frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: Nested mappings are not allowed in compact mappings at line 1, column 4:)"
+    },
+    "subgraph2 fm/line-separator.md": {
+      "exit": 0,
+      "json": {
+        "root": "line-separator",
+        "nodes": [
+          "line-separator"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/messy.md": {
+      "exit": 0,
+      "json": {
+        "name": "messy",
+        "path": "<vault>/fm/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-16",
+          "authors": [
+            "claude",
+            "co'dex"
+          ],
+          "empty": "",
+          "none": [],
+          "quoted": "say \"hi\" \\ there",
+          "comma": [
+            "a",
+            "b, c"
+          ],
+          "key with space": "v"
+        },
+        "body": "# Messy   \n\n\nBody line with trailing spaces   \n\n\n\n"
+      }
+    },
+    "neighbors fm/messy.md": {
+      "exit": 0,
+      "json": {
+        "note": "messy",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/messy.md": {
+      "exit": 0,
+      "json": {
+        "root": "messy",
+        "nodes": [
+          "messy"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/messy.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/messy.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/messy.md": "---\nauthors:\n  - claude\n  - co'dex\ncomma:\n  - a\n  - b, c\ncreated: 2026-07-16\nempty:\nkey with space: v\nnone: []\nquoted: say \"hi\" \\ there\nupdated: 2026-07-17\n---\n\n# Messy   \n\n\nBody line with trailing spaces   \n",
+    "subgraph2 fm/messy.md": {
+      "exit": 0,
+      "json": {
+        "root": "messy",
+        "nodes": [
+          "messy"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/multi-line.md": {
+      "exit": 0,
+      "json": {
+        "name": "multi-line",
+        "path": "<vault>/fm/multi-line.md",
+        "properties": {
+          "title": "one two"
+        },
+        "body": "# Multi-line\n"
+      }
+    },
+    "neighbors fm/multi-line.md": {
+      "exit": 0,
+      "json": {
+        "note": "multi-line",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/multi-line.md": {
+      "exit": 0,
+      "json": {
+        "root": "multi-line",
+        "nodes": [
+          "multi-line"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/multi-line.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/multi-line.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/multi-line.md": "---\ntitle: one two\n---\n\n# Multi-line\n",
+    "subgraph2 fm/multi-line.md": {
+      "exit": 0,
+      "json": {
+        "root": "multi-line",
+        "nodes": [
+          "multi-line"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/needs-quotes.md": {
+      "exit": 0,
+      "json": {
+        "name": "needs-quotes",
+        "path": "<vault>/fm/needs-quotes.md",
+        "properties": {
+          "a": "[[Knowledge]]",
+          "b": "x: y",
+          "c": "x #y",
+          "d": "- x",
+          "e": "`code`",
+          "f": "end:",
+          "g": "@at"
+        },
+        "body": "body\n"
+      }
+    },
+    "neighbors fm/needs-quotes.md": {
+      "exit": 0,
+      "json": {
+        "note": "needs-quotes",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "Knowledge"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/needs-quotes.md": {
+      "exit": 0,
+      "json": {
+        "root": "needs-quotes",
+        "nodes": [
+          "needs-quotes"
+        ],
+        "unresolved": [
+          "Knowledge"
+        ],
+        "edges": []
+      }
+    },
+    "check fm/needs-quotes.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/needs-quotes.md",
+        "body_links": [],
+        "property_links": [
+          "Knowledge"
+        ],
+        "findings": []
+      }
+    },
+    "normalize fm/needs-quotes.md": "---\na: \"[[Knowledge]]\"\nb: \"x: y\"\nc: \"x #y\"\nd: \"- x\"\ne: \"`code`\"\nf: \"end:\"\ng: \"@at\"\n---\n\nbody\n",
+    "subgraph2 fm/needs-quotes.md": {
+      "exit": 0,
+      "json": {
+        "root": "needs-quotes",
+        "nodes": [
+          "needs-quotes"
+        ],
+        "unresolved": [
+          "Knowledge"
+        ],
+        "edges": []
+      }
+    },
+    "read fm/nested-link.md": {
+      "exit": 0,
+      "json": {
+        "name": "nested-link",
+        "path": "<vault>/fm/nested-link.md",
+        "properties": {
+          "source": {
+            "note": "[[beta]]"
+          }
+        },
+        "body": "# Nested link\n"
+      }
+    },
+    "neighbors fm/nested-link.md": {
+      "exit": 0,
+      "json": {
+        "note": "nested-link",
+        "outgoing": [
+          "beta"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/nested-link.md": {
+      "exit": 0,
+      "json": {
+        "root": "nested-link",
+        "nodes": [
+          "beta",
+          "nested-link"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check fm/nested-link.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/nested-link.md",
+        "body_links": [],
+        "property_links": [
+          "beta"
+        ],
+        "findings": []
+      }
+    },
+    "normalize fm/nested-link.md": "---\nsource:\n  note: \"[[beta]]\"\n---\n\n# Nested link\n",
+    "subgraph2 fm/nested-link.md": {
+      "exit": 0,
+      "json": {
+        "root": "nested-link",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read fm/nested.md": {
+      "exit": 0,
+      "json": {
+        "name": "nested",
+        "path": "<vault>/fm/nested.md",
+        "properties": {
+          "nested": {
+            "key": "value"
+          }
+        },
+        "body": "# Nested\n"
+      }
+    },
+    "neighbors fm/nested.md": {
+      "exit": 0,
+      "json": {
+        "note": "nested",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/nested.md": {
+      "exit": 0,
+      "json": {
+        "root": "nested",
+        "nodes": [
+          "nested"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/nested.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/nested.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/nested.md": "---\nnested:\n  key: value\n---\n\n# Nested\n",
+    "subgraph2 fm/nested.md": {
+      "exit": 0,
+      "json": {
+        "root": "nested",
+        "nodes": [
+          "nested"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/never-closed.md": {
+      "exit": 0,
+      "json": {
+        "name": "never-closed",
+        "path": "<vault>/fm/never-closed.md",
+        "properties": {},
+        "body": "# Never closed\n"
+      }
+    },
+    "neighbors fm/never-closed.md": {
+      "exit": 0,
+      "json": {
+        "note": "never-closed",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/never-closed.md": {
+      "exit": 0,
+      "json": {
+        "root": "never-closed",
+        "nodes": [
+          "never-closed"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/never-closed.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/never-closed.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/never-closed.md": "---\n---\n\n# Never closed\n",
+    "subgraph2 fm/never-closed.md": {
+      "exit": 0,
+      "json": {
+        "root": "never-closed",
+        "nodes": [
+          "never-closed"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/no-frontmatter.md": {
+      "exit": 0,
+      "json": {
+        "name": "no-frontmatter",
+        "path": "<vault>/fm/no-frontmatter.md",
+        "properties": {},
+        "body": "# No frontmatter [[alpha]]\n"
+      }
+    },
+    "neighbors fm/no-frontmatter.md": {
+      "exit": 0,
+      "json": {
+        "note": "no-frontmatter",
+        "outgoing": [
+          "alpha"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/no-frontmatter.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-frontmatter",
+        "nodes": [
+          "alpha",
+          "no-frontmatter"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check fm/no-frontmatter.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/no-frontmatter.md",
+        "body_links": [
+          "alpha"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/no-frontmatter.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 fm/no-frontmatter.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-frontmatter",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "no-frontmatter"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read fm/quoted-typed-key.md": {
+      "exit": 0,
+      "json": {
+        "name": "quoted-typed-key",
+        "path": "<vault>/fm/quoted-typed-key.md",
+        "properties": {
+          "null": "y",
+          "a": "x"
+        },
+        "body": "# Quoted key\n"
+      }
+    },
+    "neighbors fm/quoted-typed-key.md": {
+      "exit": 0,
+      "json": {
+        "note": "quoted-typed-key",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/quoted-typed-key.md": {
+      "exit": 0,
+      "json": {
+        "root": "quoted-typed-key",
+        "nodes": [
+          "quoted-typed-key"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/quoted-typed-key.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/quoted-typed-key.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/quoted-typed-key.md": "---\na: x\n\"null\": y\n---\n\n# Quoted key\n",
+    "subgraph2 fm/quoted-typed-key.md": {
+      "exit": 0,
+      "json": {
+        "root": "quoted-typed-key",
+        "nodes": [
+          "quoted-typed-key"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/tab.md": {
+      "exit": 0,
+      "json": {
+        "name": "tab",
+        "path": "<vault>/fm/tab.md",
+        "properties": {
+          "a": "b"
+        },
+        "body": "# Tab\n"
+      }
+    },
+    "neighbors fm/tab.md": {
+      "exit": 0,
+      "json": {
+        "note": "tab",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/tab.md": {
+      "exit": 0,
+      "json": {
+        "root": "tab",
+        "nodes": [
+          "tab"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/tab.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/tab.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/tab.md": "---\na: b\n---\n\n# Tab\n",
+    "subgraph2 fm/tab.md": {
+      "exit": 0,
+      "json": {
+        "root": "tab",
+        "nodes": [
+          "tab"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/top-level-item.md": {
+      "exit": 0,
+      "json": {
+        "name": "top-level-item",
+        "path": "<vault>/fm/top-level-item.md",
+        "properties": {
+          "tags": [
+            "top"
+          ]
+        },
+        "body": "# Top-level item\n"
+      }
+    },
+    "neighbors fm/top-level-item.md": {
+      "exit": 0,
+      "json": {
+        "note": "top-level-item",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/top-level-item.md": {
+      "exit": 0,
+      "json": {
+        "root": "top-level-item",
+        "nodes": [
+          "top-level-item"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/top-level-item.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/top-level-item.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/top-level-item.md": "---\ntags:\n  - top\n---\n\n# Top-level item\n",
+    "subgraph2 fm/top-level-item.md": {
+      "exit": 0,
+      "json": {
+        "root": "top-level-item",
+        "nodes": [
+          "top-level-item"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/typed.md": {
+      "exit": 0,
+      "json": {
+        "name": "typed",
+        "path": "<vault>/fm/typed.md",
+        "properties": {
+          "flag": "true"
+        },
+        "body": "# Typed\n"
+      }
+    },
+    "neighbors fm/typed.md": {
+      "exit": 0,
+      "json": {
+        "note": "typed",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/typed.md": {
+      "exit": 0,
+      "json": {
+        "root": "typed",
+        "nodes": [
+          "typed"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/typed.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/typed.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/typed.md": "---\nflag: \"true\"\n---\n\n# Typed\n",
+    "subgraph2 fm/typed.md": {
+      "exit": 0,
+      "json": {
+        "root": "typed",
+        "nodes": [
+          "typed"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read fm/unquoted-wikilink.md": {
+      "exit": 0,
+      "json": {
+        "name": "unquoted-wikilink",
+        "path": "<vault>/fm/unquoted-wikilink.md",
+        "properties": {
+          "project": [
+            [
+              "X"
+            ]
+          ]
+        },
+        "body": "# Unquoted\n"
+      }
+    },
+    "neighbors fm/unquoted-wikilink.md": {
+      "exit": 0,
+      "json": {
+        "note": "unquoted-wikilink",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 fm/unquoted-wikilink.md": {
+      "exit": 0,
+      "json": {
+        "root": "unquoted-wikilink",
+        "nodes": [
+          "unquoted-wikilink"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check fm/unquoted-wikilink.md": {
+      "exit": 0,
+      "json": {
+        "path": "fm/unquoted-wikilink.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize fm/unquoted-wikilink.md": "---\nproject: [[X]]\n---\n\n# Unquoted\n",
+    "subgraph2 fm/unquoted-wikilink.md": {
+      "exit": 0,
+      "json": {
+        "root": "unquoted-wikilink",
+        "nodes": [
+          "unquoted-wikilink"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read human/sam3.1-fine-tune.md": {
+      "exit": 0,
+      "json": {
+        "name": "sam3.1-fine-tune",
+        "path": "<vault>/human/sam3.1-fine-tune.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Fine tune.\n"
+      }
+    },
+    "neighbors human/sam3.1-fine-tune.md": {
+      "exit": 0,
+      "json": {
+        "note": "sam3.1-fine-tune",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "dotted-links"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 human/sam3.1-fine-tune.md": {
+      "exit": 0,
+      "json": {
+        "root": "sam3.1-fine-tune",
+        "nodes": [
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check human/sam3.1-fine-tune.md": {
+      "exit": 0,
+      "json": {
+        "path": "human/sam3.1-fine-tune.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize human/sam3.1-fine-tune.md": "---\ncreated: 2026-07-01\n---\n\nFine tune.\n",
+    "subgraph2 human/sam3.1-fine-tune.md": {
+      "exit": 0,
+      "json": {
+        "root": "sam3.1-fine-tune",
+        "nodes": [
+          "AGENTS",
+          "AGENTS.v2",
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read inbox/basic-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "basic-date",
+        "path": "<vault>/inbox/basic-date.md",
+        "properties": {
+          "created": "20261005"
+        },
+        "body": "Basic date.\n"
+      }
+    },
+    "neighbors inbox/basic-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "basic-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/basic-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "basic-date",
+        "nodes": [
+          "basic-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/basic-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/basic-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/basic-date.md": "---\ncreated: 20261005\n---\n\nBasic date.\n",
+    "subgraph2 inbox/basic-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "basic-date",
+        "nodes": [
+          "basic-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/fresh.md": {
+      "exit": 0,
+      "json": {
+        "name": "fresh",
+        "path": "<vault>/inbox/fresh.md",
+        "properties": {
+          "created": "2026-10-06"
+        },
+        "body": "Fresh.\n"
+      }
+    },
+    "neighbors inbox/fresh.md": {
+      "exit": 0,
+      "json": {
+        "note": "fresh",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/fresh.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh",
+        "nodes": [
+          "fresh"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/fresh.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/fresh.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/fresh.md": "---\ncreated: 2026-10-06\n---\n\nFresh.\n",
+    "subgraph2 inbox/fresh.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh",
+        "nodes": [
+          "fresh"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "invalid-date",
+        "path": "<vault>/inbox/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      }
+    },
+    "neighbors inbox/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "invalid-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "invalid-date",
+        "nodes": [
+          "invalid-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/invalid-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/invalid-date.md": "---\ncreated: 2026-02-30\n---\n\nInvalid.\n",
+    "subgraph2 inbox/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "invalid-date",
+        "nodes": [
+          "invalid-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "name": "deep",
+        "path": "<vault>/inbox/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      }
+    },
+    "neighbors inbox/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "note": "deep",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "root": "deep",
+        "nodes": [
+          "deep"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/nested/deep.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/nested/deep.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 inbox/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "root": "deep",
+        "nodes": [
+          "deep"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/no-created.md": {
+      "exit": 0,
+      "json": {
+        "name": "no-created",
+        "path": "<vault>/inbox/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      }
+    },
+    "neighbors inbox/no-created.md": {
+      "exit": 0,
+      "json": {
+        "note": "no-created",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/no-created.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-created",
+        "nodes": [
+          "no-created"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/no-created.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/no-created.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/no-created.md": "---\nstatus: draft\n---\n\nNo created.\n",
+    "subgraph2 inbox/no-created.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-created",
+        "nodes": [
+          "no-created"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/stale.md": {
+      "exit": 0,
+      "json": {
+        "name": "stale",
+        "path": "<vault>/inbox/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      }
+    },
+    "neighbors inbox/stale.md": {
+      "exit": 0,
+      "json": {
+        "note": "stale",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/stale.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale",
+        "nodes": [
+          "stale"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/stale.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/stale.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/stale.md": "---\ncreated: 2026-01-01\n---\n\nStale.\n",
+    "subgraph2 inbox/stale.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale",
+        "nodes": [
+          "stale"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "trailing-date",
+        "path": "<vault>/inbox/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      }
+    },
+    "neighbors inbox/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "trailing-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "trailing-date",
+        "nodes": [
+          "trailing-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/trailing-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/trailing-date.md": "---\ncreated: 20261005xx\n---\n\nTrailing characters.\n",
+    "subgraph2 inbox/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "trailing-date",
+        "nodes": [
+          "trailing-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "name": "week-date-tail",
+        "path": "<vault>/inbox/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      }
+    },
+    "neighbors inbox/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "note": "week-date-tail",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date-tail",
+        "nodes": [
+          "week-date-tail"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/week-date-tail.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/week-date-tail.md": "---\ncreated: 2026W403xx\n---\n\nWeek date, trailing.\n",
+    "subgraph2 inbox/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date-tail",
+        "nodes": [
+          "week-date-tail"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/week-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "week-date",
+        "path": "<vault>/inbox/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
+      }
+    },
+    "neighbors inbox/week-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "week-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/week-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date",
+        "nodes": [
+          "week-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/week-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/week-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/week-date.md": "---\ncreated: 2026-W40-3\n---\n\nWeek date.\n",
+    "subgraph2 inbox/week-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date",
+        "nodes": [
+          "week-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read links/alias.md": {
+      "exit": 0,
+      "json": {
+        "name": "alias",
+        "path": "<vault>/links/alias.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      }
+    },
+    "neighbors links/alias.md": {
+      "exit": 0,
+      "json": {
+        "note": "alias",
+        "outgoing": [
+          "gamma"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 links/alias.md": {
+      "exit": 0,
+      "json": {
+        "root": "alias",
+        "nodes": [
+          "alias",
+          "gamma"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alias",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check links/alias.md": {
+      "exit": 1,
+      "json": {
+        "path": "notes/references.md",
+        "body_links": [
+          "beta",
+          "gamma",
+          "notes/café"
+        ],
+        "property_links": [],
+        "findings": [
+          {
+            "code": "unlinked-note",
+            "line": 7,
+            "target": "notes/alpha",
+            "message": "Existing note reference \"notes/alpha.md\": link to \"notes/alpha\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 7,
+            "target": "notes/beta",
+            "message": "Existing note reference \"beta.md\": link to \"notes/beta\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 8,
+            "target": "notes/gamma",
+            "message": "Existing note reference \"notes/gamma.md\": link to \"notes/gamma\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 23,
+            "target": "llmOS",
+            "message": "Existing note reference \"llmOS.md\": link to \"llmOS\" using the note title or a natural phrase, not the filename."
+          }
+        ]
+      }
+    },
+    "normalize links/alias.md": "---\ncreated: 2026-07-01\n---\n\n# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n",
+    "subgraph2 links/alias.md": {
+      "exit": 0,
+      "json": {
+        "root": "alias",
+        "nodes": [
+          "alias",
+          "beta",
+          "gamma",
+          "references"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alias",
+            "gamma",
+            "link"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read llmOS.md": {
+      "exit": 0,
+      "json": {
+        "name": "llmOS",
+        "path": "<vault>/llmOS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Root\n\nSee [[projects/llmos/llmos|the project]].\n"
+      }
+    },
+    "neighbors llmOS.md": {
+      "exit": 0,
+      "json": {
+        "note": "llmOS",
+        "outgoing": [
+          "llmos"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 llmOS.md": {
+      "exit": 0,
+      "json": {
+        "root": "llmOS",
+        "nodes": [
+          "llmOS",
+          "llmos"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check llmOS.md": {
+      "exit": 0,
+      "json": {
+        "path": "llmOS.md",
+        "body_links": [
+          "projects/llmos/llmos"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize llmOS.md": "---\ncreated: 2026-07-01\n---\n\n# Root\n\nSee [[projects/llmos/llmos|the project]].\n",
+    "subgraph2 llmOS.md": {
+      "exit": 0,
+      "json": {
+        "root": "llmOS",
+        "nodes": [
+          "2026-10-01",
+          "beta",
+          "llmOS",
+          "llmos"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/AGENTS.v2.md": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS.v2",
+        "path": "<vault>/notes/AGENTS.v2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Version two.\n"
+      }
+    },
+    "neighbors notes/AGENTS.v2.md": {
+      "exit": 0,
+      "json": {
+        "note": "AGENTS.v2",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "dotted-links"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/AGENTS.v2.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS.v2",
+        "nodes": [
+          "AGENTS.v2",
+          "dotted-links"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/AGENTS.v2.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/AGENTS.v2.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/AGENTS.v2.md": "---\ncreated: 2026-07-01\n---\n\nVersion two.\n",
+    "subgraph2 notes/AGENTS.v2.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS.v2",
+        "nodes": [
+          "AGENTS",
+          "AGENTS.v2",
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\n[[notes/alpha.md]] [[beta#Heading|label]] [[ALPHA]] ![[beta]]\n\n| a | b |\n| - | - |\n| [[beta\\|escaped]] | [[ghost note]] |\n"
+      }
+    },
+    "neighbors notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "note": "alpha",
+        "outgoing": [
+          "beta"
+        ],
+        "unresolved_outgoing": [
+          "ghost note"
+        ],
+        "backlinks": [
+          "block-scalar",
+          "café",
+          "discarded",
+          "no-frontmatter"
+        ],
+        "topic_siblings": [
+          "beta",
+          "folded"
+        ]
+      }
+    },
+    "subgraph1 notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "root": "alpha",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "no-frontmatter"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/alpha.md",
+        "body_links": [
+          "ALPHA",
+          "beta",
+          "ghost note",
+          "notes/alpha.md"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/alpha.md": "---\ncreated: 2026-07-01\ntopics:\n  - gardening\n---\n\n# Alpha\n\n[[notes/alpha.md]] [[beta#Heading|label]] [[ALPHA]] ![[beta]]\n\n| a | b |\n| - | - |\n| [[beta\\|escaped]] | [[ghost note]] |\n",
+    "subgraph2 notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "root": "alpha",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link",
+          "no-frontmatter",
+          "𝔘nicode"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ],
+          [
+            "𝔘nicode",
+            "café",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening",
+            "b, c"
+          ],
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# Beta\n\n## Heading\n\nNo body links.\n"
+      }
+    },
+    "neighbors notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "note": "beta",
+        "outgoing": [
+          "llmos"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "alpha",
+          "block-scalar",
+          "nested-link"
+        ],
+        "topic_siblings": [
+          "alpha",
+          "folded",
+          "gamma"
+        ]
+      }
+    },
+    "subgraph1 notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "root": "beta",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/beta.md",
+        "body_links": [],
+        "property_links": [
+          "projects/llmos/llmos"
+        ],
+        "findings": []
+      }
+    },
+    "normalize notes/beta.md": "---\ncreated: 2026-07-01\nproject:\n  - \"[[projects/llmos/llmos|llmOS]]\"\ntopics:\n  - gardening\n  - b, c\n---\n\n# Beta\n\n## Heading\n\nNo body links.\n",
+    "subgraph2 notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "root": "beta",
+        "nodes": [
+          "2026-10-01",
+          "alias",
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "gamma",
+          "llmOS",
+          "llmos",
+          "nested-link",
+          "no-frontmatter",
+          "references"
+        ],
+        "unresolved": [
+          "Projects",
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "alias",
+            "gamma",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ],
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/café.md": {
+      "exit": 0,
+      "json": {
+        "name": "café",
+        "path": "<vault>/notes/café.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Accented [[notes/alpha]].\n"
+      }
+    },
+    "neighbors notes/café.md": {
+      "exit": 0,
+      "json": {
+        "note": "café",
+        "outgoing": [
+          "alpha"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "𝔘nicode"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/café.md": {
+      "exit": 0,
+      "json": {
+        "root": "café",
+        "nodes": [
+          "alpha",
+          "café",
+          "𝔘nicode"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "𝔘nicode",
+            "café",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/café.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/café.md",
+        "body_links": [
+          "notes/alpha"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/café.md": "---\ncreated: 2026-07-01\n---\n\nAccented [[notes/alpha]].\n",
+    "subgraph2 notes/café.md": {
+      "exit": 0,
+      "json": {
+        "root": "café",
+        "nodes": [
+          "alpha",
+          "beta",
+          "block-scalar",
+          "café",
+          "discarded",
+          "folded",
+          "no-frontmatter",
+          "𝔘nicode"
+        ],
+        "unresolved": [
+          "ghost note"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "block-scalar",
+            "alpha",
+            "link"
+          ],
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "discarded",
+            "alpha",
+            "link"
+          ],
+          [
+            "no-frontmatter",
+            "alpha",
+            "link"
+          ],
+          [
+            "𝔘nicode",
+            "café",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/dotted-links.md": {
+      "exit": 0,
+      "json": {
+        "name": "dotted-links",
+        "path": "<vault>/notes/dotted-links.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[AGENTS.v2]] [[human/sam3.1-fine-tune]] [[sam3.1-fine-tune]] [[AGENTS]]\n"
+      }
+    },
+    "neighbors notes/dotted-links.md": {
+      "exit": 0,
+      "json": {
+        "note": "dotted-links",
+        "outgoing": [
+          "AGENTS",
+          "AGENTS.v2",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/dotted-links.md": {
+      "exit": 0,
+      "json": {
+        "root": "dotted-links",
+        "nodes": [
+          "AGENTS",
+          "AGENTS.v2",
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/dotted-links.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/dotted-links.md",
+        "body_links": [
+          "AGENTS",
+          "AGENTS.v2",
+          "human/sam3.1-fine-tune",
+          "sam3.1-fine-tune"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/dotted-links.md": "---\ncreated: 2026-07-01\n---\n\n[[AGENTS.v2]] [[human/sam3.1-fine-tune]] [[sam3.1-fine-tune]] [[AGENTS]]\n",
+    "subgraph2 notes/dotted-links.md": {
+      "exit": 0,
+      "json": {
+        "root": "dotted-links",
+        "nodes": [
+          "AGENTS",
+          "AGENTS.v2",
+          "dotted-links",
+          "sam3.1-fine-tune"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "dotted-links",
+            "AGENTS",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "AGENTS.v2",
+            "link"
+          ],
+          [
+            "dotted-links",
+            "sam3.1-fine-tune",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": "b, c"
+        },
+        "body": "# Gamma\n"
+      }
+    },
+    "neighbors notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "note": "gamma",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "alias",
+          "references"
+        ],
+        "topic_siblings": [
+          "beta"
+        ]
+      }
+    },
+    "subgraph1 notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "root": "gamma",
+        "nodes": [
+          "alias",
+          "beta",
+          "gamma",
+          "references"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alias",
+            "gamma",
+            "link"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/gamma.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/gamma.md": "---\ncreated: 2026-07-01\ntopics: b, c\n---\n\n# Gamma\n",
+    "subgraph2 notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "root": "gamma",
+        "nodes": [
+          "alias",
+          "alpha",
+          "beta",
+          "block-scalar",
+          "folded",
+          "gamma",
+          "llmos",
+          "nested-link",
+          "references"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alias",
+            "gamma",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ],
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/references.md": {
+      "exit": 0,
+      "json": {
+        "name": "references",
+        "path": "<vault>/notes/references.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      }
+    },
+    "neighbors notes/references.md": {
+      "exit": 0,
+      "json": {
+        "note": "references",
+        "outgoing": [
+          "gamma"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/references.md": {
+      "exit": 0,
+      "json": {
+        "root": "references",
+        "nodes": [
+          "gamma",
+          "references"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/references.md": {
+      "exit": 1,
+      "json": {
+        "path": "notes/references.md",
+        "body_links": [
+          "beta",
+          "gamma",
+          "notes/café"
+        ],
+        "property_links": [],
+        "findings": [
+          {
+            "code": "unlinked-note",
+            "line": 7,
+            "target": "notes/alpha",
+            "message": "Existing note reference \"notes/alpha.md\": link to \"notes/alpha\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 7,
+            "target": "notes/beta",
+            "message": "Existing note reference \"beta.md\": link to \"notes/beta\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 8,
+            "target": "notes/gamma",
+            "message": "Existing note reference \"notes/gamma.md\": link to \"notes/gamma\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "unlinked-note",
+            "line": 23,
+            "target": "llmOS",
+            "message": "Existing note reference \"llmOS.md\": link to \"llmOS\" using the note title or a natural phrase, not the filename."
+          }
+        ]
+      }
+    },
+    "normalize notes/references.md": "---\ncreated: 2026-07-01\n---\n\n# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n",
+    "subgraph2 notes/references.md": {
+      "exit": 0,
+      "json": {
+        "root": "references",
+        "nodes": [
+          "alias",
+          "beta",
+          "gamma",
+          "references"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alias",
+            "gamma",
+            "link"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "references",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/𝔘nicode.md": {
+      "exit": 0,
+      "json": {
+        "name": "𝔘nicode",
+        "path": "<vault>/notes/𝔘nicode.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "𝔘𝔘 before a reference: notes/alpha.md and [[café]].\n"
+      }
+    },
+    "neighbors notes/𝔘nicode.md": {
+      "exit": 0,
+      "json": {
+        "note": "𝔘nicode",
+        "outgoing": [
+          "café"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/𝔘nicode.md": {
+      "exit": 0,
+      "json": {
+        "root": "𝔘nicode",
+        "nodes": [
+          "café",
+          "𝔘nicode"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "𝔘nicode",
+            "café",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/𝔘nicode.md": {
+      "exit": 1,
+      "json": {
+        "path": "notes/𝔘nicode.md",
+        "body_links": [
+          "café"
+        ],
+        "property_links": [],
+        "findings": [
+          {
+            "code": "unlinked-note",
+            "line": 5,
+            "target": "notes/alpha",
+            "message": "Existing note reference \"notes/alpha.md\": link to \"notes/alpha\" using the note title or a natural phrase, not the filename."
+          }
+        ]
+      }
+    },
+    "normalize notes/𝔘nicode.md": "---\ncreated: 2026-07-01\n---\n\n𝔘𝔘 before a reference: notes/alpha.md and [[café]].\n",
+    "subgraph2 notes/𝔘nicode.md": {
+      "exit": 0,
+      "json": {
+        "root": "𝔘nicode",
+        "nodes": [
+          "alpha",
+          "café",
+          "𝔘nicode"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "café",
+            "alpha",
+            "link"
+          ],
+          [
+            "𝔘nicode",
+            "café",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read projects/demo/demo.md": {
+      "exit": 0,
+      "json": {
+        "name": "demo",
+        "path": "<vault>/projects/demo/demo.md",
+        "properties": {
+          "categories": [
+            "[[Projects]]"
+          ]
+        },
+        "body": "# Demo Project\n"
+      }
+    },
+    "neighbors projects/demo/demo.md": {
+      "exit": 0,
+      "json": {
+        "note": "demo",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "Projects"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 projects/demo/demo.md": {
+      "exit": 0,
+      "json": {
+        "root": "demo",
+        "nodes": [
+          "demo"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": []
+      }
+    },
+    "check projects/demo/demo.md": {
+      "exit": 0,
+      "json": {
+        "path": "projects/demo/demo.md",
+        "body_links": [],
+        "property_links": [
+          "Projects"
+        ],
+        "findings": []
+      }
+    },
+    "normalize projects/demo/demo.md": "---\ncategories:\n  - \"[[Projects]]\"\n---\n\n# Demo Project\n",
+    "subgraph2 projects/demo/demo.md": {
+      "exit": 0,
+      "json": {
+        "root": "demo",
+        "nodes": [
+          "demo"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": []
+      }
+    },
+    "read projects/demo/notes/unowned.md": {
+      "exit": 0,
+      "json": {
+        "name": "unowned",
+        "path": "<vault>/projects/demo/notes/unowned.md",
+        "properties": {
+          "status": "someday",
+          "authors": [
+            "claude",
+            "robot"
+          ],
+          "type": "x",
+          "categories": "Knowledge",
+          "topics": [
+            "plain",
+            "[[ok]]"
+          ],
+          "blank": ""
+        },
+        "body": "# Unowned\n"
+      }
+    },
+    "neighbors projects/demo/notes/unowned.md": {
+      "exit": 0,
+      "json": {
+        "note": "unowned",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "ok"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 projects/demo/notes/unowned.md": {
+      "exit": 0,
+      "json": {
+        "root": "unowned",
+        "nodes": [
+          "unowned"
+        ],
+        "unresolved": [
+          "ok"
+        ],
+        "edges": []
+      }
+    },
+    "check projects/demo/notes/unowned.md": {
+      "exit": 0,
+      "json": {
+        "path": "projects/demo/notes/unowned.md",
+        "body_links": [],
+        "property_links": [
+          "ok"
+        ],
+        "findings": []
+      }
+    },
+    "normalize projects/demo/notes/unowned.md": "---\nauthors:\n  - claude\n  - robot\nblank:\ncategories: Knowledge\nstatus: someday\ntopics:\n  - plain\n  - \"[[ok]]\"\ntype: x\n---\n\n# Unowned\n",
+    "subgraph2 projects/demo/notes/unowned.md": {
+      "exit": 0,
+      "json": {
+        "root": "unowned",
+        "nodes": [
+          "unowned"
+        ],
+        "unresolved": [
+          "ok"
+        ],
+        "edges": []
+      }
+    },
+    "read projects/llmos/llmos.md": {
+      "exit": 0,
+      "json": {
+        "name": "llmos",
+        "path": "<vault>/projects/llmos/llmos.md",
+        "properties": {
+          "categories": [
+            "[[Projects]]"
+          ],
+          "created": "2026-07-01"
+        },
+        "body": "# llmOS\n\nBack to [[llmOS]] and [[llmos]].\n"
+      }
+    },
+    "neighbors projects/llmos/llmos.md": {
+      "exit": 0,
+      "json": {
+        "note": "llmos",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "Projects"
+        ],
+        "backlinks": [
+          "2026-10-01",
+          "beta",
+          "llmOS"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 projects/llmos/llmos.md": {
+      "exit": 0,
+      "json": {
+        "root": "llmos",
+        "nodes": [
+          "2026-10-01",
+          "beta",
+          "llmOS",
+          "llmos"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check projects/llmos/llmos.md": {
+      "exit": 0,
+      "json": {
+        "path": "projects/llmos/llmos.md",
+        "body_links": [
+          "llmOS",
+          "llmos"
+        ],
+        "property_links": [
+          "Projects"
+        ],
+        "findings": []
+      }
+    },
+    "normalize projects/llmos/llmos.md": "---\ncategories:\n  - \"[[Projects]]\"\ncreated: 2026-07-01\n---\n\n# llmOS\n\nBack to [[llmOS]] and [[llmos]].\n",
+    "subgraph2 projects/llmos/llmos.md": {
+      "exit": 0,
+      "json": {
+        "root": "llmos",
+        "nodes": [
+          "2026-10-01",
+          "alpha",
+          "beta",
+          "block-scalar",
+          "folded",
+          "gamma",
+          "llmOS",
+          "llmos",
+          "nested-link"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "folded",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "block-scalar",
+            "beta",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ],
+          [
+            "nested-link",
+            "beta",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read reviews/daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-01",
+        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      }
+    },
+    "neighbors reviews/daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "note": "2026-10-01",
+        "outgoing": [
+          "llmos"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 reviews/daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-01",
+        "nodes": [
+          "2026-10-01",
+          "llmos"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check reviews/daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "path": "reviews/daily/2026-10-01.md",
+        "body_links": [],
+        "property_links": [
+          "projects/llmos/llmos"
+        ],
+        "findings": []
+      }
+    },
+    "normalize reviews/daily/2026-10-01.md": "---\ncreated: 2026-10-01\nproject:\n  - \"[[projects/llmos/llmos|llmOS]]\"\n---\n\n# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n",
+    "subgraph2 reviews/daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-01",
+        "nodes": [
+          "2026-10-01",
+          "beta",
+          "llmOS",
+          "llmos"
+        ],
+        "unresolved": [
+          "Projects"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read reviews/daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-02",
+        "path": "<vault>/reviews/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
+      }
+    },
+    "neighbors reviews/daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "note": "2026-10-02",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 reviews/daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-02",
+        "nodes": [
+          "2026-10-02"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check reviews/daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "path": "reviews/daily/2026-10-02.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize reviews/daily/2026-10-02.md": "---\ncreated: 10/02/2026\n---\n\n# 2026-10-02\n",
+    "subgraph2 reviews/daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-02",
+        "nodes": [
+          "2026-10-02"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read skills/tool/SKILL.md": {
+      "exit": 0,
+      "json": {
+        "name": "SKILL",
+        "path": "<vault>/skills/tool/SKILL.md",
+        "properties": {
+          "name": "tool"
+        },
+        "body": "# Missing description\n"
+      }
+    },
+    "neighbors skills/tool/SKILL.md": {
+      "exit": 0,
+      "json": {
+        "note": "SKILL",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 skills/tool/SKILL.md": {
+      "exit": 0,
+      "json": {
+        "root": "SKILL",
+        "nodes": [
+          "SKILL"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check skills/tool/SKILL.md": {
+      "exit": 0,
+      "json": {
+        "path": "skills/tool/SKILL.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize skills/tool/SKILL.md": "---\nname: tool\n---\n\n# Missing description\n",
+    "subgraph2 skills/tool/SKILL.md": {
+      "exit": 0,
+      "json": {
+        "root": "SKILL",
+        "nodes": [
+          "SKILL"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "name": "skip",
+        "path": "<vault>/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      }
+    },
+    "neighbors templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "note": "skip",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "root": "skip",
+        "nodes": [
+          "skip"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "path": "templates/skip.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize templates/skip.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "root": "skip",
+        "nodes": [
+          "skip"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read x/short.md": {
+      "exit": 0,
+      "json": {
+        "name": "short",
+        "path": "<vault>/x/short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Short.\n"
+      }
+    },
+    "neighbors x/short.md": {
+      "exit": 0,
+      "json": {
+        "note": "short",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "uses-short"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 x/short.md": {
+      "exit": 0,
+      "json": {
+        "root": "short",
+        "nodes": [
+          "short",
+          "uses-short"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "uses-short",
+            "short",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check x/short.md": {
+      "exit": 0,
+      "json": {
+        "path": "x/short.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize x/short.md": "---\ncreated: 2026-07-01\n---\n\nShort.\n",
+    "subgraph2 x/short.md": {
+      "exit": 0,
+      "json": {
+        "root": "short",
+        "nodes": [
+          "short",
+          "uses-short"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "uses-short",
+            "short",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read x/yy/short.md": {
+      "exit": 0,
+      "json": {
+        "name": "short",
+        "path": "<vault>/x/yy/short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Longer.\n"
+      }
+    },
+    "neighbors x/yy/short.md": {
+      "exit": 0,
+      "json": {
+        "note": "short",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 x/yy/short.md": {
+      "exit": 0,
+      "json": {
+        "root": "short",
+        "nodes": [
+          "short"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check x/yy/short.md": {
+      "exit": 0,
+      "json": {
+        "path": "x/yy/short.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize x/yy/short.md": "---\ncreated: 2026-07-01\n---\n\nLonger.\n",
+    "subgraph2 x/yy/short.md": {
+      "exit": 0,
+      "json": {
+        "root": "short",
+        "nodes": [
+          "short"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read z/uses-short.md": {
+      "exit": 0,
+      "json": {
+        "name": "uses-short",
+        "path": "<vault>/z/uses-short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Shortest wins [[short]].\n"
+      }
+    },
+    "neighbors z/uses-short.md": {
+      "exit": 0,
+      "json": {
+        "note": "uses-short",
+        "outgoing": [
+          "short"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 z/uses-short.md": {
+      "exit": 0,
+      "json": {
+        "root": "uses-short",
+        "nodes": [
+          "short",
+          "uses-short"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "uses-short",
+            "short",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check z/uses-short.md": {
+      "exit": 0,
+      "json": {
+        "path": "z/uses-short.md",
+        "body_links": [
+          "short"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize z/uses-short.md": "---\ncreated: 2026-07-01\n---\n\nShortest wins [[short]].\n",
+    "subgraph2 z/uses-short.md": {
+      "exit": 0,
+      "json": {
+        "root": "uses-short",
+        "nodes": [
+          "short",
+          "uses-short"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "uses-short",
+            "short",
+            "link"
+          ]
+        ]
+      }
+    },
+    "by_name discarded": {
+      "exit": 0,
+      "json": {
+        "name": "discarded",
+        "path": "<vault>/.trash/discarded.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Links to [[alpha]].\n"
+      }
+    },
+    "by_name AGENTS": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# Edge vault\n"
+      }
+    },
+    "by_name dup": {
+      "exit": 1,
+      "error": "'dup' is ambiguous, matches: a/dup.md, b/dup.md"
+    },
+    "by_name linker": {
+      "exit": 0,
+      "json": {
+        "name": "linker",
+        "path": "<vault>/a/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Same folder [[dup]], explicit [[b/dup]].\n"
+      }
+    },
+    "by_name a-c": {
+      "exit": 0,
+      "json": {
+        "name": "a-c",
+        "path": "<vault>/a-c.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[a/dup]]\n"
+      }
+    },
+    "by_name old": {
+      "exit": 0,
+      "json": {
+        "name": "old",
+        "path": "<vault>/archive/specs/old.md",
+        "properties": {},
+        "body": "# Retired spec\n"
+      }
+    },
+    "by_name linker2": {
+      "exit": 0,
+      "json": {
+        "name": "linker2",
+        "path": "<vault>/c/linker2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Ambiguous [[dup]] and [[DUP]].\n"
+      }
+    },
+    "by_name anchor": {
+      "exit": 0,
+      "json": {
+        "name": "anchor",
+        "path": "<vault>/fm/anchor.md",
+        "properties": {
+          "a": "one",
+          "b": "one"
+        },
+        "body": "# Anchor\n"
+      }
+    },
+    "by_name block-scalar": {
+      "exit": 0,
+      "json": {
+        "name": "block-scalar",
+        "path": "<vault>/fm/block-scalar.md",
+        "properties": {
+          "method": "see [[alpha]]\n"
+        },
+        "body": "# Block [[beta]]\n"
+      }
+    },
+    "by_name body-separators": {
+      "exit": 0,
+      "json": {
+        "name": "body-separators",
+        "path": "<vault>/fm/body-separators.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "line one line two\fform feed\u001cgroup \n"
+      }
+    },
+    "by_name bom": {
+      "exit": 0,
+      "json": {
+        "name": "bom",
+        "path": "<vault>/fm/bom.md",
+        "properties": {},
+        "body": "﻿---\ncreated: 2026-07-01\n---\n\n# BOM\n"
+      }
+    },
+    "by_name comment": {
+      "exit": 0,
+      "json": {
+        "name": "comment",
+        "path": "<vault>/fm/comment.md",
+        "properties": {
+          "status": "active"
+        },
+        "body": "# Comment\n"
+      }
+    },
+    "by_name crlf": {
+      "exit": 0,
+      "json": {
+        "name": "crlf",
+        "path": "<vault>/fm/crlf.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# CRLF\n"
+      }
+    },
+    "by_name double-marker": {
+      "exit": 0,
+      "json": {
+        "name": "double-marker",
+        "path": "<vault>/fm/double-marker.md",
+        "properties": {},
+        "body": "status: draft\n---\n# Double marker\n"
+      }
+    },
+    "by_name duplicate": {
+      "exit": 0,
+      "json": {
+        "name": "duplicate",
+        "path": "<vault>/fm/duplicate.md",
+        "properties": {},
+        "body": "# Duplicate\n"
+      }
+    },
+    "by_name empty-block": {
+      "exit": 0,
+      "json": {
+        "name": "empty-block",
+        "path": "<vault>/fm/empty-block.md",
+        "properties": {},
+        "body": "# Empty block\n"
+      }
+    },
+    "by_name empty-item": {
+      "exit": 0,
+      "json": {
+        "name": "empty-item",
+        "path": "<vault>/fm/empty-item.md",
+        "properties": {},
+        "body": "# Empty item\n"
+      }
+    },
+    "by_name escape": {
+      "exit": 0,
+      "json": {
+        "name": "escape",
+        "path": "<vault>/fm/escape.md",
+        "properties": {
+          "a": "x\ny"
+        },
+        "body": "# Escape\n"
+      }
+    },
+    "by_name folded": {
+      "exit": 0,
+      "json": {
+        "name": "folded",
+        "path": "<vault>/fm/folded.md",
+        "properties": {
+          "z": "a long paragraph",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Folded\n"
+      }
+    },
+    "by_name item-after-flow": {
+      "exit": 0,
+      "json": {
+        "name": "item-after-flow",
+        "path": "<vault>/fm/item-after-flow.md",
+        "properties": {},
+        "body": "# Item after flow\n"
+      }
+    },
+    "by_name leading-space-body": {
+      "exit": 0,
+      "json": {
+        "name": "leading-space-body",
+        "path": "<vault>/fm/leading-space-body.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "   \n# Leading space\n"
+      }
+    },
+    "by_name line-separator": {
+      "exit": 0,
+      "json": {
+        "name": "line-separator",
+        "path": "<vault>/fm/line-separator.md",
+        "properties": {},
+        "body": "# Separator\n"
+      }
+    },
+    "by_name messy": {
+      "exit": 0,
+      "json": {
+        "name": "messy",
+        "path": "<vault>/fm/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-16",
+          "authors": [
+            "claude",
+            "co'dex"
+          ],
+          "empty": "",
+          "none": [],
+          "quoted": "say \"hi\" \\ there",
+          "comma": [
+            "a",
+            "b, c"
+          ],
+          "key with space": "v"
+        },
+        "body": "# Messy   \n\n\nBody line with trailing spaces   \n\n\n\n"
+      }
+    },
+    "by_name multi-line": {
+      "exit": 0,
+      "json": {
+        "name": "multi-line",
+        "path": "<vault>/fm/multi-line.md",
+        "properties": {
+          "title": "one two"
+        },
+        "body": "# Multi-line\n"
+      }
+    },
+    "by_name needs-quotes": {
+      "exit": 0,
+      "json": {
+        "name": "needs-quotes",
+        "path": "<vault>/fm/needs-quotes.md",
+        "properties": {
+          "a": "[[Knowledge]]",
+          "b": "x: y",
+          "c": "x #y",
+          "d": "- x",
+          "e": "`code`",
+          "f": "end:",
+          "g": "@at"
+        },
+        "body": "body\n"
+      }
+    },
+    "by_name nested-link": {
+      "exit": 0,
+      "json": {
+        "name": "nested-link",
+        "path": "<vault>/fm/nested-link.md",
+        "properties": {
+          "source": {
+            "note": "[[beta]]"
+          }
+        },
+        "body": "# Nested link\n"
+      }
+    },
+    "by_name nested": {
+      "exit": 0,
+      "json": {
+        "name": "nested",
+        "path": "<vault>/fm/nested.md",
+        "properties": {
+          "nested": {
+            "key": "value"
+          }
+        },
+        "body": "# Nested\n"
+      }
+    },
+    "by_name never-closed": {
+      "exit": 0,
+      "json": {
+        "name": "never-closed",
+        "path": "<vault>/fm/never-closed.md",
+        "properties": {},
+        "body": "# Never closed\n"
+      }
+    },
+    "by_name no-frontmatter": {
+      "exit": 0,
+      "json": {
+        "name": "no-frontmatter",
+        "path": "<vault>/fm/no-frontmatter.md",
+        "properties": {},
+        "body": "# No frontmatter [[alpha]]\n"
+      }
+    },
+    "by_name quoted-typed-key": {
+      "exit": 0,
+      "json": {
+        "name": "quoted-typed-key",
+        "path": "<vault>/fm/quoted-typed-key.md",
+        "properties": {
+          "null": "y",
+          "a": "x"
+        },
+        "body": "# Quoted key\n"
+      }
+    },
+    "by_name tab": {
+      "exit": 0,
+      "json": {
+        "name": "tab",
+        "path": "<vault>/fm/tab.md",
+        "properties": {
+          "a": "b"
+        },
+        "body": "# Tab\n"
+      }
+    },
+    "by_name top-level-item": {
+      "exit": 0,
+      "json": {
+        "name": "top-level-item",
+        "path": "<vault>/fm/top-level-item.md",
+        "properties": {
+          "tags": [
+            "top"
+          ]
+        },
+        "body": "# Top-level item\n"
+      }
+    },
+    "by_name typed": {
+      "exit": 0,
+      "json": {
+        "name": "typed",
+        "path": "<vault>/fm/typed.md",
+        "properties": {
+          "flag": "true"
+        },
+        "body": "# Typed\n"
+      }
+    },
+    "by_name unquoted-wikilink": {
+      "exit": 0,
+      "json": {
+        "name": "unquoted-wikilink",
+        "path": "<vault>/fm/unquoted-wikilink.md",
+        "properties": {
+          "project": [
+            [
+              "X"
+            ]
+          ]
+        },
+        "body": "# Unquoted\n"
+      }
+    },
+    "by_name sam3.1-fine-tune": {
+      "exit": 0,
+      "json": {
+        "name": "sam3.1-fine-tune",
+        "path": "<vault>/human/sam3.1-fine-tune.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Fine tune.\n"
+      }
+    },
+    "by_name basic-date": {
+      "exit": 0,
+      "json": {
+        "name": "basic-date",
+        "path": "<vault>/inbox/basic-date.md",
+        "properties": {
+          "created": "20261005"
+        },
+        "body": "Basic date.\n"
+      }
+    },
+    "by_name fresh": {
+      "exit": 0,
+      "json": {
+        "name": "fresh",
+        "path": "<vault>/inbox/fresh.md",
+        "properties": {
+          "created": "2026-10-06"
+        },
+        "body": "Fresh.\n"
+      }
+    },
+    "by_name invalid-date": {
+      "exit": 0,
+      "json": {
+        "name": "invalid-date",
+        "path": "<vault>/inbox/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      }
+    },
+    "by_name deep": {
+      "exit": 0,
+      "json": {
+        "name": "deep",
+        "path": "<vault>/inbox/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      }
+    },
+    "by_name no-created": {
+      "exit": 0,
+      "json": {
+        "name": "no-created",
+        "path": "<vault>/inbox/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      }
+    },
+    "by_name stale": {
+      "exit": 0,
+      "json": {
+        "name": "stale",
+        "path": "<vault>/inbox/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      }
+    },
+    "by_name trailing-date": {
+      "exit": 0,
+      "json": {
+        "name": "trailing-date",
+        "path": "<vault>/inbox/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      }
+    },
+    "by_name week-date-tail": {
+      "exit": 0,
+      "json": {
+        "name": "week-date-tail",
+        "path": "<vault>/inbox/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      }
+    },
+    "by_name week-date": {
+      "exit": 0,
+      "json": {
+        "name": "week-date",
+        "path": "<vault>/inbox/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
+      }
+    },
+    "by_name alias": {
+      "exit": 0,
+      "json": {
+        "name": "alias",
+        "path": "<vault>/links/alias.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      }
+    },
+    "by_name llmOS": {
+      "exit": 0,
+      "json": {
+        "name": "llmOS",
+        "path": "<vault>/llmOS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Root\n\nSee [[projects/llmos/llmos|the project]].\n"
+      }
+    },
+    "by_name AGENTS.v2": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS.v2",
+        "path": "<vault>/notes/AGENTS.v2.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Version two.\n"
+      }
+    },
+    "by_name alpha": {
+      "exit": 0,
+      "json": {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\n[[notes/alpha.md]] [[beta#Heading|label]] [[ALPHA]] ![[beta]]\n\n| a | b |\n| - | - |\n| [[beta\\|escaped]] | [[ghost note]] |\n"
+      }
+    },
+    "by_name beta": {
+      "exit": 0,
+      "json": {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening",
+            "b, c"
+          ],
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# Beta\n\n## Heading\n\nNo body links.\n"
+      }
+    },
+    "by_name café": {
+      "exit": 0,
+      "json": {
+        "name": "café",
+        "path": "<vault>/notes/café.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Accented [[notes/alpha]].\n"
+      }
+    },
+    "by_name dotted-links": {
+      "exit": 0,
+      "json": {
+        "name": "dotted-links",
+        "path": "<vault>/notes/dotted-links.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "[[AGENTS.v2]] [[human/sam3.1-fine-tune]] [[sam3.1-fine-tune]] [[AGENTS]]\n"
+      }
+    },
+    "by_name gamma": {
+      "exit": 0,
+      "json": {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": "b, c"
+        },
+        "body": "# Gamma\n"
+      }
+    },
+    "by_name references": {
+      "exit": 0,
+      "json": {
+        "name": "references",
+        "path": "<vault>/notes/references.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# References\n\nProse mentions notes/alpha.md and beta.md and dup.md.\nInline `notes/gamma.md` and `uv run x.md` and `../notes/alpha.md`.\nRelative ../notes/beta.md path.\nAlready linked [beta](beta.md) and [caf](notes/caf%C3%A9.md).\nA URL https://example.org/notes/alpha.md is ignored.\n<!-- notes/gamma.md in a comment -->\n%% notes/gamma.md in an Obsidian comment %%\n\n```\nnotes/gamma.md in a fence\n```\n\n    notes/gamma.md indented code\n\n- item\n    - nested item with notes/gamma.md\n\t- tab item with llmOS.md\n\nSelf reference references.md, missing ghost.md, wikilinked [[gamma]].\n"
+      }
+    },
+    "by_name 𝔘nicode": {
+      "exit": 0,
+      "json": {
+        "name": "𝔘nicode",
+        "path": "<vault>/notes/𝔘nicode.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "𝔘𝔘 before a reference: notes/alpha.md and [[café]].\n"
+      }
+    },
+    "by_name demo": {
+      "exit": 0,
+      "json": {
+        "name": "demo",
+        "path": "<vault>/projects/demo/demo.md",
+        "properties": {
+          "categories": [
+            "[[Projects]]"
+          ]
+        },
+        "body": "# Demo Project\n"
+      }
+    },
+    "by_name unowned": {
+      "exit": 0,
+      "json": {
+        "name": "unowned",
+        "path": "<vault>/projects/demo/notes/unowned.md",
+        "properties": {
+          "status": "someday",
+          "authors": [
+            "claude",
+            "robot"
+          ],
+          "type": "x",
+          "categories": "Knowledge",
+          "topics": [
+            "plain",
+            "[[ok]]"
+          ],
+          "blank": ""
+        },
+        "body": "# Unowned\n"
+      }
+    },
+    "by_name llmos": {
+      "exit": 1,
+      "error": "'llmos' is ambiguous, matches: llmOS.md, projects/llmos/llmos.md"
+    },
+    "by_name 2026-10-01": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-01",
+        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      }
+    },
+    "by_name 2026-10-02": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-02",
+        "path": "<vault>/reviews/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
+      }
+    },
+    "by_name SKILL": {
+      "exit": 0,
+      "json": {
+        "name": "SKILL",
+        "path": "<vault>/skills/tool/SKILL.md",
+        "properties": {
+          "name": "tool"
+        },
+        "body": "# Missing description\n"
+      }
+    },
+    "by_name skip": {
+      "exit": 0,
+      "json": {
+        "name": "skip",
+        "path": "<vault>/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      }
+    },
+    "by_name short": {
+      "exit": 1,
+      "error": "'short' is ambiguous, matches: x/short.md, x/yy/short.md"
+    },
+    "by_name uses-short": {
+      "exit": 0,
+      "json": {
+        "name": "uses-short",
+        "path": "<vault>/z/uses-short.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "Shortest wins [[short]].\n"
+      }
+    },
+    "health.orphans": [
+      "2026-10-01",
+      "2026-10-02",
+      "SKILL",
+      "a-c",
+      "alias",
+      "anchor",
+      "basic-date",
+      "block-scalar",
+      "body-separators",
+      "bom",
+      "comment",
+      "crlf",
+      "deep",
+      "demo",
+      "discarded",
+      "dotted-links",
+      "double-marker",
+      "duplicate",
+      "empty-block",
+      "empty-item",
+      "escape",
+      "folded",
+      "fresh",
+      "invalid-date",
+      "item-after-flow",
+      "leading-space-body",
+      "line-separator",
+      "linker",
+      "linker2",
+      "llmOS",
+      "messy",
+      "multi-line",
+      "needs-quotes",
+      "nested",
+      "nested-link",
+      "never-closed",
+      "no-created",
+      "no-frontmatter",
+      "old",
+      "quoted-typed-key",
+      "references",
+      "short",
+      "skip",
+      "stale",
+      "tab",
+      "top-level-item",
+      "trailing-date",
+      "typed",
+      "unowned",
+      "unquoted-wikilink",
+      "uses-short",
+      "week-date",
+      "week-date-tail",
+      "𝔘nicode"
+    ],
+    "health.dead_ends": [
+      "2026-10-02",
+      "AGENTS",
+      "AGENTS.v2",
+      "SKILL",
+      "anchor",
+      "basic-date",
+      "body-separators",
+      "bom",
+      "comment",
+      "crlf",
+      "deep",
+      "double-marker",
+      "dup",
+      "dup",
+      "duplicate",
+      "empty-block",
+      "empty-item",
+      "escape",
+      "folded",
+      "fresh",
+      "gamma",
+      "invalid-date",
+      "item-after-flow",
+      "leading-space-body",
+      "line-separator",
+      "messy",
+      "multi-line",
+      "nested",
+      "never-closed",
+      "no-created",
+      "old",
+      "quoted-typed-key",
+      "sam3.1-fine-tune",
+      "short",
+      "short",
+      "skip",
+      "stale",
+      "tab",
+      "top-level-item",
+      "trailing-date",
+      "typed",
+      "unquoted-wikilink",
+      "week-date",
+      "week-date-tail"
+    ],
+    "health.unresolved_links": [
+      {
+        "referrer": "alpha",
+        "target": "ghost note"
+      },
+      {
+        "referrer": "demo",
+        "target": "Projects"
+      },
+      {
+        "referrer": "linker2",
+        "target": "DUP"
+      },
+      {
+        "referrer": "linker2",
+        "target": "dup"
+      },
+      {
+        "referrer": "llmos",
+        "target": "Projects"
+      },
+      {
+        "referrer": "needs-quotes",
+        "target": "Knowledge"
+      },
+      {
+        "referrer": "unowned",
+        "target": "ok"
+      }
+    ],
+    "health.schema_violations": [
+      {
+        "path": "AGENTS.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "fm/bom.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "fm/duplicate.md",
+        "message": "unsupported frontmatter: frontmatter is not valid YAML (DUPLICATE_KEY: Map keys must be unique at line 2, column 1:)"
+      },
+      {
+        "path": "fm/empty-item.md",
+        "message": "unsupported frontmatter: frontmatter is not supported: a list item is empty"
+      },
+      {
+        "path": "fm/folded.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "fm/item-after-flow.md",
+        "message": "unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: A block sequence may not be used as an implicit map key at line 2, column 1:)"
+      },
+      {
+        "path": "fm/line-separator.md",
+        "message": "unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: Nested mappings are not allowed in compact mappings at line 1, column 4:)"
+      },
+      {
+        "path": "fm/messy.md",
+        "message": "authors must be a canonical list"
+      },
+      {
+        "path": "fm/messy.md",
+        "message": "property empty is empty"
+      },
+      {
+        "path": "fm/messy.md",
+        "message": "property none is empty"
+      },
+      {
+        "path": "fm/no-frontmatter.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "fm/unquoted-wikilink.md",
+        "message": "project contains non-wikilink [\"X\"]"
+      },
+      {
+        "path": "inbox/nested/deep.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "notes/alpha.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "notes/beta.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "notes/beta.md",
+        "message": "topics contains non-wikilink \"b, c\""
+      },
+      {
+        "path": "notes/gamma.md",
+        "message": "topics must be a list"
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "invalid status \"someday\""
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "authors must be a canonical list"
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "contains retired property type"
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "property blank is empty"
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "categories must be a list"
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "topics contains non-wikilink \"plain\""
+      },
+      {
+        "path": "projects/demo/notes/unowned.md",
+        "message": "project-owned note lacks project link"
+      },
+      {
+        "path": "reviews/daily/2026-10-01.md",
+        "message": "daily reviews must not claim project ownership"
+      },
+      {
+        "path": "reviews/daily/2026-10-02.md",
+        "message": "created must be an ISO date"
+      },
+      {
+        "path": "skills/tool/SKILL.md",
+        "message": "invalid skill frontmatter"
+      }
+    ],
+    "health.stale_inbox": [
+      "inbox/basic-date.md",
+      "inbox/invalid-date.md",
+      "inbox/nested/deep.md",
+      "inbox/no-created.md",
+      "inbox/stale.md",
+      "inbox/trailing-date.md",
+      "inbox/week-date-tail.md",
+      "inbox/week-date.md"
+    ],
+    "health.qmd_gaps": [],
+    "health.qmd_unembedded": null,
+    "health.qmd_notice": "qmd unavailable or collection 'llmos' not found; qmd-gap section skipped",
+    "health.exit": 1,
+    "schema.errors": [
+      "AGENTS.md: missing frontmatter",
+      "fm/bom.md: missing frontmatter",
+      "fm/duplicate.md: unsupported frontmatter: frontmatter is not valid YAML (DUPLICATE_KEY: Map keys must be unique at line 2, column 1:)",
+      "fm/empty-item.md: unsupported frontmatter: frontmatter is not supported: a list item is empty",
+      "fm/folded.md: topics contains non-wikilink \"gardening\"",
+      "fm/item-after-flow.md: unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: A block sequence may not be used as an implicit map key at line 2, column 1:)",
+      "fm/line-separator.md: unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: Nested mappings are not allowed in compact mappings at line 1, column 4:)",
+      "fm/messy.md: authors must be a canonical list",
+      "fm/messy.md: property empty is empty",
+      "fm/messy.md: property none is empty",
+      "fm/no-frontmatter.md: missing frontmatter",
+      "fm/unquoted-wikilink.md: project contains non-wikilink [\"X\"]",
+      "inbox/nested/deep.md: missing frontmatter",
+      "notes/alpha.md: topics contains non-wikilink \"gardening\"",
+      "notes/beta.md: topics contains non-wikilink \"gardening\"",
+      "notes/beta.md: topics contains non-wikilink \"b, c\"",
+      "notes/gamma.md: topics must be a list",
+      "projects/demo/notes/unowned.md: invalid status \"someday\"",
+      "projects/demo/notes/unowned.md: authors must be a canonical list",
+      "projects/demo/notes/unowned.md: contains retired property type",
+      "projects/demo/notes/unowned.md: property blank is empty",
+      "projects/demo/notes/unowned.md: categories must be a list",
+      "projects/demo/notes/unowned.md: topics contains non-wikilink \"plain\"",
+      "projects/demo/notes/unowned.md: project-owned note lacks project link",
+      "reviews/daily/2026-10-01.md: daily reviews must not claim project ownership",
+      "reviews/daily/2026-10-02.md: created must be an ISO date",
+      "skills/tool/SKILL.md: invalid skill frontmatter"
+    ],
+    "schema.checked": 61
+  }
+}

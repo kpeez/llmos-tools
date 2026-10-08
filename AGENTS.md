@@ -1,45 +1,48 @@
 # Agent instructions
 
-`tools/` holds the `llmos-vault` Python package, the `llmos` agent plugin, and
-the TypeScript core that replaces the Python package
+`tools/` holds the `llmos` agent plugin and the llmOS CLI, written in
+TypeScript and run by Bun
 ([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md)).
 Run every command from `tools/`. The marketplace catalogs live at the
 repository root and point here.
 
-The Python package is frozen: bug fixes only. It is the oracle for the
-external contract of the TypeScript core in `src/` (tests in `test/`, run by
-Bun): the canonical frontmatter on disk, CLI names, flags, JSON shapes, and
-exit codes, hook output channels, and the digest markers and hash. Internal
-code uses native TypeScript and Bun behavior and does not copy Python quirks.
-Do not change Python behavior to make the two agree. An intended difference
-goes on the allowlist in `test/differential/allowlist.ts` with its reason.
+The external contract is what agents, skills, and the vault read: the
+canonical frontmatter on disk, CLI names, flags, JSON shapes, and exit
+codes, hook output channels, and the digest markers and block hash. Internal
+code uses native TypeScript and Bun behavior. Committed snapshots in
+`test/contract/snapshots/` pin the CLI results, the canonical `normalize`
+output, and the schema audit on the fixture vaults and a generated edge
+vault, and the digest's outcomes, block hashes, markers, and notes on the
+digest edge days; `bun test` compares the output with them. The hook tests
+in `test/hooks/` pin the hook output channels. Change a snapshot only for an
+intended contract change: record it with `just contract-record` and review
+the diff in the pull request.
 
 The `llmos-vault` CLI is a command registry (`src/commands.ts`, run by
 `src/cli.ts`; entry points in `bin/`). Its contract is the command names,
 flags, JSON output shapes, and exit codes (3: Obsidian not running), plus
-the canonical frontmatter form on disk; internals need not copy Python.
-Handlers return results and never print or exit, so other front ends can
-call them. After changing a command's help, run `bun bin/llmos-vault.ts
-docs`; a test fails while the vault-cli reference is stale.
+the canonical frontmatter form on disk. Handlers return results and never
+print or exit, so other front ends can call them. After changing a command's
+help, run `bun bin/llmos-vault.ts docs`; a test fails while the vault-cli
+reference is stale.
 
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
 to a temporary folder, as `test/helpers.ts` `isolatedEnv` does.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
-request so CI runs. Tests use the fixture vaults in `tests/fixtures/`, never
+request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
 the real vault in `../llmOS/`; point `LLMOS_ROOT` at a temporary vault for a
 live probe.
 
 Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
-Python checks, the Bun type check, Biome, `bun test`, the differential
-harness on the fixture vaults, and the activity-digest parity check, and it
-fails when a committed bundle (`dist/hooks.js`, or the MCP launcher
-`dist/mcp.js`) is stale. After changing `src/hooks/`, `src/mcp-launcher.ts`,
-or core code they import, run `just hooks` and commit the rebuilt bundles.
-Changing `hooks/hooks.json` means every host must approve the Codex hooks
-again. Package artifacts are checked with `uv build`.
+marketplace drift check, the type check, Biome, and `bun test` (with the
+contract snapshot tests), and it fails when a committed bundle
+(`dist/hooks.js`, or the MCP launcher `dist/mcp.js`) is stale. After changing
+`src/hooks/`, `src/mcp-launcher.ts`, or core code they import, run `just
+hooks` and commit the rebuilt bundles. Changing `hooks/hooks.json` means
+every host must approve the Codex hooks again.
 
 The MCP server (`src/mcp.ts`, `llmos-vault mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside
@@ -48,11 +51,13 @@ tool. Claude Code reads `.mcp.json` and Codex `.codex-mcp.json`; keep the
 Bun flags `--no-install --no-env-file --config=/dev/null` in both, so a
 session's project cannot load code or config into the server.
 
-To run the differential harness on the real vault, copy `../llmOS/` to a
-directory outside it, pass the copy, and write the report to
-`../artifacts/`: `bun test/differential/run.ts --report
-../artifacts/differential/<name>.json <copy>`. Never point it at the live
-vault.
+To check the frontmatter invariants on the real vault (every note reads,
+`normalize` refuses no valid YAML, keeps every value, and is idempotent),
+copy `../llmOS/` to a directory outside it and pass the copy: `just
+invariants <copy>`. Write any report (`bun test/contract/invariants.ts
+--report FILE <copy>`) to `../artifacts/`. Never point it at the live vault.
+
 Marketplace catalogs (`../.claude-plugin/marketplace.json`,
 `../.agents/plugins/marketplace.json`) are generated by
-`scripts/gen-marketplaces.py` and must stay in sync with the plugin manifest.
+`scripts/gen-marketplaces.ts` (`just gen`) and must stay in sync with the
+plugin manifest.

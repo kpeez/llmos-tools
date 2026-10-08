@@ -1,0 +1,1029 @@
+{
+  "about": "Contract results of the TypeScript CLI on this vault, read on `today`; see test/contract/snapshot.ts. A key in differs_from_python is a result where the retired Python CLI gave something else, for the reasons of the named allowlist entries.",
+  "today": "2026-10-07",
+  "allowlist": {
+    "body-hard-line-break": "Python trims all trailing whitespace from body lines, which deletes Markdown hard line breaks (two or more spaces before a line ending) and changes how the note renders. TypeScript keeps a final run of two or more spaces on a body line that has content (kpeez/llmos#44). The texts must differ only in those runs.",
+    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd.",
+    "message-quotes-json": "Finding and schema messages quote a value as JSON, not as a Python `repr` (message wording is not contract); the quoted values and all other text must be equal."
+  },
+  "differs_from_python": {
+    "health.qmd_unembedded": [
+      "health-qmd-unembedded"
+    ],
+    "health.schema_violations": [
+      "message-quotes-json"
+    ],
+    "normalize notes/messy.md": [
+      "body-hard-line-break"
+    ],
+    "schema.errors": [
+      "message-quotes-json"
+    ]
+  },
+  "results": {
+    "list": [
+      {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# fixture vault\n"
+      },
+      {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\nLinks to [[beta]] and an unresolved [[ghost]].\n"
+      },
+      {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Beta\n\nNo outgoing links here.\n"
+      },
+      {
+        "name": "delta",
+        "path": "<vault>/notes/delta.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Delta\n\nLinks back to [[alpha]].\n"
+      },
+      {
+        "name": "epsilon",
+        "path": "<vault>/notes/epsilon.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Epsilon\n\nLinks to [[gamma]].\n"
+      },
+      {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Gamma\n\nNo outgoing links here either.\n"
+      },
+      {
+        "name": "messy",
+        "path": "<vault>/notes/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-01",
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "authors": [
+            "claude"
+          ]
+        },
+        "body": "# Messy fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.   \n\n"
+      },
+      {
+        "name": "normalized",
+        "path": "<vault>/notes/normalized.md",
+        "properties": {
+          "authors": [
+            "claude"
+          ],
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "created": "2026-07-01",
+          "status": "active",
+          "updated": "2026-07-17"
+        },
+        "body": "# Normalized fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.\n"
+      }
+    ],
+    "daily_recent": {
+      "exit": 0,
+      "json": []
+    },
+    "read AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# fixture vault\n"
+      }
+    },
+    "neighbors AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "note": "AGENTS",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "path": "AGENTS.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize AGENTS.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\nLinks to [[beta]] and an unresolved [[ghost]].\n"
+      }
+    },
+    "neighbors notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "note": "alpha",
+        "outgoing": [
+          "beta"
+        ],
+        "unresolved_outgoing": [
+          "ghost"
+        ],
+        "backlinks": [
+          "delta"
+        ],
+        "topic_siblings": [
+          "beta",
+          "gamma"
+        ]
+      }
+    },
+    "subgraph1 notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "root": "alpha",
+        "nodes": [
+          "alpha",
+          "beta",
+          "delta",
+          "gamma"
+        ],
+        "unresolved": [
+          "ghost"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "delta",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/alpha.md",
+        "body_links": [
+          "beta",
+          "ghost"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/alpha.md": "---\ncreated: 2026-07-01\ntopics:\n  - gardening\n---\n\n# Alpha\n\nLinks to [[beta]] and an unresolved [[ghost]].\n",
+    "subgraph2 notes/alpha.md": {
+      "exit": 0,
+      "json": {
+        "root": "alpha",
+        "nodes": [
+          "alpha",
+          "beta",
+          "delta",
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [
+          "ghost"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "delta",
+            "alpha",
+            "link"
+          ],
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Beta\n\nNo outgoing links here.\n"
+      }
+    },
+    "neighbors notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "note": "beta",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "alpha"
+        ],
+        "topic_siblings": [
+          "alpha",
+          "gamma"
+        ]
+      }
+    },
+    "subgraph1 notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "root": "beta",
+        "nodes": [
+          "alpha",
+          "beta",
+          "gamma"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ]
+        ]
+      }
+    },
+    "check notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/beta.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/beta.md": "---\ncreated: 2026-07-01\ntopics:\n  - gardening\n---\n\n# Beta\n\nNo outgoing links here.\n",
+    "subgraph2 notes/beta.md": {
+      "exit": 0,
+      "json": {
+        "root": "beta",
+        "nodes": [
+          "alpha",
+          "beta",
+          "delta",
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [
+          "ghost"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "delta",
+            "alpha",
+            "link"
+          ],
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/delta.md": {
+      "exit": 0,
+      "json": {
+        "name": "delta",
+        "path": "<vault>/notes/delta.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Delta\n\nLinks back to [[alpha]].\n"
+      }
+    },
+    "neighbors notes/delta.md": {
+      "exit": 0,
+      "json": {
+        "note": "delta",
+        "outgoing": [
+          "alpha"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/delta.md": {
+      "exit": 0,
+      "json": {
+        "root": "delta",
+        "nodes": [
+          "alpha",
+          "delta"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "delta",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/delta.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/delta.md",
+        "body_links": [
+          "alpha"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/delta.md": "---\ncreated: 2026-07-01\n---\n\n# Delta\n\nLinks back to [[alpha]].\n",
+    "subgraph2 notes/delta.md": {
+      "exit": 0,
+      "json": {
+        "root": "delta",
+        "nodes": [
+          "alpha",
+          "beta",
+          "delta",
+          "gamma"
+        ],
+        "unresolved": [
+          "ghost"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "delta",
+            "alpha",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/epsilon.md": {
+      "exit": 0,
+      "json": {
+        "name": "epsilon",
+        "path": "<vault>/notes/epsilon.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Epsilon\n\nLinks to [[gamma]].\n"
+      }
+    },
+    "neighbors notes/epsilon.md": {
+      "exit": 0,
+      "json": {
+        "note": "epsilon",
+        "outgoing": [
+          "gamma"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/epsilon.md": {
+      "exit": 0,
+      "json": {
+        "root": "epsilon",
+        "nodes": [
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/epsilon.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/epsilon.md",
+        "body_links": [
+          "gamma"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/epsilon.md": "---\ncreated: 2026-07-01\n---\n\n# Epsilon\n\nLinks to [[gamma]].\n",
+    "subgraph2 notes/epsilon.md": {
+      "exit": 0,
+      "json": {
+        "root": "epsilon",
+        "nodes": [
+          "alpha",
+          "beta",
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Gamma\n\nNo outgoing links here either.\n"
+      }
+    },
+    "neighbors notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "note": "gamma",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "epsilon"
+        ],
+        "topic_siblings": [
+          "alpha",
+          "beta"
+        ]
+      }
+    },
+    "subgraph1 notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "root": "gamma",
+        "nodes": [
+          "alpha",
+          "beta",
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/gamma.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/gamma.md": "---\ncreated: 2026-07-01\ntopics:\n  - gardening\n---\n\n# Gamma\n\nNo outgoing links here either.\n",
+    "subgraph2 notes/gamma.md": {
+      "exit": 0,
+      "json": {
+        "root": "gamma",
+        "nodes": [
+          "alpha",
+          "beta",
+          "delta",
+          "epsilon",
+          "gamma"
+        ],
+        "unresolved": [
+          "ghost"
+        ],
+        "edges": [
+          [
+            "alpha",
+            "beta",
+            "link"
+          ],
+          [
+            "alpha",
+            "beta",
+            "topic_sibling"
+          ],
+          [
+            "alpha",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "beta",
+            "gamma",
+            "topic_sibling"
+          ],
+          [
+            "delta",
+            "alpha",
+            "link"
+          ],
+          [
+            "epsilon",
+            "gamma",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/messy.md": {
+      "exit": 0,
+      "json": {
+        "name": "messy",
+        "path": "<vault>/notes/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-01",
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "authors": [
+            "claude"
+          ]
+        },
+        "body": "# Messy fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.   \n\n"
+      }
+    },
+    "neighbors notes/messy.md": {
+      "exit": 0,
+      "json": {
+        "note": "messy",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/messy.md": {
+      "exit": 0,
+      "json": {
+        "root": "messy",
+        "nodes": [
+          "messy"
+        ],
+        "unresolved": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "edges": []
+      }
+    },
+    "check notes/messy.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/messy.md",
+        "body_links": [
+          "Some Other Note"
+        ],
+        "property_links": [
+          "Knowledge"
+        ],
+        "findings": []
+      }
+    },
+    "normalize notes/messy.md": "---\nauthors:\n  - claude\ncategories:\n  - \"[[Knowledge]]\"\ncreated: 2026-07-01\nupdated: 2026-07-17\n---\n\n# Messy fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.   \n",
+    "subgraph2 notes/messy.md": {
+      "exit": 0,
+      "json": {
+        "root": "messy",
+        "nodes": [
+          "messy"
+        ],
+        "unresolved": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "edges": []
+      }
+    },
+    "read notes/normalized.md": {
+      "exit": 0,
+      "json": {
+        "name": "normalized",
+        "path": "<vault>/notes/normalized.md",
+        "properties": {
+          "authors": [
+            "claude"
+          ],
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "created": "2026-07-01",
+          "status": "active",
+          "updated": "2026-07-17"
+        },
+        "body": "# Normalized fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.\n"
+      }
+    },
+    "neighbors notes/normalized.md": {
+      "exit": 0,
+      "json": {
+        "note": "normalized",
+        "outgoing": [],
+        "unresolved_outgoing": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/normalized.md": {
+      "exit": 0,
+      "json": {
+        "root": "normalized",
+        "nodes": [
+          "normalized"
+        ],
+        "unresolved": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "edges": []
+      }
+    },
+    "check notes/normalized.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/normalized.md",
+        "body_links": [
+          "Some Other Note"
+        ],
+        "property_links": [
+          "Knowledge"
+        ],
+        "findings": []
+      }
+    },
+    "normalize notes/normalized.md": "---\nauthors:\n  - claude\ncategories:\n  - \"[[Knowledge]]\"\ncreated: 2026-07-01\nstatus: active\nupdated: 2026-07-17\n---\n\n# Normalized fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.\n",
+    "subgraph2 notes/normalized.md": {
+      "exit": 0,
+      "json": {
+        "root": "normalized",
+        "nodes": [
+          "normalized"
+        ],
+        "unresolved": [
+          "Knowledge",
+          "Some Other Note"
+        ],
+        "edges": []
+      }
+    },
+    "by_name AGENTS": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {},
+        "body": "# fixture vault\n"
+      }
+    },
+    "by_name alpha": {
+      "exit": 0,
+      "json": {
+        "name": "alpha",
+        "path": "<vault>/notes/alpha.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Alpha\n\nLinks to [[beta]] and an unresolved [[ghost]].\n"
+      }
+    },
+    "by_name beta": {
+      "exit": 0,
+      "json": {
+        "name": "beta",
+        "path": "<vault>/notes/beta.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Beta\n\nNo outgoing links here.\n"
+      }
+    },
+    "by_name delta": {
+      "exit": 0,
+      "json": {
+        "name": "delta",
+        "path": "<vault>/notes/delta.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Delta\n\nLinks back to [[alpha]].\n"
+      }
+    },
+    "by_name epsilon": {
+      "exit": 0,
+      "json": {
+        "name": "epsilon",
+        "path": "<vault>/notes/epsilon.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Epsilon\n\nLinks to [[gamma]].\n"
+      }
+    },
+    "by_name gamma": {
+      "exit": 0,
+      "json": {
+        "name": "gamma",
+        "path": "<vault>/notes/gamma.md",
+        "properties": {
+          "created": "2026-07-01",
+          "topics": [
+            "gardening"
+          ]
+        },
+        "body": "# Gamma\n\nNo outgoing links here either.\n"
+      }
+    },
+    "by_name messy": {
+      "exit": 0,
+      "json": {
+        "name": "messy",
+        "path": "<vault>/notes/messy.md",
+        "properties": {
+          "updated": "2026-07-17",
+          "created": "2026-07-01",
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "authors": [
+            "claude"
+          ]
+        },
+        "body": "# Messy fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.   \n\n"
+      }
+    },
+    "by_name normalized": {
+      "exit": 0,
+      "json": {
+        "name": "normalized",
+        "path": "<vault>/notes/normalized.md",
+        "properties": {
+          "authors": [
+            "claude"
+          ],
+          "categories": [
+            "[[Knowledge]]"
+          ],
+          "created": "2026-07-01",
+          "status": "active",
+          "updated": "2026-07-17"
+        },
+        "body": "# Normalized fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.\n"
+      }
+    },
+    "health.orphans": [
+      "AGENTS",
+      "delta",
+      "epsilon",
+      "messy",
+      "normalized"
+    ],
+    "health.dead_ends": [
+      "AGENTS",
+      "beta",
+      "gamma"
+    ],
+    "health.unresolved_links": [
+      {
+        "referrer": "alpha",
+        "target": "ghost"
+      },
+      {
+        "referrer": "messy",
+        "target": "Knowledge"
+      },
+      {
+        "referrer": "messy",
+        "target": "Some Other Note"
+      },
+      {
+        "referrer": "normalized",
+        "target": "Knowledge"
+      },
+      {
+        "referrer": "normalized",
+        "target": "Some Other Note"
+      }
+    ],
+    "health.schema_violations": [
+      {
+        "path": "AGENTS.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "notes/alpha.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "notes/beta.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "notes/gamma.md",
+        "message": "topics contains non-wikilink \"gardening\""
+      }
+    ],
+    "health.stale_inbox": [],
+    "health.qmd_gaps": [],
+    "health.qmd_unembedded": null,
+    "health.qmd_notice": "qmd unavailable or collection 'llmos' not found; qmd-gap section skipped",
+    "health.exit": 1,
+    "schema.errors": [
+      "AGENTS.md: missing frontmatter",
+      "notes/alpha.md: topics contains non-wikilink \"gardening\"",
+      "notes/beta.md: topics contains non-wikilink \"gardening\"",
+      "notes/gamma.md: topics contains non-wikilink \"gardening\""
+    ],
+    "schema.checked": 8
+  }
+}

@@ -1,6 +1,15 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "includes": ["src/**", "test/**", "bin/**", "scripts/**/*.ts", "*.json"] },
+  "files": {
+    "includes": [
+      "src/**",
+      "test/**",
+      "!test/contract/snapshots",
+      "bin/**",
+      "scripts/**/*.ts",
+      "*.json"
+    ]
+  },
   "formatter": { "indentStyle": "space", "lineWidth": 100 }
 }

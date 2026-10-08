@@ -24,12 +24,8 @@ The script copies the plugin root to `~/.local/share/llmos/<version>/`, runs
 `llmos-doctor`, `llmos-audit`, `llmos-daily-activity`, and `qmd` into
 `~/.local/bin/`. It never changes the plugin folder or a plugin cache. It
 replaces a `~/.local/bin` entry only when that entry links to an earlier
-install or to the retired Python `llmos-vault` uv tool; any other entry stops
-it before anything changes. `~/.local/bin` must be on `PATH`.
-
-If `uv tool list` still shows the retired `llmos-vault` uv tool, remove it
-with `uv tool uninstall llmos-vault` before the install, with the user's
-approval: uninstalling it later would delete the new command links.
+install; any other entry stops it before anything changes. `~/.local/bin`
+must be on `PATH`.
 
 The `qmd` it links is the qmd version the CLI imports. Keep it the only
 `qmd` on `PATH`: two versions would write the same `~/.cache/qmd` index. If

@@ -12,9 +12,8 @@
  * folder itself is only read, so a plugin cache is never modified.
  *
  * An existing `~/.local/bin` entry is replaced only when it is a link into
- * `~/.local/share/llmos/` (an earlier install) or into the retired Python
- * `llmos-vault` uv tool. Any other entry stops the install before anything
- * changes.
+ * `~/.local/share/llmos/` (an earlier install). Any other entry stops the
+ * install before anything changes.
  */
 
 import {
@@ -34,6 +33,8 @@ import { basename, join, resolve } from "node:path";
 const COMMANDS = ["llmos-vault", "llmos-doctor", "llmos-audit", "llmos-daily-activity", "qmd"];
 /** Entry points outside `bin/<name>.ts`. */
 const ENTRY_POINTS: Record<string, string> = { "llmos-daily-activity": "src/digest.ts" };
+// Never copied: dependencies, and the caches of the retired Python package,
+// which older checkouts may still hold.
 const SKIPPED = new Set([
   "node_modules",
   ".venv",
@@ -63,7 +64,7 @@ function replaceable(link: string): boolean {
   }
   if (!stat.isSymbolicLink()) return false;
   const points = resolve(join(link, ".."), readlinkSync(link));
-  return points.startsWith(`${dataRoot}/`) || points.includes("/uv/tools/llmos-vault/");
+  return points.startsWith(`${dataRoot}/`);
 }
 
 const conflicts = COMMANDS.map((name) => join(binDir, name)).filter((link) => !replaceable(link));

@@ -2,7 +2,33 @@
 
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
-The Python package version lives in `pyproject.toml`.
+
+## 2.3.0 — 2026-10-07
+
+- Retire the Python implementation (ADR 0012, kpeez/llmos#36): delete the
+  `llmos_vault` package, its pytest suite, the unwired Python hooks, the
+  source-checkout shims (`scripts/audit_metadata.py`, `doctor.sh`,
+  `vault_root.py`, `write_daily_activity.py`), `pyproject.toml`, and
+  `uv.lock`. No installed command changes: every host already runs the Bun
+  CLI and hooks.
+- Committed contract snapshots in `test/contract/` replace the differential
+  harness and the digest parity check. They pin the CLI's JSON output and
+  exit codes (except `list`'s exit code), the canonical `normalize` output,
+  and the schema audit on the fixture vaults (now in `test/fixtures/`) and
+  the generated edge vault, and the digest's outcomes, block hashes,
+  markers, and notes on the digest edge days. They were recorded while Python was still the reference and checked
+  against it; where TypeScript intentionally differs, the snapshot holds the
+  TypeScript output and names the allowlist entry it replaces. `just
+  contract-record` records them again after an intended contract change.
+- The real-vault differential run becomes a TypeScript-only invariant check
+  (`just invariants <vault-copy>`): every note reads, `normalize` refuses no
+  valid YAML, keeps every value, and is idempotent.
+- `scripts/gen-marketplaces.py` is now `scripts/gen-marketplaces.ts`, with
+  byte-identical catalogs. CI and `just check` run Bun only; the `ts-types`,
+  `ts-lint`, and `ts-test` recipes are now `types`, `lint`, and `test`.
+- `scripts/install.ts` no longer replaces links into the retired
+  `llmos-vault` uv tool, and the `setup-llmos` skill no longer covers
+  removing that tool.
 
 ## 2.2.0 — 2026-10-07
 

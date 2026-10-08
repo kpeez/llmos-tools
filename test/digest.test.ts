@@ -1,6 +1,6 @@
 /**
- * The deterministic guarantees of the daily activity digest, ported from
- * `tests/test_write_daily_activity.py`.
+ * The deterministic guarantees of the daily activity digest, ported from the
+ * retired Python test `test_write_daily_activity.py`.
  */
 
 import { afterEach, describe, expect, spyOn, test } from "bun:test";

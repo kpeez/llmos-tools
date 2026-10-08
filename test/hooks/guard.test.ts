@@ -1,8 +1,8 @@
 /**
  * The Bash guard denies (exit 2, reason on stderr) an obsidian-cli note verb
  * without `file=`/`path=`, and a raw `mv`/`rm` of a note under a known vault
- * root. Ported from `tests/test_guard_obsidian_cli.py` and
- * `tests/test_guard_vault_mv.py`.
+ * root. Ported from the retired Python tests `test_guard_obsidian_cli.py` and
+ * `test_guard_vault_mv.py`.
  */
 
 import { afterEach, describe, expect, spyOn, test } from "bun:test";

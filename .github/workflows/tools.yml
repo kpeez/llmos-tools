@@ -15,39 +15,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-          cache-dependency-glob: tools/uv.lock
-      - run: uv python install 3.11
-      - run: uv sync --locked
-      - run: uv run python scripts/gen-marketplaces.py
-      - run: git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
-      - run: uv run ruff check
-      - run: uv run ty check
-      - run: uv run pytest
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Marketplace catalogs match the plugin manifest
+        run: |
+          bun scripts/gen-marketplaces.ts
+          git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
       - run: bun run typecheck
       - run: bunx biome ci
-      - run: bun test
-      - name: Differential harness (Python CLI vs TypeScript core)
-        run: bun run differential
-      - name: Digest parity (Python digest vs TypeScript digest)
-        run: bun test/differential/digest.ts --edge
+      - name: Tests, including the contract snapshots
+        run: bun test
       - name: Hook and MCP launcher bundles match their source
         run: |
           bun run build:hooks
           bun run build:mcp
           git diff --exit-code dist/hooks.js dist/mcp.js
-      - run: uv build
-      - name: Smoke installed wheel
+      - name: Smoke the CLI entry points
         run: |
-          uv venv /tmp/llmos-wheel-smoke
-          uv pip install --python /tmp/llmos-wheel-smoke/bin/python dist/*.whl
-          for command in llmos-vault llmos-audit llmos-daily-activity llmos-doctor; do
-            /tmp/llmos-wheel-smoke/bin/$command --help >/dev/null
+          for entry in bin/llmos-vault.ts bin/llmos-audit.ts bin/llmos-doctor.ts src/digest.ts; do
+            bun "$entry" --help >/dev/null
           done
-          /tmp/llmos-wheel-smoke/bin/llmos-vault docs

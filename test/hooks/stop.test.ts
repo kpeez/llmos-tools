@@ -2,7 +2,7 @@
  * The stop hook reindexes only when the stamp hook left a dirty flag, and
  * clears the flag only after a successful reindex. Failures stay retryable
  * and never block the turn. `llmos-vault` and `qmd` are stubs on `PATH`; the
- * real binaries never run. Ported from `tests/test_stop_qmd_hook.py`.
+ * real binaries never run. Ported from the retired Python test `test_stop_qmd_hook.py`.
  */
 
 import { afterEach, expect, test } from "bun:test";

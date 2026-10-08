@@ -12,7 +12,7 @@ import {
 const note = (block: string, body = "# Body\n"): string => `---\n${block}---\n${body}`;
 
 describe("normalize writes the canonical form", () => {
-  // Inputs the Python serializer also accepts; the expected text is its output.
+  // Inputs the retired Python serializer also accepted; the expected text was its output.
   const cases: [string, string, string][] = [
     [
       "sorted keys, flow list to block, quoted wikilink, body whitespace",

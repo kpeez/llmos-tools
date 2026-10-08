@@ -7,7 +7,6 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
-    "differential": "bun test/differential/run.ts --edge-vault tests/fixtures/vault tests/fixtures/health_vault",
     "build:hooks": "bun build src/hooks/main.ts --target bun --minify --outfile dist/hooks.js",
     "build:mcp": "bun build src/mcp-launcher.ts --target bun --minify --outfile dist/mcp.js"
   },

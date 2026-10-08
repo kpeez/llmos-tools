@@ -18,7 +18,7 @@ describe("docs", () => {
     expect(renderSkill(skill, COMMANDS)).toBe(skill);
   });
 
-  test("every Python command name is still registered", () => {
+  test("every command name of the retired Python CLI is still registered", () => {
     const names = COMMANDS.map((command) => command.name);
     for (const name of [
       "read",

@@ -4,10 +4,7 @@
  * JSON. Point it at a COPY of a vault, never the live one: post-tool-use
  * stamps the note it is given.
  *
- *   bun test/hooks/bench.ts <vault-copy> [runs=15] [--python]
- *
- * `--python` also times the Python hooks under /usr/bin/python3 for
- * comparison.
+ *   bun test/hooks/bench.ts <vault-copy> [runs=15]
  */
 
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -17,9 +14,8 @@ import { join } from "node:path";
 const TOOLS = join(import.meta.dir, "..", "..");
 const args = process.argv.slice(2);
 const vault = args[0];
-if (!vault) throw new Error("usage: bun test/hooks/bench.ts <vault-copy> [runs] [--python]");
+if (!vault) throw new Error("usage: bun test/hooks/bench.ts <vault-copy> [runs]");
 const runs = Number(args.find((arg) => /^\d+$/.test(arg)) ?? 15);
-const withPython = args.includes("--python");
 const note = join(vault, "projects", "llmos", "llmos.md");
 // A note with an explicit `.md` reference makes the authoring check walk every note path.
 const referencing = join(vault, "hook-bench-reference.md");
@@ -42,14 +38,6 @@ const cases: [string, unknown, string?][] = [
   ],
   ["stop", { session_id: "bench-clean" }, "no dirty flag"],
 ];
-
-const python: Record<string, string[]> = {
-  "session-start": [join(TOOLS, "hooks", "llmos_hook.py"), "session-start"],
-  "pre-tool-use": [join(TOOLS, "hooks", "llmos_hook.py"), "pre-tool-use"],
-  "guard-bash": [join(TOOLS, "hooks", "guard_bash.py")],
-  "post-tool-use": [join(TOOLS, "hooks", "llmos_stamp_hook.py")],
-  stop: [join(TOOLS, "hooks", "llmos_qmd_hook.py")],
-};
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -97,9 +85,6 @@ const rows = cases.map(([event, payload, label]) => {
     ],
     payload,
   );
-  const row: Record<string, unknown> = { event, case: label ?? "", bunMs: bun };
-  if (withPython)
-    row.pythonMs = time(["/usr/bin/python3", ...(python[event] as string[])], payload);
-  return row;
+  return { event, case: label ?? "", bunMs: bun };
 });
 console.log(JSON.stringify({ runs, bun: Bun.version, vault, rows }, null, 2));

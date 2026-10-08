@@ -13,7 +13,7 @@
  *
  * - top-level keys sorted by code point, with no blank lines between them;
  * - a property whose value is a single-line string, or a list of non-empty
- *   single-line strings, written the way the Python serializer writes it:
+ *   single-line strings, written the way the retired Python serializer wrote it:
  *   `key:` for an empty string, `key: []` for an empty list, block-style list
  *   items, and a value double-quoted only when bare YAML would read it
  *   differently (so wikilinks are always quoted). A value that was quoted in
@@ -192,7 +192,7 @@ function isSimpleKey(node: unknown): node is Scalar<string> {
   }
 }
 
-/** Write a string scalar the way the Python serializer does, keeping quotes that carry a type. */
+/** Write a string scalar the way the Python serializer did, keeping quotes that carry a type. */
 function renderScalar(node: Scalar<string>): string {
   const value = node.value;
   if (isQuoted(node) && (value === "" || TYPED_LOOKING.test(value))) return doubleQuoted(value);

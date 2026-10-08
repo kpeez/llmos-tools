@@ -10,11 +10,11 @@
  * (Los Angeles time), or one `--date`. A failed day writes nothing, and the
  * first failure stops the run with a non-zero exit.
  *
- * It replaces the Python `llmos_vault.daily_activity`. The contract the two
- * share: the markers from `daily.ts`, the block hash (`blockHash`; the same
- * `gh` output gives the same hash), the rule that a failed day writes
- * nothing, and the daily-note format. `test/differential/digest.ts` checks
- * this contract against the Python version. Two differences are intended:
+ * It replaced the retired Python digest and keeps its contract: the markers
+ * from `daily.ts`, the block hash (`blockHash`; the same `gh` output gives
+ * the same hash), the rule that a failed day writes nothing, and the
+ * daily-note format. `test/contract/digest.test.ts` pins this contract with
+ * a snapshot. Two differences from the Python digest are intended:
  *
  * - a PR merged in one repository no longer hides a PR with the same number
  *   opened in another (`fetchActivity`), so on such a day the block and its

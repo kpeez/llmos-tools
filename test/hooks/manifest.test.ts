@@ -36,6 +36,26 @@ test("each hook command runs the bundle with a known event", () => {
   });
 });
 
+test("the tool matchers cover every file and shell tool of both harnesses", () => {
+  const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
+  const matchers = (event: string) =>
+    (hooks[event] ?? []).map((group) => new RegExp(`^(?:${group.matcher})$`));
+  const matched = (event: string, tool: string) =>
+    matchers(event).some((matcher) => matcher.test(tool));
+  for (const tool of ["Read", "Write", "Edit", "MultiEdit", "Grep", "Glob", "LS", "apply_patch"]) {
+    expect([tool, matched("PreToolUse", tool)]).toEqual([tool, true]);
+  }
+  expect(matched("PreToolUse", "Bash")).toBe(true);
+  for (const tool of ["Write", "Edit", "MultiEdit", "apply_patch"]) {
+    expect([tool, matched("PostToolUse", tool)]).toEqual([tool, true]);
+  }
+  expect(matched("PreToolUse", "TaskCreate")).toBe(false);
+});
+
+test("the Codex manifest has no hooks key, which Codex rejects (it finds hooks/hooks.json)", () => {
+  expect(json(".codex-plugin/plugin.json")).not.toHaveProperty("hooks");
+});
+
 test("the MCP PreToolUse matcher fires for the write tools under both harness names", () => {
   const groups = (json("hooks/hooks.json").hooks as Record<string, Groups>).PreToolUse ?? [];
   const matcher = groups[1]?.matcher as string;

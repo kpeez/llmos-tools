@@ -1,3 +1,5 @@
+# Caches and build output of the retired Python package, which older
+# checkouts may still hold.
 .venv/
 __pycache__/
 *.py[cod]
@@ -6,7 +8,7 @@ __pycache__/
 .ty_cache/
 *.egg-info/
 build/
-# Wheels from `uv build`; the hook and MCP launcher bundles are committed.
+# Only the committed hook and MCP launcher bundles belong in dist/.
 dist/*
 !dist/hooks.js
 !dist/mcp.js

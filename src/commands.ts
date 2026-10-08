@@ -1,6 +1,6 @@
 /**
  * The `llmos-vault` commands. Each one keeps the command name and JSON
- * output shape of the Python CLI it replaces. Reads answer from one vault
+ * output shape of the retired Python CLI. Reads answer from one vault
  * model; writes are headless file writes (`write.ts`), except `move` and
  * `create --template`, which need the running Obsidian app.
  */

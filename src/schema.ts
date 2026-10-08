@@ -3,7 +3,7 @@
  * the schema-violations section of the health report. A plain vault such as
  * second-vault has no schema layer and never calls this module.
  *
- * The rules are those of the Python `llmos_vault.schema` module; a message
+ * The rules are those of the retired Python schema module; a message
  * quotes a property value as JSON (Python wrote its `repr`). Nested values,
  * which only the TypeScript reader accepts, are checked by the same rules: a
  * map is empty when it has no keys, and anything that is not a string fails

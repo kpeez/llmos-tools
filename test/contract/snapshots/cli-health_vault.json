@@ -1,0 +1,661 @@
+{
+  "about": "Contract results of the TypeScript CLI on this vault, read on `today`; see test/contract/snapshot.ts. A key in differs_from_python is a result where the retired Python CLI gave something else, for the reasons of the named allowlist entries.",
+  "today": "2026-10-07",
+  "allowlist": {
+    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd.",
+    "message-quotes-json": "Finding and schema messages quote a value as JSON, not as a Python `repr` (message wording is not contract); the quoted values and all other text must be equal."
+  },
+  "differs_from_python": {
+    "health.qmd_unembedded": [
+      "health-qmd-unembedded"
+    ],
+    "health.schema_violations": [
+      "message-quotes-json"
+    ],
+    "schema.errors": [
+      "message-quotes-json"
+    ]
+  },
+  "results": {
+    "list": [
+      {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Health fixture vault\n"
+      },
+      {
+        "name": "fresh-capture",
+        "path": "<vault>/inbox/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      },
+      {
+        "name": "stale-capture",
+        "path": "<vault>/inbox/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
+      },
+      {
+        "name": "bad-status",
+        "path": "<vault>/notes/bad-status.md",
+        "properties": {
+          "created": "2026-07-01",
+          "status": "not-a-real-status"
+        },
+        "body": "# Bad status\n\nNo links here.\n"
+      },
+      {
+        "name": "dead-end",
+        "path": "<vault>/notes/dead-end.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Dead end\n\nNo outgoing links here.\n"
+      },
+      {
+        "name": "hub",
+        "path": "<vault>/notes/hub.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Hub\n\nLinks to [[dead-end]] and an unresolved [[Missing Note]].\n"
+      },
+      {
+        "name": "linker",
+        "path": "<vault>/notes/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Linker\n\nLinks to [[hub]].\n"
+      }
+    ],
+    "daily_recent": {
+      "exit": 0,
+      "json": []
+    },
+    "read AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Health fixture vault\n"
+      }
+    },
+    "neighbors AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "note": "AGENTS",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "path": "AGENTS.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize AGENTS.md": "---\ncreated: 2026-07-01\n---\n\n# Health fixture vault\n",
+    "subgraph2 AGENTS.md": {
+      "exit": 0,
+      "json": {
+        "root": "AGENTS",
+        "nodes": [
+          "AGENTS"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "name": "fresh-capture",
+        "path": "<vault>/inbox/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      }
+    },
+    "neighbors inbox/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "note": "fresh-capture",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh-capture",
+        "nodes": [
+          "fresh-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/fresh-capture.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/fresh-capture.md": "---\ncreated: 2026-07-15\n---\n\n# Fresh capture\n\nJust captured, not stale yet.\n",
+    "subgraph2 inbox/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh-capture",
+        "nodes": [
+          "fresh-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read inbox/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "name": "stale-capture",
+        "path": "<vault>/inbox/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
+      }
+    },
+    "neighbors inbox/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "note": "stale-capture",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 inbox/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale-capture",
+        "nodes": [
+          "stale-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check inbox/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "path": "inbox/stale-capture.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize inbox/stale-capture.md": "---\ncreated: 2026-06-01\n---\n\n# Stale capture\n\nCaptured a while ago, never filed.\n",
+    "subgraph2 inbox/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale-capture",
+        "nodes": [
+          "stale-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read notes/bad-status.md": {
+      "exit": 0,
+      "json": {
+        "name": "bad-status",
+        "path": "<vault>/notes/bad-status.md",
+        "properties": {
+          "created": "2026-07-01",
+          "status": "not-a-real-status"
+        },
+        "body": "# Bad status\n\nNo links here.\n"
+      }
+    },
+    "neighbors notes/bad-status.md": {
+      "exit": 0,
+      "json": {
+        "note": "bad-status",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/bad-status.md": {
+      "exit": 0,
+      "json": {
+        "root": "bad-status",
+        "nodes": [
+          "bad-status"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check notes/bad-status.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/bad-status.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/bad-status.md": "---\ncreated: 2026-07-01\nstatus: not-a-real-status\n---\n\n# Bad status\n\nNo links here.\n",
+    "subgraph2 notes/bad-status.md": {
+      "exit": 0,
+      "json": {
+        "root": "bad-status",
+        "nodes": [
+          "bad-status"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read notes/dead-end.md": {
+      "exit": 0,
+      "json": {
+        "name": "dead-end",
+        "path": "<vault>/notes/dead-end.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Dead end\n\nNo outgoing links here.\n"
+      }
+    },
+    "neighbors notes/dead-end.md": {
+      "exit": 0,
+      "json": {
+        "note": "dead-end",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "hub"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/dead-end.md": {
+      "exit": 0,
+      "json": {
+        "root": "dead-end",
+        "nodes": [
+          "dead-end",
+          "hub"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "hub",
+            "dead-end",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/dead-end.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/dead-end.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/dead-end.md": "---\ncreated: 2026-07-01\n---\n\n# Dead end\n\nNo outgoing links here.\n",
+    "subgraph2 notes/dead-end.md": {
+      "exit": 0,
+      "json": {
+        "root": "dead-end",
+        "nodes": [
+          "dead-end",
+          "hub",
+          "linker"
+        ],
+        "unresolved": [
+          "Missing Note"
+        ],
+        "edges": [
+          [
+            "hub",
+            "dead-end",
+            "link"
+          ],
+          [
+            "linker",
+            "hub",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/hub.md": {
+      "exit": 0,
+      "json": {
+        "name": "hub",
+        "path": "<vault>/notes/hub.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Hub\n\nLinks to [[dead-end]] and an unresolved [[Missing Note]].\n"
+      }
+    },
+    "neighbors notes/hub.md": {
+      "exit": 0,
+      "json": {
+        "note": "hub",
+        "outgoing": [
+          "dead-end"
+        ],
+        "unresolved_outgoing": [
+          "Missing Note"
+        ],
+        "backlinks": [
+          "linker"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/hub.md": {
+      "exit": 0,
+      "json": {
+        "root": "hub",
+        "nodes": [
+          "dead-end",
+          "hub",
+          "linker"
+        ],
+        "unresolved": [
+          "Missing Note"
+        ],
+        "edges": [
+          [
+            "hub",
+            "dead-end",
+            "link"
+          ],
+          [
+            "linker",
+            "hub",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/hub.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/hub.md",
+        "body_links": [
+          "Missing Note",
+          "dead-end"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/hub.md": "---\ncreated: 2026-07-01\n---\n\n# Hub\n\nLinks to [[dead-end]] and an unresolved [[Missing Note]].\n",
+    "subgraph2 notes/hub.md": {
+      "exit": 0,
+      "json": {
+        "root": "hub",
+        "nodes": [
+          "dead-end",
+          "hub",
+          "linker"
+        ],
+        "unresolved": [
+          "Missing Note"
+        ],
+        "edges": [
+          [
+            "hub",
+            "dead-end",
+            "link"
+          ],
+          [
+            "linker",
+            "hub",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read notes/linker.md": {
+      "exit": 0,
+      "json": {
+        "name": "linker",
+        "path": "<vault>/notes/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Linker\n\nLinks to [[hub]].\n"
+      }
+    },
+    "neighbors notes/linker.md": {
+      "exit": 0,
+      "json": {
+        "note": "linker",
+        "outgoing": [
+          "hub"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 notes/linker.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker",
+        "nodes": [
+          "hub",
+          "linker"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "linker",
+            "hub",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check notes/linker.md": {
+      "exit": 0,
+      "json": {
+        "path": "notes/linker.md",
+        "body_links": [
+          "hub"
+        ],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize notes/linker.md": "---\ncreated: 2026-07-01\n---\n\n# Linker\n\nLinks to [[hub]].\n",
+    "subgraph2 notes/linker.md": {
+      "exit": 0,
+      "json": {
+        "root": "linker",
+        "nodes": [
+          "dead-end",
+          "hub",
+          "linker"
+        ],
+        "unresolved": [
+          "Missing Note"
+        ],
+        "edges": [
+          [
+            "hub",
+            "dead-end",
+            "link"
+          ],
+          [
+            "linker",
+            "hub",
+            "link"
+          ]
+        ]
+      }
+    },
+    "by_name AGENTS": {
+      "exit": 0,
+      "json": {
+        "name": "AGENTS",
+        "path": "<vault>/AGENTS.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Health fixture vault\n"
+      }
+    },
+    "by_name fresh-capture": {
+      "exit": 0,
+      "json": {
+        "name": "fresh-capture",
+        "path": "<vault>/inbox/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      }
+    },
+    "by_name stale-capture": {
+      "exit": 0,
+      "json": {
+        "name": "stale-capture",
+        "path": "<vault>/inbox/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
+      }
+    },
+    "by_name bad-status": {
+      "exit": 0,
+      "json": {
+        "name": "bad-status",
+        "path": "<vault>/notes/bad-status.md",
+        "properties": {
+          "created": "2026-07-01",
+          "status": "not-a-real-status"
+        },
+        "body": "# Bad status\n\nNo links here.\n"
+      }
+    },
+    "by_name dead-end": {
+      "exit": 0,
+      "json": {
+        "name": "dead-end",
+        "path": "<vault>/notes/dead-end.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Dead end\n\nNo outgoing links here.\n"
+      }
+    },
+    "by_name hub": {
+      "exit": 0,
+      "json": {
+        "name": "hub",
+        "path": "<vault>/notes/hub.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Hub\n\nLinks to [[dead-end]] and an unresolved [[Missing Note]].\n"
+      }
+    },
+    "by_name linker": {
+      "exit": 0,
+      "json": {
+        "name": "linker",
+        "path": "<vault>/notes/linker.md",
+        "properties": {
+          "created": "2026-07-01"
+        },
+        "body": "# Linker\n\nLinks to [[hub]].\n"
+      }
+    },
+    "health.orphans": [
+      "AGENTS",
+      "bad-status",
+      "fresh-capture",
+      "linker",
+      "stale-capture"
+    ],
+    "health.dead_ends": [
+      "AGENTS",
+      "bad-status",
+      "dead-end",
+      "fresh-capture",
+      "stale-capture"
+    ],
+    "health.unresolved_links": [
+      {
+        "referrer": "hub",
+        "target": "Missing Note"
+      }
+    ],
+    "health.schema_violations": [
+      {
+        "path": "notes/bad-status.md",
+        "message": "invalid status \"not-a-real-status\""
+      }
+    ],
+    "health.stale_inbox": [
+      "inbox/fresh-capture.md",
+      "inbox/stale-capture.md"
+    ],
+    "health.qmd_gaps": [],
+    "health.qmd_unembedded": null,
+    "health.qmd_notice": "qmd unavailable or collection 'llmos' not found; qmd-gap section skipped",
+    "health.exit": 1,
+    "schema.errors": [
+      "notes/bad-status.md: invalid status \"not-a-real-status\""
+    ],
+    "schema.checked": 7
+  }
+}

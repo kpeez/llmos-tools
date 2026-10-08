@@ -2,7 +2,7 @@
  * The post-tool-use hook normalizes vault notes, stamps `updated`, appends
  * the provider to `authors` once, flags the qmd collection dirty, and
  * reports authoring findings. Notes it cannot rewrite safely stay byte for
- * byte. Ported from `tests/test_stamp_format.py`.
+ * byte. Ported from the retired Python test `test_stamp_format.py`.
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
@@ -62,7 +62,7 @@ describe("stamping", () => {
     const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
 
     expect(result.exitCode).toBe(0);
-    // The same bytes the Python hook writes for this note.
+    // The same bytes the retired Python hook wrote for this note.
     expect(readFileSync(note, "utf8")).toBe(
       "---\nauthors:\n  - claude\ncategories:\n" +
         `  - "[[Knowledge]]"\ncreated: 2026-07-01\nupdated: ${todayIso()}\n---\n\n` +
