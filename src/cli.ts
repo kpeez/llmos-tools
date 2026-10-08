@@ -22,6 +22,7 @@ import {
   spawnObsidian,
 } from "./obsidian.ts";
 import { resolveVaultRoot } from "./root.ts";
+import { type Fetcher, httpFetch } from "./sources.ts";
 import { VaultModel } from "./vault.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -36,6 +37,8 @@ export interface Context {
   /** Today as `YYYY-MM-DD`, in local time. */
   today(): string;
   obsidian: ObsidianRunner;
+  /** The network, for verbs that capture web pages. */
+  fetch: Fetcher;
 }
 
 /** Today's local date as `YYYY-MM-DD`. */
@@ -58,6 +61,7 @@ export function defaultContext(env: Env = process.env): Context {
     model: (root) => VaultModel.load(root),
     today: localDate,
     obsidian: spawnObsidian,
+    fetch: httpFetch,
   };
 }
 
@@ -260,6 +264,7 @@ const EXPECTED_ERRORS = new Set([
   "ObsidianNotRunning",
   "ObsidianCliError",
   "WriteRefused",
+  "SourceRefused",
   "QmdCollectionMissing",
   "EmbedLockBusy",
 ]);

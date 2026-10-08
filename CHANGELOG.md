@@ -3,6 +3,23 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.3.1 — 2026-10-08
+
+- `llmos-vault source add <arxiv-id|url|inbox-note>` captures an arXiv
+  paper (from `arxiv.org/html/<id>`, pinned to the version fetched) or a web
+  page into `sources/<slug>/`: `raw.html`, the images of the captioned
+  figures in `assets/`, and `source.md` with the defuddle text and a manifest
+  in its frontmatter. A source that is already captured is not fetched
+  again. A PDF, or an arXiv paper without HTML, exits 1 and stays in the
+  inbox. Requests go only to public http and https hosts, with at most five
+  redirects, each hop checked; no body over 50 MB; figure images must be `image/*`.
+- New `ingest-source` skill, which sorts inbox items and runs `source add`.
+- `.gitattributes` stores `llmOS/sources/**` raw pages, PDFs, and assets in
+  Git LFS.
+- New dependencies: `defuddle` 0.19.4 (text extraction), with `linkedom`
+  0.18.13 as its DOM and `turndown` 7.2.0 for Markdown.
+- `package.json` now carries the plugin version (it said 0.2.0).
+
 ## 2.3.0 — 2026-10-07
 
 - Retire the Python implementation (ADR 0012, kpeez/llmos#36): delete the

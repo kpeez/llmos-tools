@@ -26,6 +26,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `remove-property` | Remove a property from a note. |
 | `search` | Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline. |
 | `set-property` | Set a property on a note. |
+| `source add` | Capture an arXiv paper or web page into a frozen source folder: raw HTML, figures, defuddle text, and a manifest. |
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |
 
 ## `append`
@@ -569,6 +570,47 @@ Example output:
 
 Example:
   llmos-vault set-property alpha status active --vault llmos
+```
+
+## `source add`
+
+```text
+Usage: llmos-vault source add <source> [--vault llmos|second-vault]
+
+Capture an arXiv paper or web page into a frozen source folder: raw HTML, figures, defuddle text, and a manifest.
+
+Use when an inbox item is a source worth keeping as the original: an arXiv
+paper or an open-access web page. The capture goes to `sources/<slug>/`
+and holds `raw.html`, `assets/` (the images of the captioned figures,
+taken from the raw HTML), and `source.md`, whose frontmatter is the manifest
+(`origin`, `source_id`, `retrieved`, `licence`, `converter`,
+`sha256_raw`, `sha256_text`, `figures`). An arXiv paper is read from its
+`arxiv.org/html/<id>` version, and an ID without a version is pinned to
+the version fetched (`arxiv:1811.00743v2`). `source` accepts an arXiv ID,
+an arXiv or web URL, or an inbox note that holds only a URL. The inbox note
+stays where it is. Writes the files directly, so it works with Obsidian
+closed. Only public http and https hosts are requested (no IP addresses,
+no local or private networks, at most five redirects, at most 50 MB a
+file). A figure image from a non-public host, with a failing status, or of a
+non-image type is skipped and named in the output. A source already
+captured is not fetched or changed: the command says so and exits 0. An ID without a version counts any captured version of
+that paper as captured; ask for `<id>vN` to capture a newer one. No agent
+edits a source folder afterwards.
+Do NOT use when the item is a PDF, or an arXiv paper without an HTML
+version: there is no converter yet, so this exits 1 and leaves the item
+where it is.
+
+Arguments:
+  source  An arXiv ID (1811.00743 or 1811.00743v2), a URL, or a vault-relative inbox note that holds only a URL.
+
+Options:
+  --vault  Must be "llmos" -- sources are an llmOS-profile feature. Default: llmos.
+
+Example output:
+  Captured: arxiv:1811.00743v2 -> sources/arxiv-1811.00743v2 (4 figures)
+
+Example:
+  llmos-vault source add 1811.00743
 ```
 
 ## `subgraph`

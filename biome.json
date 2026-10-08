@@ -6,6 +6,7 @@
       "src/**",
       "test/**",
       "!test/contract/snapshots",
+      "!test/fixtures/web",
       "bin/**",
       "scripts/**/*.ts",
       "*.json"

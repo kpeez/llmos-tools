@@ -28,6 +28,7 @@ import {
   dailyNote,
   isolatedEnv,
   makeVault,
+  offline,
   read,
   recordedObsidian,
   scratch,
@@ -61,6 +62,7 @@ function contextFor(
     model: (path) => VaultModel.load(path),
     today: () => TODAY,
     obsidian: options.obsidian ?? recordedObsidian(root).runner,
+    fetch: offline,
   };
 }
 

@@ -66,6 +66,7 @@ health` reports the count of documents that still need embedding as
 | `remove-property` | Remove a property from a note. |
 | `search` | Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline. |
 | `set-property` | Set a property on a note. |
+| `source add` | Capture an arXiv paper or web page into a frozen source folder: raw HTML, figures, defuddle text, and a manifest. |
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |
 <!-- END GENERATED VERB TABLE -->
 

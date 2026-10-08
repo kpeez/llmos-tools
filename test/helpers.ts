@@ -13,10 +13,16 @@ import { dirname, join, resolve } from "node:path";
 import { type CliResult, type Context, runCli } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
+import type { Fetcher } from "../src/sources.ts";
 import { VaultModel } from "../src/vault.ts";
 
 export const TOOLS = resolve(import.meta.dir, "..");
 export const TODAY = "2026-10-07";
+
+/** The network of a test that must not use it. */
+export const offline: Fetcher = async (url) => {
+  throw new Error(`the test reached the network: ${url}`);
+};
 
 export const DAILY_TEMPLATE = `---
 status: active
@@ -133,7 +139,7 @@ export function isolatedEnv(extra: Record<string, string> = {}): Record<string, 
 export function cli(
   root: string,
   argv: string[],
-  options: { obsidian?: ObsidianRunner; env?: Record<string, string> } = {},
+  options: { obsidian?: ObsidianRunner; env?: Record<string, string>; fetch?: Fetcher } = {},
 ): Promise<CliResult> {
   const context: Context = {
     env: options.env ?? isolatedEnv(),
@@ -141,6 +147,7 @@ export function cli(
     model: (path) => VaultModel.load(path),
     today: () => TODAY,
     obsidian: options.obsidian ?? recordedObsidian(root).runner,
+    fetch: options.fetch ?? offline,
   };
   return runCli(argv, COMMANDS, context);
 }

@@ -26,6 +26,10 @@ print or exit, so other front ends can call them. After changing a command's
 help, run `bun bin/llmos-vault.ts docs`; a test fails while the vault-cli
 reference is stale.
 
+`Context.fetch` is the network seam of `source add`: tests pass a fetcher
+that replays the recordings in `test/fixtures/web/` (or in-memory pages) and
+never touch the network.
+
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
 to a temporary folder, as `test/helpers.ts` `isolatedEnv` does.

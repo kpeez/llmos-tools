@@ -1,7 +1,7 @@
 # llmOS tools
 
 The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
-lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
+lives beside this folder in `../llmOS/`. It bundles four skills, lifecycle hooks that keep vault writes
 well-formed and indexed, an MCP server with typed vault tools, and the llmOS
 CLI: deterministic verbs for vault operations, written in TypeScript and run
 by Bun (`src/`, `bin/`). It replaced an earlier Python package
@@ -43,6 +43,7 @@ codex plugin add llmos@llmos-vault
 ```text
 tools/
 ├── skills/
+│   ├── ingest-source/     # sorts inbox items; captures sources with `source add`
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
@@ -59,6 +60,7 @@ tools/
 
 | Skill            | What it does                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| `ingest-source`  | Sorts inbox items into sources, knowledge notes, and project material, and captures sources into frozen folders |
 | `maintain-llmos` | Maintains the vault through its conventions: filing durable knowledge, project docs, reviews, link/property repair |
 | `setup-llmos`    | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing |
 | `vault-cli`      | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI |
