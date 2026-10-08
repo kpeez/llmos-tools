@@ -3,7 +3,7 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## Unreleased
+## 2.3.2 — 2026-10-08
 
 - New `consolidate-knowledge` skill. It takes one cluster of related notes and
   writes the topic hub, plus paper and dataset notes whose facts quote
