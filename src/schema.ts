@@ -29,6 +29,8 @@ export const STATUSES = new Set([
 export const AUTHORS = new Set(["claude", "codex", "gemini", "human"]);
 export const LINK_FIELDS = ["categories", "project", "topics"] as const;
 const WIKILINK = /^"?\[\[[^\]]+\]\]"?$/;
+/** A plain wikilink with no path, heading, or alias: `[[Name]]`, capturing the name. */
+const PLAIN_WIKILINK = /^"?\[\[([^\]/#|]+)\]\]"?$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Display alias for a project link: the landing page's H1, else the slug. */
@@ -81,7 +83,12 @@ function skipped(parts: string[]): boolean {
 }
 
 /** The schema-violation messages for one note's properties. */
-function noteErrors(relative: string, note: Note, newNotes: Set<string>): string[] {
+function noteErrors(
+  relative: string,
+  note: Note,
+  newNotes: Set<string>,
+  hubs: Set<string>,
+): string[] {
   const errors: string[] = [];
   const parts = relative.split("/");
   const properties = note.properties;
@@ -113,7 +120,7 @@ function noteErrors(relative: string, note: Note, newNotes: Set<string>): string
     }
   }
 
-  for (const forbidden of ["kind", "type", "related", "sources"]) {
+  for (const forbidden of ["kind", "type", "related", "sources", "repositories"]) {
     if (forbidden in properties) errors.push(`${relative}: contains retired property ${forbidden}`);
   }
   for (const [key, value] of Object.entries(properties)) {
@@ -134,6 +141,8 @@ function noteErrors(relative: string, note: Note, newNotes: Set<string>): string
     for (const value of values) {
       if (typeof value !== "string" || !WIKILINK.test(value)) {
         errors.push(`${relative}: ${field} contains non-wikilink ${JSON.stringify(value)}`);
+      } else if (field === "categories" && !hubs.has(PLAIN_WIKILINK.exec(value)?.[1] ?? "")) {
+        errors.push(`${relative}: category ${JSON.stringify(value)} names no hub in categories/`);
       }
     }
   }
@@ -150,13 +159,20 @@ function noteErrors(relative: string, note: Note, newNotes: Set<string>): string
 
 /**
  * Check every note in the model against the llmOS property contract and
- * return the violation messages and the number of notes checked. Templates,
+ * return the violation messages and the number of notes checked. Each
+ * `categories` value must name a hub in `categories/` exactly. Templates,
  * retired specs, and anything under a dot folder are skipped.
  */
 export function collectErrors(model: VaultModel): SchemaReport {
   const errors: string[] = [];
   let checked = 0;
   const newNotes = untrackedMarkdown(model.root);
+  // A category is valid only as the plain name of a hub note, `categories/<Name>.md`.
+  const hubs = new Set(
+    model.notes
+      .filter((note) => /^categories\/[^/]+\.md$/.test(note.path))
+      .map((note) => note.path.slice("categories/".length, -".md".length)),
+  );
   const entries: (Note | BrokenLink)[] = [...model.notes, ...model.brokenLinks].sort((a, b) =>
     comparePaths(a.path, b.path),
   );
@@ -191,7 +207,7 @@ export function collectErrors(model: VaultModel): SchemaReport {
       continue;
     }
     checked += 1;
-    errors.push(...noteErrors(relative, entry, newNotes));
+    errors.push(...noteErrors(relative, entry, newNotes, hubs));
   }
   return { errors, checked };
 }

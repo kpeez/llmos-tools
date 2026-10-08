@@ -122,6 +122,12 @@ const NOTES: Record<string, string> = {
     "# Unowned\n",
   ),
   "projects/demo/demo.md": note('categories:\n  - "[[Projects]]"\n', "# Demo Project\n"),
+  // A category must name a hub in categories/: Projects has one, Papers has none.
+  "categories/Projects.md": note("tags:\n  - categories\n", "# Projects\n"),
+  "knowledge/unhubbed.md": note(
+    'created: 2026-07-01\ncategories:\n  - "[[Projects]]"\n  - "[[Papers]]"\n',
+    "# Unhubbed\n",
+  ),
 
   // Inbox staleness, including ISO week dates and invalid dates.
   "inbox/fresh.md": note("created: 2026-10-06\n", "Fresh.\n"),

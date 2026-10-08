@@ -3,21 +3,14 @@
   "today": "2026-10-07",
   "allowlist": {
     "body-hard-line-break": "Python trims all trailing whitespace from body lines, which deletes Markdown hard line breaks (two or more spaces before a line ending) and changes how the note renders. TypeScript keeps a final run of two or more spaces on a body line that has content (kpeez/llmos#44). The texts must differ only in those runs.",
-    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd.",
-    "message-quotes-json": "Finding and schema messages quote a value as JSON, not as a Python `repr` (message wording is not contract); the quoted values and all other text must be equal."
+    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd."
   },
   "differs_from_python": {
     "health.qmd_unembedded": [
       "health-qmd-unembedded"
     ],
-    "health.schema_violations": [
-      "message-quotes-json"
-    ],
     "normalize notes/messy.md": [
       "body-hard-line-break"
-    ],
-    "schema.errors": [
-      "message-quotes-json"
     ]
   },
   "results": {
@@ -1011,6 +1004,14 @@
       {
         "path": "notes/gamma.md",
         "message": "topics contains non-wikilink \"gardening\""
+      },
+      {
+        "path": "notes/messy.md",
+        "message": "category \"[[Knowledge]]\" names no hub in categories/"
+      },
+      {
+        "path": "notes/normalized.md",
+        "message": "category \"[[Knowledge]]\" names no hub in categories/"
       }
     ],
     "health.stale_inbox": [],
@@ -1022,7 +1023,9 @@
       "AGENTS.md: missing frontmatter",
       "notes/alpha.md: topics contains non-wikilink \"gardening\"",
       "notes/beta.md: topics contains non-wikilink \"gardening\"",
-      "notes/gamma.md: topics contains non-wikilink \"gardening\""
+      "notes/gamma.md: topics contains non-wikilink \"gardening\"",
+      "notes/messy.md: category \"[[Knowledge]]\" names no hub in categories/",
+      "notes/normalized.md: category \"[[Knowledge]]\" names no hub in categories/"
     ],
     "schema.checked": 8
   }

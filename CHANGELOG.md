@@ -3,6 +3,15 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- The schema audit rejects a `categories` value that is not the exact plain
+  name of a hub in `categories/`, such as `[[Paper]]` or
+  `[[categories/Papers|Papers]]` (kpeez/llmos#56).
+- The schema audit rejects the retired `repositories` property.
+- `file-inbox` no longer stamps `[[Archive]]` when filing into `archive/`;
+  no such hub exists.
+
 ## 2.3.1 — 2026-10-08
 
 - `llmos-vault source add <arxiv-id|url|inbox-note>` captures an arXiv

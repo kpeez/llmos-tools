@@ -270,6 +270,26 @@ describe("file-inbox", () => {
     expect(read(root, "knowledge/some-note.md")).toContain("authors:\n  - claude\ncategories");
   });
 
+  test("keeps a note's own categories and stamps none for the archive", async () => {
+    const paper = '---\ncategories:\n  - "[[Papers]]"\ncreated: 2026-07-16\n---\n\n# Paper\n';
+    const root = makeVault({
+      "inbox/paper.md": paper,
+      "inbox/old.md": capture,
+      [DAILY]: dailyNote(TODAY),
+    });
+    for (const [note, destination] of [
+      ["paper", "knowledge/paper.md"],
+      ["old", "archive/old.md"],
+    ] as const) {
+      const result = await cli(root, ["file-inbox", note, destination], {
+        obsidian: recordedObsidian(root).runner,
+      });
+      expect(result.exitCode).toBe(0);
+    }
+    expect(read(root, "knowledge/paper.md")).toBe(paper);
+    expect(read(root, "archive/old.md")).toBe(capture);
+  });
+
   test("refuses an unknown area or an unreadable block before any move", async () => {
     const root = makeVault({
       "inbox/capture-1.md": capture,

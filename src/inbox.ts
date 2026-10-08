@@ -1,21 +1,24 @@
 /**
  * llmOS-profile inbox filing, compute side: the `categories` or `project`
  * properties a destination path implies. Moving and stamping the note come
- * with the CLI's write verbs.
+ * with the CLI's write verbs. The stamp is a default: a note that already
+ * names its categories, such as `[[Papers]]` in `knowledge/`, keeps them.
  */
 
 import { normalize } from "node:path";
 import { projectAlias } from "./schema.ts";
 
 export const RECOGNIZED_AREAS = new Set(["knowledge", "projects", "sources", "archive"]);
+// Each value names a hub in `categories/`. Archiving does not change what a
+// note is, so `archive` implies no category.
 const AREA_CATEGORIES: Record<string, string> = {
   knowledge: "[[Knowledge]]",
   sources: "[[Sources]]",
-  archive: "[[Archive]]",
 };
 
 /**
- * Derive the properties a destination path implies. A project's landing page
+ * Derive the properties a destination path implies: the area's default
+ * category, or none for `archive`. A project's landing page
  * (`projects/<slug>/<slug>.md`) gets `[[Projects]]` and no self-link; any
  * other project note gets the project link alone. The path is normalized
  * first (`./`, `//`, `..`). Throws for a destination outside the recognized
@@ -31,7 +34,10 @@ export function destinationProperties(root: string, destination: string): Record
         `areas (${[...RECOGNIZED_AREAS].sort().join(", ")})`,
     );
   }
-  if (area !== "projects") return { categories: [AREA_CATEGORIES[area] as string] };
+  if (area !== "projects") {
+    const category = AREA_CATEGORIES[area];
+    return category === undefined ? {} : { categories: [category] };
+  }
 
   if (parts.length < 2) throw new Error(`destination '${destination}' names no project slug`);
   const slug = parts[1] as string;

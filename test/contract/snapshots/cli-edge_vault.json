@@ -82,21 +82,11 @@
     "check notes/𝔘nicode.md": [
       "message-quotes-json"
     ],
-    "health.dead_ends": [
-      "properties-python-cannot-read"
-    ],
     "health.qmd_unembedded": [
       "health-qmd-unembedded"
     ],
-    "health.schema_violations": [
-      "message-quotes-json",
-      "properties-python-cannot-read"
-    ],
     "health.stale_inbox": [
       "created-not-yyyy-mm-dd"
-    ],
-    "list": [
-      "properties-python-cannot-read"
     ],
     "neighbors fm/block-scalar.md": [
       "properties-python-cannot-read"
@@ -221,10 +211,6 @@
     "read fm/unquoted-wikilink.md": [
       "properties-python-cannot-read"
     ],
-    "schema.errors": [
-      "message-quotes-json",
-      "properties-python-cannot-read"
-    ],
     "subgraph1 fm/block-scalar.md": [
       "properties-python-cannot-read"
     ],
@@ -258,16 +244,10 @@
     "subgraph2 notes/alpha.md": [
       "properties-python-cannot-read"
     ],
-    "subgraph2 notes/beta.md": [
-      "properties-python-cannot-read"
-    ],
     "subgraph2 notes/café.md": [
       "properties-python-cannot-read"
     ],
     "subgraph2 notes/gamma.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 projects/llmos/llmos.md": [
       "properties-python-cannot-read"
     ]
   },
@@ -332,6 +312,16 @@
           "created": "2026-07-01"
         },
         "body": "Ambiguous [[dup]] and [[DUP]].\n"
+      },
+      {
+        "name": "Projects",
+        "path": "<vault>/categories/Projects.md",
+        "properties": {
+          "tags": [
+            "categories"
+          ]
+        },
+        "body": "# Projects\n"
       },
       {
         "name": "anchor",
@@ -642,6 +632,18 @@
           "created": "2026-W40-3"
         },
         "body": "Week date.\n"
+      },
+      {
+        "name": "unhubbed",
+        "path": "<vault>/knowledge/unhubbed.md",
+        "properties": {
+          "created": "2026-07-01",
+          "categories": [
+            "[[Projects]]",
+            "[[Papers]]"
+          ]
+        },
+        "body": "# Unhubbed\n"
       },
       {
         "name": "alias",
@@ -1473,6 +1475,123 @@
           "dup"
         ],
         "edges": []
+      }
+    },
+    "read categories/Projects.md": {
+      "exit": 0,
+      "json": {
+        "name": "Projects",
+        "path": "<vault>/categories/Projects.md",
+        "properties": {
+          "tags": [
+            "categories"
+          ]
+        },
+        "body": "# Projects\n"
+      }
+    },
+    "neighbors categories/Projects.md": {
+      "exit": 0,
+      "json": {
+        "note": "Projects",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [
+          "demo",
+          "llmos",
+          "unhubbed"
+        ],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 categories/Projects.md": {
+      "exit": 0,
+      "json": {
+        "root": "Projects",
+        "nodes": [
+          "Projects",
+          "demo",
+          "llmos",
+          "unhubbed"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "demo",
+            "Projects",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
+            "link"
+          ],
+          [
+            "unhubbed",
+            "Projects",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check categories/Projects.md": {
+      "exit": 0,
+      "json": {
+        "path": "categories/Projects.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize categories/Projects.md": "---\ntags:\n  - categories\n---\n\n# Projects\n",
+    "subgraph2 categories/Projects.md": {
+      "exit": 0,
+      "json": {
+        "root": "Projects",
+        "nodes": [
+          "2026-10-01",
+          "Projects",
+          "beta",
+          "demo",
+          "llmOS",
+          "llmos",
+          "unhubbed"
+        ],
+        "unresolved": [
+          "Papers"
+        ],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "demo",
+            "Projects",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
+            "link"
+          ],
+          [
+            "unhubbed",
+            "Projects",
+            "link"
+          ]
+        ]
       }
     },
     "read fm/anchor.md": {
@@ -3795,6 +3914,100 @@
         "edges": []
       }
     },
+    "read knowledge/unhubbed.md": {
+      "exit": 0,
+      "json": {
+        "name": "unhubbed",
+        "path": "<vault>/knowledge/unhubbed.md",
+        "properties": {
+          "created": "2026-07-01",
+          "categories": [
+            "[[Projects]]",
+            "[[Papers]]"
+          ]
+        },
+        "body": "# Unhubbed\n"
+      }
+    },
+    "neighbors knowledge/unhubbed.md": {
+      "exit": 0,
+      "json": {
+        "note": "unhubbed",
+        "outgoing": [
+          "Projects"
+        ],
+        "unresolved_outgoing": [
+          "Papers"
+        ],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 knowledge/unhubbed.md": {
+      "exit": 0,
+      "json": {
+        "root": "unhubbed",
+        "nodes": [
+          "Projects",
+          "unhubbed"
+        ],
+        "unresolved": [
+          "Papers"
+        ],
+        "edges": [
+          [
+            "unhubbed",
+            "Projects",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check knowledge/unhubbed.md": {
+      "exit": 0,
+      "json": {
+        "path": "knowledge/unhubbed.md",
+        "body_links": [],
+        "property_links": [
+          "Papers",
+          "Projects"
+        ],
+        "findings": []
+      }
+    },
+    "normalize knowledge/unhubbed.md": "---\ncategories:\n  - \"[[Projects]]\"\n  - \"[[Papers]]\"\ncreated: 2026-07-01\n---\n\n# Unhubbed\n",
+    "subgraph2 knowledge/unhubbed.md": {
+      "exit": 0,
+      "json": {
+        "root": "unhubbed",
+        "nodes": [
+          "Projects",
+          "demo",
+          "llmos",
+          "unhubbed"
+        ],
+        "unresolved": [
+          "Papers"
+        ],
+        "edges": [
+          [
+            "demo",
+            "Projects",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
+            "link"
+          ],
+          [
+            "unhubbed",
+            "Projects",
+            "link"
+          ]
+        ]
+      }
+    },
     "read links/alias.md": {
       "exit": 0,
       "json": {
@@ -3964,13 +4177,12 @@
         "root": "llmOS",
         "nodes": [
           "2026-10-01",
+          "Projects",
           "beta",
           "llmOS",
           "llmos"
         ],
-        "unresolved": [
-          "Projects"
-        ],
+        "unresolved": [],
         "edges": [
           [
             "2026-10-01",
@@ -3985,6 +4197,11 @@
           [
             "llmOS",
             "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
             "link"
           ]
         ]
@@ -4375,6 +4592,7 @@
         "root": "beta",
         "nodes": [
           "2026-10-01",
+          "Projects",
           "alias",
           "alpha",
           "beta",
@@ -4390,7 +4608,6 @@
           "references"
         ],
         "unresolved": [
-          "Projects",
           "ghost note"
         ],
         "edges": [
@@ -4457,6 +4674,11 @@
           [
             "llmOS",
             "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
             "link"
           ],
           [
@@ -5042,10 +5264,10 @@
       "exit": 0,
       "json": {
         "note": "demo",
-        "outgoing": [],
-        "unresolved_outgoing": [
+        "outgoing": [
           "Projects"
         ],
+        "unresolved_outgoing": [],
         "backlinks": [],
         "topic_siblings": []
       }
@@ -5055,12 +5277,17 @@
       "json": {
         "root": "demo",
         "nodes": [
+          "Projects",
           "demo"
         ],
-        "unresolved": [
-          "Projects"
-        ],
-        "edges": []
+        "unresolved": [],
+        "edges": [
+          [
+            "demo",
+            "Projects",
+            "link"
+          ]
+        ]
       }
     },
     "check projects/demo/demo.md": {
@@ -5080,12 +5307,29 @@
       "json": {
         "root": "demo",
         "nodes": [
-          "demo"
+          "Projects",
+          "demo",
+          "llmos",
+          "unhubbed"
         ],
-        "unresolved": [
-          "Projects"
-        ],
-        "edges": []
+        "unresolved": [],
+        "edges": [
+          [
+            "demo",
+            "Projects",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
+            "link"
+          ],
+          [
+            "unhubbed",
+            "Projects",
+            "link"
+          ]
+        ]
       }
     },
     "read projects/demo/notes/unowned.md": {
@@ -5178,10 +5422,10 @@
       "exit": 0,
       "json": {
         "note": "llmos",
-        "outgoing": [],
-        "unresolved_outgoing": [
+        "outgoing": [
           "Projects"
         ],
+        "unresolved_outgoing": [],
         "backlinks": [
           "2026-10-01",
           "beta",
@@ -5196,13 +5440,12 @@
         "root": "llmos",
         "nodes": [
           "2026-10-01",
+          "Projects",
           "beta",
           "llmOS",
           "llmos"
         ],
-        "unresolved": [
-          "Projects"
-        ],
+        "unresolved": [],
         "edges": [
           [
             "2026-10-01",
@@ -5217,6 +5460,11 @@
           [
             "llmOS",
             "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
             "link"
           ]
         ]
@@ -5243,18 +5491,19 @@
         "root": "llmos",
         "nodes": [
           "2026-10-01",
+          "Projects",
           "alpha",
           "beta",
           "block-scalar",
+          "demo",
           "folded",
           "gamma",
           "llmOS",
           "llmos",
-          "nested-link"
+          "nested-link",
+          "unhubbed"
         ],
-        "unresolved": [
-          "Projects"
-        ],
+        "unresolved": [],
         "edges": [
           [
             "2026-10-01",
@@ -5292,13 +5541,28 @@
             "link"
           ],
           [
+            "demo",
+            "Projects",
+            "link"
+          ],
+          [
             "llmOS",
             "llmos",
             "link"
           ],
           [
+            "llmos",
+            "Projects",
+            "link"
+          ],
+          [
             "nested-link",
             "beta",
+            "link"
+          ],
+          [
+            "unhubbed",
+            "Projects",
             "link"
           ]
         ]
@@ -5366,13 +5630,12 @@
         "root": "2026-10-01",
         "nodes": [
           "2026-10-01",
+          "Projects",
           "beta",
           "llmOS",
           "llmos"
         ],
-        "unresolved": [
-          "Projects"
-        ],
+        "unresolved": [],
         "edges": [
           [
             "2026-10-01",
@@ -5387,6 +5650,11 @@
           [
             "llmOS",
             "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
             "link"
           ]
         ]
@@ -5811,6 +6079,19 @@
         "body": "Ambiguous [[dup]] and [[DUP]].\n"
       }
     },
+    "by_name Projects": {
+      "exit": 0,
+      "json": {
+        "name": "Projects",
+        "path": "<vault>/categories/Projects.md",
+        "properties": {
+          "tags": [
+            "categories"
+          ]
+        },
+        "body": "# Projects\n"
+      }
+    },
     "by_name anchor": {
       "exit": 0,
       "json": {
@@ -6232,6 +6513,21 @@
         "body": "Week date.\n"
       }
     },
+    "by_name unhubbed": {
+      "exit": 0,
+      "json": {
+        "name": "unhubbed",
+        "path": "<vault>/knowledge/unhubbed.md",
+        "properties": {
+          "created": "2026-07-01",
+          "categories": [
+            "[[Projects]]",
+            "[[Papers]]"
+          ]
+        },
+        "body": "# Unhubbed\n"
+      }
+    },
     "by_name alias": {
       "exit": 0,
       "json": {
@@ -6501,6 +6797,7 @@
       "top-level-item",
       "trailing-date",
       "typed",
+      "unhubbed",
       "unowned",
       "unquoted-wikilink",
       "uses-short",
@@ -6512,6 +6809,7 @@
       "2026-10-02",
       "AGENTS",
       "AGENTS.v2",
+      "Projects",
       "SKILL",
       "anchor",
       "basic-date",
@@ -6560,10 +6858,6 @@
         "target": "ghost note"
       },
       {
-        "referrer": "demo",
-        "target": "Projects"
-      },
-      {
         "referrer": "linker2",
         "target": "DUP"
       },
@@ -6572,12 +6866,12 @@
         "target": "dup"
       },
       {
-        "referrer": "llmos",
-        "target": "Projects"
-      },
-      {
         "referrer": "needs-quotes",
         "target": "Knowledge"
+      },
+      {
+        "referrer": "unhubbed",
+        "target": "Papers"
       },
       {
         "referrer": "unowned",
@@ -6636,6 +6930,10 @@
       {
         "path": "inbox/nested/deep.md",
         "message": "missing frontmatter"
+      },
+      {
+        "path": "knowledge/unhubbed.md",
+        "message": "category \"[[Papers]]\" names no hub in categories/"
       },
       {
         "path": "notes/alpha.md",
@@ -6722,6 +7020,7 @@
       "fm/no-frontmatter.md: missing frontmatter",
       "fm/unquoted-wikilink.md: project contains non-wikilink [\"X\"]",
       "inbox/nested/deep.md: missing frontmatter",
+      "knowledge/unhubbed.md: category \"[[Papers]]\" names no hub in categories/",
       "notes/alpha.md: topics contains non-wikilink \"gardening\"",
       "notes/beta.md: topics contains non-wikilink \"gardening\"",
       "notes/beta.md: topics contains non-wikilink \"b, c\"",
@@ -6737,6 +7036,6 @@
       "reviews/daily/2026-10-02.md: created must be an ISO date",
       "skills/tool/SKILL.md: invalid skill frontmatter"
     ],
-    "schema.checked": 61
+    "schema.checked": 63
   }
 }
