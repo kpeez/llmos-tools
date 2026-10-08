@@ -18,8 +18,8 @@ live probe.
 
 Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
-Python checks, the Bun type check, Biome, `bun test`, and the differential
-harness on the fixture vaults. Package artifacts are checked with `uv build`.
+Python checks, the Bun type check, Biome, `bun test`, the differential
+harness on the fixture vaults, and the activity-digest parity check. Package artifacts are checked with `uv build`.
 
 To run the differential harness on the real vault, copy `../llmOS/` to a
 directory outside it, pass the copy, and write the report to

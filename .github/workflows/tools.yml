@@ -35,6 +35,8 @@ jobs:
       - run: bun test
       - name: Differential harness (Python CLI vs TypeScript core)
         run: bun run differential
+      - name: Digest parity (Python digest vs TypeScript digest)
+        run: bun test/differential/digest.ts --edge
       - run: uv build
       - name: Smoke installed wheel
         run: |

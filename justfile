@@ -40,4 +40,10 @@ ts-test:
 differential:
     bun run differential
 
-check: drift lint types test ts-types ts-lint ts-test differential
+# Compare the TypeScript activity digest with the Python one on a generated
+# vault: same block hash, markers, and note text for the same gh output. For
+# recorded real gh output, see the usage at the top of that file.
+differential-digest:
+    bun test/differential/digest.ts --edge
+
+check: drift lint types test ts-types ts-lint ts-test differential differential-digest

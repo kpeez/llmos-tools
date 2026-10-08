@@ -141,6 +141,9 @@ and MCP server on. It reads; writing verbs come with the CLI phase.
   `VaultRootError` instead of exiting.
 - `schema.ts`, `authoring.ts`, `health.ts`, `daily.ts`, and `inbox.ts` port the
   llmOS-profile reads and computations.
+- `digest.ts` is the `llmos-daily-activity` command (run it with
+  `bun src/digest.ts`). It replaces `llmos_vault/daily_activity.py` and
+  writes the same block hash and markers for the same GitHub activity.
 
 Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 `just ts-lint`, and `just ts-test`.
@@ -152,7 +155,8 @@ Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 - **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
-  call → verify → write.
+  call → verify → write. The TypeScript version (`src/digest.ts`) runs the
+  model as an opencode agent with every tool denied.
 - **`scripts/`** — compatibility entry points for source-checkout users and
   plugin helpers.
 
@@ -167,4 +171,6 @@ the CLI's backends, and vault health — against committed fixture vaults in
 differential harness (`just differential`). The harness runs the Python CLI
 and the TypeScript core on the fixture vaults and a generated edge-case vault
 and fails on any difference not listed, with its reason, in
-`test/differential/allowlist.ts`.
+`test/differential/allowlist.ts`. `just differential-digest` runs both
+activity digests on a generated vault with the same `gh` output and requires
+the same block hash, markers, and note text.

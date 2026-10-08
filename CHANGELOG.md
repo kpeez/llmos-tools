@@ -12,6 +12,13 @@ The Python package version lives in `pyproject.toml`.
   error; and the llmOS-profile reads. A differential harness compares it with
   the Python CLI, and CI runs the Bun checks beside the Python ones. The
   installed commands are unchanged.
+- Port the daily activity digest to `src/digest.ts` (ADR 0012). For the same
+  `gh` output it writes the same block hash, markers, and note as the Python
+  digest; `test/differential/digest.ts` checks this. Unlike the Python
+  digest, it runs the model as an opencode agent with every tool denied, it
+  writes `<!--` from the model or a project title as `&lt;!--` so no marker
+  can appear inside the block, and it refuses a note whose markers are not
+  one start and one end.
 
 ## 1.2.0 — 2026-10-07
 
