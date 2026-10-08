@@ -10,8 +10,9 @@
  * call missing from the recording runs the real `gh` once and is added.
  *
  * `opencode` saves its stdin to `$DIGEST_LOG_DIR/prompt-<n>.txt` and prints
- * one final text event that cites every reference the prompt requires. The
- * prompts themselves are not part of the contract and may differ.
+ * one final text event that links every PR and issue in the prompt's
+ * activity JSON. The prompts themselves are not part of the contract and may
+ * differ.
  */
 
 import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -59,19 +60,45 @@ function gh(args: string[]): number {
   return result.exitCode;
 }
 
+// The activity JSON follows this text in both prompts.
+const BEFORE_JSON = "Output only the sections.\n\n";
+
+type Grouped = Record<
+  string,
+  { repos: Record<string, Record<string, { number: unknown; url: unknown }[]>> }
+>;
+
+/**
+ * Every PR and issue in the prompt's activity JSON as `[#N](url)`, sorted by
+ * repository and number. Both prompts carry the same JSON (apart from the
+ * opened-PR difference), so both sides get the same prose, and it meets both
+ * checks: Python's `#N` and TypeScript's link with repository and number.
+ */
+function citations(prompt: string): string[] {
+  const start = prompt.indexOf(BEFORE_JSON);
+  if (start === -1) throw new Error("digest stub: no activity JSON in the prompt");
+  const grouped = JSON.parse(prompt.slice(start + BEFORE_JSON.length)) as Grouped;
+  const refs = new Map<string, string>();
+  for (const bucket of Object.values(grouped)) {
+    for (const [repo, kinds] of Object.entries(bucket.repos)) {
+      for (const [kind, items] of Object.entries(kinds)) {
+        if (kind === "commits") continue;
+        for (const item of items) {
+          refs.set(`${repo}#${item.number}`, `[#${item.number}](${item.url})`);
+        }
+      }
+    }
+  }
+  return [...refs].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, link]) => link);
+}
+
 async function opencode(): Promise<number> {
   const prompt = new Uint8Array(await new Response(Bun.stdin.stream()).arrayBuffer());
   const dir = env("DIGEST_LOG_DIR");
   const count = readdirSync(dir).filter((name) => name.startsWith("prompt-")).length;
   writeFileSync(join(dir, `prompt-${count + 1}.txt`), prompt);
   const text = new TextDecoder().decode(prompt);
-  const required = /MUST appear in your output: (.*?)\. Summarize commits/s.exec(text)?.[1] ?? "";
-  const refs = required === "" ? [] : required.split(", ");
-  const prose = [
-    "### Stub summary",
-    "",
-    `- References: ${refs.map((ref) => `[${ref}](https://example.invalid/${ref.slice(1)})`).join(", ")}.`,
-  ].join("\n");
+  const prose = ["### Stub summary", "", `- References: ${citations(text).join(", ")}.`].join("\n");
   const events = [
     { type: "step_start" },
     { type: "text", part: { type: "text", text: prose } },

@@ -24,8 +24,9 @@ exactly one start and one end.
 
 PR and issue text is untrusted. The model runs as an opencode agent with every
 permission denied, so it has no shell, file, or network tools and can only
-return text. The digest accepts only a single text answer that cites every PR
-and issue, and it writes `<!--` from that answer as `&lt;!--`, so no marker
+return text. The digest accepts only a single text answer that links every PR
+and issue by its GitHub URL (repository and number, so one `#N` cannot stand
+for two repositories), and it writes `<!--` from that answer as `&lt;!--`, so no marker
 can appear inside the block.
 
 There is no nightly closeout and no weekly synthesis (vault ADR 0010). Neither

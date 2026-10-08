@@ -24,7 +24,15 @@
  * It exits 1 on any difference. With `--edge` it also requires the outcomes
  * listed in `EDGE_DAYS`, so the check cannot pass on two equal failures.
  *
- * One difference is intended. Python hides an opened PR when a PR with the
+ * Two differences are intended. First, the TypeScript prompt requires each
+ * PR and issue as a link with its repository and number, and the TypeScript
+ * check accepts only that link; Python requires `#N`, which one mention
+ * satisfies for two repositories. The check requires the TypeScript links,
+ * reduced to their numbers, to equal the Python references. The stub's
+ * summary links every PR and issue, so it meets both checks and the notes
+ * stay byte-equal.
+ *
+ * Second, Python hides an opened PR when a PR with the
  * same number merged that day in any repository; TypeScript hides only the
  * PR that itself merged (same repository and number). On a day where `gh`
  * returns such a PR, the check requires the TypeScript prompt to list it and
@@ -89,6 +97,23 @@ function promptsIn(dir: string): string[] {
     .sort((a, b) => Number(a.slice(7, -4)) - Number(b.slice(7, -4)))
     .map((name) => readFileSync(join(dir, name), "utf8"))
     .map((prompt) => /MUST appear in your output: (.*?)\. Summarize/s.exec(prompt)?.[1] ?? "?");
+}
+
+/**
+ * The TypeScript prompt's required links (`[#N](https://github.com/OWNER/REPO/pull/N)`,
+ * or `/issues/N`) as the Python prompt lists them: the numbers alone, as
+ * `#N`, without repeats, sorted. A link in any other form gives "?".
+ */
+function asPythonReferences(required: string): string {
+  if (required === "") return "";
+  const numbers = new Set<string>();
+  for (const link of required.split(", ")) {
+    const match =
+      /^\[#(\d+)\]\(https:\/\/github\.com\/[^/\s()]+\/[^/\s()]+\/(?:pull|issues)\/\1\)$/.exec(link);
+    if (match === null) return "?";
+    numbers.add(`#${match[1]}`);
+  }
+  return [...numbers].sort().join(", ");
 }
 
 function ghCalls(dir: string): string[] {
@@ -237,7 +262,7 @@ function main(): number {
       if (!isDeepStrictEqual(ghCalls(p.logDir), ghCalls(t.logDir))) {
         fail(phase, "gh calls", ghCalls(p.logDir), ghCalls(t.logDir));
       }
-      const [pp, tp] = [promptsIn(p.logDir), promptsIn(t.logDir)];
+      const [pp, tp] = [promptsIn(p.logDir), promptsIn(t.logDir).map(asPythonReferences)];
       if (!isDeepStrictEqual(pp, tp) && !staleForTypescript) {
         fail(phase, "required references", pp, tp);
       }

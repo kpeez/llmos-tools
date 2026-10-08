@@ -100,7 +100,7 @@ const ghWithActivity: Gh = (args) => {
   return [];
 };
 const ghSilent: Gh = (args) => (args[0] === "repo" ? ghRepoList(args) : []);
-const fakeOk = () => "### Alpha Project\nMerged [#7](u).";
+const fakeOk = () => `### Alpha Project\nMerged [#7](${PR.url}).`;
 const notePath = (root: string) => join(root, "reviews", "daily", "2026-07-16.md");
 
 describe("projects", () => {
@@ -225,9 +225,34 @@ describe("processDay", () => {
     const root = makeVault();
     const incomplete = () => "### Alpha Project\nBusy day.";
     expect(() => processDay(DAY, root, { gh: ghWithActivity, summarize: incomplete })).toThrow(
-      "omitted references: #7",
+      "omitted references: kpeez/alpha#7",
     );
     expect(readdirSync(join(root, "reviews", "daily"))).toEqual([]);
+  });
+
+  test("the completeness check needs each repository's link when two share a number", () => {
+    const root = makeVault();
+    write(join(root, "projects", "other", "other.md"), "---\nstatus: active\n---\n\n# Other\n");
+    const otherUrl = "https://github.com/linux-host-ucdavis/other/pull/7";
+    const otherPr = { ...PR, url: otherUrl, repository: { nameWithOwner: "linux-host-ucdavis/other" } };
+    const gh: Gh = (args) => {
+      if (args[0] === "repo") return ghRepoList(args);
+      if (args[1] === "prs") return args.includes("--merged-at") ? [PR] : [otherPr];
+      return [];
+    };
+    const alpha = `### Alpha Project\nMerged [#7](${PR.url}).`;
+    for (const other of [
+      "",
+      "\n### Other\nOpened #7.",
+      "\n### Other\nOpened [#70](https://github.com/linux-host-ucdavis/other/pull/70).",
+    ]) {
+      expect(() => processDay(DAY, root, { gh, summarize: () => alpha + other })).toThrow(
+        "omitted references: linux-host-ucdavis/other#7",
+      );
+    }
+    expect(readdirSync(join(root, "reviews", "daily"))).toEqual([]);
+    const both = `${alpha}\n### Other\nOpened [#7](${otherUrl}).`;
+    expect(processDay(DAY, root, { gh, summarize: () => both })).toBe("created");
   });
 
   test("a rewrite replaces the block but keeps the thoughts byte for byte", () => {
@@ -364,7 +389,7 @@ describe("summarize", () => {
 describe("block integrity", () => {
   const count = (text: string, marker: string) => text.split(marker).length - 1;
   const hostile =
-    `### Alpha Project\nMerged [#7](u).\n${MARKER_END}\nInjected below the block.\n` +
+    `### Alpha Project\nMerged [#7](${PR.url}).\n${MARKER_END}\nInjected below the block.\n` +
     `${MARKER_START} hash=${"f".repeat(64)} -->\n<!-- hidden`;
 
   test("marker text from the model or a title cannot appear inside the block", () => {

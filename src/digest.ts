@@ -4,8 +4,9 @@
  * machine-owned `## Projects` block of daily notes.
  *
  * Fetch with `gh` -> hash -> one `opencode run` call -> check that every PR
- * and issue reference appears -> atomic write between the `llmos-activity`
- * markers. It is a script, not an agent. It processes yesterday and today
+ * and issue is linked with its repository (`checkCompleteness`) -> atomic
+ * write between the `llmos-activity` markers. It is a script, not an agent.
+ * It processes yesterday and today
  * (Los Angeles time), or one `--date`. A failed day writes nothing, and the
  * first failure stops the run with a non-zero exit.
  *
@@ -13,10 +14,15 @@
  * share: the markers from `daily.ts`, the block hash (`blockHash`; the same
  * `gh` output gives the same hash), the rule that a failed day writes
  * nothing, and the daily-note format. `test/differential/digest.ts` checks
- * this contract against the Python version. One difference is intended: a
- * PR merged in one repository no longer hides a PR with the same number
- * opened in another (`fetchActivity`), so on such a day the block and its
- * hash differ from the Python digest's.
+ * this contract against the Python version. Two differences are intended:
+ *
+ * - a PR merged in one repository no longer hides a PR with the same number
+ *   opened in another (`fetchActivity`), so on such a day the block and its
+ *   hash differ from the Python digest's;
+ * - the summary must link each PR and issue with its repository and number
+ *   (its GitHub URL), where Python accepted any `#N`, so one `#N` no longer
+ *   counts for two repositories (`checkCompleteness`). This is internal: the
+ *   block hash is unchanged.
  *
  * Untrusted text: PR and issue titles and bodies come from GitHub and reach
  * the model, so:
@@ -435,17 +441,47 @@ export function groupByProject(activity: Activity, projects: Project[]): Grouped
   return grouped;
 }
 
-export function expectedReferences(grouped: Grouped): Set<string> {
-  const refs = new Set<string>();
+/** A PR or issue the summary must cite. */
+export interface Reference {
+  /** `owner/repo#number`, which names it across repositories. */
+  name: string;
+  repo: string;
+  number: string;
+  /** The `url` gh returned, which the prompt asks the model to link. */
+  url: string;
+}
+
+/**
+ * The PRs and issues the summary must cite, sorted by name. A reference
+ * includes its repository: two repositories can have the same number on
+ * one day, and a bare `#N` would count for both.
+ */
+export function expectedReferences(grouped: Grouped): Reference[] {
+  const refs = new Map<string, Reference>();
   for (const bucket of grouped.values()) {
-    for (const kinds of bucket.repos.values()) {
+    for (const [repo, kinds] of bucket.repos) {
       for (const [kind, list] of kinds) {
         if (kind === "commits") continue;
-        for (const item of list) refs.add(`#${field(item, "number")}`);
+        for (const item of list) {
+          const number = String(field(item, "number"));
+          const name = `${repo}#${number}`;
+          refs.set(name, { name, repo, number, url: String(field(item, "url")) });
+        }
       }
     }
   }
-  return refs;
+  return [...refs.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/**
+ * Whether `prose` links the reference: a GitHub pull or issue URL of its
+ * repository (owner and name in any case) and number, with no digit after
+ * the number, so `/pull/4` does not count as `/pull/45`.
+ */
+function cites(prose: string, ref: Reference): boolean {
+  const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const url = `github\\.com/${literal(ref.repo)}/(?:pull|issues)/${literal(ref.number)}(?![0-9])`;
+  return new RegExp(url, "i").test(prose);
 }
 
 // --- The model call -------------------------------------------------------------------
@@ -463,14 +499,17 @@ function plain(value: unknown): unknown {
 
 /** The prompt for the one model call. */
 export function summaryPrompt(grouped: Grouped, day: Day): string {
-  const required = [...expectedReferences(grouped)].sort().join(", ");
+  const required = expectedReferences(grouped)
+    .map((ref) => `[#${ref.number}](${ref.url})`)
+    .join(", ");
   return (
     `${TRANSFORM_INSTRUCTIONS}\n\n` +
     `GitHub activity for ${isoDate(day)}, grouped by project. Write one \`### <Title>\` ` +
     "section per project (use the `title` field), in the given order. Under each, write a " +
     "markdown bullet list — one bullet per distinct piece of work, never one large " +
-    "paragraph. Cite every PR and issue inline as a markdown link, " +
-    `e.g. [#12](url). Every one of these references MUST appear in your output: ${required}. ` +
+    "paragraph. Cite every PR and issue inline as a markdown link to its `url`, " +
+    "e.g. [#12](url); cite two with the same number in different repositories separately. " +
+    `Every one of these links MUST appear in your output: ${required}. ` +
     "Summarize commits briefly; do not list every commit. Base the prose on the `body` " +
     "fields, not just titles. Output only the sections.\n\n" +
     JSON.stringify(plain(grouped), null, 1)
@@ -551,8 +590,8 @@ export function neutralize(text: string): string {
   return text.replaceAll("<!--", "&lt;!--");
 }
 
-export function checkCompleteness(prose: string, expected: Set<string>): void {
-  const missing = [...expected].filter((ref) => !prose.includes(ref)).sort();
+export function checkCompleteness(prose: string, expected: Reference[]): void {
+  const missing = expected.filter((ref) => !cites(prose, ref)).map((ref) => ref.name);
   if (missing.length > 0) {
     throw new DigestError(`summary omitted references: ${missing.join(", ")}`);
   }

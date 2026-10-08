@@ -4,7 +4,7 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
-## Unreleased
+## 2.2.0 — 2026-10-07
 
 - The canonical note writer keeps Markdown hard line breaks: a body line
   with content that ends in two or more spaces keeps that run of spaces when
@@ -13,6 +13,14 @@ The Python package version lives in `pyproject.toml`.
   the frontmatter block's canonical form is unchanged. The Python writer
   (frozen) still trims them; the differential allowlist lists this as an
   intended difference (`body-hard-line-break`).
+- The activity digest's completeness check requires each PR and issue to be
+  linked with its repository and number (a `github.com/OWNER/REPO/pull/N` or
+  `/issues/N` URL, as the prompt asks), not just `#N`. Before, one `#N`
+  counted for every repository with that number that day, and `#4` counted
+  as found inside `#45`. The prompt now lists each required link with its
+  URL. The block hash and markers are unchanged; the digest parity check
+  compares the required links, reduced to their numbers, with Python's `#N`
+  list.
 
 ## 2.1.0 — 2026-10-07
 
