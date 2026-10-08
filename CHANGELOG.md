@@ -5,6 +5,14 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- New `consolidate-knowledge` skill. It takes one cluster of related notes and
+  writes the topic hub, plus paper and dataset notes whose facts quote
+  captured sources, in a worktree on `claude/consolidate-<slug>`. It lints the
+  facts, runs a second check in separate Claude subagents (a per-note fact
+  prompt and a hub-prose prompt, in `references/`), checks privacy, and
+  delivers the run as a draft pull request with fact counts by status and
+  an estimated review time. A run over 30 minutes of review splits into
+  smaller pull requests (kpeez/llmos#54).
 - The schema audit rejects a `categories` value that is not the exact plain
   name of a hub in `categories/`, such as `[[Paper]]` or
   `[[categories/Papers|Papers]]` (kpeez/llmos#56).

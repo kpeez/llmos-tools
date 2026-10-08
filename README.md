@@ -1,7 +1,7 @@
 # llmOS tools
 
 The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
-lives beside this folder in `../llmOS/`. It bundles four skills, lifecycle hooks that keep vault writes
+lives beside this folder in `../llmOS/`. It bundles five skills, lifecycle hooks that keep vault writes
 well-formed and indexed, an MCP server with typed vault tools, and the llmOS
 CLI: deterministic verbs for vault operations, written in TypeScript and run
 by Bun (`src/`, `bin/`). It replaced an earlier Python package
@@ -43,6 +43,7 @@ codex plugin add llmos@llmos-vault
 ```text
 tools/
 ├── skills/
+│   ├── consolidate-knowledge/ # consolidates a note cluster into a hub plus paper and dataset notes
 │   ├── ingest-source/     # sorts inbox items; captures sources with `source add`
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
@@ -58,12 +59,13 @@ tools/
 
 ## Skills
 
-| Skill            | What it does                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| `ingest-source`  | Sorts inbox items into sources, knowledge notes, and project material, and captures sources into frozen folders |
-| `maintain-llmos` | Maintains the vault through its conventions: filing durable knowledge, project docs, reviews, link/property repair |
-| `setup-llmos`    | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing |
-| `vault-cli`      | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI |
+| Skill                   | What it does                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `consolidate-knowledge` | Consolidates a note cluster into a topic hub, paper notes, and dataset notes; ends in a draft PR                     |
+| `ingest-source`         | Sorts inbox items into sources, knowledge notes, and project material, and captures sources into frozen folders      |
+| `maintain-llmos`        | Maintains the vault through its conventions: filing durable knowledge, project docs, reviews, link/property repair   |
+| `setup-llmos`           | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing      |
+| `vault-cli`             | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI |
 
 The authoring contract lives in the vault at
 `agents/references/authoring.md`. It guides meaningful wikilinks, heading and
