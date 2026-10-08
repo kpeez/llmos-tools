@@ -16,7 +16,7 @@ import { isClean, qmdSection, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { runObsidian } from "./obsidian.ts";
 import { detectProvider } from "./provider.ts";
-import { indexedPaths, openQmd, qmdLocation, reindex, search } from "./qmd.ts";
+import { indexedPaths, openQmd, qmdLocation, reindex, search, unembeddedCount } from "./qmd.ts";
 import { validated } from "./root.ts";
 import { joinRoot, type Note, readSource, readText, type VaultModel } from "./vault.ts";
 import {
@@ -154,19 +154,23 @@ function withoutFinalNewline(text: string): string {
   return text.endsWith("\n") ? text.slice(0, -1) : text;
 }
 
-async function qmdIndexedPaths(context: Context, collection: string): Promise<Set<string> | null> {
+/** The collection's indexed paths and the index's unembedded count; nulls when qmd is unavailable. */
+async function qmdIndexState(
+  context: Context,
+  collection: string,
+): Promise<{ paths: Set<string> | null; unembedded: number | null }> {
   const location = qmdLocation(context.env);
   // Never create an index just to report on it.
-  if (!existsSync(location.dbPath)) return null;
+  if (!existsSync(location.dbPath)) return { paths: null, unembedded: null };
   try {
     const store = await openQmd(location, false);
     try {
-      return await indexedPaths(store, collection);
+      return { paths: await indexedPaths(store, collection), unembedded: unembeddedCount(store) };
     } finally {
       await store.close();
     }
   } catch {
-    return null;
+    return { paths: null, unembedded: null };
   }
 }
 
@@ -284,7 +288,10 @@ to see every hygiene defect in one headless call. Each section degrades
 independently: when qmd has no index or no such collection, the report
 carries a notice instead of failing. Works with Obsidian closed. Exits 1 if
 any section has findings, 0 on a clean vault, so cron can branch on it.
-llmOS schema-violation checks run only for --vault llmos.
+llmOS schema-violation checks run only for --vault llmos. qmd_unembedded
+counts the documents in the whole qmd index that still need embedding (the
+plugin's Stop hook updates only keyword search); it is informational and does
+not change the exit code. Run \`reindex\` to embed them.
 Do NOT use when you only need one relation on one note -- \`neighbors\` is
 cheaper and does not walk the whole vault.`,
   arguments: [],
@@ -306,20 +313,21 @@ cheaper and does not walk the whole vault.`,
   },
   exampleOutput: `{"orphans": ["gamma"], "dead_ends": ["beta"],
  "unresolved_links": [{"referrer": "alpha", "target": "ghost"}],
- "schema_violations": [], "stale_inbox": [], "qmd_gaps": [],
+ "schema_violations": [], "stale_inbox": [], "qmd_gaps": [], "qmd_unembedded": 0,
  "qmd_notice": null}`,
   example: "llmos-vault health --vault llmos --json",
   async run(values, context) {
     const vault = vaultName(values);
     const collection = str(values, "qmd-collection");
     const model = context.model(context.root(vault));
+    const qmd = await qmdIndexState(context, collection);
     const report = {
       ...vaultHealth(model, {
         profile: vault === "llmos" ? "llmos" : "core",
         staleAfterDays: count(values, "stale-after-days", 0),
         today: dayNumber(context.today()),
       }),
-      ...qmdSection(model, await qmdIndexedPaths(context, collection), collection),
+      ...qmdSection(model, qmd.paths, collection, qmd.unembedded),
     };
     const exitCode = isClean(report) ? 0 : 1;
     return values.json ? { json: report, exitCode } : { text: summary(report), exitCode };
@@ -646,6 +654,10 @@ embedding model when there is work), and \`qmd cleanup\` (orphaned vectors,
 inactive documents, LLM cache, FTS compaction, vacuum; this step covers
 the whole index) through the qmd SDK. Two embeds never run at once: a
 second one fails while another process holds qmd's embed lock.
+--no-embed runs only the scan: keyword search is current at once and no
+model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
+after each turn that changed the vault. Run plain \`reindex\` by hand to
+embed; \`health\` reports documents that still need embedding.
 Do NOT use when you only want to search -- use \`search\`.`,
   arguments: [],
   options: {
@@ -654,6 +666,10 @@ Do NOT use when you only want to search -- use \`search\`.`,
       default: "llmos",
       metavar: "NAME",
       help: "qmd collection to update and embed.",
+    },
+    "no-embed": {
+      type: "boolean",
+      help: "Only scan the collection's files; skip embedding and cleanup.",
     },
   },
   exampleOutput: `{"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},
@@ -664,7 +680,8 @@ Do NOT use when you only want to search -- use \`search\`.`,
     const location = qmdLocation(context.env);
     const store = await openQmd(location, true);
     try {
-      return { json: await reindex(store, location.dbPath, str(values, "collection")) };
+      const embed = values["no-embed"] !== true;
+      return { json: await reindex(store, location.dbPath, str(values, "collection"), { embed }) };
     } finally {
       await store.close();
     }

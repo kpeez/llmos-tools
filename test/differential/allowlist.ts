@@ -168,6 +168,17 @@ export const ALLOWLIST: AllowlistEntry[] = [
       ),
   },
   {
+    id: "health-qmd-unembedded",
+    reason:
+      "health gained qmd_unembedded (documents still needing embedding) when the Stop hook " +
+      "stopped embedding; the Python health has no such field. It is null without qmd.",
+    matches: (difference) =>
+      difference.comparison === "python-vs-compatible" &&
+      difference.section === "health.qmd_unembedded" &&
+      difference.python === undefined &&
+      (difference.typescript === null || typeof difference.typescript === "number"),
+  },
+  {
     id: "properties-python-cannot-read",
     reason:
       "Python reads a note whose frontmatter it refuses (or an empty block) as having " +

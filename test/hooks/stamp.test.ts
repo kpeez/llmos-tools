@@ -1,0 +1,294 @@
+/**
+ * The post-tool-use hook normalizes vault notes, stamps `updated`, appends
+ * the provider to `authors` once, flags the qmd collection dirty, and
+ * reports authoring findings. Notes it cannot rewrite safely stay byte for
+ * byte. Ported from `tests/test_stamp_format.py`.
+ */
+
+import { afterEach, describe, expect, test } from "bun:test";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { checkNote } from "../../src/authoring.ts";
+import { type Note, VaultModel } from "../../src/vault.ts";
+import {
+  additionalContext,
+  dirtyFlag,
+  makeVault,
+  removeTemporaryFolders,
+  runHook,
+  temporaryFolder,
+  todayIso,
+  writeFile,
+} from "./helpers.ts";
+
+const MESSY_NOTE =
+  "---\n" +
+  "created: 2026-07-01\n" +
+  "categories:\n" +
+  '  - "[[Knowledge]]"\n' +
+  "---\n" +
+  "# A note\n" +
+  "\n" +
+  "Body content, with a wikilink to [[Some Other Note]].\n";
+
+afterEach(removeTemporaryFolders);
+
+function stamp(note: string, tmp: string, root: string, env: Record<string, string> = {}) {
+  return runHook("post-tool-use", { session_id: "sess-1", tool_input: { file_path: note } }, tmp, {
+    root,
+    env,
+  });
+}
+
+function setup(text: string, name = "note.md") {
+  const tmp = temporaryFolder();
+  const vault = makeVault(join(tmp, "vault"));
+  const note = writeFile(join(vault, name), text);
+  return { tmp, vault, note };
+}
+
+describe("stamping", () => {
+  test("writes the canonical form with updated and the provider in authors", () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+
+    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
+
+    expect(result.exitCode).toBe(0);
+    // The same bytes the Python hook writes for this note.
+    expect(readFileSync(note, "utf8")).toBe(
+      "---\nauthors:\n  - claude\ncategories:\n" +
+        `  - "[[Knowledge]]"\ncreated: 2026-07-01\nupdated: ${todayIso()}\n---\n\n` +
+        "# A note\n\nBody content, with a wikilink to [[Some Other Note]].\n",
+    );
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(true);
+  });
+
+  test("appends the provider once, so a second stamp changes nothing", () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+
+    stamp(note, tmp, vault, { CODEX_SANDBOX_NETWORK_DISABLED: "1" });
+    const once = readFileSync(note, "utf8");
+    stamp(note, tmp, vault, { CODEX_SANDBOX_NETWORK_DISABLED: "1" });
+
+    expect(readFileSync(note, "utf8")).toBe(once);
+    expect(once.match(/codex/g)).toHaveLength(1);
+  });
+
+  test("leaves authors alone when no provider is detected, and keeps the file mode", () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+    chmodSync(note, 0o640);
+
+    stamp(note, tmp, vault);
+
+    const text = readFileSync(note, "utf8");
+    expect(text).not.toContain("authors");
+    expect(text).toContain("created: 2026-07-01");
+    expect(statSync(note).mode & 0o777).toBe(0o640);
+  });
+
+  test("rewrites the note in place, keeping the same file", () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+    const before = statSync(note);
+
+    stamp(note, tmp, vault);
+
+    const after = statSync(note);
+    expect(after.ino).toBe(before.ino);
+    expect(after.birthtimeMs).toBe(before.birthtimeMs);
+  });
+
+  test("keeps a block scalar's data", () => {
+    const original =
+      "---\nmethod: |\n  Five-lens review -- 37 findings: 28 confirmed.\n  Second line: kept.\n" +
+      "updated: 2026-10-01\n---\n\n# Review\n";
+    const { tmp, vault, note } = setup(original, "review.md");
+
+    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
+
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(note, "utf8")).toBe(
+      "---\nauthors:\n  - claude\nmethod: |\n" +
+        "  Five-lens review -- 37 findings: 28 confirmed.\n  Second line: kept.\n" +
+        `updated: ${todayIso()}\n---\n\n# Review\n`,
+    );
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(true);
+  });
+
+  test("keeps comments and nested maps", () => {
+    const original =
+      "---\n# why this note exists\ncreated: 2026-07-01\nsource:\n  url: https://example.com\n" +
+      "  pages: 3\n---\n\nBody\n";
+    const { tmp, vault, note } = setup(original);
+
+    stamp(note, tmp, vault);
+
+    const text = readFileSync(note, "utf8");
+    expect(text).toContain("# why this note exists\n");
+    expect(text).toContain("source:\n  url: https://example.com\n  pages: 3\n");
+    expect(text).toContain(`updated: ${todayIso()}\n`);
+  });
+});
+
+describe("notes left unchanged", () => {
+  test.each([
+    ["no frontmatter block", "# Just a note\n\nNo frontmatter here.\n"],
+    ["YAML errors", "---\ntitle: [unclosed\n---\n\nBody\n"],
+    ["an empty list item", "---\ntags:\n  -\n---\n\nBody\n"],
+  ])("a note with %s", (_label, original) => {
+    const { tmp, vault, note } = setup(original);
+
+    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
+
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(note, "utf8")).toBe(original);
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(false);
+  });
+
+  test("a note that is not valid UTF-8", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = join(vault, "binary.md");
+    const bytes = Buffer.concat([
+      Buffer.from("---\ntitle: caf"),
+      Buffer.from([0xe9]),
+      Buffer.from("\n---\n\nBody\n"),
+    ]);
+    writeFileSync(note, bytes);
+
+    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
+
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(note).equals(bytes)).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(false);
+  });
+
+  test("a write outside the vault", () => {
+    const { tmp, vault } = setup(MESSY_NOTE);
+    const outside = writeFile(join(tmp, "other-repo", "README.md"), "# hello\n");
+
+    stamp(outside, tmp, vault);
+
+    expect(readFileSync(outside, "utf8")).toBe("# hello\n");
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(false);
+  });
+
+  test("Bases and Canvas files", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    for (const [suffix, original] of [
+      [".base", "filters:\n  and: []\n"],
+      [".canvas", '{"nodes": [], "edges": []}\n'],
+    ] as const) {
+      const file = writeFile(join(vault, `map${suffix}`), original);
+
+      const result = stamp(file, tmp, vault);
+
+      expect(result.exitCode).toBe(0);
+      expect(readFileSync(file, "utf8")).toBe(original);
+    }
+    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(false);
+  });
+
+  test("any note when no vault is configured", () => {
+    const tmp = temporaryFolder();
+    const note = writeFile(join(tmp, "some-repo", "note.md"), MESSY_NOTE);
+
+    const result = runHook(
+      "post-tool-use",
+      { session_id: "sess-1", tool_input: { file_path: note } },
+      tmp,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(readFileSync(note, "utf8")).toBe(MESSY_NOTE);
+  });
+});
+
+describe("authoring findings", () => {
+  test("reports an unlinked reference to an existing note as PostToolUse context", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    writeFile(join(vault, "projects", "testproj", "target.md"), "# Target\n");
+    const note = writeFile(
+      join(vault, "projects", "testproj", "source.md"),
+      "---\ncreated: 2026-07-01\n---\n# Source\n\nSee target.md for the explanation.\n",
+    );
+
+    const result = stamp(note, tmp, vault);
+
+    const context = additionalContext(result, "PostToolUse");
+    expect(context).toBe(
+      "llmOS authoring check (informational; this checker did not block the write or " +
+        "rewrite note content):\n" +
+        "projects/testproj/source.md:8 [unlinked-note] -> projects/testproj/target: " +
+        "Existing note reference 'target.md': link to 'projects/testproj/target' using the " +
+        "note title or a natural phrase, not the filename.\n" +
+        "Run `llmos-vault check <note>` for complete findings.",
+    );
+    expect(readFileSync(note, "utf8")).toContain("See target.md for the explanation.");
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("reports findings for a note without frontmatter, which it does not stamp", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    writeFile(join(vault, "target.md"), "# Target\n");
+    const original = "# Plain\n\nSee target.md.\n";
+    const note = writeFile(join(vault, "plain.md"), original);
+
+    const result = stamp(note, tmp, vault);
+
+    expect(additionalContext(result, "PostToolUse")).toContain("plain.md:3 [unlinked-note]");
+    expect(readFileSync(note, "utf8")).toBe(original);
+  });
+
+  test("is silent when the note has no findings", () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+
+    const result = stamp(note, tmp, vault);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("matches the full-vault check: folder symlinks are not indexed, cycles do not hang", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    writeFile(join(vault, "a", "x.md"), "# X\n");
+    writeFile(join(vault, "a", "Dup.md"), "# Dup\n");
+    writeFile(join(vault, "b", "dup.md"), "# dup\n");
+    writeFile(join(vault, "c", "y.md"), "# Y\n");
+    symlinkSync(join(vault, "c", "y.md"), join(vault, "alias.md"));
+    writeFile(join(tmp, "outside", "o.md"), "# O\n");
+    symlinkSync(join(vault, "a"), join(vault, "mirror"));
+    symlinkSync(join(tmp, "outside"), join(vault, "ext"));
+    mkdirSync(join(vault, "sub"));
+    symlinkSync("..", join(vault, "sub", "up"));
+    symlinkSync("..", join(vault, "sub", "up2"));
+    const note = writeFile(
+      join(vault, "n.md"),
+      "---\ncreated: 2026-07-01\n---\n\nSee x.md, o.md, dup.md, and alias.md here.\n",
+    );
+
+    const started = performance.now();
+    const result = stamp(note, tmp, vault);
+    const elapsed = performance.now() - started;
+
+    const model = VaultModel.load(vault);
+    const check = checkNote(model, model.notes.find((n) => n.path === "n.md") as Note);
+    const expected = check.findings.map((f) => `n.md:${f.line} [${f.code}] -> ${f.target}: `);
+    const lines = additionalContext(result, "PostToolUse").split("\n").slice(1, -1);
+    expect(lines.map((line) => line.slice(0, line.indexOf(": ") + 2))).toEqual(expected);
+    expect(expected.map((line) => line.split(" -> ")[1])).toEqual(["a/x: ", "c/y: "]);
+    expect(elapsed).toBeLessThan(5_000);
+  });
+});

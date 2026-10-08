@@ -88,6 +88,15 @@ export async function indexedPaths(
   return new Set(rows.map((row) => row.path));
 }
 
+/**
+ * Documents in the whole index (every collection) whose vectors are missing
+ * or incomplete for the default embedding model: what `qmd embed` would do.
+ * The SDK exposes only the index-wide count.
+ */
+export function unembeddedCount(store: QMDStore): number {
+  return store.internal.getHashesNeedingEmbedding();
+}
+
 export interface SearchHit {
   path: string;
   title: string;
@@ -187,13 +196,20 @@ async function withEmbedLock<T>(dbPath: string, work: () => Promise<T>): Promise
 
 export interface ReindexResult {
   update: { indexed: number; updated: number; unchanged: number; removed: number; skipped: number };
-  embed: { docsProcessed: number; chunksEmbedded: number; errors: number; durationMs: number };
+  /** `null` when the embed step was skipped (`embed: false`). */
+  embed: {
+    docsProcessed: number;
+    chunksEmbedded: number;
+    errors: number;
+    durationMs: number;
+  } | null;
+  /** `null` when the embed step, and with it cleanup, was skipped. */
   cleanup: {
     cacheCount: number;
     orphanedVectors: number;
     inactiveDocs: number;
     orphanedContent: number;
-  };
+  } | null;
 }
 
 /**
@@ -201,25 +217,31 @@ export interface ReindexResult {
  * documents that need vectors (`qmd embed`), then run qmd's cleanup (`qmd
  * cleanup`: LLM cache, orphaned vectors, inactive documents, orphaned
  * content, FTS compaction, vacuum). Cleanup covers the whole index.
+ *
+ * With `embed: false` only the scan runs: the keyword index is current, no
+ * model loads, and vectors for changed documents wait for a full reindex.
  */
 export async function reindex(
   store: QMDStore,
   dbPath: string,
   collection: string,
+  options: { embed?: boolean } = {},
 ): Promise<ReindexResult> {
   await requireCollection(store, collection);
-  const update = await store.update({ collections: [collection] });
+  const scanned = await store.update({ collections: [collection] });
+  const update = {
+    indexed: scanned.indexed,
+    updated: scanned.updated,
+    unchanged: scanned.unchanged,
+    removed: scanned.removed,
+    skipped: scanned.skipped,
+  };
+  if (options.embed === false) return { update, embed: null, cleanup: null };
   const embed = await withEmbedLock(dbPath, () => store.embed({ collection }));
   const { Maintenance } = await import("@tobilu/qmd");
   const cleanup = new Maintenance(store.internal).run();
   return {
-    update: {
-      indexed: update.indexed,
-      updated: update.updated,
-      unchanged: update.unchanged,
-      removed: update.removed,
-      skipped: update.skipped,
-    },
+    update,
     embed: {
       docsProcessed: embed.docsProcessed,
       chunksEmbedded: embed.chunksEmbedded,

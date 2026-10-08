@@ -284,7 +284,10 @@ to see every hygiene defect in one headless call. Each section degrades
 independently: when qmd has no index or no such collection, the report
 carries a notice instead of failing. Works with Obsidian closed. Exits 1 if
 any section has findings, 0 on a clean vault, so cron can branch on it.
-llmOS schema-violation checks run only for --vault llmos.
+llmOS schema-violation checks run only for --vault llmos. qmd_unembedded
+counts the documents in the whole qmd index that still need embedding (the
+plugin's Stop hook updates only keyword search); it is informational and does
+not change the exit code. Run `reindex` to embed them.
 Do NOT use when you only need one relation on one note -- `neighbors` is
 cheaper and does not walk the whole vault.
 
@@ -297,7 +300,7 @@ Options:
 Example output:
   {"orphans": ["gamma"], "dead_ends": ["beta"],
    "unresolved_links": [{"referrer": "alpha", "target": "ghost"}],
-   "schema_violations": [], "stale_inbox": [], "qmd_gaps": [],
+   "schema_violations": [], "stale_inbox": [], "qmd_gaps": [], "qmd_unembedded": 0,
    "qmd_notice": null}
 
 Example:
@@ -410,7 +413,7 @@ Example:
 ## `reindex`
 
 ```text
-Usage: llmos-vault reindex [--collection NAME]
+Usage: llmos-vault reindex [--collection NAME] [--no-embed]
 
 Update, embed, and clean up the qmd index for a collection.
 
@@ -421,10 +424,15 @@ embedding model when there is work), and `qmd cleanup` (orphaned vectors,
 inactive documents, LLM cache, FTS compaction, vacuum; this step covers
 the whole index) through the qmd SDK. Two embeds never run at once: a
 second one fails while another process holds qmd's embed lock.
+--no-embed runs only the scan: keyword search is current at once and no
+model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
+after each turn that changed the vault. Run plain `reindex` by hand to
+embed; `health` reports documents that still need embedding.
 Do NOT use when you only want to search -- use `search`.
 
 Options:
   --collection  qmd collection to update and embed. Default: llmos.
+  --no-embed    Only scan the collection's files; skip embedding and cleanup.
 
 Example output:
   {"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},

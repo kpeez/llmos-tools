@@ -7,6 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileSha256, recordHeartbeat } from "../src/heartbeat.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
 import { executable, isolatedEnv, makeVault, scratch, TOOLS, writeFiles } from "./helpers.ts";
 
@@ -55,6 +56,32 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
     await store.close();
   }
   if (options.sentinelIndexed === false) writeFiles(root, { "llmOS.md": SENTINEL });
+  // The plugin installed for Claude Code, and its hooks seen running.
+  const plugin = join(
+    env.HOME as string,
+    ".claude",
+    "plugins",
+    "cache",
+    "llmos-vault",
+    "llmos",
+    "1",
+  );
+  writeFiles(plugin, { "dist/hooks.js": "// hooks\n" });
+  writeFiles(join(env.HOME as string, ".claude", "plugins"), {
+    "installed_plugins.json": JSON.stringify({
+      plugins: { "llmos@llmos-vault": [{ installPath: plugin }] },
+    }),
+  });
+  recordHeartbeat(
+    "claude",
+    {
+      time: new Date().toISOString(),
+      bun: Bun.version,
+      bundleSha256: fileSha256(join(plugin, "dist", "hooks.js")),
+      pluginRoot: plugin,
+    },
+    env,
+  );
   return { root, bin, env };
 }
 
@@ -86,11 +113,18 @@ describe("llmos-doctor", () => {
       "qmd-collection",
       "qmd-index",
       "qmd-retrieval",
+      "hooks-claude",
     ]) {
       expect(result.stdout).toContain(`PASS ${check}:`);
     }
     expect(result.stdout).toContain("(qmd 2.8.3");
     expect(result.exitCode).toBe(0);
+  });
+
+  test("hooks that never ran fail with the repair", async () => {
+    const { env } = await setup();
+    rmSync(join(env.HOME as string, ".local", "state", "llmos", "hooks.json"));
+    failed(doctor(env), "hooks-claude", "Start a fresh Claude Code session");
   });
 
   test("the config file is used when $LLMOS_ROOT is unset or empty", async () => {

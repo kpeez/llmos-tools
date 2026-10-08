@@ -46,4 +46,12 @@ differential:
 differential-digest:
     bun test/differential/digest.ts --edge
 
-check: drift lint types test ts-types ts-lint ts-test differential differential-digest
+# Rebuild the committed plugin hook bundle (dist/hooks.js) from src/hooks/.
+hooks:
+    bun run build:hooks
+
+# Fail when the committed hook bundle differs from a fresh build.
+hooks-drift: hooks
+    git diff --exit-code dist/hooks.js
+
+check: drift lint types test ts-types ts-lint ts-test differential differential-digest hooks-drift

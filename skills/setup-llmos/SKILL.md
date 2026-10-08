@@ -46,9 +46,16 @@ The doctor is read-only. It reports `PASS` or `FAIL` for each available
 prerequisite, prints an exact `REPAIR` command after every failure, and exits
 nonzero when setup is incomplete. It checks the vault root, Obsidian, that
 exactly one `qmd` is on `PATH` and it is this install's, and that the qmd
-index holds and returns the vault's `llmOS.md`. It does not establish that
-either agent has loaded the plugin or trusted its hooks. Verify those
-separately below.
+index holds and returns the vault's `llmOS.md`. For each agent with the
+plugin installed, it also checks that the agent's hooks have run (see
+"Verify the hooks" below).
+
+The plugin's Stop hook keeps qmd's keyword index current after each turn
+that changed the vault (`llmos-vault reindex --no-embed`). It never embeds,
+because loading the embedding model takes seconds. Embedding for
+`search --semantic` is done by running `llmos-vault reindex` by hand;
+`llmos-vault health` reports how many documents still need it
+(`qmd_unembedded`).
 
 ## Workflow
 
@@ -90,6 +97,39 @@ Advanced → Command line interface).
   and the session D-Bus address are set; otherwise the CLI cannot reach the
   running app.
 
+## Hooks need `bun` on the hook `PATH`
+
+The plugin hooks run `bun "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>`. The
+harness, not your interactive shell, must find `bun`: Claude Code runs hooks
+with its own environment, and Codex runs them through the login shell. When
+`bun` is missing, every hook fails without blocking anything, and the session
+gets no vault context, stamps, or guards. A `bun` on your shell `PATH` does
+not prove the hooks can see it; the heartbeat check below does.
+
+## Verify the hooks: one fresh session per agent, then the doctor
+
+Every time the session-start hook runs, it records a heartbeat in
+`${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`, keyed by agent
+(`claude`, `codex`): the time, the Bun version, the SHA-256 of the hook
+bundle that ran, and the plugin root. `llmos-doctor` finds the installed
+plugin for each agent (Claude's `~/.claude/plugins/installed_plugins.json`,
+Codex's `[plugins."llmos@llmos-vault"]` in `~/.codex/config.toml` and its
+plugin cache) and checks the heartbeat against it:
+
+- `PASS hooks-<agent>`: the installed hooks have run.
+- `FAIL hooks-<agent>`: no heartbeat, or the last one ran another bundle than
+  the installed one. Either no session started since the plugin was
+  installed or updated, or the hooks cannot run: `bun` is not on the hook
+  `PATH`, or (Codex) the hooks are not trusted. The `REPAIR` line names
+  which.
+- `WARN hooks-<agent>`: the heartbeat is more than 7 days old.
+- `NOTE hooks-<agent>`: the plugin is not installed for that agent.
+
+So the verification is: start one fresh session per agent (in any folder),
+end it, then run `llmos-doctor`. It must pass for every agent with the plugin
+installed. The probes in the next section are for troubleshooting a
+failure.
+
 ## Codex needs the hook trusted once
 
 On Codex, installing the plugin is not enough to make its hooks run. Codex
@@ -106,7 +146,8 @@ for the current hook definition and can become stale after an update.
 
 If it is not trusted, the repair is a human one: open Codex interactively and
 approve the llmOS hook when prompted. It persists, and only that machine's
-`config.toml` records it — so every new machine needs it again.
+`config.toml` records it — so every new machine needs it again, and so does
+every plugin update that changes `hooks/hooks.json`.
 
 Do not "fix" this with `bypass_hook_trust = true` (or
 `--dangerously-bypass-hook-trust`). Those are global: they disable trust review
@@ -114,10 +155,13 @@ for every hook from every installed marketplace, including remote ones, to solve
 one local hook. Codex's own text calls the flag DANGEROUS and scopes it to
 automation that already vets its hook sources.
 
-Verify by what a session receives, never by what the config says:
+Verify by what a session does, never by what the config says: the doctor's
+`hooks-codex` check passes only after a Codex session ran the installed
+hooks. To troubleshoot a failure, ask a fresh session from the vault root:
 
 ```sh
 codex exec --sandbox read-only "Do not use any tools. Did you receive a startup message mentioning 'llmOS root'? yes/no." </dev/null
+claude -p "Do not use any tools. Did you receive a startup message mentioning 'llmOS root'? Answer yes or no."
 ```
 
 `no` means the hook did not fire, whatever `plugin list` claims.

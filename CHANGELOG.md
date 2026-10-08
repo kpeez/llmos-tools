@@ -4,7 +4,11 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
-## Unreleased
+## 2.0.0 — 2026-10-07
+
+Breaking: the plugin hooks, the `llmos-vault` CLI, and the activity digest now
+run on Bun. Each host needs `bun` on the hook `PATH` and a CLI install through
+`setup-llmos`; Codex hooks must be approved again.
 
 - Port the `llmos-vault` CLI, `llmos-doctor`, and `llmos-audit` to TypeScript
   on Bun (ADR 0012, CLI phase). Command names, flags, JSON output shapes, and
@@ -36,6 +40,17 @@ The Python package version lives in `pyproject.toml`.
   writes `<!--` from the model or a project title as `&lt;!--` so no marker
   can appear inside the block, and it refuses a note whose markers are not
   one start and one end.
+- Run the plugin hooks from one Bun bundle, `dist/hooks.js` (ADR 0012, hooks
+  phase), instead of Python scripts. Hosts need `bun` on the hook `PATH`, and
+  Codex needs the changed hooks approved again. The stamp hook now keeps block
+  scalars, comments, and nested maps instead of skipping those notes. The
+  stop hook updates only the keyword index (`llmos-vault reindex --no-embed`,
+  else `qmd update -c llmos`) and never embeds; run `llmos-vault reindex` by
+  hand to embed, and `llmos-vault health` reports `qmd_unembedded`.
+- The session-start hook records a heartbeat per agent in
+  `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`, and `llmos-doctor`
+  fails for an agent whose installed hooks have not run (no `bun` on the hook
+  `PATH`, or untrusted Codex hooks) and warns after 7 days.
 
 ## 1.2.0 — 2026-10-07
 

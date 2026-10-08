@@ -16,6 +16,13 @@ atomic file writes in the canonical frontmatter form. Only `move` and
 `create --template` need the running app; they exit 3 when it is not
 running. `search` and `reindex` use qmd's index through its SDK.
 
+Keyword search stays current on its own: after each turn that changed the
+vault, the plugin's Stop hook runs `llmos-vault reindex --no-embed`. Vectors
+for `search --semantic` do not: embedding loads a model and takes seconds,
+so no hook runs it. Run `llmos-vault reindex` by hand to embed. `llmos-vault
+health` reports the count of documents that still need embedding as
+`qmd_unembedded`.
+
 ## Verbs
 
 <!-- BEGIN GENERATED VERB TABLE -->

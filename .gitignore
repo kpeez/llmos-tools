@@ -6,7 +6,9 @@ __pycache__/
 .ty_cache/
 *.egg-info/
 build/
-dist/
+# Wheels from `uv build`; the hook bundle is committed.
+dist/*
+!dist/hooks.js
 .DS_Store
 artifacts
 node_modules/

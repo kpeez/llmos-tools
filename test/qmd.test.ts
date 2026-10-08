@@ -63,6 +63,26 @@ describe("qmd", () => {
     expect(result.exitCode).toBe(1);
   });
 
+  test("reindex --no-embed scans the files only, and health counts what needs embedding", async () => {
+    const { root, env } = await indexedVault();
+    writeFiles(root, { "notes/gamma.md": "# Gamma\n\nNew note.\n" });
+
+    const result = await cli(root, ["reindex", "--no-embed"], { env });
+
+    expect(result.exitCode).toBe(0);
+    const report = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(report.update).toMatchObject({ indexed: 1 });
+    expect(report.embed).toBeNull();
+    expect(report.cleanup).toBeNull();
+    const health = await cli(root, ["health", "--json"], { env });
+    const section = JSON.parse(health.stdout) as { qmd_gaps: string[]; qmd_unembedded: number };
+    expect(section.qmd_gaps).toEqual([]);
+    // Nothing was ever embedded: every note in the vault needs it.
+    const notes = [...new Bun.Glob("**/*.md").scanSync({ cwd: root })];
+    expect(notes).toContain("notes/gamma.md");
+    expect(section.qmd_unembedded).toBe(notes.length);
+  });
+
   test("without an index, health gives a notice and creates no index", async () => {
     const root = makeVault(NOTES);
     const env = isolatedEnv();

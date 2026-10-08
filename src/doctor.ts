@@ -6,11 +6,23 @@
  * The qmd checks read the index through the qmd SDK, the same way `search`
  * does. The `qmd` command on `PATH` must be exactly one, and it must be this
  * install's: two qmd versions would write the same `~/.cache/qmd` index.
+ *
+ * The hook checks read the heartbeat the session-start hook records
+ * (`heartbeat.ts`), because a hook that cannot start fails silently.
  */
 
-import { accessSync, constants, existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import {
+  accessSync,
+  constants,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
+import { fileSha256, heartbeatPath, readHeartbeats } from "./heartbeat.ts";
 import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -239,5 +251,170 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
     fail("qmd-retrieval", "blocked by qmd-collection failure", collectionRepair);
   }
 
+  const hooks = hookChecks(env);
+  lines.push(...hooks.lines);
+  failures += hooks.failures;
+
   return { lines, exitCode: failures > 0 ? 1 : 0 };
+}
+
+const PLUGIN_ID = "llmos@llmos-vault";
+const WARN_AFTER_DAYS = 7;
+const DAY_MS = 86_400_000;
+
+interface Agent {
+  key: "claude" | "codex";
+  name: string;
+  /** The installed plugin folder; `undefined` when the plugin is not installed. */
+  installPath: string | null | undefined;
+  repair: string;
+  update: string;
+}
+
+/** Claude Code's install record: `installed_plugins.json` names the plugin's folder. */
+function claudeInstall(env: Env): string | null | undefined {
+  const config = env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), ".claude");
+  let data: unknown;
+  try {
+    data = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));
+  } catch {
+    return undefined;
+  }
+  const entries = (data as { plugins?: Record<string, unknown> } | null)?.plugins?.[PLUGIN_ID];
+  if (!Array.isArray(entries) || entries.length === 0) return undefined;
+  const path = (entries[0] as { installPath?: unknown }).installPath;
+  return typeof path === "string" ? path : null;
+}
+
+/** Major, minor, patch of a version folder name, for ordering. */
+function versionKey(name: string): number[] {
+  return name.split(".").map((part) => Number.parseInt(part, 10) || 0);
+}
+
+/**
+ * Codex's install record: the plugin's `[plugins."llmos@llmos-vault"]` table
+ * in `config.toml` (not `enabled = false`), and its newest cached version.
+ */
+function codexInstall(env: Env): string | null | undefined {
+  const codex = env.CODEX_HOME || join(env.HOME || homedir(), ".codex");
+  let config: string;
+  try {
+    config = readFileSync(join(codex, "config.toml"), "utf8");
+  } catch {
+    return undefined;
+  }
+  const lines = config.split("\n");
+  const start = lines.findIndex((line) => line.trim() === `[plugins."${PLUGIN_ID}"]`);
+  if (start === -1) return undefined;
+  for (const line of lines.slice(start + 1)) {
+    if (line.trim().startsWith("[")) break;
+    if (/^\s*enabled\s*=\s*false\s*$/.test(line)) return undefined;
+  }
+  const cache = join(codex, "plugins", "cache", "llmos-vault", "llmos");
+  let versions: string[];
+  try {
+    versions = readdirSync(cache).filter((name) => isDirectory(join(cache, name)));
+  } catch {
+    return null;
+  }
+  versions.sort((a, b) => {
+    const [x, y] = [versionKey(a), versionKey(b)];
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] ?? 0) !== (y[i] ?? 0)) return (y[i] ?? 0) - (x[i] ?? 0);
+    }
+    return 0;
+  });
+  return versions[0] ? join(cache, versions[0]) : null;
+}
+
+/**
+ * The hook heartbeat checks, one per agent: the hooks must have run (the
+ * session-start hook records each run, `src/heartbeat.ts`) with the bundle
+ * that is installed now. A missing or older heartbeat means the hooks cannot
+ * start (no `bun` on the harness PATH) or Codex has not trusted them.
+ */
+export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failures: number } {
+  const lines: string[] = [];
+  let failures = 0;
+  const fail = (check: string, detail: string, repair: string): void => {
+    lines.push(`FAIL ${check}: ${detail}`, `REPAIR ${repair}`);
+    failures++;
+  };
+  const record = heartbeatPath(env);
+  const beats = readHeartbeats(env);
+  const agents: Agent[] = [
+    {
+      key: "claude",
+      name: "Claude Code",
+      installPath: claudeInstall(env),
+      repair:
+        "Start a fresh Claude Code session, then rerun llmos-doctor. If it still fails, the " +
+        "hooks cannot find bun: put bun on the PATH Claude Code gives hooks (setup-llmos, " +
+        '"Hooks need bun on the hook PATH").',
+      update: `claude plugin marketplace update llmos-vault && claude plugin update ${PLUGIN_ID}`,
+    },
+    {
+      key: "codex",
+      name: "Codex",
+      installPath: codexInstall(env),
+      repair:
+        "Start a fresh Codex session, then rerun llmos-doctor. If it still fails, Codex " +
+        "skipped the hooks: open codex interactively and approve the llmOS hooks (an untrusted " +
+        "hook is skipped silently), and put bun on Codex's login-shell PATH (setup-llmos).",
+      update: `codex plugin marketplace upgrade llmos-vault && codex plugin add ${PLUGIN_ID}`,
+    },
+  ];
+
+  const installed = agents.filter((agent) => agent.installPath !== undefined);
+  if (installed.length === 0) {
+    fail(
+      "hooks",
+      `the ${PLUGIN_ID} plugin is installed for neither Claude Code nor Codex`,
+      `Install it (setup-llmos): claude plugin install ${PLUGIN_ID}, or codex plugin add ${PLUGIN_ID}`,
+    );
+  }
+  for (const agent of agents) {
+    const check = `hooks-${agent.key}`;
+    if (agent.installPath === undefined) {
+      lines.push(`NOTE ${check}: the ${PLUGIN_ID} plugin is not installed for ${agent.name}`);
+      continue;
+    }
+    if (agent.installPath === null) {
+      fail(check, `${agent.name} lists the plugin but has no installed copy`, agent.update);
+      continue;
+    }
+    const bundle = join(agent.installPath, "dist", "hooks.js");
+    if (!isFile(bundle)) {
+      fail(
+        check,
+        `the installed plugin (${agent.installPath}) has no dist/hooks.js; it predates the Bun hooks`,
+        agent.update,
+      );
+      continue;
+    }
+    const beat = beats[agent.key];
+    if (beat === undefined) {
+      fail(check, `no heartbeat in ${record}: the ${agent.name} hooks have not run`, agent.repair);
+      continue;
+    }
+    if (beat.bundleSha256 !== fileSha256(bundle)) {
+      fail(
+        check,
+        `the last heartbeat (${beat.time}) ran other hooks than the installed ${bundle}`,
+        agent.repair,
+      );
+      continue;
+    }
+    const days = Math.floor((now - Date.parse(beat.time)) / DAY_MS);
+    const detail = `hooks ran ${beat.time} with bun ${beat.bun}`;
+    if (!(days < WARN_AFTER_DAYS)) {
+      lines.push(`WARN ${check}: ${detail}, ${days} days ago; start a session to refresh it`);
+    } else {
+      lines.push(`PASS ${check}: ${detail}`);
+    }
+  }
+  if (beats.unknown) {
+    lines.push(`NOTE hooks: a heartbeat at ${beats.unknown.time} came from an unidentified agent`);
+  }
+  return { lines, failures };
 }

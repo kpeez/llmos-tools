@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PLUGIN_ROOT\"/hooks/llmos_hook.py session-start",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js session-start",
             "timeout": 10
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PLUGIN_ROOT\"/hooks/llmos_hook.py pre-tool-use",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js pre-tool-use",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PLUGIN_ROOT\"/hooks/guard_bash.py",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js guard-bash",
             "timeout": 10
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PLUGIN_ROOT\"/hooks/llmos_stamp_hook.py",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js post-tool-use",
             "timeout": 10
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PLUGIN_ROOT\"/hooks/llmos_qmd_hook.py",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js stop",
             "timeout": 15
           }
         ]

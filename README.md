@@ -83,22 +83,48 @@ not a guarantee of useful connections or correct Obsidian rendering.
 
 ## Hooks
 
-`hooks/hooks.json` wires four lifecycle events. One script per concern, and
-the same scripts serve both Claude and Codex — each `hooks.json` entry names
-its event on the command line, and the JSON payload arrives on stdin the same
-way on both harnesses.
+`hooks/hooks.json` wires four lifecycle events to one file,
+`dist/hooks.js`, which `bun build` bundles from `src/hooks/`. It runs from
+the plugin cache with no install step and needs only `bun` on the hook
+`PATH`. The same command serves Claude and Codex: each entry names its event
+on the command line, and the JSON payload arrives on stdin.
 
-| Event                  | Script                | Purpose                                                                                                     |
-| ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart           | `llmos_hook.py`       | Supplies vault context inside the vault and repositories with linked vault docs                            |
-| PreToolUse (reads/edits)| `llmos_hook.py`       | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
-| PreToolUse (Bash)      | `guard_bash.py`       | Guards `obsidian-cli` targeting and vault-unsafe `mv`/`rm`; a cheap pre-filter keeps the fast path silent   |
-| PostToolUse (Write/Edit)| `llmos_stamp_hook.py`| Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
-| Stop                   | `llmos_qmd_hook.py`   | Reindexes the `qmd` llmos collection **iff** this turn dirtied the vault; a vault-untouched turn spawns nothing |
+```sh
+bun --no-env-file --config=/dev/null "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>
+```
 
-The stamp and reindex hooks share a session-scoped dirty flag
-(`llmos_dirty_flag.py`), so concurrent sessions never collide or leak a stale
-flag into each other.
+The two flags stop Bun from loading the session's project `.env` and
+`bunfig.toml` (whose `preload` scripts would otherwise run in every hook).
+
+| Event                    | Hook event      | Source        | Purpose                                                                                                     |
+| ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
+| SessionStart             | `session-start` | `context.ts`  | Supplies vault context inside the vault and repositories with linked vault docs                            |
+| PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
+| PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
+| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
+| Stop                     | `stop`          | `stop.ts`     | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds |
+
+The stamp writes through the frontmatter serializer in `src/frontmatter.ts`,
+so block scalars, comments, and nested maps keep their data. A note without a
+frontmatter block, with a block the serializer refuses, or with invalid UTF-8
+is left unchanged. The stamp and reindex hooks share a session-scoped dirty
+flag, so concurrent sessions never collide or leak a stale flag into each
+other. A hook failure never blocks the tool call, and the hooks never import
+qmd (it would cost about 48 ms per call). Embedding is left to a hand-run
+`llmos-vault reindex`; `llmos-vault health` counts the documents that still
+need it.
+
+Because a hook that cannot start fails silently, the session-start hook
+records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`
+(time, Bun version, bundle SHA-256, plugin root), and `llmos-doctor` fails
+for an agent whose installed hooks have not run. See the `setup-llmos`
+skill.
+
+After changing `src/hooks/`, rebuild the bundle with `just hooks` and commit
+it; `just check` and CI fail when it is stale. `bun test/hooks/bench.ts
+<vault-copy>` times every event. The Python scripts in `hooks/` are frozen
+and no longer wired; they remain as the reference until the Python package is
+retired.
 
 Hooks observe supported tool calls, not all filesystem access. Direct file
 tools and patch edits have explicit targets; simple shell reads can be
@@ -109,7 +135,8 @@ authoring guidance; their format and rendering require their own checks.
 
 Install the plugin separately from the Python tool, on each host and for each
 agent. Codex requires review and trust of the current hook definitions; an
-installed CLI or an old trust entry does not prove active hooks. See the
+installed CLI or an old trust entry does not prove active hooks, and any
+change to `hooks.json` needs a new approval. See the
 `setup-llmos` skill for activation and fresh-session verification. Existing
 sessions may retain their previous plugin definitions.
 
@@ -124,13 +151,13 @@ straight from docstrings; `skills/vault-cli/references/commands.md` is the
 routing table skills use to pick the right verb.
 
 Vault-root resolution lives in `llmos_vault/root.py` and is shared by the
-hooks, the CLI, and the setup skill, so every entry point agrees on where the
-vault is.
+CLI and the setup skill; the hooks use its port in `src/root.ts`. Every entry
+point agrees on where the vault is.
 
 ## The TypeScript core
 
-`src/` is the TypeScript core: the vault model, the CLI, and the digest; the
-hooks and the MCP server come in later phases.
+`src/` is the TypeScript core: the vault model, the CLI, the digest, and the
+plugin hooks; the MCP server comes in a later phase.
 
 - `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
   and writes the canonical form: sorted keys, block-style lists, quoted
@@ -152,6 +179,8 @@ hooks and the MCP server come in later phases.
 - `digest.ts` is the `llmos-daily-activity` command (run it with
   `bun src/digest.ts`). It replaces `llmos_vault/daily_activity.py` and
   writes the same block hash and markers for the same GitHub activity.
+- `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` (see
+  [Hooks](#hooks)).
 
 Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 `just ts-lint`, and `just ts-test`.
@@ -159,7 +188,8 @@ Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 ## Scripts
 
 - **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
-  the CLI and `qmd` reachable, and is the collection indexed.
+  the CLI and `qmd` reachable, is the collection indexed, and have the
+  installed plugin hooks run for each agent.
 - **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
@@ -171,12 +201,12 @@ Set up with `bun install --frozen-lockfile`; check with `just ts-types`,
 ## Tests
 
 `tests/` is a pytest suite run from `tools/` (`uv run pytest`),
-covering the hooks (gating, guards, stamp format, reindex), root resolution,
-the CLI's backends, and vault health — against committed fixture vaults in
-`tests/fixtures/`.
+covering the frozen Python hooks, root resolution, the CLI's backends, and
+vault health — against committed fixture vaults in `tests/fixtures/`.
 
-`test/` holds the `bun test` unit tests for the TypeScript core and the
-differential harness (`just differential`). The harness runs the Python CLI
+`test/` holds the `bun test` unit tests for the TypeScript core, the hook
+tests in `test/hooks/` (gating, guards, stamp format, reindex; each runs the
+hook as a `bun` process, as the harnesses do), and the differential harness (`just differential`). The harness runs the Python CLI
 and the TypeScript core on the fixture vaults and a generated edge-case vault
 and fails on any difference not listed, with its reason, in
 `test/differential/allowlist.ts`. `just differential-digest` runs both

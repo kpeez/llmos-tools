@@ -30,6 +30,13 @@ export interface VaultHealth {
 
 export interface QmdSection {
   qmd_gaps: string[];
+  /**
+   * Documents in the whole qmd index (every collection) that still need
+   * embedding; `null` when qmd is unavailable. Informational: the Stop hook
+   * updates only the keyword index, so this grows until `llmos-vault
+   * reindex` runs. It does not make the report unclean.
+   */
+  qmd_unembedded: number | null;
   qmd_notice: string | null;
 }
 
@@ -78,15 +85,21 @@ export function qmdSection(
   model: VaultModel,
   indexed: ReadonlySet<string> | null,
   collection: string,
+  unembedded: number | null = null,
 ): QmdSection {
   if (indexed === null) {
     return {
       qmd_gaps: [],
+      qmd_unembedded: unembedded,
       qmd_notice: `qmd unavailable or collection '${collection}' not found; qmd-gap section skipped`,
     };
   }
   const paths = [...model.notes, ...model.brokenLinks].map((entry) => entry.path);
-  return { qmd_gaps: paths.filter((path) => !indexed.has(path)).sort(), qmd_notice: null };
+  return {
+    qmd_gaps: paths.filter((path) => !indexed.has(path)).sort(),
+    qmd_unembedded: unembedded,
+    qmd_notice: null,
+  };
 }
 
 /** A report with no findings in any section (a qmd notice is not a finding). */
@@ -116,6 +129,11 @@ export function summary(report: VaultHealth & QmdSection): string {
     `stale inbox (${report.stale_inbox.length}): ${list(report.stale_inbox)}`,
     `qmd gaps (${report.qmd_gaps.length}): ${list(report.qmd_gaps)}`,
   ];
+  if (report.qmd_unembedded) {
+    lines.push(
+      `qmd unembedded: ${report.qmd_unembedded} documents need embedding (run llmos-vault reindex)`,
+    );
+  }
   if (report.qmd_notice) lines.push(`qmd notice: ${report.qmd_notice}`);
   return lines.join("\n");
 }
