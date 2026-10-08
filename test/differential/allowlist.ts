@@ -9,11 +9,14 @@
  *
  * - `python-vs-compatible`: Python against a TypeScript run that reads the
  *   notes Python refuses the way Python reads them (no properties). Only
- *   `normalize` results may differ here.
+ *   `normalize` results and the listed internal differences (message
+ *   wording, date forms, the qmd field) may differ here.
  * - `compatible-vs-full`: that run against the real TypeScript run. The two
  *   differ only in the properties of the notes Python refuses, so every
  *   difference here follows from reading those properties.
  */
+
+import { isDeepStrictEqual } from "node:util";
 
 export type Comparison = "python-vs-compatible" | "compatible-vs-full" | "invariant";
 
@@ -28,6 +31,8 @@ export interface Difference {
   typescript: unknown;
   /** For `normalize`: the YAML features of the note's frontmatter block. */
   features?: string[];
+  /** For `health.stale_inbox`: each inbox note's `created` property, as the TypeScript run read it. */
+  created?: Record<string, unknown>;
 }
 
 export interface AllowlistEntry {
@@ -59,6 +64,60 @@ function withoutBlankLinesAfterBlock(text: string): string {
   if (end === -1) return text;
   const head = text.slice(0, end + 5);
   return `${head}${text.slice(end + 5).replace(/^\n+/, "\n")}`;
+}
+
+// A Python `repr` string literal, and a JSON one.
+const PYTHON_STRING = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g;
+const JSON_STRING = /"(?:[^"\\]|\\.)*"/g;
+
+function pythonString(literal: string): string {
+  return literal
+    .slice(1, -1)
+    .replace(/\\(x[0-9a-f]{2}|u[0-9a-f]{4}|U[0-9a-f]{8}|.)/g, (_, code: string) => {
+      if (code.length > 1) return String.fromCodePoint(Number.parseInt(code.slice(1), 16));
+      return { n: "\n", r: "\r", t: "\t" }[code] ?? code;
+    });
+}
+
+/** The text around the string literals, and the literals' values. */
+function quoted(text: string, literal: RegExp, decode: (literal: string) => string) {
+  return {
+    around: text.split(literal),
+    values: (text.match(literal) ?? []).map(decode),
+  };
+}
+
+/**
+ * `python` and `typescript` are the same, except that strings may quote the
+ * same string values as a Python `repr` and as JSON, respectively.
+ */
+function sameButQuoting(python: unknown, typescript: unknown): boolean {
+  if (typeof python === "string" && typeof typescript === "string") {
+    if (python === typescript) return true;
+    const p = quoted(python, PYTHON_STRING, pythonString);
+    const t = quoted(typescript, JSON_STRING, (literal) => JSON.parse(literal) as string);
+    return p.values.length > 0 && isDeepStrictEqual(p, t);
+  }
+  if (Array.isArray(python) && Array.isArray(typescript)) {
+    return (
+      python.length === typescript.length &&
+      python.every((item, i) => sameButQuoting(item, typescript[i]))
+    );
+  }
+  if (python !== null && typeof python === "object" && typescript !== null) {
+    if (typeof typescript !== "object" || Array.isArray(typescript)) return false;
+    const keys = Object.keys(python).sort();
+    return (
+      isDeepStrictEqual(keys, Object.keys(typescript).sort()) &&
+      keys.every((key) =>
+        sameButQuoting(
+          (python as Record<string, unknown>)[key],
+          (typescript as Record<string, unknown>)[key],
+        ),
+      )
+    );
+  }
+  return isDeepStrictEqual(python, typescript);
 }
 
 const WRITES =
@@ -177,6 +236,44 @@ export const ALLOWLIST: AllowlistEntry[] = [
       difference.section === "health.qmd_unembedded" &&
       difference.python === undefined &&
       (difference.typescript === null || typeof difference.typescript === "number"),
+  },
+  {
+    id: "message-quotes-json",
+    reason:
+      "Finding and schema messages quote a value as JSON, not as a Python `repr` (message " +
+      "wording is not contract); the quoted values and all other text must be equal.",
+    matches: (difference) =>
+      difference.comparison === "python-vs-compatible" &&
+      ["check", "schema.errors", "health.schema_violations"].includes(difference.section) &&
+      sameButQuoting(difference.python, difference.typescript),
+  },
+  {
+    id: "created-not-yyyy-mm-dd",
+    reason:
+      "An inbox note whose `created` is not `YYYY-MM-DD` is stale, like one without a date " +
+      "(Python also read `date.fromisoformat` forms such as `20261005` and `2026-W40-3`).",
+    matches: (difference) => {
+      if (
+        difference.comparison !== "python-vs-compatible" ||
+        difference.section !== "health.stale_inbox" ||
+        !Array.isArray(difference.python) ||
+        !Array.isArray(difference.typescript)
+      ) {
+        return false;
+      }
+      const python = new Set(difference.python as string[]);
+      const typescript = new Set(difference.typescript as string[]);
+      const extra = [...typescript].filter((path) => !python.has(path));
+      const created = difference.created ?? {};
+      return (
+        extra.length > 0 &&
+        [...python].every((path) => typescript.has(path)) &&
+        extra.every((path) => {
+          const value = created[path];
+          return typeof value === "string" && !/^\d{4}-\d{2}-\d{2}$/.test(value);
+        })
+      );
+    },
   },
   {
     id: "properties-python-cannot-read",

@@ -41,8 +41,9 @@ differential:
     bun run differential
 
 # Compare the TypeScript activity digest with the Python one on a generated
-# vault: same block hash, markers, and note text for the same gh output. For
-# recorded real gh output, see the usage at the top of that file.
+# vault: same block hash, markers, and note text for the same gh output, apart
+# from the one intended difference that file describes. For recorded real gh
+# output, see the usage at the top of that file.
 differential-digest:
     bun test/differential/digest.ts --edge
 

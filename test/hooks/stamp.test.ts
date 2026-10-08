@@ -230,7 +230,7 @@ describe("authoring findings", () => {
       "llmOS authoring check (informational; this checker did not block the write or " +
         "rewrite note content):\n" +
         "projects/testproj/source.md:8 [unlinked-note] -> projects/testproj/target: " +
-        "Existing note reference 'target.md': link to 'projects/testproj/target' using the " +
+        'Existing note reference "target.md": link to "projects/testproj/target" using the ' +
         "note title or a natural phrase, not the filename.\n" +
         "Run `llmos-vault check <note>` for complete findings.",
     );

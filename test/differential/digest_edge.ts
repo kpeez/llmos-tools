@@ -4,7 +4,9 @@
  * thought), and an inserted block; a silent day; both DST changes; and a
  * failing day. The activity carries non-ASCII, astral, and lone-surrogate
  * text, a raw U+2028, quotes, nested and non-ASCII keys, a PR merged on the
- * day it was opened, and gh's year-1 `closedAt` for open issues. Special
+ * day it was opened, a PR opened in one repository on the day a PR with the
+ * same number merged in another (the one intended difference, see
+ * `digest.ts`), and gh's year-1 `closedAt` for open issues. Special
  * characters are built from code points so the source stays ASCII.
  */
 
@@ -26,6 +28,7 @@ export const EDGE_DAYS: [string, string][] = [
   ["2026-07-19", "silent (no note created)"],
   ["2026-03-08", "created"],
   ["2026-11-01", "created"],
+  ["2026-07-21", "created"],
   ["2026-07-20", "failed"],
 ];
 
@@ -162,6 +165,17 @@ const DAYS: Record<string, Day> = {
       issue("kpeez/alpha", 31, "2026-11-01T07:00:00Z", OPEN), // 00:00 PDT: in
       issue("kpeez/alpha", 32, "2026-11-02T07:59:59Z", OPEN), // 23:59:59 PST: in
       issue("kpeez/alpha", 33, "2026-11-02T08:00:00Z", OPEN), // 00:00 PST on Nov 2: out
+    ],
+  },
+  // alpha #40 merged today and was opened today, so it is not listed as
+  // opened. Beta's own #40, opened today and still open, is listed (by the
+  // TypeScript digest only; Python hides it because the numbers match).
+  "2026-07-21": {
+    ...empty(),
+    merged: [pr("kpeez/alpha", 40, "Merge same day", "Opened and merged.")],
+    opened: [
+      pr("kpeez/alpha", 40, "Merge same day", "Opened and merged."),
+      { ...pr("linux-host-ucdavis/Beta", 40, "Beta draft", "Still open."), state: "OPEN" },
     ],
   },
   "2026-07-20": { ...empty(), merged: [pr("kpeez/dotfiles", 1, "Rogue", "Not a project.")] },

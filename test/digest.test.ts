@@ -15,16 +15,15 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { MARKER_END, MARKER_START } from "../src/daily.ts";
+import { type Day, MARKER_END, MARKER_START, parseDay } from "../src/daily.ts";
 import {
-  type Day,
   DigestError,
   dayRange,
+  fetchActivity,
   type Gh,
   type Grouped,
   listOrgRepos,
   OPENCODE_AGENT,
-  parseDay,
   parseGhJson,
   processDay,
   readProjects,
@@ -142,6 +141,23 @@ test("the day range tracks the DST offset", () => {
   expect(dayRange(parseDay("2026-03-08") as Day)).toBe(
     "2026-03-08T00:00:00-08:00..2026-03-08T23:59:59-07:00",
   );
+});
+
+test("a merged PR hides only itself from the opened PRs, not the same number elsewhere", () => {
+  const sameNumber = {
+    ...PR,
+    title: "Other work",
+    url: "https://github.com/linux-host-ucdavis/other/pull/7",
+    repository: { nameWithOwner: "linux-host-ucdavis/other" },
+    state: "open",
+  };
+  const gh: Gh = (args) => {
+    if (args[1] !== "prs") return [];
+    return args.includes("--merged-at") ? [PR] : [PR, sameNumber];
+  };
+  const activity = fetchActivity(DAY, ["kpeez/alpha", "linux-host-ucdavis/other"], gh);
+  expect(activity.merged_prs).toEqual([PR]);
+  expect(activity.opened_prs).toEqual([sameNumber]);
 });
 
 describe("processDay", () => {

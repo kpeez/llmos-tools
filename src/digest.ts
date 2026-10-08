@@ -13,7 +13,10 @@
  * share: the markers from `daily.ts`, the block hash (`blockHash`; the same
  * `gh` output gives the same hash), the rule that a failed day writes
  * nothing, and the daily-note format. `test/differential/digest.ts` checks
- * this contract against the Python version.
+ * this contract against the Python version. One difference is intended: a
+ * PR merged in one repository no longer hides a PR with the same number
+ * opened in another (`fetchActivity`), so on such a day the block and its
+ * hash differ from the Python digest's.
  *
  * Untrusted text: PR and issue titles and bodies come from GitHub and reach
  * the model, so:
@@ -43,7 +46,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { MARKER_END, MARKER_START } from "./daily.ts";
+import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.ts";
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
 import { VaultRootError, vaultRoot } from "./root.ts";
 import { readText } from "./vault.ts";
@@ -75,9 +78,6 @@ export class DigestError extends Error {
   override name = "DigestError";
 }
 
-/** A calendar day as a count of days since 1970-01-01. */
-export type Day = number;
-
 export interface Project {
   slug: string;
   title: string;
@@ -102,17 +102,6 @@ export type Grouped = Map<string, { title: string; repos: Map<string, Map<string
 export type Summarizer = (grouped: Grouped, day: Day) => string;
 
 // --- Days -----------------------------------------------------------------------
-
-export function isoDate(day: Day): string {
-  return new Date(day * DAY_MS).toISOString().slice(0, 10);
-}
-
-/** Parse `YYYY-MM-DD`; null when it is not a real date. */
-export function parseDay(text: string): Day | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
-  const ms = Date.parse(`${text}T00:00:00Z`);
-  return Number.isNaN(ms) || isoDate(ms / DAY_MS) !== text ? null : ms / DAY_MS;
-}
 
 const LOCAL_DATE = new Intl.DateTimeFormat("en-CA", {
   timeZone: LOCAL_TZ,
@@ -398,10 +387,18 @@ export function fetchActivity(day: Day, repos: string[], gh: Gh = runGh): Activi
     "number,title,body,url,repository,state,createdAt,closedAt",
   );
   const commits = search("commits", "--author-date", "sha,commit,repository,url");
-  const mergedNumbers = new Set(merged.map((pr) => field(pr, "number")));
+  // A PR is identified by its repository and number: a PR merged in one
+  // repository must not hide a PR with the same number opened in another.
+  // (The Python digest compared numbers alone.)
+  const prKey = (pr: Item): string =>
+    JSON.stringify([
+      (pr.repository as Item | undefined)?.nameWithOwner ?? null,
+      field(pr, "number"),
+    ]);
+  const mergedKeys = new Set(merged.map(prKey));
   return {
     merged_prs: merged,
-    opened_prs: opened.filter((pr) => !mergedNumbers.has(field(pr, "number"))),
+    opened_prs: opened.filter((pr) => !mergedKeys.has(prKey(pr))),
     issues_created: issues.filter((issue) => onDay(issue.createdAt, day)),
     issues_closed: issues.filter((issue) => onDay(issue.closedAt, day)),
     commits,

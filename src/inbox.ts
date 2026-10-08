@@ -4,7 +4,7 @@
  * with the CLI's write verbs.
  */
 
-import { pathParts, sortedStrings } from "./compat.ts";
+import { normalize } from "node:path";
 import { projectAlias } from "./schema.ts";
 
 export const RECOGNIZED_AREAS = new Set(["knowledge", "projects", "sources", "archive"]);
@@ -17,17 +17,18 @@ const AREA_CATEGORIES: Record<string, string> = {
 /**
  * Derive the properties a destination path implies. A project's landing page
  * (`projects/<slug>/<slug>.md`) gets `[[Projects]]` and no self-link; any
- * other project note gets the project link alone. Throws for a destination
- * outside the recognized filing areas.
+ * other project note gets the project link alone. The path is normalized
+ * first (`./`, `//`, `..`). Throws for a destination outside the recognized
+ * filing areas.
  */
 export function destinationProperties(root: string, destination: string): Record<string, string[]> {
   const target = destination.endsWith(".md") ? destination : `${destination}.md`;
-  const parts = pathParts(target);
+  const parts = normalize(target).split("/");
   const area = parts[0] ?? "";
   if (!RECOGNIZED_AREAS.has(area)) {
     throw new Error(
       `destination '${destination}' is outside the recognized vault filing ` +
-        `areas (${sortedStrings(RECOGNIZED_AREAS).join(", ")})`,
+        `areas (${[...RECOGNIZED_AREAS].sort().join(", ")})`,
     );
   }
   if (area !== "projects") return { categories: [AREA_CATEGORIES[area] as string] };

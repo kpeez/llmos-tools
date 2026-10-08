@@ -9,7 +9,7 @@
  * never imports qmd.
  */
 
-import { type DayNumber, parseIsoDate, pathParts, sortedStrings, today } from "./compat.ts";
+import { type Day, parseDay } from "./daily.ts";
 import { collectErrors } from "./schema.ts";
 import type { UnresolvedLink, VaultModel } from "./vault.ts";
 
@@ -43,7 +43,8 @@ export interface QmdSection {
 export interface HealthOptions {
   profile?: Profile;
   staleAfterDays?: number;
-  today?: DayNumber;
+  /** Today, the day inbox ages count to. An unreadable `created` (not `YYYY-MM-DD`) is stale. */
+  today: Day;
 }
 
 function schemaViolations(model: VaultModel, profile: Profile): SchemaViolation[] {
@@ -56,23 +57,23 @@ function schemaViolations(model: VaultModel, profile: Profile): SchemaViolation[
   });
 }
 
-function staleInbox(model: VaultModel, staleAfterDays: number, day: DayNumber): string[] {
+function staleInbox(model: VaultModel, staleAfterDays: number, day: Day): string[] {
   const stale: string[] = [];
   for (const note of model.notes) {
-    if (pathParts(note.path)[0] !== "inbox") continue;
+    if (!note.path.startsWith("inbox/")) continue;
     const created = note.properties.created;
-    const createdDay = typeof created === "string" ? parseIsoDate(created) : null;
+    const createdDay = typeof created === "string" ? parseDay(created) : null;
     if (createdDay === null || day - createdDay >= staleAfterDays) stale.push(note.path);
   }
-  return sortedStrings(stale);
+  return stale.sort();
 }
 
 /** Aggregate vault hygiene into one report. */
-export function vaultHealth(model: VaultModel, options: HealthOptions = {}): VaultHealth {
+export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHealth {
   return {
     ...model.linkFindings(),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),
-    stale_inbox: staleInbox(model, options.staleAfterDays ?? 14, options.today ?? today()),
+    stale_inbox: staleInbox(model, options.staleAfterDays ?? 14, options.today),
   };
 }
 

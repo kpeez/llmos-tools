@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { checkNote } from "./authoring.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
-import { DAILY_DIR, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
+import { DAILY_DIR, type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { renderReference, renderSkill } from "./docs.ts";
 import { isClean, qmdSection, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
@@ -18,7 +18,7 @@ import { runObsidian } from "./obsidian.ts";
 import { detectProvider } from "./provider.ts";
 import { indexedPaths, openQmd, qmdLocation, reindex, search, unembeddedCount } from "./qmd.ts";
 import { validated } from "./root.ts";
-import { joinRoot, type Note, readSource, readText, type VaultModel } from "./vault.ts";
+import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
 import {
   appendContent,
   appendThought,
@@ -118,15 +118,17 @@ function fileJson(root: string, relative: string): object {
   const source = readSource(relative, readText(join(root, relative)));
   return {
     name: basename(relative, ".md"),
-    path: joinRoot(root, relative),
+    path: join(root, relative),
     properties: source.properties,
     body: source.body,
   };
 }
 
-/** A `YYYY-MM-DD` date as days since 1970-01-01, the day count `vaultHealth` takes. */
-function dayNumber(iso: string): number {
-  return Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
+/** The context's today as a day number. */
+function today(context: Context): Day {
+  const day = parseDay(context.today());
+  if (day === null) throw new Error(`today is not a date: '${context.today()}'`);
+  return day;
 }
 
 /** The llmOS root, or an error for a vault without the llmOS daily-note contract. */
@@ -224,7 +226,7 @@ and Obsidian for those checks.`,
   options: vaultOption("Which registered vault to check."),
   exampleOutput: `{"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
  "findings": [{"code": "unlinked-note", "line": 7, "target": "notes/beta",
-               "message": "Existing note reference 'beta.md': link to 'notes/beta' ..."}]}`,
+               "message": "Existing note reference \\"beta.md\\": link to \\"notes/beta\\" ..."}]}`,
   example: "llmos-vault check projects/study/manuscript/README.md --vault llmos",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
@@ -325,7 +327,7 @@ cheaper and does not walk the whole vault.`,
       ...vaultHealth(model, {
         profile: vault === "llmos" ? "llmos" : "core",
         staleAfterDays: count(values, "stale-after-days", 0),
-        today: dayNumber(context.today()),
+        today: today(context),
       }),
       ...qmdSection(model, qmd.paths, collection, qmd.unembedded),
     };
@@ -511,8 +513,10 @@ any move is attempted.`,
     const name = str(values, "note");
     const destination = str(values, "destination");
     const relative = destination.endsWith(".md") ? destination : `${destination}.md`;
+    // A path that leaves the vault is refused as such before its filing area is read.
+    const target = newTarget(root, relative);
     const stamps = destinationProperties(root, relative);
-    if (!existsSync(newTarget(root, relative))) {
+    if (!existsSync(target)) {
       const note = context.model(root).resolveNote(name);
       // Refuse before moving, so an unreadable block never strands the note.
       if (note.frontmatterError) throw note.frontmatterError;

@@ -3,18 +3,17 @@
  * the schema-violations section of the health report. A plain vault such as
  * second-vault has no schema layer and never calls this module.
  *
- * Every message matches the Python `llmos_vault.schema` module for the
- * string and list properties it can read. Nested values, which only the
- * TypeScript reader accepts, are checked by the same rules: a map is empty
- * when it has no keys, and anything that is not a string fails a string
- * rule.
+ * The rules are those of the Python `llmos_vault.schema` module; a message
+ * quotes a property value as JSON (Python wrote its `repr`). Nested values,
+ * which only the TypeScript reader accepts, are checked by the same rules: a
+ * map is empty when it has no keys, and anything that is not a string fails
+ * a string rule.
  */
 
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { comparePaths, pathParts, repr, splitLines, strip } from "./compat.ts";
 import type { PropertyValue } from "./frontmatter.ts";
-import { type BrokenLink, type Note, readText, type VaultModel } from "./vault.ts";
+import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
 
 // ADRs use proposed/accepted/superseded; other notes use the rest.
 export const STATUSES = new Set([
@@ -29,31 +28,36 @@ export const STATUSES = new Set([
 ]);
 export const AUTHORS = new Set(["claude", "codex", "gemini", "human"]);
 export const LINK_FIELDS = ["categories", "project", "topics"] as const;
-// Python's `re.match` with `$` also accepts one final newline.
-const WIKILINK = /^"?\[\[[^\]]+\]\]"?\n?$/;
-const ISO_DATE = /^\p{Nd}{4}-\p{Nd}{2}-\p{Nd}{2}$/u;
+const WIKILINK = /^"?\[\[[^\]]+\]\]"?$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Display alias for a project link: the landing page's H1, else the slug. */
 export function projectAlias(root: string, slug: string): string {
   const landing = join(root, "projects", slug, `${slug}.md`);
   if (existsSync(landing) && statSync(landing).isFile()) {
-    for (const line of splitLines(readText(landing))) {
-      if (line.startsWith("# ")) return strip(line.slice(2));
+    for (const line of readText(landing).split("\n")) {
+      if (line.startsWith("# ")) return line.slice(2).trim();
     }
   }
   return slug;
 }
 
-/** Markdown files git sees as untracked under `root`; empty when `root` is not in a repository. */
+/**
+ * Markdown files git sees as untracked under `root`, relative to it; empty
+ * when `root` is not in a repository. `-z` gives the paths unquoted, so a
+ * non-ASCII name is not lost to git's quoting.
+ */
 export function untrackedMarkdown(root: string): Set<string> {
-  const result = Bun.spawnSync(["git", "-C", root, "ls-files", "--others", "--exclude-standard"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const result = Bun.spawnSync(
+    ["git", "-C", root, "ls-files", "-z", "--others", "--exclude-standard"],
+    { stdout: "pipe", stderr: "pipe" },
+  );
   if (result.exitCode !== 0) return new Set();
-  const lines = splitLines(result.stdout.toString());
   return new Set(
-    lines.filter((line) => line.endsWith(".md")).map((line) => pathParts(line).join("/")),
+    result.stdout
+      .toString()
+      .split("\0")
+      .filter((path) => path.endsWith(".md")),
   );
 }
 
@@ -79,7 +83,7 @@ function skipped(parts: string[]): boolean {
 /** The schema-violation messages for one note's properties. */
 function noteErrors(relative: string, note: Note, newNotes: Set<string>): string[] {
   const errors: string[] = [];
-  const parts = pathParts(relative);
+  const parts = relative.split("/");
   const properties = note.properties;
 
   const isDailyReview = parts[0] === "reviews" && parts[1] === "daily";
@@ -96,7 +100,7 @@ function noteErrors(relative: string, note: Note, newNotes: Set<string>): string
   // Operational properties are optional; validate only when present.
   const status = properties.status;
   if (status !== undefined && (typeof status !== "string" || !STATUSES.has(status))) {
-    errors.push(`${relative}: invalid status ${repr(status)}`);
+    errors.push(`${relative}: invalid status ${JSON.stringify(status)}`);
   }
 
   const authors = properties.authors;
@@ -129,7 +133,7 @@ function noteErrors(relative: string, note: Note, newNotes: Set<string>): string
     }
     for (const value of values) {
       if (typeof value !== "string" || !WIKILINK.test(value)) {
-        errors.push(`${relative}: ${field} contains non-wikilink ${repr(value)}`);
+        errors.push(`${relative}: ${field} contains non-wikilink ${JSON.stringify(value)}`);
       }
     }
   }
@@ -158,7 +162,7 @@ export function collectErrors(model: VaultModel): SchemaReport {
   );
   for (const entry of entries) {
     const relative = entry.path;
-    const parts = pathParts(relative);
+    const parts = relative.split("/");
     if (skipped(parts)) continue;
     if (!("text" in entry)) {
       // A broken symlink is a vault defect, not a schema one; report and move on.

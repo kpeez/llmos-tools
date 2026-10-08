@@ -4,6 +4,31 @@ Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 The Python package version lives in `pyproject.toml`.
 
+## Unreleased
+
+- Fix the activity digest hiding a newly opened PR when a PR with the same
+  number merged that day in another repository. A merged PR now hides only
+  itself (same repository and number). On such a day the block and its hash
+  differ from the Python digest's; the digest parity check expects exactly
+  this difference.
+- Remove `src/compat.ts`, the layer that copied Python string, path, and date
+  behavior (ADR 0012 as amended). Internal code now uses native TypeScript
+  and Bun behavior; the canonical frontmatter writer keeps Python's
+  whitespace set, line breaks, and code-point key order, because the on-disk
+  form is part of the contract. Visible effects: `check`, `health`, and
+  `llmos-audit` messages quote values as JSON (`"x"`, was `'x'`); an inbox
+  note whose `created` is not `YYYY-MM-DD` (such as `20261005` or
+  `2026-W40-3`) now counts as stale; lists sort by UTF-16 code unit, which
+  differs from code-point order only between astral characters and
+  U+E000–U+FFFF; a caller-typed note path and a `file-inbox` destination are
+  normalized, so `a/../b` means `b`. The differential allowlist lists the
+  first two as intended differences.
+- `file-inbox` refuses a destination outside the vault with the vault-escape
+  error before it checks the filing area.
+- The schema audit finds new (untracked) notes with non-ASCII names; git's
+  path quoting hid them before. A link property value ending in a newline is
+  no longer a wikilink, and `created` must use ASCII digits.
+
 ## 2.0.0 — 2026-10-07
 
 Breaking: the plugin hooks, the `llmos-vault` CLI, and the activity digest now

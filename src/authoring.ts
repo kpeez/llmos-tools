@@ -5,41 +5,23 @@
  * validator. Only an explicit `.md` reference that resolves to an existing
  * note earns a finding. Concepts, link quotas, and unresolved future notes
  * need the author's judgment.
- *
- * The patterns use Unicode-aware word and space classes so findings and line
- * numbers match the established (Python `re`) behavior.
  */
 
 import { lstatSync, readlinkSync } from "node:fs";
-import { isAbsolute, join, resolve as resolvePath, sep } from "node:path";
-import {
-  codePointLength,
-  compareStrings,
-  expandTabs,
-  lstrip,
-  parent,
-  repr,
-  sortedStrings,
-  splitLines,
-  strip,
-  WHITESPACE_CLASS,
-  WORD_CLASS,
-} from "./compat.ts";
+import { dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
 import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./vault.ts";
 
-const W = WORD_CLASS;
+// A word character in any script, so note names need not be ASCII (`\w` is).
+const W = "\\p{L}\\p{N}_";
 const WIKI = /!?\[\[([^\]\n]+)\]\]/g;
 const MARKDOWN_LINK = /!?\[[^\]\n]*\]\(([^)\n]+)\)/g;
 const INLINE_CODE = /(`+)([^\n]+?)\1/g;
 const NOTE_PATH = new RegExp(`(?<![${W}/\\\\.:])(?:[${W}.-]+/)*[${W}.-]+\\.md(?![${W}])`, "gu");
 const CODE_PATH = new RegExp(`^[${W} .\\-/]+\\.md$`, "u");
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-const LIST_ITEM = new RegExp(
-  `^[${WHITESPACE_CLASS}]*(?:[-*+]|\\p{Nd}+[.)])[${WHITESPACE_CLASS}]+`,
-  "u",
-);
+const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s+/;
 const COMMENTS = /<!--[\s\S]*?-->|%%[\s\S]*?%%/g;
-const URL = new RegExp(`(?<![${W}])[a-zA-Z][${W}+.-]*://[^${WHITESPACE_CLASS}<>]+`, "gu");
+const URL = new RegExp(`(?<![${W}])[a-zA-Z][${W}+.-]*://[^\\s<>]+`, "gu");
 const SCHEME = new RegExp(`^[a-zA-Z][${W}+.-]*:`, "u");
 
 export interface Finding {
@@ -61,16 +43,24 @@ function blank(text: string): string {
   return text.replace(/[^\n]/g, " ");
 }
 
+/** A line with each tab expanded to the next multiple of 4 columns, as Markdown reads indents. */
+function expandTabs(line: string): string {
+  let out = "";
+  for (const char of line) out += char === "\t" ? " ".repeat(4 - (out.length % 4)) : char;
+  return out;
+}
+
 /** Hide code examples and comments while keeping offsets for line numbers. */
 function prose(body: string): string {
   const result: string[] = [];
   let fence: string | null = null;
   const listContentIndents: number[] = [];
-  for (const line of splitLines(body, true)) {
-    const expanded = expandTabs(line, 4);
-    const indent = codePointLength(expanded) - codePointLength(lstrip(expanded));
+  // Each line keeps its "\n", so joining the results keeps every offset.
+  for (const line of body.split(/(?<=\n)/)) {
+    const expanded = expandTabs(line);
+    const indent = expanded.length - expanded.trimStart().length;
     const item = LIST_ITEM.exec(expanded);
-    if (strip(line) && fence === null) {
+    if (line.trim() && fence === null) {
       while (listContentIndents.length > 0 && indent < (listContentIndents.at(-1) as number)) {
         listContentIndents.pop();
       }
@@ -93,7 +83,7 @@ function prose(body: string): string {
       result.push(blank(line));
     } else {
       result.push(line);
-      if (item) listContentIndents.push(codePointLength(item[0]));
+      if (item) listContentIndents.push(item[0].length);
     }
   }
   return result.join("").replace(COMMENTS, (m) => blank(m));
@@ -114,12 +104,15 @@ function bodyLinks(text: string): string[] {
   const visible = text.replace(INLINE_CODE, (m) => blank(m));
   const targets = extractWikilinks(visible);
   for (const match of visible.matchAll(MARKDOWN_LINK)) {
-    const destination = strip(strip(match[1] as string).split(" ", 1)[0] as string, "<>");
+    const destination = ((match[1] as string).trim().split(" ", 1)[0] as string).replace(
+      /^[<>]+|[<>]+$/g,
+      "",
+    );
     if (SCHEME.test(destination)) continue;
     const target = unquote(destination).split("#", 1)[0] as string;
     if (target.endsWith(".md")) targets.push(target.slice(0, -3));
   }
-  return sortedStrings(new Set(targets));
+  return [...new Set(targets)].sort();
 }
 
 function isSymlink(path: string): boolean {
@@ -190,8 +183,8 @@ function existingNote(
   source: Note,
   reference: string,
 ): Note | undefined {
-  const folder = parent(source.path);
-  for (const base of [folder ? `${root}/${folder}` : root, root]) {
+  const folder = dirname(source.path);
+  for (const base of [folder === "." ? root : `${root}/${folder}`, root]) {
     // No lexical `..` folding first: `realpath` resolves symlinks before `..`.
     const candidate = realpath(isAbsolute(reference) ? reference : `${base}/${reference}`);
     if (candidate.startsWith(root + sep)) {
@@ -230,7 +223,7 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
   const note: Note = target ?? { ...linked, path: relative };
   const lineOffset = countNewlines(note.text.slice(0, note.text.length - note.body.length));
   const visible = prose(note.body);
-  const propertyTargets = sortedStrings(new Set(propertyLinks(note.properties)));
+  const propertyTargets = [...new Set(propertyLinks(note.properties))].sort();
 
   const candidates: [number, string][] = [];
   // Existing links are not missing navigation, whatever their style.
@@ -238,12 +231,12 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
   unlinked = unlinked.replace(MARKDOWN_LINK, (m) => blank(m));
   unlinked = unlinked.replace(URL, (m) => blank(m));
   for (const match of unlinked.matchAll(INLINE_CODE)) {
-    const literal = strip(match[2] as string);
+    const literal = (match[2] as string).trim();
     if (CODE_PATH.test(literal)) candidates.push([match.index, literal]);
   }
   unlinked = unlinked.replace(INLINE_CODE, (m) => blank(m));
   for (const match of unlinked.matchAll(NOTE_PATH)) candidates.push([match.index, match[0]]);
-  candidates.sort((a, b) => a[0] - b[0] || compareStrings(a[1], b[1]));
+  candidates.sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
 
   const seen = new Set<Note>();
   const findings: Finding[] = [];
@@ -257,7 +250,7 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
       line: lineOffset + countNewlines(note.body.slice(0, offset)) + 1,
       target: targetName,
       message:
-        `Existing note reference ${repr(reference)}: link to ${repr(targetName)} ` +
+        `Existing note reference ${JSON.stringify(reference)}: link to ${JSON.stringify(targetName)} ` +
         "using the note title or a natural phrase, not the filename.",
     });
   }

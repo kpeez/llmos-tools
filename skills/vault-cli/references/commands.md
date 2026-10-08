@@ -79,7 +79,7 @@ Options:
 Example output:
   {"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
    "findings": [{"code": "unlinked-note", "line": 7, "target": "notes/beta",
-                 "message": "Existing note reference 'beta.md': link to 'notes/beta' ..."}]}
+                 "message": "Existing note reference \"beta.md\": link to \"notes/beta\" ..."}]}
 
 Example:
   llmos-vault check projects/study/manuscript/README.md --vault llmos

@@ -15,17 +15,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
-import { join } from "node:path";
-import {
-  codePointLength,
-  comparePaths,
-  compareTuples,
-  parent,
-  pathParts,
-  sortedStrings,
-  stem,
-  strip,
-} from "./compat.ts";
+import { basename, dirname, join, normalize } from "node:path";
 import {
   MissingFrontmatter,
   type Properties,
@@ -131,7 +121,7 @@ export function readText(path: string): string {
 export function extractWikilinks(text: string): string[] {
   const found: string[] = [];
   for (const match of text.replaceAll("\\|", "|").matchAll(WIKILINK)) {
-    found.push(strip(match[1] as string));
+    found.push((match[1] as string).trim());
   }
   return found;
 }
@@ -164,6 +154,19 @@ export function readSource(path: string, text: string): NoteSource {
   };
 }
 
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Path order: vault-relative paths compared folder by folder, so the notes
+ * of `a/` sort before `a-b.md`. Comparing the strings with `/` read as the
+ * lowest character is the same as comparing them component by component.
+ */
+export function comparePaths(a: string, b: string): number {
+  return compare(a.replaceAll("/", "\0"), b.replaceAll("/", "\0"));
+}
+
 /** Vault-relative paths of every `.md` file, outside any `.obsidian` folder, in path order. */
 export function walkMarkdown(root: string): string[] {
   const found: string[] = [];
@@ -194,24 +197,12 @@ function topicsOf(note: Note): Set<string> {
   return typeof topics === "string" && topics ? new Set([topics]) : new Set();
 }
 
-/** A path string the way `pathlib` prints it: no empty or `.` parts, no trailing `/`. */
-function pathlibString(path: string): string {
-  const parts = pathParts(path);
-  if (parts[0] === "/") return `/${parts.slice(1).join("/")}`;
-  return parts.join("/") || ".";
-}
-
-/** A vault-relative path joined to the vault root, as `pathlib` prints `root / relative`. */
-export function joinRoot(root: string, relative: string): string {
-  const base = pathlibString(root);
-  return base.endsWith("/") ? `${base}${relative}` : `${base}/${relative}`;
-}
-
 export class VaultModel {
   readonly notes: readonly Note[];
   private readonly byPath = new Map<string, Note>();
   private readonly byStem = new Map<string, Note[]>();
-  private readonly rootParts: string[];
+  /** The root with one trailing `/`, the prefix of an absolute note path. */
+  private readonly rootPrefix: string;
   /** Per note: the resolved target of each raw target (undefined when unresolved). */
   private readonly resolved = new Map<Note, (Note | undefined)[]>();
   /** Per note: the other notes whose links resolve to it. */
@@ -225,9 +216,9 @@ export class VaultModel {
     readonly brokenLinks: readonly BrokenLink[],
   ) {
     this.notes = notes;
-    this.rootParts = pathParts(root);
+    this.rootPrefix = join(root, "/");
     for (const note of notes) {
-      this.byPath.set(pathParts(note.path).join("/"), note);
+      this.byPath.set(note.path, note);
       const key = note.name.toLowerCase();
       const group = this.byStem.get(key);
       if (group) group.push(note);
@@ -279,29 +270,29 @@ export class VaultModel {
     const notes = sources.map(
       (source): Note => ({
         ...source,
-        name: stem(source.path),
+        name: basename(source.path, ".md"),
         targets: [...extractWikilinks(source.body), ...propertyLinks(source.properties)],
       }),
     );
-    return new VaultModel(pathlibString(root), notes, brokenLinks);
+    return new VaultModel(root, notes, brokenLinks);
   }
 
-  /** The note's path joined to the vault root, as `pathlib` joins it. */
+  /** The note's path joined to the vault root. */
   absolutePath(note: Note): string {
-    return joinRoot(this.root, note.path);
+    return join(this.root, note.path);
   }
 
-  /** The note at an exact path `<stem>.md`, if one exists. */
+  /**
+   * The note at an exact path `<stem>.md`, if one exists: vault-relative, or
+   * absolute under the root. The path is normalized first (`./`, `//`, `..`).
+   */
   private directPath(target: string, allowRoot: boolean): Note | undefined {
     const base = target.endsWith(".md") ? target.slice(0, -3) : target;
     if (!base.includes("/") && !allowRoot) return undefined;
-    const parts = pathParts(`${base}.md`);
-    if (parts[0] === "/") {
-      const prefix = this.rootParts;
-      if (compareTuples(parts.slice(0, prefix.length), prefix) !== 0) return undefined;
-      return this.byPath.get(parts.slice(prefix.length).join("/"));
-    }
-    return this.byPath.get(parts.join("/"));
+    const path = normalize(`${base}.md`);
+    if (!path.startsWith("/")) return this.byPath.get(path);
+    if (!path.startsWith(this.rootPrefix)) return undefined;
+    return this.byPath.get(path.slice(this.rootPrefix.length));
   }
 
   /**
@@ -333,14 +324,14 @@ export class VaultModel {
     const matches = this.byStem.get(stemKey(target)) ?? [];
     if (matches.length <= 1) return matches[0];
     if (source) {
-      const folder = parent(source.path);
-      const sameFolder = matches.filter((note) => parent(note.path) === folder);
+      const folder = dirname(source.path);
+      const sameFolder = matches.filter((note) => dirname(note.path) === folder);
       if (sameFolder.length === 1) return sameFolder[0];
     }
-    const lengths = matches.map((note) => codePointLength(note.path)).sort((a, b) => a - b);
+    const lengths = matches.map((note) => note.path.length).sort((a, b) => a - b);
     const shortest = lengths[0] as number;
     if (shortest === lengths[1]) return undefined;
-    return matches.find((note) => codePointLength(note.path) === shortest);
+    return matches.find((note) => note.path.length === shortest);
   }
 
   private outgoing(note: Note): { resolved: Note[]; unresolved: string[] } {
@@ -400,10 +391,10 @@ export class VaultModel {
     const { resolved, unresolved } = this.outgoing(note);
     return {
       note: note.name,
-      outgoing: sortedStrings(new Set(resolved.map((n) => n.name))),
-      unresolved_outgoing: sortedStrings(new Set(unresolved)),
-      backlinks: sortedStrings(new Set([...this.backlinks(note)].map((n) => n.name))),
-      topic_siblings: sortedStrings(new Set([...this.topicSiblings(note)].map((n) => n.name))),
+      outgoing: [...new Set(resolved.map((n) => n.name))].sort(),
+      unresolved_outgoing: [...new Set(unresolved)].sort(),
+      backlinks: [...new Set([...this.backlinks(note)].map((n) => n.name))].sort(),
+      topic_siblings: [...new Set([...this.topicSiblings(note)].map((n) => n.name))].sort(),
     };
   }
 
@@ -432,7 +423,7 @@ export class VaultModel {
           if (!visited.has(source)) next.add(source);
         }
         for (const sibling of this.topicSiblings(note)) {
-          const [first, second] = sortedStrings([note.name, sibling.name]) as [string, string];
+          const [first, second] = [note.name, sibling.name].sort() as [string, string];
           addEdge([first, second, "topic_sibling"]);
           if (!visited.has(sibling)) next.add(sibling);
         }
@@ -444,9 +435,11 @@ export class VaultModel {
 
     return {
       root: root.name,
-      nodes: sortedStrings([...visited].map((note) => note.name)),
-      unresolved: sortedStrings(unresolved),
-      edges: [...edges.values()].sort(compareTuples),
+      nodes: [...visited].map((note) => note.name).sort(),
+      unresolved: [...unresolved].sort(),
+      edges: [...edges.values()].sort(
+        (a, b) => compare(a[0], b[0]) || compare(a[1], b[1]) || compare(a[2], b[2]),
+      ),
     };
   }
 
@@ -463,10 +456,16 @@ export class VaultModel {
       });
     }
     return {
-      orphans: sortedStrings(this.notes.filter((n) => !linkedTo.has(n)).map((n) => n.name)),
-      dead_ends: sortedStrings(this.notes.filter((n) => n.targets.length === 0).map((n) => n.name)),
-      unresolved_links: unresolved.sort((a, b) =>
-        compareTuples([a.referrer, a.target], [b.referrer, b.target]),
+      orphans: this.notes
+        .filter((n) => !linkedTo.has(n))
+        .map((n) => n.name)
+        .sort(),
+      dead_ends: this.notes
+        .filter((n) => n.targets.length === 0)
+        .map((n) => n.name)
+        .sort(),
+      unresolved_links: unresolved.sort(
+        (a, b) => compare(a.referrer, b.referrer) || compare(a.target, b.target),
       ),
     };
   }

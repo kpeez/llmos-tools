@@ -48,7 +48,6 @@ import {
   YAMLMap,
   type YAMLSeq,
 } from "yaml";
-import { compareStrings, lstrip, rstrip, splitLines, strip } from "./compat.ts";
 
 export type PropertyValue = string | PropertyValue[] | { [key: string]: PropertyValue };
 export type Properties = Record<string, PropertyValue>;
@@ -100,6 +99,42 @@ const TYPED_LOOKING = new RegExp(
     "|[-+]?(\\.[0-9_]+|[0-9][0-9_]*(\\.[0-9_]*)?)([eE][-+]?[0-9]+)?" +
     "|[-+]?\\.(inf|Inf|INF)|\\.(nan|NaN|NAN))$",
 );
+
+// The canonical form is an on-disk contract that the Python serializer
+// defined, so its text rules keep Python's character sets rather than
+// JavaScript's: whitespace as `str.strip` sees it (with \x1c-\x1f and \x85,
+// without U+FEFF, unlike `trim`), the line breaks `str.splitlines` splits
+// on, and key order by code point (not UTF-16 code unit).
+const WHITESPACE = new Set(
+  "\t\n\v\f\r\x1c\x1d\x1e\x1f \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005" +
+    "\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000",
+);
+// biome-ignore lint/suspicious/noControlCharactersInRegex: these control characters are line breaks.
+const LINE_BREAK = /\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/;
+
+function rstrip(value: string): string {
+  let end = value.length;
+  while (end > 0 && WHITESPACE.has(value[end - 1] as string)) end--;
+  return value.slice(0, end);
+}
+
+function strip(value: string): string {
+  let start = 0;
+  while (start < value.length && WHITESPACE.has(value[start] as string)) start++;
+  return rstrip(value.slice(start));
+}
+
+function byCodePoint(a: string, b: string): number {
+  const x = a[Symbol.iterator]();
+  const y = b[Symbol.iterator]();
+  for (;;) {
+    const p = x.next();
+    const q = y.next();
+    if (p.done || q.done) return p.done ? (q.done ? 0 : -1) : 1;
+    const diff = (p.value.codePointAt(0) as number) - (q.value.codePointAt(0) as number);
+    if (diff !== 0) return diff;
+  }
+}
 
 function needsQuotes(value: string): boolean {
   return (
@@ -255,7 +290,7 @@ function blockLines(doc: Document, source: string | null, changed: ReadonlySet<s
   const map = doc.contents;
   if (isMap(map)) {
     lines.push(...commentLines(map.commentBefore));
-    const pairs = [...(map.items as Pair[])].sort((a, b) => compareStrings(keyOf(a), keyOf(b)));
+    const pairs = [...(map.items as Pair[])].sort((a, b) => byCodePoint(keyOf(a), keyOf(b)));
     for (const pair of pairs) {
       lines.push(...commentLines((pair.key as Scalar).commentBefore));
       const verbatim =
@@ -275,7 +310,7 @@ function comments(doc: Document): string[] {
     if (isNode(node))
       found.push(...commentLines(node.commentBefore), ...commentLines(node.comment));
   });
-  return found.sort(compareStrings);
+  return found.sort();
 }
 
 /**
@@ -381,13 +416,13 @@ function split(text: string): { block: string; body: string } {
   }
   return {
     block: text.slice(OPEN.length, end),
-    body: lstrip(text.slice(end + CLOSE.length), "\n"),
+    body: text.slice(end + CLOSE.length).replace(/^\n+/, ""),
   };
 }
 
 /** The canonical note text for frontmatter lines and a body. */
 function assemble(lines: string[], body: string): string {
-  const bodyLines = splitLines(body).map((line) => rstrip(line));
+  const bodyLines = body.split(LINE_BREAK).map((line) => rstrip(line));
   while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1] === "") bodyLines.pop();
   // Reading drops leading blank lines, so writing one would not be idempotent.
   while (bodyLines.length > 0 && bodyLines[0] === "") bodyLines.shift();

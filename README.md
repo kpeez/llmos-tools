@@ -178,7 +178,9 @@ plugin hooks; the MCP server comes in a later phase.
   reindex through the qmd SDK, and `doctor.ts` the `llmos-doctor` checks.
 - `digest.ts` is the `llmos-daily-activity` command (run it with
   `bun src/digest.ts`). It replaces `llmos_vault/daily_activity.py` and
-  writes the same block hash and markers for the same GitHub activity.
+  writes the same block hash and markers for the same GitHub activity, with
+  one fix: a PR merged in one repository no longer hides a PR with the same
+  number opened in another.
 - `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` (see
   [Hooks](#hooks)).
 
@@ -211,4 +213,5 @@ and the TypeScript core on the fixture vaults and a generated edge-case vault
 and fails on any difference not listed, with its reason, in
 `test/differential/allowlist.ts`. `just differential-digest` runs both
 activity digests on a generated vault with the same `gh` output and requires
-the same block hash, markers, and note text.
+the same block hash, markers, and note text, except on a day with that fix's
+difference, where it checks that the difference is exactly that PR.

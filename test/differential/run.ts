@@ -37,7 +37,8 @@ import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual, parseArgs } from "node:util";
 import { isMap, isNode, isScalar, isSeq, parseDocument, Scalar, visit } from "yaml";
 import { realpath } from "../../src/authoring.ts";
-import { compareStrings, isoDate, lstrip, parseIsoDate, today } from "../../src/compat.ts";
+import { localDate } from "../../src/cli.ts";
+import { parseDay } from "../../src/daily.ts";
 import { normalize, parse, UnsupportedFrontmatter } from "../../src/frontmatter.ts";
 import { type NoteSource, VaultModel } from "../../src/vault.ts";
 import { ALLOWLIST, type Comparison, type Difference } from "./allowlist.ts";
@@ -107,7 +108,7 @@ function yamlFeatures(text: string): string[] {
       features.add("anchor-or-alias");
     }
   });
-  return [...features].sort(compareStrings);
+  return [...features].sort();
 }
 
 /**
@@ -134,7 +135,7 @@ function pythonReading(
       path: note.path,
       text: note.text,
       properties: {},
-      body: lstrip(note.text.slice(end + 5), "\n"),
+      body: note.text.slice(end + 5).replace(/^\n+/, ""),
       hasFrontmatter: true,
       frontmatterError: new UnsupportedFrontmatter(error.message),
     };
@@ -190,7 +191,7 @@ function compareResults(
   }
 
   const paths = new Set([...Object.keys(left.notes), ...Object.keys(right.notes)]);
-  for (const path of [...paths].sort(compareStrings)) {
+  for (const path of [...paths].sort()) {
     const a = left.notes[path];
     const b = right.notes[path];
     if (a === undefined || b === undefined) {
@@ -203,7 +204,7 @@ function compareResults(
   }
 
   const names = new Set([...Object.keys(left.by_name), ...Object.keys(right.by_name)]);
-  for (const name of [...names].sort(compareStrings)) {
+  for (const name of [...names].sort()) {
     check("by_name", name, left.by_name[name], right.by_name[name]);
   }
 
@@ -211,7 +212,10 @@ function compareResults(
   // run to run, so the audit messages compare as sorted lists.
   const bySchemaOrder = (value: unknown, field: string): unknown =>
     field === "schema_violations" && Array.isArray(value)
-      ? [...value].sort((a, b) => compareStrings(JSON.stringify(a), JSON.stringify(b)))
+      ? [...value].sort((a, b) => {
+          const [x, y] = [JSON.stringify(a), JSON.stringify(b)];
+          return x < y ? -1 : x > y ? 1 : 0;
+        })
       : value;
   const leftHealth = left.health as Record<string, unknown>;
   const rightHealth = right.health as Record<string, unknown>;
@@ -225,12 +229,7 @@ function compareResults(
   }
 
   check("daily_recent", "", left.daily_recent, right.daily_recent);
-  check(
-    "schema.errors",
-    "",
-    [...left.schema.errors].sort(compareStrings),
-    [...right.schema.errors].sort(compareStrings),
-  );
+  check("schema.errors", "", [...left.schema.errors].sort(), [...right.schema.errors].sort());
   check("schema.checked", "", left.schema.checked, right.schema.checked);
   return { compared, differences };
 }
@@ -275,12 +274,12 @@ async function main(): Promise<void> {
       "edge-vault": { type: "boolean", default: false },
       "depth2-every": { type: "string", default: "1" },
       report: { type: "string" },
-      today: { type: "string", default: isoDate(today()) },
+      today: { type: "string", default: localDate() },
     },
   });
   const every = Number(values["depth2-every"]);
   const day = values.today as string;
-  const dayNumber = parseIsoDate(day);
+  const dayNumber = parseDay(day);
   if (dayNumber === null || !Number.isInteger(every) || every < 1) {
     throw new Error("usage: --today YYYY-MM-DD and --depth2-every N (N >= 1)");
   }
@@ -359,6 +358,14 @@ async function main(): Promise<void> {
         if (difference.section === "normalize") {
           difference.features = yamlFeatures(texts.get(difference.key) ?? "");
         }
+        if (difference.section === "health.stale_inbox") {
+          const model = difference.comparison === "compatible-vs-full" ? full : compatible;
+          difference.created = Object.fromEntries(
+            model.notes
+              .filter((note) => note.path.startsWith("inbox/"))
+              .map((note) => [note.path, note.properties.created]),
+          );
+        }
         const entry = ALLOWLIST.find((candidate) => candidate.matches(difference));
         if (entry === undefined) notAllowed.push(difference);
         else allowed[entry.id] = [...(allowed[entry.id] ?? []), difference];
@@ -385,7 +392,7 @@ async function main(): Promise<void> {
         vault: root,
         today: day,
         notes: full.notes.length,
-        python_refused_notes: refused.sort(compareStrings),
+        python_refused_notes: refused.sort(),
         subgraph_depth2_notes: depth2.length,
         compared: first.compared,
         unexpected: notAllowed,
