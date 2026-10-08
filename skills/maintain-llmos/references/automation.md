@@ -43,7 +43,7 @@ Description=llmOS daily activity digest
 
 [Service]
 Type=oneshot
-Environment=PATH=%h/.local/bin:%h/.bun/bin:%h/.local/share/mise/shims:/usr/bin:/bin
+Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/bin:/bin
 ExecStart=%h/.local/bin/llmos-daily-activity
 ```
 
@@ -63,8 +63,9 @@ WantedBy=timers.target
 
 `%h/.local/bin/llmos-daily-activity` is the link that the CLI install creates
 to `src/digest.ts` in the installed copy of `tools/`. The script starts with
-`#!/usr/bin/env bun`, so `bun` must be on the unit's `PATH`: through mise
-shims or in `~/.bun/bin`.
+`#!/usr/bin/env bun`, so the unit's `PATH` must find the mise-managed `bun`
+through the mise shims. Do not put `~/.bun/bin` on it: on linux-host that folder
+holds an older standalone Bun that would run first.
 
 Enable it with `systemctl --user enable --now llmos-daily-activity.timer`. Read
 failures with `journalctl --user -u llmos-daily-activity`. The job needs `gh`

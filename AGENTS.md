@@ -7,9 +7,12 @@ Run every command from `tools/`. The marketplace catalogs live at the
 repository root and point here.
 
 The Python package is frozen: bug fixes only. It is the oracle for the
-TypeScript core in `src/` (tests in `test/`, run by Bun). Do not change Python
-behavior to make the two agree. An intended difference goes on the allowlist
-in `test/differential/allowlist.ts` with its reason.
+external contract of the TypeScript core in `src/` (tests in `test/`, run by
+Bun): the canonical frontmatter on disk, CLI names, flags, JSON shapes, and
+exit codes, hook output channels, and the digest markers and hash. Internal
+code uses native TypeScript and Bun behavior and does not copy Python quirks.
+Do not change Python behavior to make the two agree. An intended difference
+goes on the allowlist in `test/differential/allowlist.ts` with its reason.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `tests/fixtures/`, never
