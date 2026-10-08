@@ -78,9 +78,11 @@ export interface OptionSpec {
 export interface ArgumentSpec {
   name: string;
   help: string;
+  /** Takes one or more values, as a string list. Only the last argument may be variadic. */
+  variadic?: boolean;
 }
 
-export type Values = Record<string, string | number | boolean | undefined>;
+export type Values = Record<string, string | string[] | number | boolean | undefined>;
 
 /** A handler's result: JSON (printed with two-space indents) or text, and an exit code. */
 export interface Outcome {
@@ -109,8 +111,12 @@ export class UsageError extends Error {
 
 const PROGRAM = "llmos-vault";
 
+function placeholder(arg: ArgumentSpec): string {
+  return arg.variadic ? `<${arg.name}...>` : `<${arg.name}>`;
+}
+
 function usage(command: Command): string {
-  const parts = [`${PROGRAM} ${command.name}`, ...command.arguments.map((arg) => `<${arg.name}>`)];
+  const parts = [`${PROGRAM} ${command.name}`, ...command.arguments.map(placeholder)];
   for (const [name, option] of Object.entries(command.options)) {
     if (option.type === "boolean") parts.push(`[--${name}]`);
     else parts.push(`[--${name} ${option.choices?.join("|") ?? option.metavar ?? "VALUE"}]`);
@@ -221,13 +227,18 @@ export function parseValues(command: Command, tokens: string[]): Values | "help"
     throw new UsageError((error as Error).message);
   }
   if (parsed.values.help) return "help";
-  if (parsed.positionals.length !== command.arguments.length) {
-    const expected = command.arguments.map((arg) => `<${arg.name}>`).join(" ") || "no arguments";
-    throw new UsageError(`expected ${expected}, got ${parsed.positionals.length} argument(s)`);
+  const given = parsed.positionals.length;
+  const variadic = command.arguments.at(-1)?.variadic === true;
+  const fixed = command.arguments.length - (variadic ? 1 : 0);
+  if (variadic ? given <= fixed : given !== fixed) {
+    const expected = command.arguments.map(placeholder).join(" ") || "no arguments";
+    throw new UsageError(`expected ${expected}, got ${given} argument(s)`);
   }
   const values: Values = {};
   command.arguments.forEach((arg, i) => {
-    values[arg.name] = parsed.positionals[i];
+    values[arg.name] = arg.variadic
+      ? (parsed.positionals.slice(i) as string[])
+      : parsed.positionals[i];
   });
   for (const [name, option] of Object.entries(command.options)) {
     const raw = parsed.values[name] as string | boolean | undefined;

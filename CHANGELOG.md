@@ -16,6 +16,16 @@ Newest first. Versions are the `version` field shared by
   time on text such as `![a](` repeated (13.7 s for 200 KB; now about 15 ms).
   The result is the same, except that an image that starts inside another
   match's target is now also rewritten.
+- New `llmos-vault claims lint <notes...> [--json]` checks the `[!fact]` and
+  `[!conflict]` callouts of knowledge notes: each quote must occur in the
+  linked heading's section of its captured source, and each number of a fact
+  must occur in its quote (with `%`, `±`, signs, exponents, and attached identifiers). A quote needs
+  at least 6 words, and the source's `sha256_text` is recomputed. Any finding
+  exits 1; flagged
+  facts are reported without failing, and superseded facts are skipped. The
+  format is in `llmOS/agents/references/schema.md` and the conflict rule in
+  `llmOS/agents/references/ingest-contract.md` (kpeez/llmos#53).
+- A command's last argument can now take several values (`<paths...>`).
 
 ## 2.3.1 — 2026-10-08
 

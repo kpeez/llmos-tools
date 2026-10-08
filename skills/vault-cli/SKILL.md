@@ -49,6 +49,7 @@ health` reports the count of documents that still need embedding as
 | --- | --- |
 | `append` | Append content to the end of an existing note. |
 | `check` | Review one note for unlinked references to existing vault notes. |
+| `claims lint` | Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote. |
 | `config set-root` | Validate a vault root and write it to the llmOS config file. |
 | `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
 | `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading. |

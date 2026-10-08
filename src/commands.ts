@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { checkNote } from "./authoring.ts";
+import { summary as claimsSummary, lintClaims } from "./claims-lint.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { DAILY_DIR, type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { renderReference, renderSkill } from "./docs.ts";
@@ -588,6 +589,76 @@ where it is.`,
   },
 };
 
+const claimsLint: Command = {
+  name: "claims lint",
+  summary:
+    "Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote.",
+  description: `Use before opening a consolidation pull request, and whenever a note with
+\`[!fact]\` or \`[!conflict]\` callouts changes. Each fact has a status title
+(drafted, checked, verified, superseded, or \`flagged: <reason>\`), the fact
+text, one quoted passage, a final \`— [[source#heading|label]]\` line, and a
+\`^fact-<slug>\` block ID on its own line after a blank line. The format and
+the rules are in \`agents/references/schema.md\` (Compiled facts).
+Per fact, it checks that the quote occurs in the linked heading's section of
+the source (case and punctuation as written; white space, Unicode forms,
+quote marks, ligatures, soft hyphens, LaTeX symbols, and Markdown markup are
+normalized; \`…\` and \`[...]\` skip text, and the parts must occur in order).
+A quote needs at least 6 words, and each part between elisions at least 3; for
+a table, quote the whole row with its row label.
+Every number in the fact must occur in the quote: 6,280 equals 6280, exponents
+(\`59e-9\`, \`10^4\`) and a minus sign must match, and a \`%\` or \`±\` on the
+number must be on the quote's number too. Number words (\`fifty\`, \`one\`, \`double-blind\`) in a fact are
+findings unless the quote uses the same word. Digits around \`x\` are two
+numbers (\`224x300\`). Digits inside identifiers such as \`top-1\`, \`ResNet-50\`, and
+\`DINOv2\` are not checked, except that \`ResNet-101\` and \`ResNet101\` fail when the
+quote names \`ResNet-18\` or \`ResNet18\`; the numbers checked are the ones the reader
+sees (a link counts as its label; an unlabeled link counts as its target); citation years such as \`(Shukla et al., 2018)\` are not checked.
+A \`[!conflict]\` callout holds a statement and two quote and source pairs from
+two different sources; each quote is checked the same way, and each number of
+the statement must occur in one of the two quotes. The source's \`sha256_text\`
+is recomputed, and a source that does not match fails its facts.
+A line that starts like \`[!fact…]\` or \`[!conflict…]\` but does not parse (also an
+indented, nested, or listed one), an unknown status, a missing or duplicate block ID, an unresolved
+source link or heading, a missing quote, and a missing number are findings,
+and any finding exits 1. A flagged fact is listed with its reason and does not
+fail; a superseded fact is skipped. The report counts facts by status and the
+facts that were fully checked. A code fence that is never closed gives a warning,
+not a failure. The lint is necessary, not sufficient: it cannot
+see swapped numbers, negation, or a real quote that does not support the fact.
+Read-only; works with Obsidian closed.
+Do NOT use to check a source's own text -- no agent edits a captured source.`,
+  arguments: [
+    {
+      name: "paths",
+      variadic: true,
+      help: "One or more note names or vault-relative paths.",
+    },
+  ],
+  options: {
+    ...vaultOption("Which registered vault to check."),
+    json: { type: "boolean", help: "Print JSON instead of a readable summary." },
+  },
+  exampleOutput: `{"notes": ["knowledge/macaquefaces.md"], "facts": 2, "conflicts": 0,
+ "by_status": {"drafted": 0, "checked": 1, "verified": 0, "superseded": 0, "flagged": 1},
+ "fully_checked": 0,
+ "findings": [{"path": "knowledge/macaquefaces.md", "line": 5, "claim": "fact-macaquefaces-size",
+   "code": "number-not-in-quote", "message": "\\"6280\\" in the fact does not occur in the quote"}],
+ "flagged": [{"path": "knowledge/macaquefaces.md", "line": 12, "claim": null,
+   "reason": "source not captured"}]}`,
+  example: "llmos-vault claims lint knowledge/macaquefaces.md --json",
+  run(values, context) {
+    const model = context.model(context.root(vaultName(values)));
+    const given = values.paths;
+    if (!Array.isArray(given)) throw new UsageError("paths must be a list of notes");
+    const report = lintClaims(
+      model,
+      given.map((path) => model.resolveNote(path)),
+    );
+    const exitCode = report.findings.length > 0 ? 1 : 0;
+    return values.json ? { json: report, exitCode } : { text: claimsSummary(report), exitCode };
+  },
+};
+
 const dailyGetOrCreate: Command = {
   name: "daily get-or-create",
   summary:
@@ -872,6 +943,7 @@ export const COMMANDS: readonly Command[] = [
   removePropertyCommand,
   fileInbox,
   sourceAdd,
+  claimsLint,
   dailyGetOrCreate,
   dailyAppendThought,
   dailyRecent,
