@@ -6,10 +6,13 @@
  *   bun test/differential/run.ts [--edge-vault] [--depth2-every N]
  *     [--report FILE] [--today YYYY-MM-DD] [VAULT ...]
  *
- * For each vault it compares `list`; for every note `read`, `neighbors`,
- * `subgraph` at depth 1, `check`, and `normalize`; `subgraph` at depth 2 for
- * every Nth note (all notes by default); `read` by every note name; the
- * health report without its qmd sections; and the schema audit. Absolute
+ * For each vault it compares the JSON each CLI prints and its exit code for
+ * `list` and `daily recent --n 2`; for every note `read`, `neighbors`,
+ * `subgraph` at depth 1, and `check`; `subgraph` at depth 2 for every Nth
+ * note (all notes by default); `read` by every note name; and `health
+ * --json` (qmd unavailable on both sides). JSON compares by value, so key
+ * order is not compared: it is not part of the contract. It also compares
+ * `normalize` and the schema audit, which have no CLI JSON form. Absolute
  * paths become vault-relative before comparison.
  *
  * Python reads a note whose frontmatter it refuses as having no properties,
@@ -221,6 +224,7 @@ function compareResults(
     );
   }
 
+  check("daily_recent", "", left.daily_recent, right.daily_recent);
   check(
     "schema.errors",
     "",
@@ -263,7 +267,7 @@ function invariantDifferences(vault: string, model: VaultModel): Difference[] {
   return differences;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     args: Bun.argv.slice(2),
     allowPositionals: true,
@@ -324,12 +328,12 @@ function main(): void {
 
       const typescriptStarted = performance.now();
       const fullResults = relativize(
-        typescriptResults(full, dayNumber, (path) => depth2Set.has(path)),
+        await typescriptResults(full, day, (path) => depth2Set.has(path)),
         full.root,
       ) as OracleResults;
       const typescriptSeconds = (performance.now() - typescriptStarted) / 1000;
       const compatibleResults = relativize(
-        typescriptResults(compatible, dayNumber, (path) => depth2Set.has(path)),
+        await typescriptResults(compatible, day, (path) => depth2Set.has(path)),
         compatible.root,
       ) as OracleResults;
 
@@ -406,4 +410,4 @@ function main(): void {
   process.exit(unexpected === 0 ? 0 : 1);
 }
 
-main();
+await main();

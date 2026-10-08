@@ -2,26 +2,29 @@
 
 The plugin and maintenance tool for the shared **llmOS Obsidian vault**, which
 lives beside this folder in `../llmOS/`. It bundles three skills, lifecycle hooks that keep vault writes
-well-formed and indexed, and `llmos_vault`, a Python library with deterministic
-CLI verbs for vault operations. A TypeScript core run by Bun (`src/`) is
-replacing the Python library in phases
+well-formed and indexed, and the llmOS CLI: deterministic verbs for vault
+operations, written in TypeScript and run by Bun (`src/`, `bin/`). The Python
+library `llmos_vault` is frozen and is being retired in phases
 ([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md));
-until the CLI phase lands, the installed commands are still the Python ones.
+the hooks still run from it.
 
-## Install the maintenance tool
+## Install the maintenance tools
 
-Install the reusable vault maintenance commands with uv:
+The `setup-llmos` skill installs the CLI. By hand, from a checkout or the
+plugin root, with `bun` on `PATH`:
 
 ```sh
-# From a checkout
-uv tool install --editable <checkout>/tools
-
-# Directly from GitHub (clones the whole repository, notes included)
-uv tool install "git+https://github.com/kpeez/llmos#subdirectory=tools"
+bun <checkout>/tools/scripts/install.ts
 ```
 
-This installs `llmos-vault`, `llmos-audit`, `llmos-daily-activity`, and
-`llmos-doctor` from the same repository that provides the plugin assets.
+This copies `tools/` to `~/.local/share/llmos/<version>/`, installs its
+dependencies there, and links `llmos-vault`, `llmos-doctor`, `llmos-audit`,
+`llmos-daily-activity` (`src/digest.ts`), and `qmd` into `~/.local/bin/`. The
+`qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
+`package.json`); keep it the only `qmd` on `PATH`. On a host that still has
+the retired Python uv tool, run `uv tool uninstall llmos-vault` first: uv
+removes the command paths it recorded, which would otherwise delete the new
+links.
 
 ## Install the agent plugin
 
@@ -48,10 +51,11 @@ tools/
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
 ├── hooks/                 # session/tool lifecycle hooks (see below)
-├── llmos_vault/           # Python library + `llmos-vault` cyclopts CLI (frozen)
-├── src/                   # TypeScript core: frontmatter, vault model, root, llmOS profile
+├── llmos_vault/           # Python library and CLI (frozen; differential-test oracle)
+├── src/                   # TypeScript core and the CLI's command registry
+├── bin/                   # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
 ├── test/                  # bun tests and the differential harness
-├── scripts/               # source-checkout compatibility shims
+├── scripts/               # install.ts (the CLI install) and source-checkout shims
 └── tests/                 # pytest suite with fixture vaults
 ```
 
@@ -125,8 +129,8 @@ vault is.
 
 ## The TypeScript core
 
-`src/` is the TypeScript core that later phases build the hooks, CLI, digest,
-and MCP server on. It reads; writing verbs come with the CLI phase.
+`src/` is the TypeScript core: the vault model, the CLI, and the digest; the
+hooks and the MCP server come in later phases.
 
 - `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
   and writes the canonical form: sorted keys, block-style lists, quoted
@@ -141,6 +145,10 @@ and MCP server on. It reads; writing verbs come with the CLI phase.
   `VaultRootError` instead of exiting.
 - `schema.ts`, `authoring.ts`, `health.ts`, `daily.ts`, and `inbox.ts` port the
   llmOS-profile reads and computations.
+- `cli.ts` and `commands.ts` are the `llmos-vault` command registry and entry
+  point; `write.ts` does the headless writes, `obsidian.ts` the two
+  obsidian-cli writes (`move`, `create --template`), `qmd.ts` search and
+  reindex through the qmd SDK, and `doctor.ts` the `llmos-doctor` checks.
 - `digest.ts` is the `llmos-daily-activity` command (run it with
   `bun src/digest.ts`). It replaces `llmos_vault/daily_activity.py` and
   writes the same block hash and markers for the same GitHub activity.

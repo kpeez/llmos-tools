@@ -201,6 +201,12 @@ function pathlibString(path: string): string {
   return parts.join("/") || ".";
 }
 
+/** A vault-relative path joined to the vault root, as `pathlib` prints `root / relative`. */
+export function joinRoot(root: string, relative: string): string {
+  const base = pathlibString(root);
+  return base.endsWith("/") ? `${base}${relative}` : `${base}/${relative}`;
+}
+
 export class VaultModel {
   readonly notes: readonly Note[];
   private readonly byPath = new Map<string, Note>();
@@ -282,7 +288,7 @@ export class VaultModel {
 
   /** The note's path joined to the vault root, as `pathlib` joins it. */
   absolutePath(note: Note): string {
-    return this.root.endsWith("/") ? `${this.root}${note.path}` : `${this.root}/${note.path}`;
+    return joinRoot(this.root, note.path);
   }
 
   /** The note at an exact path `<stem>.md`, if one exists. */

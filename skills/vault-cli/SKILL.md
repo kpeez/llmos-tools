@@ -5,31 +5,40 @@ description: Route vault operations to the llmos-vault CLI. Use when reading, li
 
 # Vault CLI
 
-`llmos-vault` is a cyclopts CLI whose docstrings are the single source of
-truth for every verb's parameters, behavior, and output shape. Discovery is
-two hops: this table tells you which verb to run, `llmos-vault <cmd> --help`
-tells you everything else.
+`llmos-vault` is a TypeScript CLI run by Bun. Its command registry
+(`src/commands.ts`) is the single source of truth for every verb's
+parameters, behavior, and output shape. Discovery is two hops: this table
+tells you which verb to run, `llmos-vault <cmd> --help` tells you everything
+else.
+
+Reads and content or property writes work with Obsidian closed: writes are
+atomic file writes in the canonical frontmatter form. Only `move` and
+`create --template` need the running app; they exit 3 when it is not
+running. `search` and `reindex` use qmd's index through its SDK.
 
 ## Verbs
 
 <!-- BEGIN GENERATED VERB TABLE -->
 | verb | summary |
 | --- | --- |
-| `append` | Append content to an existing note via obsidian-cli. |
+| `append` | Append content to the end of an existing note. |
 | `check` | Review one note for unlinked references to existing vault notes. |
-| `create` | Create a new note, optionally from a vault template, via obsidian-cli. |
-| `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading via obsidian-cli. |
-| `daily get-or-create` | Print today's daily note's frontmatter and body as JSON, creating it |
+| `config set-root` | Validate a vault root and write it to the llmOS config file. |
+| `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
+| `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading. |
+| `daily get-or-create` | Print today's daily note as JSON, creating it from the daily template if it is missing. |
 | `daily recent` | Print the last `n` daily notes' frontmatter and body as JSON, most recent first. |
-| `docs` | Regenerate the router skill's command reference from this CLI's tree. |
-| `file-inbox` | File an inbox note to its destination: move it via obsidian-cli, stamp |
-| `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema |
+| `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
+| `file-inbox` | File an inbox note: move it via obsidian-cli, stamp its destination properties and authors, and record it in today's daily note. |
+| `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `move` | Move or rename a note via obsidian-cli, rewriting every backlink. |
 | `neighbors` | Print one note's outgoing links, backlinks, and shared-topic siblings. |
 | `read` | Print one note's frontmatter and body as JSON. |
-| `remove-property` | Remove a property from a note via obsidian-cli. |
-| `set-property` | Set a property on a note via obsidian-cli. |
+| `reindex` | Update, embed, and clean up the qmd index for a collection. |
+| `remove-property` | Remove a property from a note. |
+| `search` | Search a qmd collection for notes; keyword search by default, --semantic for hybrid. |
+| `set-property` | Set a property on a note. |
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |
 <!-- END GENERATED VERB TABLE -->
 
@@ -49,10 +58,12 @@ No prior knowledge of the vault, the library, or Obsidian is required.
 
 ## Regenerating this file
 
-This table and `references/commands.md` are generated from the CLI's own
-docstrings -- never hand-edit either. After changing a docstring or adding a
-verb, run:
+This table and `references/commands.md` are generated from the command
+registry -- never hand-edit either. After changing a command's help text or
+adding a command, run from `tools/`:
 
 ```sh
-uv run llmos-vault docs
+bun bin/llmos-vault.ts docs
 ```
+
+`bun test` fails while either file is stale.

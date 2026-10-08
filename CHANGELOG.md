@@ -6,6 +6,23 @@ The Python package version lives in `pyproject.toml`.
 
 ## Unreleased
 
+- Port the `llmos-vault` CLI, `llmos-doctor`, and `llmos-audit` to TypeScript
+  on Bun (ADR 0012, CLI phase). Command names, flags, JSON output shapes, and
+  exit codes are kept. `set-property`, `remove-property`, `append`,
+  `daily append-thought`, `create` without a template, and the stamping step
+  of `file-inbox` are now atomic file writes that work with Obsidian closed;
+  only `move` and `create --template` need the app (exit 3 without it). Writes
+  never leave the vault, also not through symbolic links.
+- New verbs: `search` (qmd keyword search, `--semantic` for hybrid search)
+  and `reindex` (qmd update, embed, and cleanup), through the qmd SDK pinned
+  at `@tobilu/qmd` 2.8.3. `health` reads its qmd index gaps the same way.
+- `setup-llmos` installs the CLI with `scripts/install.ts` into
+  `~/.local/share/llmos/<version>/` and links `llmos-vault`, `llmos-doctor`,
+  `llmos-audit`, `llmos-daily-activity`, and the pinned `qmd` into
+  `~/.local/bin/`.
+  `llmos-vault config set-root` replaces `write_config.py`. `llmos-doctor`
+  fails unless exactly one `qmd` is on `PATH` and it is this install's.
+
 - Add the TypeScript core in `src/` (ADR 0012, first phase): frontmatter on
   the `yaml` Document API that keeps block scalars, comments, and nested maps;
   one vault model for reads and the link graph; root resolution with a typed

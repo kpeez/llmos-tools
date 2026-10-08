@@ -14,7 +14,7 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. No pr
    `agents/references/authoring.md`, then the nearest area or canonical project
    note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
 3. Delegate broad vault exploration (multi-note reads, wide `qmd` sweeps) to a bounded subagent; keep synthesis and cross-cutting decisions with the primary agent.
-4. Use `qmd search -c llmos` for exact retrieval or `qmd query -c llmos` for semantic and cross-note retrieval. Fetch full hits with `qmd get` before using them.
+4. Use `llmos-vault search "<terms>"` (or `qmd search -c llmos`) for exact retrieval, and `llmos-vault search --semantic` (or `qmd query -c llmos`) for semantic and cross-note retrieval; semantic search loads models, about 30 s. Read full hits with `llmos-vault read` or `qmd get` before using them.
 5. Classify linked `categories`, linked `topics`, and linked `project` (omitting
    empty properties), then file the result with the matching template using the
    schema and directory map at `$LLMOS_ROOT/agents/references/schema.md`; use

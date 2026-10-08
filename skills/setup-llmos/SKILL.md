@@ -8,30 +8,47 @@ description: Set up and verify llmOS access, agent-plugin activation, and hook c
 Use this workflow on macOS or Linux, the supported llmOS desktop environments.
 The doctor detects the OS and prints platform-specific repairs.
 
-The reusable maintenance commands are installed with the `llmos-vault` uv tool.
-The plugin root still owns this skill's `write_config.py` helper and the
-lifecycle hooks.
-When invoking that helper, `<llmos-plugin-root>` means the directory two levels
-above this `SKILL.md`.
+The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
+`qmd` come from the llmOS CLI, a TypeScript program run by Bun. Below,
+`<llmos-plugin-root>` means the directory two levels above this `SKILL.md`.
+The host needs `bun` on `PATH`.
 
-Run the bundled doctor before changing the machine:
+Install or update the CLI from the plugin root:
+
+```sh
+bun "<llmos-plugin-root>/scripts/install.ts"
+```
+
+The script copies the plugin root to `~/.local/share/llmos/<version>/`, runs
+`bun install --frozen-lockfile --production` there, and links `llmos-vault`,
+`llmos-doctor`, `llmos-audit`, `llmos-daily-activity`, and `qmd` into
+`~/.local/bin/`. It never changes the plugin folder or a plugin cache. It
+replaces a `~/.local/bin` entry only when that entry links to an earlier
+install or to the retired Python `llmos-vault` uv tool; any other entry stops
+it before anything changes. `~/.local/bin` must be on `PATH`.
+
+If `uv tool list` still shows the retired `llmos-vault` uv tool, remove it
+with `uv tool uninstall llmos-vault` before the install, with the user's
+approval: uninstalling it later would delete the new command links.
+
+The `qmd` it links is the qmd version the CLI imports. Keep it the only
+`qmd` on `PATH`: two versions would write the same `~/.cache/qmd` index. If
+the doctor finds another one (for example a global `mise` install of
+`npm:@tobilu/qmd`), get the user's approval before removing it.
+
+Run the doctor before changing anything else:
 
 ```sh
 llmos-doctor
 ```
 
-If `llmos-doctor` is unavailable, install the tool from the llmos plugin
-package before continuing:
-
-```sh
-uv tool install --editable "<llmos-plugin-root>"
-```
-
 The doctor is read-only. It reports `PASS` or `FAIL` for each available
 prerequisite, prints an exact `REPAIR` command after every failure, and exits
-nonzero when setup is incomplete. It checks vault, Obsidian, and qmd access;
-it does not establish that either agent has loaded the plugin or trusted its
-hooks. Verify those separately below.
+nonzero when setup is incomplete. It checks the vault root, Obsidian, that
+exactly one `qmd` is on `PATH` and it is this install's, and that the qmd
+index holds and returns the vault's `llmOS.md`. It does not establish that
+either agent has loaded the plugin or trusted its hooks. Verify those
+separately below.
 
 ## Workflow
 
@@ -42,10 +59,10 @@ hooks. Verify those separately below.
    llmOS vault checkout, then write the config:
 
    ```sh
-   python3 "<llmos-plugin-root>/skills/setup-llmos/scripts/write_config.py" "<path the user gave>"
+   llmos-vault config set-root "<path the user gave>"
    ```
 
-   The script validates the path before writing anything — it must exist and
+   The command validates the path before writing anything — it must exist and
    contain both `.obsidian/` and `AGENTS.md`. It never writes a config
    pointing at a non-vault; on a rejected path it exits nonzero with the
    reason and writes nothing, so re-ask the user and retry rather than
@@ -107,7 +124,7 @@ codex exec --sandbox read-only "Do not use any tools. Did you receive a startup 
 
 ## Activate and verify each agent and host
 
-The Python tool and the agent plugin are separate installations. Repeat this
+The llmOS CLI and the agent plugin are separate installations. Repeat this
 checklist on each requested host; a successful Mac check says nothing about
 Linux, and Claude activation says nothing about Codex.
 

@@ -14,6 +14,18 @@ code uses native TypeScript and Bun behavior and does not copy Python quirks.
 Do not change Python behavior to make the two agree. An intended difference
 goes on the allowlist in `test/differential/allowlist.ts` with its reason.
 
+The `llmos-vault` CLI is a command registry (`src/commands.ts`, run by
+`src/cli.ts`; entry points in `bin/`). Its contract is the command names,
+flags, JSON output shapes, and exit codes (3: Obsidian not running), plus
+the canonical frontmatter form on disk; internals need not copy Python.
+Handlers return results and never print or exit, so other front ends can
+call them. After changing a command's help, run `bun bin/llmos-vault.ts
+docs`; a test fails while the vault-cli reference is stale.
+
+Never point a manual run or a test at the real qmd index
+(`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
+to a temporary folder, as `test/helpers.ts` `isolatedEnv` does.
+
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `tests/fixtures/`, never
 the real vault in `../llmOS/`; point `LLMOS_ROOT` at a temporary vault for a
