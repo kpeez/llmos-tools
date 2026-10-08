@@ -28,6 +28,7 @@ from llmos_vault.daily import (
     get_or_create_daily,
     read_recent_dailies,
 )
+from llmos_vault.frontmatter import UnsupportedFrontmatter
 from llmos_vault.obsidian_cli import ObsidianNotRunning
 
 DAILY_TEMPLATE_TEXT = textwrap.dedent(
@@ -62,14 +63,16 @@ def make_vault(root: Path) -> Path:
     return root
 
 
-def seed_daily(root: Path, day: str, body_extra: str = "") -> Path:
+def seed_daily(
+    root: Path, day: str, body_extra: str = "", start_marker: str = f"{MARKER_START} -->"
+) -> Path:
     note_dir = root / "reviews" / "daily"
     note_dir.mkdir(parents=True, exist_ok=True)
     text = (
         f'---\nstatus: active\ncreated: "{day}"\nupdated: "{day}"\n'
         'categories:\n  - "[[Reviews]]"\n---\n\n'
         f"# {day}\n\n## Thoughts\n{body_extra}\n## Projects\n\n"
-        f"{MARKER_START}\n"
+        f"{start_marker}\n"
         "- [[projects/agent-toolbox]]: seeded machine content\n"
         f"{MARKER_END}\n\n"
         "![[Daily Reviews.base#Created on day]]\n"
@@ -176,6 +179,22 @@ def test_append_thought_never_touches_or_reorders_marker_block(tmp_path, monkeyp
     assert written[written.index(MARKER_START) :] == original_marker_onward
 
 
+def test_append_thought_accepts_the_digest_hash_marker(tmp_path, monkeypatch):
+    # The digest writes `<!-- llmos-activity:start hash=... -->`; 69 real
+    # daily notes carried it when append-thought refused every one of them.
+    vault = make_vault(tmp_path / "vault")
+    hashed = f"<!-- llmos-activity:start hash={'a' * 64} -->"
+    note = seed_daily(vault, "2026-07-16", start_marker=hashed)
+    original = note.read_text()
+    install_fake_obsidian(monkeypatch, vault)
+
+    append_thought(vault, "a thought", today=date(2026, 7, 16))
+
+    written = note.read_text()
+    assert "a thought" in written.split("## Projects")[0]
+    assert written[written.index(hashed) :] == original[original.index(hashed) :]
+
+
 def test_append_thought_creates_daily_note_first_if_absent(tmp_path, monkeypatch):
     vault = make_vault(tmp_path / "vault")
     install_fake_obsidian(monkeypatch, vault)
@@ -207,6 +226,32 @@ def test_append_thought_refuses_when_note_has_no_marker_pair(tmp_path, monkeypat
 
     with pytest.raises(MachineOwnedBlock):
         append_thought(vault, "a thought", today=date(2026, 7, 16))
+
+
+def test_append_thought_refuses_a_note_whose_frontmatter_it_cannot_read(tmp_path, monkeypatch):
+    # Reading it as `{}` used to rewrite the real block into the body.
+    vault = make_vault(tmp_path / "vault")
+    note = seed_daily(vault, "2026-07-16")
+    note.write_text(note.read_text().replace("---\n", "---\n# keep: reviewed manually\n", 1))
+    original = note.read_text()
+    monkeypatch.setattr(mutations, "run", refuse_to_run)
+
+    with pytest.raises(UnsupportedFrontmatter):
+        append_thought(vault, "a thought", today=date(2026, 7, 16))
+    assert note.read_text() == original
+
+
+def test_read_recent_dailies_tolerates_a_note_it_cannot_parse(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    seed_daily(vault, "2026-07-15")
+    bad = seed_daily(vault, "2026-07-16")
+    bad.write_text(bad.read_text().replace("---\n", "---\n# hand note\n", 1))
+
+    notes = read_recent_dailies(vault, 2)
+
+    assert [n.name for n in notes] == ["2026-07-16", "2026-07-15"]
+    assert notes[0].properties == {}
+    assert notes[1].properties["categories"] == ["[[Reviews]]"]
 
 
 # -- read_recent_dailies ------------------------------------------------------

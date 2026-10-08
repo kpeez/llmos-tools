@@ -23,6 +23,7 @@ from llmos_vault.daily import (
     read_recent_dailies,
 )
 from llmos_vault.docs import write_reference
+from llmos_vault.frontmatter import UnsupportedFrontmatter
 from llmos_vault.graph import get_neighbors, get_subgraph
 from llmos_vault.health import summary, vault_health
 from llmos_vault.inbox import file_inbox_item
@@ -559,7 +560,7 @@ def main() -> None:
     except ObsidianNotRunning as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(EXIT_OBSIDIAN_NOT_RUNNING)
-    except MachineOwnedBlock as exc:
+    except (MachineOwnedBlock, UnsupportedFrontmatter) as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
 

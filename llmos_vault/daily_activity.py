@@ -20,13 +20,12 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from llmos_vault import frontmatter
+from llmos_vault.daily import MARKER_END, MARKER_START
 from llmos_vault.root import vault_root
 
 LOCAL_TZ = ZoneInfo("America/Los_Angeles")
 MODEL = "opencode-go/deepseek-v4-flash"
 ORGS = ("kpeez", "linux-host-ucdavis")
-MARKER_START = "<!-- llmos-activity:start"
-MARKER_END = "<!-- llmos-activity:end -->"
 TRANSFORM_INSTRUCTIONS = (
     "You are a deterministic text transformer inside a script. You receive JSON of one "
     "day's GitHub activity grouped by project and emit only GitHub-flavored markdown. "
@@ -69,7 +68,13 @@ def read_projects(
     for note_path in sorted(root.glob("projects/*/*.md")):
         if note_path.stem != note_path.parent.name:
             continue
-        props, body = frontmatter.parse(note_path.read_text(encoding="utf-8"))
+        try:
+            props, body = frontmatter.parse(note_path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            # One unreadable landing page must not stop the digest for every
+            # other project; its repository is simply not monitored today.
+            print(f"skipping {note_path.relative_to(root)}: {exc}", file=sys.stderr)
+            continue
         if props.get("status") != "active":
             continue
         repos = org_repos.get(note_path.stem.lower(), [])

@@ -19,7 +19,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from llmos_vault.frontmatter import Property
+from llmos_vault.frontmatter import MissingFrontmatter, Property, UnsupportedFrontmatter
 from llmos_vault.frontmatter import parse as parse_frontmatter
 
 # ADRs use proposed/accepted/superseded; other notes use the rest.
@@ -44,11 +44,12 @@ RETIRED_SPECS = ("archive", "specs")
 def _properties_or_none(path: Path) -> dict[str, Property] | None:
     """A note's frontmatter properties via the canonical parser, or None if
     the note has no frontmatter block at all -- `collect_errors` treats a
-    missing block as its own violation rather than a parse error."""
+    missing block as its own violation. A block the parser cannot represent
+    raises `UnsupportedFrontmatter`, reported with its reason."""
     text = path.read_text(encoding="utf-8")
     try:
         properties, _ = parse_frontmatter(text)
-    except ValueError:
+    except MissingFrontmatter:
         return None
     return properties
 
@@ -148,7 +149,12 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
             # A broken symlink is a vault defect, not a schema one; report and move on.
             errors.append(f"{relative}: broken symlink -> {os.readlink(path)}")
             continue
-        properties = _properties_or_none(path)
+        try:
+            properties = _properties_or_none(path)
+        except UnsupportedFrontmatter as exc:
+            errors.append(f"{relative}: unsupported frontmatter: {exc}")
+            checked += 1
+            continue
         if relative.name == "SKILL.md" and "skills" in relative.parts:
             if (
                 properties is None
@@ -179,9 +185,7 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
 
         authors = properties.get("authors")
         if authors is not None:
-            if not isinstance(authors, list) or any(
-                value not in AUTHORS for value in authors
-            ):
+            if not isinstance(authors, list) or any(value not in AUTHORS for value in authors):
                 errors.append(f"{relative}: authors must be a canonical list")
 
         # Check forbidden fields and empty values for all files
@@ -202,9 +206,7 @@ def collect_errors(root: Path) -> tuple[list[str], int]:
                     continue
                 for value in values:
                     if not WIKILINK.match(value):
-                        errors.append(
-                            f"{relative}: {field} contains non-wikilink {value!r}"
-                        )
+                        errors.append(f"{relative}: {field} contains non-wikilink {value!r}")
 
         is_project_entrypoint = (
             len(relative.parts) == 3

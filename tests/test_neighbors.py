@@ -7,8 +7,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from llmos_vault.frontmatter import UnsupportedFrontmatter
 from llmos_vault.graph import get_neighbors, get_subgraph
-from llmos_vault.links import build_index, resolve_link
+from llmos_vault.links import build_index, read_frontmatter, resolve_link, resolve_note
 from llmos_vault.notes import list_notes, read_note
 
 VAULT = Path(__file__).parent / "fixtures" / "vault"
@@ -122,3 +125,36 @@ def test_ambiguous_link_with_equal_length_paths_stays_unresolved(tmp_path):
     _notes(tmp_path, "aa/shared.md", "bb/shared.md")
 
     assert resolve_link(build_index(tmp_path), "shared", source=tmp_path / "note.md") is None
+
+
+def test_exact_root_path_beats_a_nested_note_with_the_same_stem(tmp_path):
+    # The vault home note `llmOS.md` was unreachable: `projects/llmos/llmos.md`
+    # shares its stem, and only slash-containing names were tried as paths.
+    _notes(tmp_path, "llmOS.md", "projects/llmos/llmos.md")
+    index = build_index(tmp_path)
+
+    assert resolve_note(index, "llmOS.md") == tmp_path / "llmOS.md"
+    assert resolve_note(index, "llmOS") == tmp_path / "llmOS.md"
+
+
+def test_dotted_names_resolve_to_their_own_note(tmp_path):
+    _notes(tmp_path, "AGENTS.md", "notes/AGENTS.v2.md", "human/sam3.1-fine-tune.md")
+    index = build_index(tmp_path)
+
+    assert resolve_note(index, "AGENTS.v2") == tmp_path / "notes/AGENTS.v2.md"
+    assert resolve_link(index, "human/sam3.1-fine-tune") == tmp_path / "human/sam3.1-fine-tune.md"
+
+
+def test_read_only_walkers_see_an_unsupported_block_as_empty_properties(tmp_path):
+    note = tmp_path / "review.md"
+    note.write_text("---\nmethod: |\n  text\n---\n\n# Review\n\nSee [[other]].\n")
+
+    assert read_frontmatter(note) == ({}, "# Review\n\nSee [[other]].\n")
+
+
+def test_read_note_stays_readable_for_an_unsupported_block_unless_strict(tmp_path):
+    (tmp_path / "review.md").write_text("---\nmethod: |\n  text\n---\n\n# Review\n")
+
+    assert read_note(tmp_path, "review").properties == {}
+    with pytest.raises(UnsupportedFrontmatter):
+        read_note(tmp_path, "review", strict=True)

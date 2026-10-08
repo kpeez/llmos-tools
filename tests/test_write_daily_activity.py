@@ -316,3 +316,16 @@ def test_summarize_rejects_nonzero_opencode_run(monkeypatch):
 
     with pytest.raises(wda.DigestError, match="opencode run failed: provider unavailable"):
         wda.summarize(summarize_grouped(), date(2026, 7, 16))
+
+
+def test_unreadable_landing_page_skips_only_that_project(tmp_path, capsys):
+    root = make_vault(tmp_path)
+    broken = root / "projects" / "norepo" / "norepo.md"
+    broken.write_text("---\nstatus: active\n# reviewed 2026-10\n---\n\n# Norepo\n")
+    org_repos = wda.list_org_repos(gh_repo_list)
+
+    monitored, unseen = wda.read_projects(root, org_repos)
+
+    assert [p.slug for p in monitored] == ["alpha"]
+    assert unseen == []
+    assert "skipping projects/norepo/norepo.md" in capsys.readouterr().err

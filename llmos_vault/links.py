@@ -11,7 +11,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from llmos_vault.frontmatter import Property, parse
+from llmos_vault.frontmatter import MissingFrontmatter, Property, UnsupportedFrontmatter, parse
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 
@@ -96,7 +96,9 @@ def resolve_note(index: VaultIndex, target: str) -> Path:
         index: Vault index built by `build_index`.
         target: Note basename (wikilink-style) or vault-relative path.
     """
-    direct = _direct_path(index, target)
+    # An exact vault-relative path wins even without a slash, so a root-level
+    # note (`llmOS.md`) stays addressable when a nested note shares its stem.
+    direct = _direct_path(index, target, allow_root=True)
     if direct is not None:
         return direct
     matches = index.by_stem.get(_stem(target), [])
@@ -150,13 +152,16 @@ def resolve_link(index: VaultIndex, target: str, source: Path | None = None) -> 
     return lengths[0][1] if lengths[0][0] < lengths[1][0] else None
 
 
-def read_frontmatter(path: Path) -> tuple[dict[str, Property], str]:
+def read_frontmatter(path: Path, *, strict: bool = False) -> tuple[dict[str, Property], str]:
     """Parse a vault file's frontmatter and body, tolerating notes that have
     none (a bare-body note parses as empty properties, full text as body).
 
     Use when walking arbitrary vault files -- `list_notes` and the link
     graph read every markdown file, and not every note (or root file like
-    AGENTS.md) carries a frontmatter block.
+    AGENTS.md) carries a frontmatter block. A block the parser cannot
+    represent reads as empty properties plus the body after the block, unless
+    `strict` is set; a caller that writes properties back must pass
+    `strict=True`, or it would overwrite real values it never saw.
     Do NOT use when the note is known to require frontmatter -- call
     `llmos_vault.frontmatter.parse` directly so a missing block still raises.
 
@@ -169,12 +174,19 @@ def read_frontmatter(path: Path) -> tuple[dict[str, Property], str]:
 
     Args:
         path: Path to a markdown file inside the vault.
+        strict: Raise `UnsupportedFrontmatter` instead of reading such a
+            block as empty properties.
     """
     text = path.read_text()
     try:
         return parse(text)
-    except ValueError:
+    except MissingFrontmatter:
         return {}, text
+    except UnsupportedFrontmatter:
+        if strict:
+            raise
+        end = text.find("\n---\n", 4)
+        return {}, text[end + len("\n---\n") :].lstrip("\n")
 
 
 def _stem(target: str) -> str:
@@ -184,9 +196,11 @@ def _stem(target: str) -> str:
     return (target[:-3] if target.endswith(".md") else target).lower()
 
 
-def _direct_path(index: VaultIndex, target: str) -> Path | None:
+def _direct_path(index: VaultIndex, target: str, *, allow_root: bool = False) -> Path | None:
     stem = target[:-3] if target.endswith(".md") else target
-    if "/" not in stem:
+    if "/" not in stem and not allow_root:
         return None
-    candidate = (index.root / stem).with_suffix(".md")
+    # Not `with_suffix`: it would replace a dotted stem's own suffix
+    # (`sam3.1-fine-tune` -> `sam3.md`).
+    candidate = index.root / f"{stem}.md"
     return candidate if candidate in set(index.paths) else None

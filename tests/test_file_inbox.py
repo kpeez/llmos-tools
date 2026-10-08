@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from llmos_vault import frontmatter, mutations
+from llmos_vault.frontmatter import UnsupportedFrontmatter
 from llmos_vault.inbox import destination_properties, file_inbox_item
 from llmos_vault.notes import read_note
 from llmos_vault.obsidian_cli import ObsidianNotRunning
@@ -261,3 +262,14 @@ def test_file_inbox_item_retry_after_stamping_failure_completes_without_removing
     daily_note = (vault / "reviews" / "daily" / "2026-07-17.md").read_text()
     thoughts_section = daily_note.split("## Thoughts")[1].split("## Projects")[0]
     assert thoughts_section.count("capture-1") == 1
+
+
+def test_file_inbox_item_refuses_unreadable_frontmatter_before_any_move(tmp_path, monkeypatch):
+    vault = make_vault(tmp_path / "vault")
+    seed_inbox_note(vault, "capture-1", extra_frontmatter="# triage later\n")
+    monkeypatch.setattr(mutations, "run", refuse_to_run)
+
+    with pytest.raises(UnsupportedFrontmatter):
+        file_inbox_item(vault, "capture-1", "knowledge/some-note.md")
+
+    assert (vault / "inbox" / "capture-1.md").exists()

@@ -21,7 +21,10 @@ from llmos_vault.notes import Note, read_note
 DAILY_DIR = "reviews/daily"
 DAILY_TEMPLATE = "daily-note"
 THOUGHTS_HEADING = "## Thoughts"
-MARKER_START = "<!-- llmos-activity:start -->"
+# The start marker is a prefix: the digest (`daily_activity`) writes
+# `<!-- llmos-activity:start hash=<sha256> -->`, the template a bare
+# `<!-- llmos-activity:start -->`. Both modules match on this one string.
+MARKER_START = "<!-- llmos-activity:start"
 MARKER_END = "<!-- llmos-activity:end -->"
 
 
@@ -116,7 +119,9 @@ def append_thought(vault_root: Path, text: str, *, today: date | None = None) ->
             "refusing to write llmos-activity marker syntax into ## Thoughts -- "
             "that block is machine-owned"
         )
-    note = get_or_create_daily(vault_root, today=today)
+    created = get_or_create_daily(vault_root, today=today)
+    # Strict re-read: this rewrites the whole note from parsed properties.
+    note = read_note(vault_root, str(created.path.relative_to(vault_root)), strict=True)
     before, marker_sep, after_start = note.body.partition(MARKER_START)
     if not marker_sep:
         raise MachineOwnedBlock(

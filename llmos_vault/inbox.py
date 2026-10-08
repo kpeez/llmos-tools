@@ -132,9 +132,11 @@ def file_inbox_item(
 
     destination_path = vault_root / dest_rel
     if not destination_path.exists():
+        # Refuse before moving, so an unreadable block never strands the note.
+        read_note(vault_root, note, strict=True)
         mutations.move_note(vault_root, note, dest_rel)
 
-    current = read_note(vault_root, dest_rel)
+    current = read_note(vault_root, dest_rel, strict=True)
     for key, values in properties_to_stamp.items():
         if key not in current.properties:
             mutations.set_property_list(vault_root, dest_rel, key, values)

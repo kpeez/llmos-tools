@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from llmos_vault import mutations
+from llmos_vault.frontmatter import UnsupportedFrontmatter
 from llmos_vault.notes import Note
 from llmos_vault.obsidian_cli import EXIT_OBSIDIAN_NOT_RUNNING, ObsidianNotRunning, run
 
@@ -133,7 +134,7 @@ def test_set_property_refuses_created(monkeypatch):
 def test_set_property_merges_authors_instead_of_overwriting(monkeypatch):
     captured = {}
     monkeypatch.setattr(mutations, "run", capture_call(captured))
-    monkeypatch.setattr(mutations, "read_note", lambda root, note: note_with_authors(["claude"]))
+    monkeypatch.setattr(mutations, "read_note", lambda *a, **kw: note_with_authors(["claude"]))
 
     mutations.set_property(VAULT, "alpha", "authors", "codex")
 
@@ -144,7 +145,7 @@ def test_set_property_merges_authors_instead_of_overwriting(monkeypatch):
 def test_set_property_authors_is_idempotent(monkeypatch):
     captured = {}
     monkeypatch.setattr(mutations, "run", capture_call(captured))
-    monkeypatch.setattr(mutations, "read_note", lambda root, note: note_with_authors(["claude"]))
+    monkeypatch.setattr(mutations, "read_note", lambda *a, **kw: note_with_authors(["claude"]))
 
     mutations.set_property(VAULT, "alpha", "authors", "claude")
 
@@ -157,7 +158,7 @@ def test_set_property_authors_rejects_comma_in_value(monkeypatch):
     read-only) -- ",".join would otherwise silently mis-split on write
     (SHOULD-FIX 7)."""
     monkeypatch.setattr(mutations, "run", lambda *a, **kw: pytest.fail("run must not be called"))
-    monkeypatch.setattr(mutations, "read_note", lambda root, note: note_with_authors(["claude"]))
+    monkeypatch.setattr(mutations, "read_note", lambda *a, **kw: note_with_authors(["claude"]))
 
     with pytest.raises(ValueError, match="comma"):
         mutations.set_property(VAULT, "alpha", "authors", "co,dex")
@@ -195,3 +196,15 @@ def test_cli_maps_obsidian_not_running_to_distinct_exit_code(monkeypatch, capsys
     assert exc_info.value.code == EXIT_OBSIDIAN_NOT_RUNNING
     assert exc_info.value.code != 0
     assert "connection refused" in capsys.readouterr().err
+
+
+def test_set_property_refuses_a_note_whose_frontmatter_it_cannot_read(tmp_path, monkeypatch):
+    # Reading such a note as `{}` would make the authors merge write
+    # ['codex'] over the real ['claude'].
+    (tmp_path / "note.md").write_text(
+        "---\nauthors:\n  - claude\nsummary: |\n  Multi-line.\n---\n\n# Note\n"
+    )
+    monkeypatch.setattr(mutations, "run", lambda *a, **kw: pytest.fail("run must not be called"))
+
+    with pytest.raises(UnsupportedFrontmatter):
+        mutations.set_property(tmp_path, "note", "authors", "codex")

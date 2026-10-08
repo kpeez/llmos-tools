@@ -69,6 +69,16 @@ class RetainedDailyReviewRulesTests(unittest.TestCase):
             self.assertIn("must not claim project ownership", result.stdout)
             self.assertNotEqual(result.returncode, 0)
 
+    def test_unsupported_frontmatter_is_reported_with_its_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_vault(root)
+            write_note(root, "notes/review.md", "method: |\n  text")
+            result = run_audit(root)
+            self.assertIn("notes/review.md: unsupported frontmatter", result.stdout)
+            self.assertNotIn("missing frontmatter", result.stdout)
+            self.assertNotEqual(result.returncode, 0)
+
     def test_daily_review_created_must_be_an_iso_date(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

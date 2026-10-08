@@ -254,3 +254,23 @@ def test_non_blocking_when_vault_unconfigured(tmp_path):
 
     assert result.returncode == 0
     assert target.read_text() == MESSY_NOTE
+
+
+def test_note_with_unsupported_yaml_is_left_byte_identical(tmp_path):
+    vault = make_vault(tmp_path / "vault")
+    note = vault / "review.md"
+    original = (
+        "---\nmethod: |\n  Five-lens review -- 37 findings: 28 confirmed.\n"
+        "updated: 2026-10-01\n---\n\n# Review\n"
+    )
+    note.write_text(original)
+
+    result = run_hook(
+        {"session_id": "sess-1", "tool_input": {"file_path": str(note)}},
+        tmp_path,
+        vault,
+    )
+
+    assert result.returncode == 0
+    assert note.read_text() == original
+    assert not dirty_flag(tmp_path, "sess-1").exists()

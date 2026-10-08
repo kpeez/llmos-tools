@@ -191,7 +191,7 @@ def set_property(vault_root: Path, note: str, key: str, value: str) -> str:
     """
     _assert_mutable_property(key)
     if key == "authors":
-        current = read_note(vault_root, note).properties
+        current = read_note(vault_root, note, strict=True).properties
         merged = frontmatter.append_unique(dict(current), key, value)
         values = merged[key]
         assert isinstance(values, list)

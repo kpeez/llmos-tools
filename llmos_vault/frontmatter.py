@@ -2,10 +2,15 @@
 
 Hooks and every later verb import this module in-process (ADR-0004) -- no
 second serializer may exist. Values are stored unquoted; quoting is decided
-on output from content alone (a wikilink like `[[Knowledge]]` is always
-quoted, since bare `[` opens a YAML flow sequence), which keeps parse+
-serialize idempotent without having to remember each value's original
-quoting style.
+on output from content alone (a wikilink like `[[Knowledge]]`, or any value
+that bare YAML would read differently, such as one starting with `[` or
+containing ` #`, is written double-quoted), which keeps parse+serialize
+idempotent without having to remember each value's original quoting style.
+
+The parser understands only `key: value`, `key:`, `  - item`, and flow-list
+lines. Anything else -- block scalars, nested maps, comments, anchors, tags,
+duplicate keys -- raises `ValueError`, so a caller that rewrites notes (the
+stamp hook) leaves the note untouched instead of destroying data.
 
 Properties serialize in sorted key order, with exactly one blank line after
 the closing `---`, no trailing whitespace on any line, and exactly one
@@ -22,6 +27,7 @@ property's type on every normalize.
 
 from __future__ import annotations
 
+import re
 from typing import Union
 
 # Hook entry points run under the host's plain ``python3``.  macOS currently
@@ -31,14 +37,161 @@ from typing import Union
 Property = Union[str, list[str]]  # noqa: UP007
 
 
+class MissingFrontmatter(ValueError):
+    """The text has no `---`-delimited frontmatter block at all."""
+
+
+class UnsupportedFrontmatter(ValueError):
+    """The block uses YAML this parser cannot represent without changing it."""
+
+
 def _is_wikilink(value: str) -> bool:
     return value.startswith("[[") and value.endswith("]]")
 
 
-def _unquote(value: str) -> str:
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        return value[1:-1]
-    return value
+# A plain (unquoted) scalar may not start with a YAML indicator, and ": " or
+# " #" inside one ends it early. The parser refuses any such bare value, and
+# the serializer quotes any value that matches, so the two stay inverse.
+_YAML_INDICATORS = "[]{}&*!|>'\"%@`#,?:"
+# `?` is valid inside a YAML 1.2 flow scalar, but PyYAML reads it as a key
+# marker; refusing it keeps every parser agreeing with this one.
+_FLOW_BREAKERS = "[]{},?"
+_UNREPRESENTABLE = re.compile(r"[\x00-\x1f\x7f\x85\u2028\u2029]")
+
+
+# Quoted text that bare YAML (1.2 core, or 1.1 as PyYAML reads it) would
+# read as null, a bool, or a number. The
+# serializer writes plain strings bare, and `parse` keeps no record of the
+# original quotes, so it refuses these rather than change their type. Dates
+# are left alone: YAML 1.2 reads a bare date as a string, and the daily
+# template quotes `created`.
+_TYPED_LOOKING = re.compile(
+    r"~|null|Null|NULL|true|True|TRUE|false|False|FALSE"
+    r"|y|Y|yes|Yes|YES|n|N|no|No|NO|on|On|ON|off|Off|OFF"
+    r"|[-+]?[0-9][0-9_]*|[-+]?0o[0-7_]+|[-+]?0x[0-9a-fA-F_]+|[-+]?0b[01_]+"
+    r"|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+(\.[0-9_]*)?"
+    r"|[-+]?(\.[0-9_]+|[0-9][0-9_]*(\.[0-9_]*)?)([eE][-+]?[0-9]+)?"
+    r"|[-+]?\.(inf|Inf|INF)|\.(nan|NaN|NAN)"
+)
+
+
+def _needs_quotes(value: str) -> bool:
+    return (
+        value == ""
+        or value[0] in _YAML_INDICATORS
+        or value.startswith("- ")
+        or value == "-"
+        or value.endswith(":")
+        or value != value.strip()
+        or ": " in value
+        or " #" in value
+    )
+
+
+def _render(value: str) -> str:
+    if _UNREPRESENTABLE.search(value):
+        raise UnsupportedFrontmatter(
+            f"value {value!r} contains a control character or line break, which "
+            "this serializer cannot write"
+        )
+    if not _needs_quotes(value):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def _unsupported(line: str, reason: str) -> UnsupportedFrontmatter:
+    return UnsupportedFrontmatter(
+        f"unsupported frontmatter line {line!r} ({reason}); this parser refuses "
+        "YAML it cannot represent rather than rewrite it"
+    )
+
+
+def _double_quoted(raw: str, line: str) -> str:
+    """Decode `"..."`, allowing only the `\\` and `\"` escapes."""
+    out: list[str] = []
+    i = 1
+    while i < len(raw):
+        char = raw[i]
+        if char == "\\":
+            nxt = raw[i + 1 : i + 2]
+            if nxt not in ("\\", '"'):
+                raise _unsupported(line, f"escape \\{nxt} is not supported")
+            out.append(nxt)
+            i += 2
+            continue
+        if char == '"':
+            if i != len(raw) - 1:
+                raise _unsupported(line, "text after the closing quote")
+            return "".join(out)
+        out.append(char)
+        i += 1
+    raise _unsupported(line, "unterminated double quote")
+
+
+def _single_quoted(raw: str, line: str) -> str:
+    """Decode `'...'`, where `''` is the only escape."""
+    out: list[str] = []
+    i = 1
+    while i < len(raw):
+        if raw[i] == "'":
+            if raw[i + 1 : i + 2] == "'":
+                out.append("'")
+                i += 2
+                continue
+            if i != len(raw) - 1:
+                raise _unsupported(line, "text after the closing quote")
+            return "".join(out)
+        out.append(raw[i])
+        i += 1
+    raise _unsupported(line, "unterminated single quote")
+
+
+def _scalar(raw: str, line: str, *, in_flow: bool = False) -> str:
+    """Decode one scalar (a property value, list item, or flow element), or
+    refuse it when YAML would read it as anything but that exact string."""
+    if raw[:1] in ("'", '"'):
+        value = _double_quoted(raw, line) if raw[0] == '"' else _single_quoted(raw, line)
+        if value == "" or _TYPED_LOOKING.fullmatch(value):
+            raise _unsupported(line, f"quoted {raw} would lose its quotes and change type")
+        return value
+    if _needs_quotes(raw):
+        raise _unsupported(line, f"bare value {raw!r} is not a plain YAML string")
+    if in_flow and any(char in _FLOW_BREAKERS for char in raw):
+        raise _unsupported(line, f"flow element {raw!r} contains a flow indicator")
+    return raw
+
+
+def _split_flow_list(inner: str, line: str) -> list[str]:
+    """Split a flow list's inner text on commas outside quotes, honoring the
+    `\\` escape inside double quotes; one trailing comma is allowed."""
+    raw_items: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    escaped = False
+    for char in inner:
+        current.append(char)
+        if escaped:
+            escaped = False
+        elif quote == '"' and char == "\\":
+            escaped = True
+        elif quote is not None:
+            if char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char == ",":
+            current.pop()
+            raw_items.append("".join(current).strip(" "))
+            current = []
+    if quote is not None:
+        raise _unsupported(line, "unterminated quote in flow list")
+    raw_items.append("".join(current).strip(" "))
+    if raw_items[-1] == "" and len(raw_items) > 1:
+        raw_items.pop()
+    if any(item == "" for item in raw_items):
+        raise _unsupported(line, "empty flow-list element")
+    return [_scalar(item, line, in_flow=True) for item in raw_items]
 
 
 def parse(text: str) -> tuple[dict[str, Property], str]:
@@ -60,37 +213,54 @@ def parse(text: str) -> tuple[dict[str, Property], str]:
         text: Full file text, frontmatter block plus body.
 
     Raises:
-        ValueError: The text has no `---`-delimited frontmatter block.
+        MissingFrontmatter: The text has no `---`-delimited frontmatter block.
+        UnsupportedFrontmatter: The block uses YAML this parser cannot
+            represent exactly (block scalars, nested maps, comments, anchors,
+            tags, escapes other than `\\` and `\"`, tabs, duplicate keys).
+            Callers that rewrite notes must leave such a note untouched.
     """
     if not text.startswith("---\n"):
-        raise ValueError("note has no frontmatter block (must start with '---')")
+        raise MissingFrontmatter("note has no frontmatter block (must start with '---')")
     end = text.find("\n---\n", 4)
     if end == -1:
-        raise ValueError("note's frontmatter block is never closed with '---'")
+        raise MissingFrontmatter("note's frontmatter block is never closed with '---'")
     body = text[end + len("\n---\n") :].lstrip("\n")
 
     properties: dict[str, Property] = {}
-    current: str | None = None
-    lines = text[4:end].splitlines()
+    block_list: list[str] | None = None
+    # Split on "\n" only: `splitlines` would also split on form feeds and
+    # other characters that YAML rejects outright.
+    lines = text[4:end].split("\n")
     for i, line in enumerate(lines):
-        if line.startswith("  - ") and current is not None:
-            existing = properties[current]
-            assert isinstance(existing, list)
-            existing.append(_unquote(line[4:].strip()))
+        if _UNREPRESENTABLE.search(line):
+            raise _unsupported(line, "tab, carriage return, or control character")
+        if not line.strip(" "):
             continue
-        key, _, value = line.partition(":")
-        current = key.strip()
-        value = value.strip()
-        if value.startswith("[") and value.endswith("]"):
-            inner = value[1:-1].strip()
-            properties[current] = (
-                [] if not inner else [_unquote(item.strip()) for item in inner.split(",")]
-            )
+        if line.startswith("  - "):
+            if block_list is None:
+                raise _unsupported(line, "list item not under a bare `key:` line")
+            block_list.append(_scalar(line[4:].strip(" "), line))
+            continue
+        block_list = None
+        key, colon, value = line.partition(":")
+        if not colon or (value and not value.startswith(" ")) or not key or _needs_quotes(key):
+            raise _unsupported(line, "not a `key: value` line")
+        if key in properties:
+            raise _unsupported(line, f"duplicate key {key!r}")
+        value = value.strip(" ")
+        if value.startswith("["):
+            if not value.endswith("]"):
+                raise _unsupported(line, "unterminated flow list")
+            inner = value[1:-1].strip(" ")
+            properties[key] = [] if not inner else _split_flow_list(inner, line)
         elif value == "":
-            is_block_list = i + 1 < len(lines) and lines[i + 1].startswith("  - ")
-            properties[current] = [] if is_block_list else ""
+            if i + 1 < len(lines) and lines[i + 1].startswith("  - "):
+                block_list = []
+                properties[key] = block_list
+            else:
+                properties[key] = ""
         else:
-            properties[current] = _unquote(value)
+            properties[key] = _scalar(value, line)
     return properties, body
 
 
@@ -124,13 +294,15 @@ def serialize(properties: dict[str, Property], body: str) -> str:
                 continue
             lines.append(f"{key}:")
             for item in value:
-                rendered = f'"{item}"' if _is_wikilink(item) else item
-                lines.append(f"  - {rendered}")
+                if item == "":
+                    # `parse` refuses `  - ""` (bare YAML reads it as null), so
+                    # writing one would produce a note nothing can re-read.
+                    raise UnsupportedFrontmatter(f"empty item in list property {key!r}")
+                lines.append(f"  - {_render(item)}")
         elif value == "":
             lines.append(f"{key}:")
         else:
-            rendered = f'"{value}"' if _is_wikilink(value) else value
-            lines.append(f"{key}: {rendered}")
+            lines.append(f"{key}: {_render(value)}")
     lines.append("---")
     lines.append("")
 

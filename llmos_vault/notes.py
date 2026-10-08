@@ -20,7 +20,7 @@ class Note:
     body: str
 
 
-def read_note(vault_root: Path, name_or_path: str) -> Note:
+def read_note(vault_root: Path, name_or_path: str, *, strict: bool = False) -> Note:
     """Read one note's frontmatter and body straight off disk.
 
     Use when an agent needs a note's current content or properties -- to
@@ -39,10 +39,13 @@ def read_note(vault_root: Path, name_or_path: str) -> Note:
     Args:
         vault_root: Root directory of the vault to read from.
         name_or_path: Note basename (wikilink-style) or vault-relative path.
+        strict: Raise `UnsupportedFrontmatter` for a block the parser cannot
+            represent, instead of reading it as empty properties. Every caller
+            that writes properties back must pass it.
     """
     index = build_index(vault_root)
     path = resolve_note(index, name_or_path)
-    properties, body = read_frontmatter(path)
+    properties, body = read_frontmatter(path, strict=strict)
     return Note(path=path, name=path.stem, properties=properties, body=body)
 
 
