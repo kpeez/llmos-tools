@@ -107,7 +107,7 @@ the title or body. The body holds:
 - **Settled disagreements:** each disagreement among the member notes, and how
   the conflict rule settled it.
 - **Second check:** the totals of the fact reports (`supported`,
-  `unsupported`, `unclear`), the totals of the final hub-prose report
+  `unsupported`, `unclear`), the totals of the final prose reports (hub, paper and dataset notes)
   (`supported`, `unsupported`, `unbacked`, `marked`), what each non-supported
   statement led to, and the facts that remain `drafted`.
 - **Forward links:** the links that stay unresolved until a later PR of the

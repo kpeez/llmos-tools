@@ -62,9 +62,9 @@ citations in the hub.
      `million`, `leave-one-out`) are findings; rephrase. A figure such as
      `4,192` reads as 4192. If two rows share a label, quote the section label
      too.
-   - **Hub prose.** The lint cannot read prose, so overstatements gather there.
-     Every number, comparison, attribution, or membership claim in the hub
-     prose must link a `^fact-<id>` block that states it, or be phrased as
+   - **Prose.** The lint cannot read prose, so overstatements gather there, in
+     the hub and in the prose of every paper and dataset note. Every number,
+     comparison, attribution, or membership claim in that prose must link a `^fact-<id>` block that states it, or be phrased as
      unsupported, uncaptured, or computed by you (naming the facts it rests
      on). Do not write `first`, `only`, or `all` unless a fact says so.
    - Add `topics` and one body link to the hub on each member note; keep its
@@ -90,9 +90,12 @@ citations in the hub.
      `supported`; a missing ID stays `drafted`. Correct each `unsupported` or
      `unclear` fact from the source, or flag it, and leave it `drafted`. Any
      edit to a `checked` fact resets it to `drafted`.
-   - **Hub prose:** `second-check-hub-prompt.md`, run after the fact fixes. Fix
-     every `unsupported` and `unbacked` statement, then run a fresh hub check,
-     and repeat until none is left.
+   - **Prose:** `second-check-hub-prompt.md`, run after the fact fixes on the
+     hub and again on the prose of every new or changed paper and dataset note,
+     one prompt per note. In a split run, do this on each PR's tree, so a
+     statement is true at that PR and not only at the end. Fix every
+     `unsupported` and `unbacked` statement, then run a fresh check on that
+     note, and repeat until none is left.
    Run the lint again after every change.
 8. **Check privacy** with `references/pull-request.md`. This gates every push,
    the first one included.
