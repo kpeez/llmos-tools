@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import { searchMode } from "../src/commands.ts";
-import { openQmd, qmdLocation, search } from "../src/qmd.ts";
+import { documentVectors, openQmd, qmdLocation, search } from "../src/qmd.ts";
 import { cli, isolatedEnv, makeVault, writeFiles } from "./helpers.ts";
 
 const NOTES = {
@@ -141,5 +141,108 @@ describe("search modes", () => {
     expect(searchMode({ semantic: true })).toBe("semantic");
     expect(searchMode({ hybrid: true })).toBe("hybrid");
     expect(searchMode({ semantic: true, hybrid: true })).toBe("hybrid");
+  });
+});
+
+describe("documentVectors", () => {
+  test("gives each active document the normalized mean of its chunk vectors", async () => {
+    const { env } = await indexedVault();
+    const store = await openQmd(qmdLocation(env), false);
+    try {
+      store.internal.ensureVecTable(3);
+      const hashes = Object.fromEntries(
+        (
+          store.internal.db.prepare("SELECT path, hash FROM documents").all() as {
+            path: string;
+            hash: string;
+          }[]
+        ).map(({ path, hash }) => [path, hash]),
+      );
+      const insert = (path: string, seq: number, vector: number[]) =>
+        store.internal.insertEmbedding(
+          hashes[path] as string,
+          seq,
+          0,
+          new Float32Array(vector),
+          "test-model",
+          "2026-10-07",
+        );
+      // Two chunks whose mean (1.5, 2, 0) has length 2.5.
+      insert("notes/alpha.md", 0, [3, 0, 0]);
+      insert("notes/alpha.md", 1, [0, 4, 0]);
+      insert("notes/beta.md", 0, [0, 0, 1]);
+      store.internal.db
+        .prepare("UPDATE documents SET active = 0 WHERE path = ?")
+        .run("notes/beta.md");
+
+      const vectors = await documentVectors(store, "llmos");
+
+      expect([...(vectors?.keys() ?? [])]).toEqual(["notes/alpha.md"]);
+      const alpha = Array.from(vectors?.get("notes/alpha.md") ?? []);
+      expect(alpha).toHaveLength(3);
+      for (const [got, want] of alpha.map((x, i) => [x, [0.6, 0.8, 0][i] as number] as const)) {
+        expect(got).toBeCloseTo(want, 5);
+      }
+      expect(await documentVectors(store, "other")).toBeNull();
+    } finally {
+      await store.close();
+    }
+  });
+});
+
+describe("discover similarity", () => {
+  test("a trio that shares one key forms a cluster through the stored vectors, with no model", async () => {
+    const { root, env } = await indexedVault();
+    const shared = "10.1234/abc";
+    writeFiles(root, {
+      "projects/x/notes.md": `# X\n\n${shared} and 10.4321/only-x\n`,
+      "projects/y/notes.md": `# Y\n\n${shared}\n`,
+      "projects/z/notes.md": `# Z\n\n${shared}\n`,
+    });
+    await cli(root, ["reindex", "--no-embed"], { env });
+    const out = join(root, "..", "reports");
+    const run = async () =>
+      JSON.parse((await cli(root, ["discover", "--out", out, "--no-record"], { env })).stdout);
+
+    // The index holds no vectors yet: a notice, and one shared key is too little.
+    const without = await run();
+    expect(without.qmd_notice).toContain("qmd similarity skipped");
+    expect(without.clusters).toEqual([]);
+
+    const store = await openQmd(qmdLocation(env), false);
+    try {
+      store.internal.ensureVecTable(3);
+      const docs = store.internal.db
+        .prepare("SELECT path, hash FROM documents WHERE active = 1")
+        .all() as { path: string; hash: string }[];
+      const direction: Record<string, number[]> = {
+        "projects/x/notes.md": [1, 0, 0],
+        "projects/y/notes.md": [0.9, 0.1, 0],
+        "projects/z/notes.md": [0.8, 0.2, 0],
+      };
+      for (const { path, hash } of docs) {
+        const vector = direction[path] ?? [0, 0, 1];
+        store.internal.insertEmbedding(
+          hash,
+          0,
+          0,
+          new Float32Array(vector),
+          "test-model",
+          "2026-10-07",
+        );
+      }
+    } finally {
+      await store.close();
+    }
+
+    const withVectors = await run();
+    expect(withVectors.qmd_notice).toBeNull();
+    expect(withVectors.clusters).toHaveLength(1);
+    expect(withVectors.clusters[0].notes).toEqual([
+      "projects/x/notes.md",
+      "projects/y/notes.md",
+      "projects/z/notes.md",
+    ]);
+    expect(withVectors.clusters[0].signals.similar_pairs).toBe(3);
   });
 });

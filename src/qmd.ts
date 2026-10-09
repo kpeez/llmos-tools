@@ -89,6 +89,64 @@ export async function indexedPaths(
 }
 
 /**
+ * One vector per active document of `collection`, keyed by collection-relative
+ * path: the mean of the document's stored chunk vectors, scaled to length 1.
+ * Returns null without the collection. Reads what `qmd embed` stored and
+ * loads no model, so it is cheap; a document without vectors is left out.
+ * Throws when the index has no vector table (nothing was ever embedded).
+ *
+ * Like `indexedPaths`, this uses qmd's internal tables (`documents`,
+ * `content_vectors`, and the sqlite-vec table `vectors_vec`, whose rows are
+ * keyed `<hash>_<seq>`). `vectors_vec` is read one key at a time: a join
+ * with it can hang.
+ */
+export async function documentVectors(
+  store: QMDStore,
+  collection: string,
+): Promise<Map<string, Float32Array> | null> {
+  try {
+    await requireCollection(store, collection);
+  } catch (error) {
+    if (error instanceof QmdCollectionMissing) return null;
+    throw error;
+  }
+  const { db } = store.internal;
+  const chunks = db
+    .prepare(
+      `SELECT d.path AS path, cv.hash AS hash, cv.seq AS seq
+       FROM documents d JOIN content_vectors cv ON cv.hash = d.hash
+       WHERE d.collection = ? AND d.active = 1
+       ORDER BY d.path, cv.seq`,
+    )
+    .all(collection) as { path: string; hash: string; seq: number }[];
+  const byKey = db.prepare("SELECT embedding FROM vectors_vec WHERE hash_seq = ?");
+  const sums = new Map<string, Float32Array>();
+  for (const { path, hash, seq } of chunks) {
+    const row = byKey.get(`${hash}_${seq}`) as { embedding: Uint8Array } | null;
+    if (row === null) continue;
+    const { buffer, byteOffset, byteLength } = row.embedding;
+    const vector = new Float32Array(buffer.slice(byteOffset, byteOffset + byteLength));
+    const sum = sums.get(path);
+    if (sum === undefined) sums.set(path, vector);
+    else if (sum.length === vector.length)
+      sums.set(
+        path,
+        sum.map((x, i) => x + (vector[i] ?? 0)),
+      );
+  }
+  for (const [path, sum] of sums) {
+    const length = Math.hypot(...sum);
+    if (length === 0) sums.delete(path);
+    else
+      sums.set(
+        path,
+        sum.map((x) => x / length),
+      );
+  }
+  return sums;
+}
+
+/**
  * Documents in the whole index (every collection) whose vectors are missing
  * or incomplete for the default embedding model: what `qmd embed` would do.
  * The SDK exposes only the index-wide count.

@@ -7002,6 +7002,13 @@
       "inbox/week-date-tail.md",
       "inbox/week-date.md"
     ],
+    "health.overdue_jobs": [
+      {
+        "job": "discover",
+        "last_success": null,
+        "max_age_days": 10
+      }
+    ],
     "health.qmd_gaps": [],
     "health.qmd_unembedded": null,
     "health.qmd_notice": "qmd unavailable or collection 'llmos' not found; qmd-gap section skipped",

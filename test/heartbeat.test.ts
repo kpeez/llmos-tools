@@ -109,6 +109,30 @@ describe("llmos-doctor hook checks", () => {
     expect(lines.join("\n")).toContain("8 days ago");
   });
 
+  test("warn about an unreadable heartbeat time instead of printing NaN days", () => {
+    const h = host();
+    beatFor(h, "claude", h.claudeBundle);
+    beatFor(h, "codex", h.codexBundle);
+    recordHeartbeat(
+      "claude",
+      {
+        time: "last tuesday",
+        bun: "1.4.2",
+        bundleSha256: fileSha256(h.claudeBundle),
+        pluginRoot: "",
+      },
+      h.env,
+    );
+
+    const { lines, failures } = hookChecks(h.env, NOW);
+
+    expect(failures).toBe(0);
+    expect(lines.join("\n")).toContain(
+      'WARN hooks-claude: the heartbeat has an unreadable time ("last tuesday")',
+    );
+    expect(lines.join("\n")).not.toContain("NaN");
+  });
+
   test("fail with the agent's repair when an installed agent has no heartbeat", () => {
     const h = host();
     beatFor(h, "claude", h.claudeBundle);

@@ -15,9 +15,10 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading. |
 | `daily get-or-create` | Print today's daily note as JSON, creating it from the daily template if it is missing. |
 | `daily recent` | Print the last `n` daily notes' frontmatter and body as JSON, most recent first. |
+| `discover` | Rank clusters of notes that restate the same works, as candidates to consolidate. |
 | `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
 | `file-inbox` | File an inbox note: move it via obsidian-cli, stamp its destination properties and authors, and record it in today's daily note. |
-| `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, and qmd index gaps. |
+| `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue manual jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
 | `move` | Move or rename a note via obsidian-cli, rewriting every backlink. |
@@ -193,7 +194,8 @@ project note. Without --template the note is written directly (works with
 Obsidian closed). With --template the running Obsidian app creates it, so
 the template is expanded; this exits 3 when Obsidian is not running.
 Do NOT use when the note already exists -- this refuses to overwrite a
-file; edit the note instead.
+file; edit the note instead. In the llmos vault it refuses content that
+sets `discovered` on categories/Knowledge.md: only `discover` sets it.
 
 Arguments:
   name  Vault-relative note path (".md" appended if missing).
@@ -286,6 +288,54 @@ Example:
   llmos-vault daily recent --n 7
 ```
 
+## `discover`
+
+```text
+Usage: llmos-vault discover [--vault llmos|second-vault] [--top N] [--out DIR] [--qmd-collection NAME] [--no-record]
+
+Rank clusters of notes that restate the same works, as candidates to consolidate.
+
+Use when `health` reports discover as overdue, or when you look for the
+next topic for `consolidate-knowledge`. It clusters the vault's notes
+outside archive/, knowledge/, sources/, reviews/, templates/, agents/, and
+categories/. The signals are the arXiv ids and DOIs that notes share, the
+dangling links and missing topic notes that they share, and mutual nearest
+neighbors from the vectors already in the qmd index (no model loads).
+Clusters of three notes or more are ranked: uncovered ones first, then those
+whose notes already link one note in knowledge/ (covered_by). Without a qmd
+index it skips the similarity signal and says so in qmd_notice.
+It writes the JSON report to <vault root>/../artifacts/discover/YYYY-MM-DD.json,
+or to --out DIR, and prints it. It refuses to run when that artifacts folder
+is missing and --out is not given.
+For --vault llmos, after it writes the report, it sets `discovered` (today's
+date) on categories/Knowledge.md, and `updated` there, in one write. It adds
+the agent's name to `authors` only when it detects an agent harness.
+`health` reads that date, so any host that syncs the vault sees the run.
+Before any work it runs the same edit without writing, and fails when that
+note is missing, is a symbolic link, or has frontmatter that the edit cannot
+rewrite. --no-record skips the write and those checks, for
+probes on vault copies. It writes nothing else in the vault.
+Do NOT use when you only want to search -- use `search`.
+
+Options:
+  --vault           Which registered vault to scan. Default: llmos.
+  --top             Report at most this many clusters. Default: 10.
+  --out             Folder for the report file; must be outside the vault. Default: <vault root>/../artifacts/discover.
+  --qmd-collection  qmd collection whose stored vectors give the similarity signal. Default: llmos.
+  --no-record       Do not set the discovered date on categories/Knowledge.md (a probe run).
+
+Example output:
+  {"generated_at": "2026-10-08T09:30:00.000Z", "vault": "llmos",
+   "report_path": "/home/me/code/llmos/artifacts/discover/2026-10-08.json", "qmd_notice": null,
+   "clusters": [{"rank": 1, "score": 7.4,
+     "notes": ["projects/a/notes.md", "projects/b/notes.md", "inbox/c.md"], "covered_by": null,
+     "signals": {"shared_ids": [{"id": "arxiv:2403.12345", "notes": ["inbox/c.md", "projects/a/notes.md"]}],
+                 "shared_dangling": 0, "shared_topics": 0, "similar_pairs": 2}}]}
+
+Example:
+  llmos-vault discover --top 5
+```
+
 ## `docs`
 
 ```text
@@ -348,14 +398,18 @@ Example:
 ```text
 Usage: llmos-vault health [--vault llmos|second-vault] [--json] [--qmd-collection NAME] [--stale-after-days DAYS]
 
-Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, and qmd index gaps.
+Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue manual jobs, and qmd index gaps.
 
 Use when starting a vault-maintenance pass -- e.g. after a vault change --
 to see every hygiene defect in one headless call. Each section degrades
 independently: when qmd has no index or no such collection, the report
 carries a notice instead of failing. Works with Obsidian closed. Exits 1 if
 any section has findings, 0 on a clean vault, so cron can branch on it.
-llmOS schema-violation checks run only for --vault llmos. qmd_unembedded
+llmOS schema-violation checks and overdue_jobs run only for --vault llmos.
+overdue_jobs lists the manual jobs (`discover`) that are overdue: the
+`discovered` date on categories/Knowledge.md (set by each `discover` run) is
+missing, not a valid past YYYY-MM-DD date, or more than 10 days old. Run the
+job to clear it. qmd_unembedded
 counts the documents in the whole qmd index that still need embedding (the
 plugin's Stop hook updates only keyword search); it is informational and does
 not change the exit code. Run `reindex` to embed them.
@@ -371,7 +425,8 @@ Options:
 Example output:
   {"orphans": ["gamma"], "dead_ends": ["beta"],
    "unresolved_links": [{"referrer": "alpha", "target": "ghost"}],
-   "schema_violations": [], "stale_inbox": [], "qmd_gaps": [], "qmd_unembedded": 0,
+   "schema_violations": [], "stale_inbox": [],
+   "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10}], "qmd_gaps": [], "qmd_unembedded": 0,
    "qmd_notice": null}
 
 Example:
@@ -551,7 +606,9 @@ clearing a stale `status` flag. Writes the file directly (atomically), so
 it works with Obsidian closed. A property that is not set is reported and
 nothing is written.
 Do NOT use when targeting `created` -- it is immutable and this call exits
-with an error.
+with an error. In the llmos vault, the `discovered` property of
+categories/Knowledge.md is the run record of `discover`: this call
+refuses it, also through a link to that note.
 
 Arguments:
   note  Note name (wikilink-style resolution) or vault-relative path.
@@ -624,7 +681,9 @@ untouched (exit 1).
 `authors` is append-only: setting it adds `value` to the existing list
 instead of overwriting it.
 Do NOT use when rewriting `created` -- it is immutable and this call
-exits with an error.
+exits with an error. In the llmos vault, the `discovered` property of
+categories/Knowledge.md is the run record of `discover`: this call
+refuses it, also through a link to that note.
 
 Arguments:
   note   Note name (wikilink-style resolution) or vault-relative path.

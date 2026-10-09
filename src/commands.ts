@@ -7,13 +7,21 @@
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, normalize, relative, resolve } from "node:path";
 import { checkNote } from "./authoring.ts";
 import { summary as claimsSummary, lintClaims } from "./claims-lint.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { DAILY_DIR, type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
+import { discover } from "./discover.ts";
 import { renderReference, renderSkill } from "./docs.ts";
-import { isClean, qmdSection, summary, vaultHealth } from "./health.ts";
+import {
+  DISCOVER_NOTE,
+  DISCOVER_PROPERTY,
+  isClean,
+  qmdSection,
+  summary,
+  vaultHealth,
+} from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { runObsidian } from "./obsidian.ts";
 import { detectProvider } from "./provider.ts";
@@ -93,6 +101,24 @@ function propertyKey(values: Values): string {
     throw new UsageError(`invalid property name ${JSON.stringify(key)}`);
   }
   return key;
+}
+
+const RUN_RECORD_REFUSAL = `is the run record of \`discover\`; only \`llmos-vault discover\` sets it`;
+
+/**
+ * Refuse the one property that only `discover` may write, in the llmOS vault:
+ * the run record `health` reads. The note counts by its real path, so a link
+ * to it is refused too.
+ */
+function refuseRunRecord(vault: string, root: string, path: string, key: string): void {
+  if (vault !== "llmos" || key !== DISCOVER_PROPERTY) return;
+  let same = path === DISCOVER_NOTE;
+  try {
+    same ||= realTarget(root, path) === realTarget(root, DISCOVER_NOTE);
+  } catch {
+    // The record note is missing, or the path is outside the vault: nothing to protect here.
+  }
+  if (same) throw new Error(`'${key}' on ${DISCOVER_NOTE} ${RUN_RECORD_REFUSAL}`);
 }
 
 /** A property value: one line, no control characters except tabs. */
@@ -300,13 +326,17 @@ cheaper and returns the same one-hop data without traversal.`,
 const health: Command = {
   name: "health",
   summary:
-    "Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, and qmd index gaps.",
+    "Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue manual jobs, and qmd index gaps.",
   description: `Use when starting a vault-maintenance pass -- e.g. after a vault change --
 to see every hygiene defect in one headless call. Each section degrades
 independently: when qmd has no index or no such collection, the report
 carries a notice instead of failing. Works with Obsidian closed. Exits 1 if
 any section has findings, 0 on a clean vault, so cron can branch on it.
-llmOS schema-violation checks run only for --vault llmos. qmd_unembedded
+llmOS schema-violation checks and overdue_jobs run only for --vault llmos.
+overdue_jobs lists the manual jobs (\`discover\`) that are overdue: the
+\`discovered\` date on categories/Knowledge.md (set by each \`discover\` run) is
+missing, not a valid past YYYY-MM-DD date, or more than 10 days old. Run the
+job to clear it. qmd_unembedded
 counts the documents in the whole qmd index that still need embedding (the
 plugin's Stop hook updates only keyword search); it is informational and does
 not change the exit code. Run \`reindex\` to embed them.
@@ -331,7 +361,8 @@ cheaper and does not walk the whole vault.`,
   },
   exampleOutput: `{"orphans": ["gamma"], "dead_ends": ["beta"],
  "unresolved_links": [{"referrer": "alpha", "target": "ghost"}],
- "schema_violations": [], "stale_inbox": [], "qmd_gaps": [], "qmd_unembedded": 0,
+ "schema_violations": [], "stale_inbox": [],
+ "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10}], "qmd_gaps": [], "qmd_unembedded": 0,
  "qmd_notice": null}`,
   example: "llmos-vault health --vault llmos --json",
   async run(values, context) {
@@ -339,16 +370,91 @@ cheaper and does not walk the whole vault.`,
     const collection = str(values, "qmd-collection");
     const model = context.model(context.root(vault));
     const qmd = await qmdIndexState(context, collection);
+    const day = today(context);
     const report = {
       ...vaultHealth(model, {
         profile: vault === "llmos" ? "llmos" : "core",
         staleAfterDays: count(values, "stale-after-days", 0),
-        today: today(context),
+        today: day,
       }),
       ...qmdSection(model, qmd.paths, collection, qmd.unembedded),
     };
     const exitCode = isClean(report) ? 0 : 1;
     return values.json ? { json: report, exitCode } : { text: summary(report), exitCode };
+  },
+};
+
+const discoverCommand: Command = {
+  name: "discover",
+  summary: "Rank clusters of notes that restate the same works, as candidates to consolidate.",
+  description: `Use when \`health\` reports discover as overdue, or when you look for the
+next topic for \`consolidate-knowledge\`. It clusters the vault's notes
+outside archive/, knowledge/, sources/, reviews/, templates/, agents/, and
+categories/. The signals are the arXiv ids and DOIs that notes share, the
+dangling links and missing topic notes that they share, and mutual nearest
+neighbors from the vectors already in the qmd index (no model loads).
+Clusters of three notes or more are ranked: uncovered ones first, then those
+whose notes already link one note in knowledge/ (covered_by). Without a qmd
+index it skips the similarity signal and says so in qmd_notice.
+It writes the JSON report to <vault root>/../artifacts/discover/YYYY-MM-DD.json,
+or to --out DIR, and prints it. It refuses to run when that artifacts folder
+is missing and --out is not given.
+For --vault llmos, after it writes the report, it sets \`discovered\` (today's
+date) on categories/Knowledge.md, and \`updated\` there, in one write. It adds
+the agent's name to \`authors\` only when it detects an agent harness.
+\`health\` reads that date, so any host that syncs the vault sees the run.
+Before any work it runs the same edit without writing, and fails when that
+note is missing, is a symbolic link, or has frontmatter that the edit cannot
+rewrite. --no-record skips the write and those checks, for
+probes on vault copies. It writes nothing else in the vault.
+Do NOT use when you only want to search -- use \`search\`.`,
+  arguments: [],
+  options: {
+    ...vaultOption("Which registered vault to scan."),
+    top: {
+      type: "integer",
+      default: 10,
+      metavar: "N",
+      help: "Report at most this many clusters.",
+    },
+    out: {
+      type: "string",
+      metavar: "DIR",
+      help: "Folder for the report file; must be outside the vault. Default: <vault root>/../artifacts/discover.",
+    },
+    "qmd-collection": {
+      type: "string",
+      default: "llmos",
+      metavar: "NAME",
+      help: "qmd collection whose stored vectors give the similarity signal.",
+    },
+    "no-record": {
+      type: "boolean",
+      help: "Do not set the discovered date on categories/Knowledge.md (a probe run).",
+    },
+  },
+  exampleOutput: `{"generated_at": "2026-10-08T09:30:00.000Z", "vault": "llmos",
+ "report_path": "/home/me/code/llmos/artifacts/discover/2026-10-08.json", "qmd_notice": null,
+ "clusters": [{"rank": 1, "score": 7.4,
+   "notes": ["projects/a/notes.md", "projects/b/notes.md", "inbox/c.md"], "covered_by": null,
+   "signals": {"shared_ids": [{"id": "arxiv:2403.12345", "notes": ["inbox/c.md", "projects/a/notes.md"]}],
+               "shared_dangling": 0, "shared_topics": 0, "similar_pairs": 2}}]}`,
+  example: "llmos-vault discover --top 5",
+  async run(values, context) {
+    const vault = vaultName(values);
+    const root = context.root(vault);
+    return {
+      json: await discover(context.model(root), {
+        vault,
+        top: count(values, "top", 1),
+        out: values.out === undefined ? undefined : str(values, "out"),
+        collection: str(values, "qmd-collection"),
+        env: context.env,
+        today: context.today(),
+        // The record is the llmOS vault's; a plain vault has no manual jobs.
+        record: vault === "llmos" && values["no-record"] !== true,
+      }),
+    };
   },
 };
 
@@ -360,7 +466,8 @@ project note. Without --template the note is written directly (works with
 Obsidian closed). With --template the running Obsidian app creates it, so
 the template is expanded; this exits 3 when Obsidian is not running.
 Do NOT use when the note already exists -- this refuses to overwrite a
-file; edit the note instead.`,
+file; edit the note instead. In the llmos vault it refuses content that
+sets \`discovered\` on categories/Knowledge.md: only \`discover\` sets it.`,
   arguments: [{ name: "name", help: 'Vault-relative note path (".md" appended if missing).' }],
   options: {
     ...vaultOption("Which registered vault to create the note in."),
@@ -370,10 +477,20 @@ file; edit the note instead.`,
   exampleOutput: "Created: projects/agent-toolbox.md",
   example: "llmos-vault create projects/agent-toolbox --template project --vault llmos",
   run(values, context) {
-    const root = context.root(vaultName(values));
+    const vault = vaultName(values);
+    const root = context.root(vault);
     const name = str(values, "name");
     const target = name.endsWith(".md") ? name : `${name}.md`;
     const content = values.content as string | undefined;
+    if (
+      vault === "llmos" &&
+      normalize(target) === DISCOVER_NOTE &&
+      content !== undefined &&
+      // Line endings as the vault model reads them, so CRLF cannot hide the block.
+      DISCOVER_PROPERTY in readSource(target, content.replace(/\r\n?/g, "\n")).properties
+    ) {
+      throw new Error(`'${DISCOVER_PROPERTY}' on ${DISCOVER_NOTE} ${RUN_RECORD_REFUSAL}`);
+    }
     const template = values.template === undefined ? undefined : templateName(values);
     newTarget(root, target); // both branches: the new note must stay inside the vault
     if (template !== undefined) {
@@ -455,7 +572,9 @@ untouched (exit 1).
 \`authors\` is append-only: setting it adds \`value\` to the existing list
 instead of overwriting it.
 Do NOT use when rewriting \`created\` -- it is immutable and this call
-exits with an error.`,
+exits with an error. In the llmos vault, the \`discovered\` property of
+categories/Knowledge.md is the run record of \`discover\`: this call
+refuses it, also through a link to that note.`,
   arguments: [
     { name: "note", help: "Note name (wikilink-style resolution) or vault-relative path." },
     { name: "key", help: "Property name." },
@@ -465,10 +584,12 @@ exits with an error.`,
   exampleOutput: "Set: status = active",
   example: "llmos-vault set-property alpha status active --vault llmos",
   run(values, context) {
-    const root = context.root(vaultName(values));
+    const vault = vaultName(values);
+    const root = context.root(vault);
     const note = context.model(root).resolveNote(str(values, "note"));
     const key = propertyKey(values);
     const value = propertyValue(values);
+    refuseRunRecord(vault, root, note.path, key);
     setProperty(root, note.path, key, value);
     return { text: `Set: ${key} = ${value}` };
   },
@@ -482,7 +603,9 @@ clearing a stale \`status\` flag. Writes the file directly (atomically), so
 it works with Obsidian closed. A property that is not set is reported and
 nothing is written.
 Do NOT use when targeting \`created\` -- it is immutable and this call exits
-with an error.`,
+with an error. In the llmos vault, the \`discovered\` property of
+categories/Knowledge.md is the run record of \`discover\`: this call
+refuses it, also through a link to that note.`,
   arguments: [
     { name: "note", help: "Note name (wikilink-style resolution) or vault-relative path." },
     { name: "key", help: "Property name to remove." },
@@ -491,9 +614,11 @@ with an error.`,
   exampleOutput: "Removed: status",
   example: "llmos-vault remove-property alpha status --vault llmos",
   run(values, context) {
-    const root = context.root(vaultName(values));
+    const vault = vaultName(values);
+    const root = context.root(vault);
     const note = context.model(root).resolveNote(str(values, "note"));
     const key = propertyKey(values);
+    refuseRunRecord(vault, root, note.path, key);
     const removed = removeProperty(root, note.path, key);
     return { text: removed ? `Removed: ${key}` : `Not set: ${key}` };
   },
@@ -942,6 +1067,7 @@ export const COMMANDS: readonly Command[] = [
   neighbors,
   subgraph,
   health,
+  discoverCommand,
   create,
   move,
   append,

@@ -202,6 +202,29 @@ export function setProperty(root: string, relative: string, key: string, value: 
   atomicReplace(real, frontmatter.toString());
 }
 
+/**
+ * Record a run on a note in one edit and one atomic write: set `key` and
+ * `updated` to `date`, and add `provider` (when not null) to `authors` once,
+ * as `stampNote` does. With `dryRun` nothing is written: it throws exactly
+ * when the real call would, so a caller can check before it does any work.
+ */
+export function recordRun(
+  root: string,
+  relative: string,
+  key: string,
+  date: string,
+  provider: string | null,
+  dryRun = false,
+): void {
+  const real = realTarget(root, relative);
+  const frontmatter = frontmatterOf(readText(real));
+  frontmatter.setScalar(key, date);
+  frontmatter.setScalar("updated", date);
+  if (provider !== null) frontmatter.appendUnique("authors", provider);
+  const text = frontmatter.toString();
+  if (!dryRun) atomicReplace(real, text);
+}
+
 /** Remove property `key`. Returns false (and writes nothing) when the note has no such property. */
 export function removeProperty(root: string, relative: string, key: string): boolean {
   const real = realTarget(root, relative);

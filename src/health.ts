@@ -1,12 +1,17 @@
 /**
  * The vault health report: orphans, dead-ends, unresolved wikilinks, schema
- * violations, and stale inbox items, computed from one vault model.
+ * violations, stale inbox items, and overdue manual jobs, computed from one
+ * vault model.
  *
  * Schema violations are the llmOS profile's contract and are skipped for a
  * plain vault such as second-vault ("core" profile). The qmd index gaps compare the
  * vault's notes with the paths a qmd collection holds; the caller reads those
  * paths from the qmd store (`qmd.ts`), so this module stays synchronous and
  * never imports qmd.
+ *
+ * A manual job leaves its record in the vault, so every host that syncs the
+ * vault sees it: `discover` sets the `discovered` date on the note
+ * `DISCOVER_NOTE`. Only the llmOS profile has manual jobs.
  */
 
 import { type Day, parseDay } from "./daily.ts";
@@ -14,6 +19,30 @@ import { collectErrors } from "./schema.ts";
 import type { UnresolvedLink, VaultModel } from "./vault.ts";
 
 export type Profile = "llmos" | "core";
+
+/** The note whose `discovered` property records the last `discover` run. */
+export const DISCOVER_NOTE = "categories/Knowledge.md";
+/** The property of `DISCOVER_NOTE` that holds that day, as `YYYY-MM-DD`. */
+export const DISCOVER_PROPERTY = "discovered";
+/**
+ * How old the last `discover` run may be, in days: the weekly cadence (8)
+ * plus 2 days for the git sync between the machines that run it.
+ */
+export const DISCOVER_MAX_AGE_DAYS = 10;
+
+/**
+ * How many days after today a recorded date may lie: the hosts that run
+ * `discover` and `health` can sit in time zones a day apart. A later date is
+ * invalid.
+ */
+export const DISCOVER_CLOCK_SKEW_DAYS = 1;
+
+export interface OverdueJob {
+  job: string;
+  /** The recorded value (a date, or the raw text when it is not a valid past date); null when none. */
+  last_success: string | null;
+  max_age_days: number;
+}
 
 export interface SchemaViolation {
   path: string;
@@ -26,6 +55,7 @@ export interface VaultHealth {
   unresolved_links: UnresolvedLink[];
   schema_violations: SchemaViolation[];
   stale_inbox: string[];
+  overdue_jobs: OverdueJob[];
 }
 
 export interface QmdSection {
@@ -68,12 +98,34 @@ function staleInbox(model: VaultModel, staleAfterDays: number, day: Day): string
   return stale.sort();
 }
 
+/**
+ * The manual jobs that are overdue for the llmOS profile: `discover` is when
+ * its record is missing, not a valid `YYYY-MM-DD` date, in the future (the
+ * record fails closed, beyond `DISCOVER_CLOCK_SKEW_DAYS`), or more than `DISCOVER_MAX_AGE_DAYS` days old.
+ */
+function overdueJobs(model: VaultModel, profile: Profile, today: Day): OverdueJob[] {
+  if (profile !== "llmos") return [];
+  const value = model.notes.find((note) => note.path === DISCOVER_NOTE)?.properties[
+    DISCOVER_PROPERTY
+  ];
+  const text = typeof value === "string" ? value : null;
+  const day = text === null ? null : parseDay(text);
+  if (
+    day !== null &&
+    day - today <= DISCOVER_CLOCK_SKEW_DAYS &&
+    today - day <= DISCOVER_MAX_AGE_DAYS
+  )
+    return [];
+  return [{ job: "discover", last_success: text, max_age_days: DISCOVER_MAX_AGE_DAYS }];
+}
+
 /** Aggregate vault hygiene into one report. */
 export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHealth {
   return {
     ...model.linkFindings(),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),
     stale_inbox: staleInbox(model, options.staleAfterDays ?? 14, options.today),
+    overdue_jobs: overdueJobs(model, options.profile ?? "llmos", options.today),
   };
 }
 
@@ -111,6 +163,7 @@ export function isClean(report: VaultHealth & QmdSection): boolean {
     report.unresolved_links.length === 0 &&
     report.schema_violations.length === 0 &&
     report.stale_inbox.length === 0 &&
+    report.overdue_jobs.length === 0 &&
     report.qmd_gaps.length === 0
   );
 }
@@ -128,6 +181,12 @@ export function summary(report: VaultHealth & QmdSection): string {
       report.schema_violations.map((violation) => `${violation.path}: ${violation.message}`),
     )}`,
     `stale inbox (${report.stale_inbox.length}): ${list(report.stale_inbox)}`,
+    `overdue jobs (${report.overdue_jobs.length}): ${list(
+      report.overdue_jobs.map(
+        (job) =>
+          `${job.job} (last success: ${job.last_success ?? "missing or unreadable"}; max ${job.max_age_days} days)`,
+      ),
+    )}`,
     `qmd gaps (${report.qmd_gaps.length}): ${list(report.qmd_gaps)}`,
   ];
   if (report.qmd_unembedded) {

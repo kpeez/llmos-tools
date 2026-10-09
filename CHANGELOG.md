@@ -3,8 +3,47 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## Unreleased
+## 2.4.0 — 2026-10-08
 
+- New `llmos-vault discover [--top N] [--out DIR] [--no-record]` ranks
+  clusters of notes that restate the same works, as candidates for
+  `consolidate-knowledge`. Signals: shared arXiv ids and DOIs, shared dangling
+  links, shared `topics` without a topic note, and qmd similarity from the
+  vectors already in the index (no model loads; without an index it skips the
+  signal and says so). A cluster whose notes already link one `knowledge/`
+  note reports `covered_by` and ranks after the uncovered ones. It writes the
+  JSON report to `<vault root>/../artifacts/discover/YYYY-MM-DD.json` and never
+  writes inside the vault (kpeez/llmos#55).
+- `discover` is a manual job. Each run of the llmos vault sets
+  `discovered: YYYY-MM-DD` on `categories/Knowledge.md` and sets `updated`
+  there, in one atomic write. It adds the agent to `authors` only when it
+  detects an agent harness. The record travels with the vault. `--no-record`
+  skips it. Before any work, `discover` runs the same edit without writing and
+  fails when that note is missing, is a symbolic link, or has frontmatter that
+  the edit cannot rewrite. It writes nothing else in the vault.
+  In the llmos vault, `set-property`, `remove-property`, and the MCP
+  `set_property` refuse the `discovered` property of that note, also through
+  a link to it; `create` refuses new content for it that sets the property.
+- `health` has a new `overdue_jobs` section (llmos vault only, also in the MCP
+  `health` tool). `discover` is overdue, and `health` exits 1, when the
+  `discovered` date is missing, is not a valid `YYYY-MM-DD` date, lies more
+  than 1 day in the future (time-zone skew), or is more than 10 days old.
+- `discover` excludes `archive/` notes and reports dangling links and missing
+  topics as counts. It ignores an edge of low weighted overlap
+  (`MIN_OVERLAP`), so a note that cites many works no longer bridges
+  unrelated clusters. A symbolic link planted at the report path no longer
+  carries the write into the vault.
+- `discover` reads identifiers more strictly. A DOI ends at the first
+  character outside Crossref's suffix set and loses trailing punctuation and
+  publisher page suffixes (`/full`, `/abstract`, `/pdf`, `/epdf`). The URL
+  escapes of `/ ( ) : ; < >` are decoded. A DOI followed by `<` or `>` (SICI
+  and AMS forms) is dropped; a `<https://doi.org/...>` autolink is kept. Text
+  inside a wikilink never joins a DOI. A dated bioRxiv or medRxiv DOI keys on
+  its date and number; another bioRxiv DOI loses its `.full`, `.abstract`,
+  or `.supplementary-material` suffix and its version. An arXiv id must have the digit count and year range
+  of its date.
+- `llmos-doctor` warns about an unreadable heartbeat time instead of printing
+  "NaN days ago".
 - `llmos-vault check` also reports Markdown that makes Obsidian render a note
   wrongly: `table-column-count`, `empty-link`, `reversed-link` (markdownlint
   rules MD056, MD042, MD011), and `table-wikilink-pipe`, an unescaped alias

@@ -416,7 +416,11 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
     }
     const days = Math.floor((now - Date.parse(beat.time)) / DAY_MS);
     const detail = `hooks ran ${beat.time} with bun ${beat.bun}`;
-    if (!(days < WARN_AFTER_DAYS)) {
+    if (Number.isNaN(days)) {
+      lines.push(
+        `WARN ${check}: the heartbeat has an unreadable time (${JSON.stringify(beat.time)}); start a session to refresh it`,
+      );
+    } else if (days >= WARN_AFTER_DAYS) {
       lines.push(`WARN ${check}: ${detail}, ${days} days ago; start a session to refresh it`);
     } else {
       lines.push(`PASS ${check}: ${detail}`);

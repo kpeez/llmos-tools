@@ -23,7 +23,8 @@ The contract lives in the vault. Read it first:
 The cluster slug (such as `macaque-face-recognition`), the member notes that
 restate the cluster's works, and the scope: the papers and datasets this run
 covers. Keep the scope to what one review can hold. Other works stay as plain
-citations in the hub.
+citations in the hub. To pick a cluster, run `llmos-vault discover`: it ranks
+candidate clusters, uncovered ones first.
 
 ## Steps
 

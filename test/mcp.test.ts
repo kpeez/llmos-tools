@@ -196,6 +196,27 @@ describe("write tools stamp updated and authors", () => {
     });
   });
 
+  test("set_property refuses the run record of discover, and health reports its date", async () => {
+    const record = "categories/Knowledge.md";
+    const root = vault({ [record]: "---\ndiscovered: 2026-09-01\n---\n\n# Knowledge\n" });
+    const { client, close } = await connect(contextFor(root), "claude-code");
+    const refused = await client.call("set_property", {
+      note: record,
+      key: "discovered",
+      value: TODAY,
+    });
+    const other = await client.call("set_property", { note: record, key: "status", value: "x" });
+    const health = JSON.parse((await client.call("health", {})).text);
+    await close();
+    expect(refused.isError).toBe(true);
+    expect(refused.text).toContain("only `llmos-vault discover` sets it");
+    expect(other.isError).toBe(false);
+    expect(properties(root, record).discovered).toBe("2026-09-01");
+    expect(health.overdue_jobs).toEqual([
+      { job: "discover", last_success: "2026-09-01", max_age_days: 10 },
+    ]);
+  });
+
   test("file_inbox files the note and stamps it and today's note", async () => {
     const root = vault({ [DAILY]: dailyNote(TODAY) });
     const obsidian = recordedObsidian(root);
