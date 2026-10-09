@@ -82,12 +82,31 @@ function skipped(parts: string[]): boolean {
   );
 }
 
+/**
+ * The category hubs of a vault: the names of its `categories/<Name>.md` notes.
+ * A category is valid only as the plain name of one of them.
+ */
+export function categoryHubs(model: VaultModel): Set<string> {
+  return new Set(
+    model.notes
+      .filter((note) => /^categories\/[^/]+\.md$/.test(note.path))
+      .map((note) => note.path.slice("categories/".length, -".md".length)),
+  );
+}
+
+/** Whether a `categories` value is a plain wikilink, `[[Name]]`, that names one of `hubs`. */
+export function isValidCategory(value: PropertyValue, hubs: ReadonlySet<string>): boolean {
+  if (typeof value !== "string") return false;
+  const name = PLAIN_WIKILINK.exec(value)?.[1];
+  return name !== undefined && hubs.has(name);
+}
+
 /** The schema-violation messages for one note's properties. */
 function noteErrors(
   relative: string,
   note: Note,
   newNotes: Set<string>,
-  hubs: Set<string>,
+  hubs: ReadonlySet<string>,
 ): string[] {
   const errors: string[] = [];
   const parts = relative.split("/");
@@ -141,7 +160,7 @@ function noteErrors(
     for (const value of values) {
       if (typeof value !== "string" || !WIKILINK.test(value)) {
         errors.push(`${relative}: ${field} contains non-wikilink ${JSON.stringify(value)}`);
-      } else if (field === "categories" && !hubs.has(PLAIN_WIKILINK.exec(value)?.[1] ?? "")) {
+      } else if (field === "categories" && !isValidCategory(value, hubs)) {
         errors.push(`${relative}: category ${JSON.stringify(value)} names no hub in categories/`);
       }
     }
@@ -167,12 +186,7 @@ export function collectErrors(model: VaultModel): SchemaReport {
   const errors: string[] = [];
   let checked = 0;
   const newNotes = untrackedMarkdown(model.root);
-  // A category is valid only as the plain name of a hub note, `categories/<Name>.md`.
-  const hubs = new Set(
-    model.notes
-      .filter((note) => /^categories\/[^/]+\.md$/.test(note.path))
-      .map((note) => note.path.slice("categories/".length, -".md".length)),
-  );
+  const hubs = categoryHubs(model);
   const entries: (Note | BrokenLink)[] = [...model.notes, ...model.brokenLinks].sort((a, b) =>
     comparePaths(a.path, b.path),
   );

@@ -61,9 +61,10 @@ describe("check Markdown correctness", () => {
     expect(await found(text)).toEqual([["empty-link", 7]]);
   });
 
-  test("notes under sources/ and dot folders get no Markdown findings", async () => {
+  test("notes under sources/ get no Markdown findings, and a dot-folder file is no vault note", async () => {
     expect(await found("[x]()\n", "sources/s/source.md")).toEqual([]);
-    expect(await found("[x]()\n", ".agents/n.md")).toEqual([]);
+    const dot = await cli(makeVault({ ".agents/n.md": "[x]()\n" }), ["check", ".agents/n.md"]);
+    expect(dot.exitCode).not.toBe(0);
     expect(await found("[x]()\n", "projects/sources/n.md")).toEqual([["empty-link", 1]]);
   });
 });

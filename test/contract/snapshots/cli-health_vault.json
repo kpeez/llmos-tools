@@ -620,22 +620,22 @@
       }
     },
     "health.orphans": [
-      "AGENTS",
-      "bad-status",
-      "fresh-capture",
-      "linker",
-      "stale-capture"
+      "AGENTS.md",
+      "inbox/fresh-capture.md",
+      "inbox/stale-capture.md",
+      "notes/bad-status.md",
+      "notes/linker.md"
     ],
     "health.dead_ends": [
-      "AGENTS",
-      "bad-status",
-      "dead-end",
-      "fresh-capture",
-      "stale-capture"
+      "AGENTS.md",
+      "inbox/fresh-capture.md",
+      "inbox/stale-capture.md",
+      "notes/bad-status.md",
+      "notes/dead-end.md"
     ],
     "health.unresolved_links": [
       {
-        "referrer": "hub",
+        "referrer": "notes/hub.md",
         "target": "Missing Note"
       }
     ],

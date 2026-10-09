@@ -3,6 +3,36 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- `health` no longer reports four kinds of false positive.
+  - A wikilink or embed that names an existing non-note file (`![[Topics.base#Topic members]]`,
+    an image) resolves by its vault-relative path, then by its file name,
+    ignoring a `#fragment`. The vault model now lists the non-note files for
+    this. A file that does not exist stays unresolved.
+  - A `[[...]]` inside a fenced code block (``` or ~~~, also unclosed) or an
+    inline code span is no link, in `health`, `neighbors`, `check`, and every
+    other command that reads links. Code spans follow CommonMark: a backslash
+    escapes an opening backtick, a span closes only at a backtick run of the
+    same length, and it never crosses a blank line or a heading.
+  - Files in dot folders such as `.trash/` are not vault notes or link targets,
+    as `.obsidian/` already was. A note inside `.trash/` no longer loads.
+  - The MCP server's warm vault reloads when an image or other non-note file
+    is added or removed, not only when a note changes.
+  - In the llmos vault, `inbox/Inbox.md`, the inbox folder's hub note, is never
+    a stale inbox item and never an orphan.
+  - An orphan is a note that no other note links to and that has no valid
+    category. A `categories` link that names a hub in `categories/` counts,
+    because the hub's Base lists the note. So a daily note filed under
+    `[[Reviews]]` is never an orphan, and an unfiled one is.
+  - `health` (and the MCP `health` tool) now reports `orphans`, `dead_ends`,
+    and the `referrer` of each unresolved link as vault-relative paths with
+    `.md` (`projects/a/README.md`), not as file names. Many notes share a file
+    name, so a name did not say which note it meant. This changes the JSON
+    values and the text summary.
+  - In the llmos vault, a note with a valid category and the inbox hub are not
+    orphans. The second-vault vault (`--vault second-vault`) counts backlinks only.
+
 ## 2.4.0 — 2026-10-08
 
 - New `llmos-vault discover [--top N] [--out DIR] [--no-record]` ranks

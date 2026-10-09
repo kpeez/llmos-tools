@@ -279,6 +279,22 @@ describe("the warm vault model", () => {
     expect(() => warm.model(root).resolveNote("gamma")).toThrow();
     expect(warm.loads).toBe(4);
   });
+
+  test("an image created or deleted between two health calls changes the health result", async () => {
+    const root = vault({ "notes/pic.md": `${NOTE}\n![[plot.png]]\n` });
+    const { client, close } = await connect(contextFor(root));
+    const unresolved = async (): Promise<string[]> =>
+      JSON.parse((await client.call("health", {})).text).unresolved_links.map(
+        (link: { target: string }) => link.target,
+      );
+    expect(await unresolved()).toContain("plot.png");
+    mkdirSync(join(root, "assets"), { recursive: true });
+    writeFileSync(join(root, "assets/plot.png"), "x");
+    expect(await unresolved()).not.toContain("plot.png");
+    unlinkSync(join(root, "assets/plot.png"));
+    expect(await unresolved()).toContain("plot.png");
+    await close();
+  });
 });
 
 describe("hostile arguments are refused", () => {

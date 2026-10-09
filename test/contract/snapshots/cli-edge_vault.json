@@ -97,9 +97,6 @@
     "neighbors fm/nested-link.md": [
       "properties-python-cannot-read"
     ],
-    "neighbors notes/alpha.md": [
-      "properties-python-cannot-read"
-    ],
     "neighbors notes/beta.md": [
       "properties-python-cannot-read"
     ],
@@ -220,31 +217,10 @@
     "subgraph1 fm/nested-link.md": [
       "properties-python-cannot-read"
     ],
-    "subgraph1 notes/alpha.md": [
-      "properties-python-cannot-read"
-    ],
     "subgraph1 notes/beta.md": [
       "properties-python-cannot-read"
     ],
-    "subgraph2 .trash/discarded.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 fm/block-scalar.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 fm/folded.md": [
-      "properties-python-cannot-read"
-    ],
     "subgraph2 fm/nested-link.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 fm/no-frontmatter.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 notes/alpha.md": [
-      "properties-python-cannot-read"
-    ],
-    "subgraph2 notes/café.md": [
       "properties-python-cannot-read"
     ],
     "subgraph2 notes/gamma.md": [
@@ -253,14 +229,6 @@
   },
   "results": {
     "list": [
-      {
-        "name": "discarded",
-        "path": "<vault>/.trash/discarded.md",
-        "properties": {
-          "created": "2026-07-01"
-        },
-        "body": "Links to [[alpha]].\n"
-      },
       {
         "name": "AGENTS",
         "path": "<vault>/AGENTS.md",
@@ -857,114 +825,6 @@
           "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
         }
       ]
-    },
-    "read .trash/discarded.md": {
-      "exit": 0,
-      "json": {
-        "name": "discarded",
-        "path": "<vault>/.trash/discarded.md",
-        "properties": {
-          "created": "2026-07-01"
-        },
-        "body": "Links to [[alpha]].\n"
-      }
-    },
-    "neighbors .trash/discarded.md": {
-      "exit": 0,
-      "json": {
-        "note": "discarded",
-        "outgoing": [
-          "alpha"
-        ],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 .trash/discarded.md": {
-      "exit": 0,
-      "json": {
-        "root": "discarded",
-        "nodes": [
-          "alpha",
-          "discarded"
-        ],
-        "unresolved": [],
-        "edges": [
-          [
-            "discarded",
-            "alpha",
-            "link"
-          ]
-        ]
-      }
-    },
-    "check .trash/discarded.md": {
-      "exit": 0,
-      "json": {
-        "path": ".trash/discarded.md",
-        "body_links": [
-          "alpha"
-        ],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize .trash/discarded.md": "---\ncreated: 2026-07-01\n---\n\nLinks to [[alpha]].\n",
-    "subgraph2 .trash/discarded.md": {
-      "exit": 0,
-      "json": {
-        "root": "discarded",
-        "nodes": [
-          "alpha",
-          "beta",
-          "block-scalar",
-          "café",
-          "discarded",
-          "folded",
-          "no-frontmatter"
-        ],
-        "unresolved": [
-          "ghost note"
-        ],
-        "edges": [
-          [
-            "alpha",
-            "beta",
-            "link"
-          ],
-          [
-            "alpha",
-            "beta",
-            "topic_sibling"
-          ],
-          [
-            "alpha",
-            "folded",
-            "topic_sibling"
-          ],
-          [
-            "block-scalar",
-            "alpha",
-            "link"
-          ],
-          [
-            "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
-            "alpha",
-            "link"
-          ],
-          [
-            "no-frontmatter",
-            "alpha",
-            "link"
-          ]
-        ]
-      }
     },
     "read AGENTS.md": {
       "exit": 0,
@@ -1719,7 +1579,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "gamma",
           "llmos",
@@ -1772,11 +1631,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -2339,7 +2193,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "gamma",
           "llmos",
@@ -2392,11 +2245,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -3037,7 +2885,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "no-frontmatter"
         ],
@@ -3067,11 +2914,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -4315,7 +4157,6 @@
         "backlinks": [
           "block-scalar",
           "café",
-          "discarded",
           "no-frontmatter"
         ],
         "topic_siblings": [
@@ -4333,7 +4174,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "no-frontmatter"
         ],
@@ -4363,11 +4203,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -4403,7 +4238,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "gamma",
           "llmos",
@@ -4457,11 +4291,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -4598,7 +4427,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "gamma",
           "llmOS",
@@ -4663,11 +4491,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -4769,7 +4592,6 @@
           "beta",
           "block-scalar",
           "café",
-          "discarded",
           "folded",
           "no-frontmatter",
           "𝔘nicode"
@@ -4800,11 +4622,6 @@
           ],
           [
             "café",
-            "alpha",
-            "link"
-          ],
-          [
-            "discarded",
             "alpha",
             "link"
           ],
@@ -6013,17 +5830,6 @@
         ]
       }
     },
-    "by_name discarded": {
-      "exit": 0,
-      "json": {
-        "name": "discarded",
-        "path": "<vault>/.trash/discarded.md",
-        "properties": {
-          "created": "2026-07-01"
-        },
-        "body": "Links to [[alpha]].\n"
-      }
-    },
     "by_name AGENTS": {
       "exit": 0,
       "json": {
@@ -6749,132 +6555,129 @@
       }
     },
     "health.orphans": [
-      "2026-10-01",
-      "2026-10-02",
-      "SKILL",
-      "a-c",
-      "alias",
-      "anchor",
-      "basic-date",
-      "block-scalar",
-      "body-separators",
-      "bom",
-      "comment",
-      "crlf",
-      "deep",
-      "demo",
-      "discarded",
-      "dotted-links",
-      "double-marker",
-      "duplicate",
-      "empty-block",
-      "empty-item",
-      "escape",
-      "folded",
-      "fresh",
-      "invalid-date",
-      "item-after-flow",
-      "leading-space-body",
-      "line-separator",
-      "linker",
-      "linker2",
-      "llmOS",
-      "messy",
-      "multi-line",
-      "needs-quotes",
-      "nested",
-      "nested-link",
-      "never-closed",
-      "no-created",
-      "no-frontmatter",
-      "old",
-      "quoted-typed-key",
-      "references",
-      "short",
-      "skip",
-      "stale",
-      "tab",
-      "top-level-item",
-      "trailing-date",
-      "typed",
-      "unhubbed",
-      "unowned",
-      "unquoted-wikilink",
-      "uses-short",
-      "week-date",
-      "week-date-tail",
-      "𝔘nicode"
+      "a-c.md",
+      "a/linker.md",
+      "archive/specs/old.md",
+      "c/linker2.md",
+      "fm/anchor.md",
+      "fm/block-scalar.md",
+      "fm/body-separators.md",
+      "fm/bom.md",
+      "fm/comment.md",
+      "fm/crlf.md",
+      "fm/double-marker.md",
+      "fm/duplicate.md",
+      "fm/empty-block.md",
+      "fm/empty-item.md",
+      "fm/escape.md",
+      "fm/folded.md",
+      "fm/item-after-flow.md",
+      "fm/leading-space-body.md",
+      "fm/line-separator.md",
+      "fm/messy.md",
+      "fm/multi-line.md",
+      "fm/needs-quotes.md",
+      "fm/nested-link.md",
+      "fm/nested.md",
+      "fm/never-closed.md",
+      "fm/no-frontmatter.md",
+      "fm/quoted-typed-key.md",
+      "fm/tab.md",
+      "fm/top-level-item.md",
+      "fm/typed.md",
+      "fm/unquoted-wikilink.md",
+      "inbox/basic-date.md",
+      "inbox/fresh.md",
+      "inbox/invalid-date.md",
+      "inbox/nested/deep.md",
+      "inbox/no-created.md",
+      "inbox/stale.md",
+      "inbox/trailing-date.md",
+      "inbox/week-date-tail.md",
+      "inbox/week-date.md",
+      "links/alias.md",
+      "llmOS.md",
+      "notes/dotted-links.md",
+      "notes/references.md",
+      "notes/𝔘nicode.md",
+      "projects/demo/notes/unowned.md",
+      "reviews/daily/2026-10-01.md",
+      "reviews/daily/2026-10-02.md",
+      "skills/tool/SKILL.md",
+      "templates/skip.md",
+      "x/yy/short.md",
+      "z/uses-short.md"
     ],
     "health.dead_ends": [
-      "2026-10-02",
-      "AGENTS",
-      "AGENTS.v2",
-      "Projects",
-      "SKILL",
-      "anchor",
-      "basic-date",
-      "body-separators",
-      "bom",
-      "comment",
-      "crlf",
-      "deep",
-      "double-marker",
-      "dup",
-      "dup",
-      "duplicate",
-      "empty-block",
-      "empty-item",
-      "escape",
-      "folded",
-      "fresh",
-      "gamma",
-      "invalid-date",
-      "item-after-flow",
-      "leading-space-body",
-      "line-separator",
-      "messy",
-      "multi-line",
-      "nested",
-      "never-closed",
-      "no-created",
-      "old",
-      "quoted-typed-key",
-      "sam3.1-fine-tune",
-      "short",
-      "short",
-      "skip",
-      "stale",
-      "tab",
-      "top-level-item",
-      "trailing-date",
-      "typed",
-      "unquoted-wikilink",
-      "week-date",
-      "week-date-tail"
+      "AGENTS.md",
+      "a/dup.md",
+      "archive/specs/old.md",
+      "b/dup.md",
+      "categories/Projects.md",
+      "fm/anchor.md",
+      "fm/body-separators.md",
+      "fm/bom.md",
+      "fm/comment.md",
+      "fm/crlf.md",
+      "fm/double-marker.md",
+      "fm/duplicate.md",
+      "fm/empty-block.md",
+      "fm/empty-item.md",
+      "fm/escape.md",
+      "fm/folded.md",
+      "fm/item-after-flow.md",
+      "fm/leading-space-body.md",
+      "fm/line-separator.md",
+      "fm/messy.md",
+      "fm/multi-line.md",
+      "fm/nested.md",
+      "fm/never-closed.md",
+      "fm/quoted-typed-key.md",
+      "fm/tab.md",
+      "fm/top-level-item.md",
+      "fm/typed.md",
+      "fm/unquoted-wikilink.md",
+      "human/sam3.1-fine-tune.md",
+      "inbox/basic-date.md",
+      "inbox/fresh.md",
+      "inbox/invalid-date.md",
+      "inbox/nested/deep.md",
+      "inbox/no-created.md",
+      "inbox/stale.md",
+      "inbox/trailing-date.md",
+      "inbox/week-date-tail.md",
+      "inbox/week-date.md",
+      "notes/AGENTS.v2.md",
+      "notes/gamma.md",
+      "reviews/daily/2026-10-02.md",
+      "skills/tool/SKILL.md",
+      "templates/skip.md",
+      "x/short.md",
+      "x/yy/short.md"
     ],
     "health.unresolved_links": [
       {
-        "referrer": "alpha",
-        "target": "ghost note"
-      },
-      {
-        "referrer": "linker2",
+        "referrer": "c/linker2.md",
         "target": "DUP"
       },
       {
-        "referrer": "linker2",
+        "referrer": "c/linker2.md",
         "target": "dup"
       },
       {
-        "referrer": "needs-quotes",
+        "referrer": "fm/needs-quotes.md",
         "target": "Knowledge"
       },
       {
-        "referrer": "unhubbed",
+        "referrer": "knowledge/unhubbed.md",
         "target": "Papers"
       },
       {
-        "referrer": "unowned",
+        "referrer": "notes/alpha.md",
+        "target": "ghost note"
+      },
+      {
+        "referrer": "projects/demo/notes/unowned.md",
         "target": "ok"
       }
     ],

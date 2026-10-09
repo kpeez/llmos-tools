@@ -955,36 +955,36 @@
       }
     },
     "health.orphans": [
-      "AGENTS",
-      "delta",
-      "epsilon",
-      "messy",
-      "normalized"
+      "AGENTS.md",
+      "notes/delta.md",
+      "notes/epsilon.md",
+      "notes/messy.md",
+      "notes/normalized.md"
     ],
     "health.dead_ends": [
-      "AGENTS",
-      "beta",
-      "gamma"
+      "AGENTS.md",
+      "notes/beta.md",
+      "notes/gamma.md"
     ],
     "health.unresolved_links": [
       {
-        "referrer": "alpha",
+        "referrer": "notes/alpha.md",
         "target": "ghost"
       },
       {
-        "referrer": "messy",
+        "referrer": "notes/messy.md",
         "target": "Knowledge"
       },
       {
-        "referrer": "messy",
+        "referrer": "notes/messy.md",
         "target": "Some Other Note"
       },
       {
-        "referrer": "normalized",
+        "referrer": "notes/normalized.md",
         "target": "Knowledge"
       },
       {
-        "referrer": "normalized",
+        "referrer": "notes/normalized.md",
         "target": "Some Other Note"
       }
     ],

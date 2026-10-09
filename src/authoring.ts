@@ -9,6 +9,7 @@
 
 import { lstatSync, readlinkSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
+import { blankCodeSpans, codeSpans } from "./code-spans.ts";
 import { markdownFindings } from "./markdown-lint.ts";
 import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./vault.ts";
 
@@ -16,7 +17,6 @@ import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./v
 const W = "\\p{L}\\p{N}_";
 const WIKI = /!?\[\[([^\]\n]+)\]\]/g;
 const MARKDOWN_LINK = /!?\[[^\]\n]*\]\(([^)\n]+)\)/g;
-const INLINE_CODE = /(`+)([^\n]+?)\1/g;
 const NOTE_PATH = new RegExp(`(?<![${W}/\\\\.:])(?:[${W}.-]+/)*[${W}.-]+\\.md(?![${W}])`, "gu");
 const CODE_PATH = new RegExp(`^[${W} .\\-/]+\\.md$`, "u");
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
@@ -102,7 +102,7 @@ function unquote(value: string): string {
 }
 
 function bodyLinks(text: string): string[] {
-  const visible = text.replace(INLINE_CODE, (m) => blank(m));
+  const visible = blankCodeSpans(text);
   const targets = extractWikilinks(visible);
   for (const match of visible.matchAll(MARKDOWN_LINK)) {
     const destination = ((match[1] as string).trim().split(" ", 1)[0] as string).replace(
@@ -231,11 +231,11 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
   let unlinked = visible.replace(WIKI, (m) => blank(m));
   unlinked = unlinked.replace(MARKDOWN_LINK, (m) => blank(m));
   unlinked = unlinked.replace(URL, (m) => blank(m));
-  for (const match of unlinked.matchAll(INLINE_CODE)) {
-    const literal = (match[2] as string).trim();
-    if (CODE_PATH.test(literal)) candidates.push([match.index, literal]);
+  for (const span of codeSpans(unlinked)) {
+    const literal = span.content.trim();
+    if (CODE_PATH.test(literal)) candidates.push([span.start, literal]);
   }
-  unlinked = unlinked.replace(INLINE_CODE, (m) => blank(m));
+  unlinked = blankCodeSpans(unlinked);
   for (const match of unlinked.matchAll(NOTE_PATH)) candidates.push([match.index, match[0]]);
   candidates.sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
 

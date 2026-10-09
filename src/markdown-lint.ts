@@ -8,6 +8,7 @@
 
 import type { MicromarkToken, Rule } from "markdownlint";
 import { lint } from "markdownlint/sync";
+import { blankCodeSpans } from "./code-spans.ts";
 
 export interface MarkdownFinding {
   code: string;
@@ -26,8 +27,6 @@ const CODES: Record<string, string> = {
 
 // A wikilink or embed whose target or label part holds a pipe not preceded by a backslash.
 const PIPE_WIKILINK = /!?\[\[[^\]\n]*?(?<!\\)\|[^\]\n]*\]\]/;
-// An inline code span, hidden so a literal `[[a|b]]` is not reported.
-const CODE_SPAN = /(`+)[^\n]*?\1/g;
 
 function tableRowLines(
   tokens: readonly MicromarkToken[],
@@ -47,9 +46,8 @@ const tableWikilinkPipe: Rule = {
   parser: "micromark",
   function(params, onError) {
     for (const lineNumber of tableRowLines(params.parsers.micromark.tokens)) {
-      const line = (params.lines[lineNumber - 1] ?? "").replace(CODE_SPAN, (m) =>
-        " ".repeat(m.length),
-      );
+      // An inline code span is hidden, so a literal `[[a|b]]` is not reported.
+      const line = blankCodeSpans(params.lines[lineNumber - 1] ?? "");
       const match = PIPE_WIKILINK.exec(line);
       if (match) {
         onError({

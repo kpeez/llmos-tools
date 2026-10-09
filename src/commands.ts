@@ -333,6 +333,16 @@ independently: when qmd has no index or no such collection, the report
 carries a notice instead of failing. Works with Obsidian closed. Exits 1 if
 any section has findings, 0 on a clean vault, so cron can branch on it.
 llmOS schema-violation checks and overdue_jobs run only for --vault llmos.
+A wikilink in a fenced code block or an inline code span is not a link. A link
+or embed that names an existing non-note file (an image, a .base file) is
+resolved by its path, then by its file name. An orphan is a note that no other
+note links to and that has no valid category. In the llmos vault, a note has a
+valid category when its \`categories\` names a hub note in categories/ (the
+hub's Base lists the note), so such a note is never an orphan. The inbox hub
+note (inbox/Inbox.md) is never an orphan and never a stale inbox item in the
+llmos vault. In the second-vault vault (--vault second-vault) only links count. Orphans, dead-ends, and the
+referrer of an unresolved link are vault-relative note paths with .md, because
+many notes share a file name.
 overdue_jobs lists the manual jobs (\`discover\`) that are overdue: the
 \`discovered\` date on categories/Knowledge.md (set by each \`discover\` run) is
 missing, not a valid past YYYY-MM-DD date, or more than 10 days old. Run the
@@ -359,8 +369,8 @@ cheaper and does not walk the whole vault.`,
       help: "Age in days after which an inbox item counts as stale.",
     },
   },
-  exampleOutput: `{"orphans": ["gamma"], "dead_ends": ["beta"],
- "unresolved_links": [{"referrer": "alpha", "target": "ghost"}],
+  exampleOutput: `{"orphans": ["notes/gamma.md"], "dead_ends": ["notes/beta.md"],
+ "unresolved_links": [{"referrer": "notes/alpha.md", "target": "ghost"}],
  "schema_violations": [], "stale_inbox": [],
  "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10}], "qmd_gaps": [], "qmd_unembedded": 0,
  "qmd_notice": null}`,

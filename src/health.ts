@@ -15,10 +15,26 @@
  */
 
 import { type Day, parseDay } from "./daily.ts";
-import { collectErrors } from "./schema.ts";
-import type { UnresolvedLink, VaultModel } from "./vault.ts";
+import { categoryHubs, collectErrors, isValidCategory } from "./schema.ts";
+import type { Note, UnresolvedLink, VaultModel } from "./vault.ts";
 
 export type Profile = "llmos" | "core";
+
+/**
+ * The inbox folder's own hub note. It describes the inbox and is not an
+ * inbox item, so it is never stale and the orphan list leaves it out.
+ */
+export const INBOX_HUB = "inbox/Inbox.md";
+
+/**
+ * Whether a note carries a valid category (`isValidCategory`). Its category
+ * hub lists it through a Base, so it is reachable without a wikilink and is
+ * never an orphan. A `categories` value that is not a list is no category.
+ */
+function hasValidCategory(note: Note, hubs: ReadonlySet<string>): boolean {
+  const categories = note.properties.categories;
+  return Array.isArray(categories) && categories.some((value) => isValidCategory(value, hubs));
+}
 
 /** The note whose `discovered` property records the last `discover` run. */
 export const DISCOVER_NOTE = "categories/Knowledge.md";
@@ -87,10 +103,17 @@ function schemaViolations(model: VaultModel, profile: Profile): SchemaViolation[
   });
 }
 
-function staleInbox(model: VaultModel, staleAfterDays: number, day: Day): string[] {
+function staleInbox(
+  model: VaultModel,
+  staleAfterDays: number,
+  day: Day,
+  profile: Profile,
+): string[] {
   const stale: string[] = [];
   for (const note of model.notes) {
-    if (!note.path.startsWith("inbox/")) continue;
+    if (!note.path.startsWith("inbox/") || (profile === "llmos" && note.path === INBOX_HUB)) {
+      continue;
+    }
     const created = note.properties.created;
     const createdDay = typeof created === "string" ? parseDay(created) : null;
     if (createdDay === null || day - createdDay >= staleAfterDays) stale.push(note.path);
@@ -121,10 +144,19 @@ function overdueJobs(model: VaultModel, profile: Profile, today: Day): OverdueJo
 
 /** Aggregate vault hygiene into one report. */
 export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHealth {
+  const llmos = (options.profile ?? "llmos") === "llmos";
+  const hubs = categoryHubs(model);
   return {
-    ...model.linkFindings(),
+    ...model.linkFindings(
+      (note) => llmos && (hasValidCategory(note, hubs) || note.path === INBOX_HUB),
+    ),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),
-    stale_inbox: staleInbox(model, options.staleAfterDays ?? 14, options.today),
+    stale_inbox: staleInbox(
+      model,
+      options.staleAfterDays ?? 14,
+      options.today,
+      options.profile ?? "llmos",
+    ),
     overdue_jobs: overdueJobs(model, options.profile ?? "llmos", options.today),
   };
 }

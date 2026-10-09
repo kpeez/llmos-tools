@@ -33,7 +33,7 @@ import { DAILY_DIR } from "./daily.ts";
 import { SERVER_NAME } from "./mcp-names.ts";
 import { detectProvider } from "./provider.ts";
 import { openQmd, qmdLocation, search } from "./qmd.ts";
-import { VaultModel, walkMarkdown } from "./vault.ts";
+import { VaultModel, walkVault } from "./vault.ts";
 import { realTarget, stampNote, WriteRefused } from "./write.ts";
 
 /** The one vault and qmd collection this server serves. */
@@ -290,10 +290,13 @@ Read: read (one note), neighbors and subgraph (links), check (unlinked reference
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated and authors themselves.
 Before creating or materially editing a note, follow the vault's AGENTS.md and agents/references/authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 
-/** A fingerprint of every note file's identity and change time, cheap next to reading the notes. */
+/**
+ * A fingerprint of every file the model reads (the notes and the other files
+ * that links can target), by identity and change time. Cheap next to reading the notes.
+ */
 export function vaultSignature(root: string): string {
   const parts: string[] = [];
-  for (const path of walkMarkdown(root)) {
+  for (const path of walkVault(root)) {
     try {
       const stat = statSync(`${root}/${path}`);
       parts.push(`${path}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}\0${stat.ctimeMs}`);

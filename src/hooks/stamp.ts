@@ -73,8 +73,9 @@ async function scan(root: string, onlyFiles: boolean): Promise<string[]> {
 }
 
 /**
- * Every `.md` file or file symlink under `root` outside `.obsidian/`, as
- * `walkMarkdown` finds them: folder symlinks are not followed, so a symlink
+ * Every `.md` file or file symlink under `root` outside `.obsidian/`, as the
+ * vault walk in `vault.ts` finds them (that walk also skips `.trash/` and other
+ * dot folders; this one does not): folder symlinks are not followed, so a symlink
  * cycle or an outside folder never enters the index. The scans run on Bun's
  * thread pool, so they overlap with the stamp. `onlyFiles` leaves out
  * symlinks; the few extra entries of the full scan are checked with `lstat`.

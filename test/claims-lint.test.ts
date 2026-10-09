@@ -49,7 +49,7 @@ describe("the fixture vault", () => {
     expect(JSON.parse(check.stdout).findings).toEqual([]);
     const unresolved = VaultModel.load(FIXTURE)
       .linkFindings()
-      .unresolved_links.filter((link) => link.referrer === "all-correct");
+      .unresolved_links.filter((link) => link.referrer === "knowledge/all-correct.md");
     expect(unresolved).toEqual([]);
   });
 

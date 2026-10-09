@@ -2,20 +2,27 @@
  * One in-memory model of a vault, read straight off disk (works with
  * Obsidian closed).
  *
- * `VaultModel.load` reads every `.md` note once (skipping `.obsidian/`) and
+ * `VaultModel.load` reads every `.md` note once (skipping dot folders such as
+ * `.obsidian/` and `.trash/`) and
  * keeps its properties, body, outgoing wikilinks (from the body, then from
  * property values), and forward and backward edges. Every read and graph
- * query answers from this model instead of re-reading files.
+ * query answers from this model instead of re-reading files. A wikilink
+ * inside a fenced code block or an inline code span is not a link. The model
+ * also lists the other files (images, `.base` files), only to resolve links
+ * and embeds that name them.
  *
  * Name resolution follows Obsidian's order: an exact vault-relative path,
  * then the only note with that basename (case-insensitive), then the match in
  * the linking note's own folder, then the match with the strictly shortest
  * path. A name typed by a caller fails with the candidates listed when it is
- * ambiguous; a link inside content stays unresolved instead.
+ * ambiguous; a link inside content stays unresolved instead. A link that
+ * names no note resolves to an existing non-note file by its exact
+ * vault-relative path, then by its file name (case-insensitive).
  */
 
-import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { basename, dirname, join, normalize } from "node:path";
+import { blankCodeSpans } from "./code-spans.ts";
 import {
   MissingFrontmatter,
   type Properties,
@@ -25,6 +32,8 @@ import {
 } from "./frontmatter.ts";
 
 const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g;
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 
 /** One note file as read from disk. */
 export interface NoteSource {
@@ -78,10 +87,12 @@ export interface Subgraph {
 }
 
 export interface UnresolvedLink {
+  /** Vault-relative path of the linking note, with `.md`. */
   referrer: string;
   target: string;
 }
 
+/** Notes are reported by vault-relative path with `.md`: basenames are not unique. */
 export interface LinkFindings {
   orphans: string[];
   dead_ends: string[];
@@ -114,13 +125,42 @@ export function readText(path: string): string {
 }
 
 /**
+ * `text` without its fenced code blocks (``` or ~~~; an unclosed fence runs
+ * to the end) and inline code spans, as Obsidian reads links. A fence and a
+ * heading each end a paragraph, so a blank line stands in for them: a code
+ * span cannot open before one and close after it.
+ */
+function withoutCode(text: string): string {
+  const kept: string[] = [];
+  let fence: string | null = null;
+  for (const line of text.split("\n")) {
+    if (fence !== null) {
+      const marker = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line)?.[1];
+      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+      kept.push("");
+      continue;
+    }
+    const open = FENCE_OPEN.exec(line);
+    if (open && !(open[1]?.[0] === "`" && open[2]?.includes("`"))) {
+      fence = open[1] as string;
+      kept.push("");
+      continue;
+    }
+    kept.push(line);
+    if (HEADING.test(line)) kept.push("");
+  }
+  return blankCodeSpans(kept.join("\n"));
+}
+
+/**
  * Raw wikilink targets in `text`, with `#heading` and `|alias` removed.
  * Inside Markdown tables Obsidian requires the alias separator to be
  * escaped as `\|`; the backslash belongs to the separator, not the name.
+ * Text in a fenced code block or an inline code span is not a link.
  */
 export function extractWikilinks(text: string): string[] {
   const found: string[] = [];
-  for (const match of text.replaceAll("\\|", "|").matchAll(WIKILINK)) {
+  for (const match of withoutCode(text).replaceAll("\\|", "|").matchAll(WIKILINK)) {
     found.push((match[1] as string).trim());
   }
   return found;
@@ -167,17 +207,26 @@ export function comparePaths(a: string, b: string): number {
   return compare(a.replaceAll("/", "\0"), b.replaceAll("/", "\0"));
 }
 
-/** Vault-relative paths of every `.md` file, outside any `.obsidian` folder, in path order. */
-export function walkMarkdown(root: string): string[] {
+/**
+ * Vault-relative paths, in path order, of every file the model reads: each
+ * `.md` note (or symbolic link to one) and each other regular file. Entries
+ * whose name starts with a dot (`.obsidian`, `.trash`) are skipped, so they
+ * are neither notes nor link targets.
+ */
+export function walkVault(root: string): string[] {
+  return walk(root, (entry) =>
+    entry.name.endsWith(".md") ? entry.isFile() || entry.isSymbolicLink() : entry.isFile(),
+  );
+}
+
+function walk(root: string, keep: (entry: Dirent) => boolean): string[] {
   const found: string[] = [];
   const visit = (relative: string): void => {
     for (const entry of readdirSync(join(root, relative), { withFileTypes: true })) {
-      if (entry.name === ".obsidian") continue;
+      if (entry.name.startsWith(".")) continue;
       const path = relative ? `${relative}/${entry.name}` : entry.name;
       if (entry.isDirectory()) visit(path);
-      else if (entry.name.endsWith(".md") && (entry.isFile() || entry.isSymbolicLink())) {
-        found.push(path);
-      }
+      else if (keep(entry)) found.push(path);
     }
   };
   visit("");
@@ -203,8 +252,14 @@ export class VaultModel {
   private readonly byStem = new Map<string, Note[]>();
   /** The root with one trailing `/`, the prefix of an absolute note path. */
   private readonly rootPrefix: string;
-  /** Per note: the resolved target of each raw target (undefined when unresolved). */
-  private readonly resolved = new Map<Note, (Note | undefined)[]>();
+  /** Vault-relative paths (lower case) of the non-note files, and the same by file name. */
+  private readonly filePaths = new Set<string>();
+  private readonly fileNames = new Set<string>();
+  /**
+   * Per note: the resolved target of each raw target: undefined when
+   * unresolved, null when it names a non-note file.
+   */
+  private readonly resolved = new Map<Note, (Note | null | undefined)[]>();
   /** Per note: the other notes whose links resolve to it. */
   private readonly linkedFrom = new Map<Note, Set<Note>>();
   private readonly topics = new Map<Note, Set<string>>();
@@ -214,8 +269,13 @@ export class VaultModel {
     readonly root: string,
     notes: Note[],
     readonly brokenLinks: readonly BrokenLink[],
+    files: readonly string[],
   ) {
     this.notes = notes;
+    for (const file of files) {
+      this.filePaths.add(file.toLowerCase());
+      this.fileNames.add(basename(file).toLowerCase());
+    }
     this.rootPrefix = join(root, "/");
     for (const note of notes) {
       this.byPath.set(note.path, note);
@@ -235,10 +295,12 @@ export class VaultModel {
       }
     }
     for (const note of notes) {
-      const hits = note.targets.map((target) => this.resolveLink(target, note));
+      const hits = note.targets.map(
+        (target) => this.resolveLink(target, note) ?? (this.isFile(target) ? null : undefined),
+      );
       this.resolved.set(note, hits);
       for (const hit of hits) {
-        if (hit !== undefined && hit !== note) this.linkedFrom.get(hit)?.add(note);
+        if (hit && hit !== note) this.linkedFrom.get(hit)?.add(note);
       }
     }
   }
@@ -250,7 +312,12 @@ export class VaultModel {
   static load(root: string): VaultModel {
     const sources: NoteSource[] = [];
     const broken: BrokenLink[] = [];
-    for (const path of walkMarkdown(root)) {
+    const files: string[] = [];
+    for (const path of walkVault(root)) {
+      if (!path.endsWith(".md")) {
+        files.push(path);
+        continue;
+      }
       const absolute = join(root, path);
       if (!existsSync(absolute)) {
         broken.push({ path, target: readlinkSync(absolute) });
@@ -258,7 +325,7 @@ export class VaultModel {
       }
       sources.push(readSource(path, readText(absolute)));
     }
-    return VaultModel.fromSources(root, sources, broken);
+    return VaultModel.fromSources(root, sources, broken, files);
   }
 
   /** Build the model from notes already read, in path order. */
@@ -266,6 +333,7 @@ export class VaultModel {
     root: string,
     sources: readonly NoteSource[],
     brokenLinks: readonly BrokenLink[] = [],
+    files: readonly string[] = [],
   ): VaultModel {
     const notes = sources.map(
       (source): Note => ({
@@ -274,7 +342,7 @@ export class VaultModel {
         targets: [...extractWikilinks(source.body), ...propertyLinks(source.properties)],
       }),
     );
-    return new VaultModel(root, notes, brokenLinks);
+    return new VaultModel(root, notes, brokenLinks, files);
   }
 
   /** The note's path joined to the vault root. */
@@ -334,6 +402,12 @@ export class VaultModel {
     return matches.find((note) => note.path.length === shortest);
   }
 
+  /** Whether a link target names an existing non-note file, by path or by file name. */
+  private isFile(target: string): boolean {
+    const key = normalize(target).toLowerCase();
+    return key.includes("/") ? this.filePaths.has(key) : this.fileNames.has(key);
+  }
+
   private outgoing(note: Note): { resolved: Note[]; unresolved: string[] } {
     const resolved: Note[] = [];
     const unresolved: string[] = [];
@@ -341,7 +415,7 @@ export class VaultModel {
     note.targets.forEach((target, i) => {
       const hit = hits[i];
       if (hit === undefined) unresolved.push(target);
-      else if (hit !== note) resolved.push(hit);
+      else if (hit && hit !== note) resolved.push(hit);
     });
     return { resolved, unresolved };
   }
@@ -443,26 +517,29 @@ export class VaultModel {
     };
   }
 
-  /** Orphans (no inbound links), dead-ends (no outgoing links), and unresolved links. */
-  linkFindings(): LinkFindings {
+  /**
+   * Orphans (no inbound links), dead-ends (no outgoing links), and unresolved
+   * links. A note that `exemptFromOrphans` accepts is never an orphan.
+   */
+  linkFindings(exemptFromOrphans: (note: Note) => boolean = () => false): LinkFindings {
     const linkedTo = new Set<Note>();
     const unresolved: UnresolvedLink[] = [];
     for (const note of this.notes) {
       const hits = this.resolved.get(note) ?? [];
       note.targets.forEach((target, i) => {
         const hit = hits[i];
-        if (hit === undefined) unresolved.push({ referrer: note.name, target });
-        else if (hit !== note) linkedTo.add(hit);
+        if (hit === undefined) unresolved.push({ referrer: note.path, target });
+        else if (hit && hit !== note) linkedTo.add(hit);
       });
     }
     return {
       orphans: this.notes
-        .filter((n) => !linkedTo.has(n))
-        .map((n) => n.name)
+        .filter((n) => !linkedTo.has(n) && !exemptFromOrphans(n))
+        .map((n) => n.path)
         .sort(),
       dead_ends: this.notes
         .filter((n) => n.targets.length === 0)
-        .map((n) => n.name)
+        .map((n) => n.path)
         .sort(),
       unresolved_links: unresolved.sort(
         (a, b) => compare(a.referrer, b.referrer) || compare(a.target, b.target),
