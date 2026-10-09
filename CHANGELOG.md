@@ -3,9 +3,9 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## Unreleased
+## 2.4.1 — 2026-10-08
 
-- `health` no longer reports four kinds of false positive.
+- `health` reports fewer false positives, and the schema audit drops a dead rule.
   - A wikilink or embed that names an existing non-note file (`![[Topics.base#Topic members]]`,
     an image) resolves by its vault-relative path, then by its file name,
     ignoring a `#fragment`. The vault model now lists the non-note files for
