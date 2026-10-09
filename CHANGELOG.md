@@ -3,7 +3,7 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## Unreleased
+## 2.4.3 — 2026-10-09
 
 - `discover` no longer counts an embed of an existing file (`![[Reviews.base#Project]]`,
   an image) as a dangling link. Before, the project landing notes shared
