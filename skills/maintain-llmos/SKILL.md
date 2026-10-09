@@ -5,7 +5,7 @@ description: Maintain the shared llmOS Obsidian vault. Use when an agent files o
 
 # Maintain llmOS
 
-Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003) — `agents/` holds only `references/`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs; `archive/specs/` is a deletion queue of retired ones, and the audit skips it.
+Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003) — `agents/` holds only `references/`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
 
 ## Workflow
 
