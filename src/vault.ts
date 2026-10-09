@@ -411,7 +411,7 @@ export class VaultModel {
   }
 
   /** Whether a link target names an existing non-note file, by path or by file name. */
-  private isFile(target: string): boolean {
+  isFile(target: string): boolean {
     const key = normalize(target).toLowerCase();
     return key.includes("/") ? this.filePaths.has(key) : this.fileNames.has(key);
   }

@@ -299,8 +299,8 @@ Use when `health` reports discover as overdue, or when you look for the
 next topic for `consolidate-knowledge`. It clusters the vault's notes
 outside archive/, knowledge/, sources/, reviews/, templates/, agents/, and
 categories/. The signals are the arXiv ids and DOIs that notes share, the
-dangling links and missing topic notes that they share, and mutual nearest
-neighbors from the vectors already in the qmd index (no model loads).
+dangling links (not an embed of an existing Base or image) and missing topic
+notes that they share, and mutual nearest neighbors from the vectors already in the qmd index (no model loads).
 Clusters of three notes or more are ranked: uncovered ones first, then those
 whose notes already link one note in knowledge/ (covered_by). Without a qmd
 index it skips the similarity signal and says so in qmd_notice.

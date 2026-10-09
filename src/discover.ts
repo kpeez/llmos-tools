@@ -8,8 +8,8 @@
  *    `reviews/`, `templates/`, `agents/`, and `categories/` (the inbox stays:
  *    it is raw material). Notes in `knowledge/` only mark coverage.
  * 2. Each candidate holds keys: the arXiv ids and DOIs in its text
- *    (`extractIds`), the wikilink targets that resolve to no note (dangling),
- *    and the `topics` whose topic note does not exist.
+ *    (`extractIds`), the wikilink targets that resolve to no note and name no
+ *    file (dangling; `![[Reviews.base#Project]]` is none), and the `topics` whose topic note does not exist.
  * 3. A key shared by two or more candidates links each pair of them with the
  *    weight ln(N / df): N candidates, df the notes that hold the key. A key
  *    held by more than `MAX_KEY_NOTES` notes is too generic and is ignored.
@@ -217,6 +217,8 @@ function noteKeys(model: VaultModel, note: Note): NoteKeys {
   const add = (kind: KeyKind, label: string): void => {
     const target = model.resolveLink(label, note);
     if (target === undefined) {
+      // An embed of a Base or an image names a file that exists: no dangling link.
+      if (model.isFile(label)) return;
       const lower = label.toLowerCase();
       if (!seen.has(`${kind}:${lower}`)) keys.push({ kind, label: lower });
       seen.add(`${kind}:${lower}`);

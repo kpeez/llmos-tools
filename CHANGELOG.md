@@ -3,6 +3,13 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- `discover` no longer counts an embed of an existing file (`![[Reviews.base#Project]]`,
+  an image) as a dangling link. Before, the project landing notes shared
+  their Base embeds as dangling links and ranked first as one 16-note cluster
+  that restated no work.
+
 ## 2.4.2 — 2026-10-08
 
 - `source add` writes an image whose whole alt text is one bracketed phrase,

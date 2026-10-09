@@ -209,6 +209,23 @@ describe("findClusters", () => {
     expect(findClusters(model(files))).toEqual([]);
   });
 
+  test("an embed of an existing Base or image is no dangling link", () => {
+    // Project landing notes embed `![[Reviews.base#Project]]`; the file exists, so it joins nothing.
+    const embeds = "![[Reviews.base#Project]]\n![[Decisions.base]]\n![[figures/plot.png]]\n";
+    const files: Record<string, string> = {
+      "templates/bases/Reviews.base": "views: []\n",
+      "templates/bases/Decisions.base": "views: []\n",
+      "figures/plot.png": "png",
+    };
+    for (const i of [1, 2, 3]) files[`projects/p${i}/p${i}.md`] = `# P${i}\n\n${embeds}`;
+    expect(findClusters(VaultModel.load(makeVault(files)))).toEqual([]);
+
+    // A target that names no file or note still counts as dangling.
+    for (const i of [1, 2, 3])
+      files[`projects/p${i}/p${i}.md`] = `# P${i}\n\n[[Gone A]] [[Gone B]]\n`;
+    expect(findClusters(VaultModel.load(makeVault(files)))).toHaveLength(1);
+  });
+
   test("a key held by more than MAX_KEY_NOTES notes links nothing", () => {
     expect(findClusters(group(MAX_KEY_NOTES, 0))).toHaveLength(1);
     expect(findClusters(group(MAX_KEY_NOTES + 1, 0))).toEqual([]);
