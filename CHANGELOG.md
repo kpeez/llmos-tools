@@ -32,6 +32,16 @@ Newest first. Versions are the `version` field shared by
     values and the text summary.
   - In the llmos vault, a note with a valid category and the inbox hub are not
     orphans. The second-vault vault (`--vault second-vault`) counts backlinks only.
+  - In the llmos vault, a note in the root `templates/` folder is no orphan and
+    no dead-end. An unresolved link from it is skipped only when its target is a
+    placeholder, a target with `{{` and `}}` (such as `{{title}}.base` or
+    `{{date:YYYY-MM-DD}}`). A template that links a real missing note still
+    reports it. A link from a template resolves its target, but does not count
+    as an inbound link, so a note that only a template links to stays an orphan.
+    Folders named `templates` elsewhere are checked like any note. The second-vault
+    vault reports templates as before.
+  - The schema audit no longer skips `archive/specs/`, a folder the vault
+    deleted. Notes under `archive/` are audited like any other note.
 
 ## 2.4.0 — 2026-10-08
 

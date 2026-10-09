@@ -75,11 +75,7 @@ export interface SchemaReport {
 }
 
 function skipped(parts: string[]): boolean {
-  return (
-    parts[0] === "templates" ||
-    (parts[0] === "archive" && parts[1] === "specs") ||
-    parts.some((part) => part.startsWith("."))
-  );
+  return parts[0] === "templates" || parts.some((part) => part.startsWith("."));
 }
 
 /**
@@ -179,8 +175,8 @@ function noteErrors(
 /**
  * Check every note in the model against the llmOS property contract and
  * return the violation messages and the number of notes checked. Each
- * `categories` value must name a hub in `categories/` exactly. Templates,
- * retired specs, and anything under a dot folder are skipped.
+ * `categories` value must name a hub in `categories/` exactly. Templates and
+ * anything under a dot folder are skipped.
  */
 export function collectErrors(model: VaultModel): SchemaReport {
   const errors: string[] = [];

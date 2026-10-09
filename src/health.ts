@@ -36,6 +36,16 @@ function hasValidCategory(note: Note, hubs: ReadonlySet<string>): boolean {
   return Array.isArray(categories) && categories.some((value) => isValidCategory(value, hubs));
 }
 
+/**
+ * Whether a note is a template: scaffolding in the root `templates/` folder.
+ * In the llmos vault such a note is never an orphan or a dead-end, its
+ * placeholder links (`{{title}}`) are not unresolved links, and its own links
+ * do not count as inbound links. A link to a template still resolves.
+ */
+function isTemplate(note: Note): boolean {
+  return note.path.startsWith("templates/");
+}
+
 /** The note whose `discovered` property records the last `discover` run. */
 export const DISCOVER_NOTE = "categories/Knowledge.md";
 /** The property of `DISCOVER_NOTE` that holds that day, as `YYYY-MM-DD`. */
@@ -149,6 +159,7 @@ export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHea
   return {
     ...model.linkFindings(
       (note) => llmos && (hasValidCategory(note, hubs) || note.path === INBOX_HUB),
+      (note) => llmos && isTemplate(note),
     ),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),
     stale_inbox: staleInbox(

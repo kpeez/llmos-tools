@@ -261,9 +261,9 @@
       },
       {
         "name": "old",
-        "path": "<vault>/archive/specs/old.md",
+        "path": "<vault>/archive/old.md",
         "properties": {},
-        "body": "# Retired spec\n"
+        "body": "# Archived note\n"
       },
       {
         "name": "dup",
@@ -1148,16 +1148,16 @@
         ]
       }
     },
-    "read archive/specs/old.md": {
+    "read archive/old.md": {
       "exit": 0,
       "json": {
         "name": "old",
-        "path": "<vault>/archive/specs/old.md",
+        "path": "<vault>/archive/old.md",
         "properties": {},
-        "body": "# Retired spec\n"
+        "body": "# Archived note\n"
       }
     },
-    "neighbors archive/specs/old.md": {
+    "neighbors archive/old.md": {
       "exit": 0,
       "json": {
         "note": "old",
@@ -1167,7 +1167,7 @@
         "topic_siblings": []
       }
     },
-    "subgraph1 archive/specs/old.md": {
+    "subgraph1 archive/old.md": {
       "exit": 0,
       "json": {
         "root": "old",
@@ -1178,20 +1178,20 @@
         "edges": []
       }
     },
-    "check archive/specs/old.md": {
+    "check archive/old.md": {
       "exit": 0,
       "json": {
-        "path": "archive/specs/old.md",
+        "path": "archive/old.md",
         "body_links": [],
         "property_links": [],
         "findings": []
       }
     },
-    "normalize archive/specs/old.md": {
+    "normalize archive/old.md": {
       "error": "MissingFrontmatter",
       "message": "note has no frontmatter block (must start with '---')"
     },
-    "subgraph2 archive/specs/old.md": {
+    "subgraph2 archive/old.md": {
       "exit": 0,
       "json": {
         "root": "old",
@@ -5869,9 +5869,9 @@
       "exit": 0,
       "json": {
         "name": "old",
-        "path": "<vault>/archive/specs/old.md",
+        "path": "<vault>/archive/old.md",
         "properties": {},
-        "body": "# Retired spec\n"
+        "body": "# Archived note\n"
       }
     },
     "by_name linker2": {
@@ -6557,7 +6557,7 @@
     "health.orphans": [
       "a-c.md",
       "a/linker.md",
-      "archive/specs/old.md",
+      "archive/old.md",
       "c/linker2.md",
       "fm/anchor.md",
       "fm/block-scalar.md",
@@ -6604,14 +6604,13 @@
       "reviews/daily/2026-10-01.md",
       "reviews/daily/2026-10-02.md",
       "skills/tool/SKILL.md",
-      "templates/skip.md",
       "x/yy/short.md",
       "z/uses-short.md"
     ],
     "health.dead_ends": [
       "AGENTS.md",
       "a/dup.md",
-      "archive/specs/old.md",
+      "archive/old.md",
       "b/dup.md",
       "categories/Projects.md",
       "fm/anchor.md",
@@ -6651,7 +6650,6 @@
       "notes/gamma.md",
       "reviews/daily/2026-10-02.md",
       "skills/tool/SKILL.md",
-      "templates/skip.md",
       "x/short.md",
       "x/yy/short.md"
     ],
@@ -6684,6 +6682,10 @@
     "health.schema_violations": [
       {
         "path": "AGENTS.md",
+        "message": "missing frontmatter"
+      },
+      {
+        "path": "archive/old.md",
         "message": "missing frontmatter"
       },
       {
@@ -6818,6 +6820,7 @@
     "health.exit": 1,
     "schema.errors": [
       "AGENTS.md: missing frontmatter",
+      "archive/old.md: missing frontmatter",
       "fm/bom.md: missing frontmatter",
       "fm/duplicate.md: unsupported frontmatter: frontmatter is not valid YAML (DUPLICATE_KEY: Map keys must be unique at line 2, column 1:)",
       "fm/empty-item.md: unsupported frontmatter: frontmatter is not supported: a list item is empty",
@@ -6846,6 +6849,6 @@
       "reviews/daily/2026-10-02.md: created must be an ISO date",
       "skills/tool/SKILL.md: invalid skill frontmatter"
     ],
-    "schema.checked": 63
+    "schema.checked": 64
   }
 }

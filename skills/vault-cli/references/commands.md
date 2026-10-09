@@ -413,9 +413,13 @@ note links to and that has no valid category. In the llmos vault, a note has a
 valid category when its `categories` names a hub note in categories/ (the
 hub's Base lists the note), so such a note is never an orphan. The inbox hub
 note (inbox/Inbox.md) is never an orphan and never a stale inbox item in the
-llmos vault. In the second-vault vault (--vault second-vault) only links count. Orphans, dead-ends, and the
-referrer of an unresolved link are vault-relative note paths with .md, because
-many notes share a file name.
+llmos vault. A note under the root templates/ folder is scaffolding in the llmos
+vault: it is never an orphan or a dead-end, its placeholder links (such as
+{{title}}) are not reported, and a link from it does not count as inbound. A
+link to a template still resolves. In the second-vault vault (--vault second-vault) only
+links count, and templates are checked like any note.
+Orphans, dead-ends, and the referrer of an unresolved link are vault-relative
+note paths with .md, because many notes share a file name.
 overdue_jobs lists the manual jobs (`discover`) that are overdue: the
 `discovered` date on categories/Knowledge.md (set by each `discover` run) is
 missing, not a valid past YYYY-MM-DD date, or more than 10 days old. Run the

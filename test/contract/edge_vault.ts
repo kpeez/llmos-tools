@@ -109,7 +109,7 @@ const NOTES: Record<string, string> = {
 
   // Schema audit.
   "templates/skip.md": "# Skipped\n",
-  "archive/specs/old.md": "# Retired spec\n",
+  "archive/old.md": "# Archived note\n",
   "skills/tool/SKILL.md": note("name: tool\n", "# Missing description\n"),
   "reviews/daily/2026-10-01.md": note(
     'created: 2026-10-01\nproject:\n  - "[[projects/llmos/llmos|llmOS]]"\n',

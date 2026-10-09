@@ -13,7 +13,10 @@ interface Report {
 async function health(files: Record<string, string>, args: string[] = []): Promise<Report> {
   const result = await cli(makeVault(files), ["health", "--json", ...args]);
   const report = JSON.parse(result.stdout) as Report;
-  // The shared test vault's daily template links a note it does not hold.
+  // The shared test vault's daily template links `[[Reviews]]`, a category hub
+  // these tests do not create. That is a real missing link, so both profiles
+  // report it; the helper drops it to keep each test's expectations about its
+  // own notes.
   report.unresolved_links = report.unresolved_links.filter(
     (link) => link.referrer !== "templates/daily-note.md",
   );
@@ -238,5 +241,83 @@ describe("health: notes that share a file name", () => {
     expect(report.dead_ends).toContain("projects/three/README.md");
     expect(report.dead_ends).not.toContain("projects/two/README.md");
     expect(report.unresolved_links).toEqual([{ referrer: "notes/linker.md", target: "Missing" }]);
+  });
+});
+
+describe("health: the templates folder is scaffolding in the llmos vault", () => {
+  const meeting = `${FRONT}# {{title}}\n`;
+  const project = `${FRONT}# {{title}}\n\n![[{{title}}.base]]\n[[{{date:YYYY-MM-DD}}]]\n`;
+
+  test("a template with no inbound link is no orphan", async () => {
+    const report = await health({ "templates/Meeting.md": meeting });
+    expect(report.orphans).not.toContain("templates/Meeting.md");
+  });
+
+  test("a template with no outgoing link is no dead-end", async () => {
+    const report = await health({ "templates/Meeting.md": meeting });
+    expect(report.dead_ends).not.toContain("templates/Meeting.md");
+  });
+
+  test("a template's placeholder links, such as a {{title}}.base embed, are no unresolved links", async () => {
+    const report = await health({ "templates/Project.md": project });
+    expect(report.unresolved_links).toEqual([]);
+  });
+
+  test("a note that links a template still resolves it", async () => {
+    const report = await health({
+      "templates/Meeting.md": meeting,
+      "notes/a.md": `${FRONT}[[Meeting]] [[Gone]]\n`,
+    });
+    expect(report.orphans).not.toContain("templates/Meeting.md");
+    expect(report.unresolved_links).toEqual([{ referrer: "notes/a.md", target: "Gone" }]);
+  });
+
+  test("a note outside templates/ with a placeholder link is still reported", async () => {
+    const report = await health({ "notes/a.md": `${FRONT}![[{{title}}.base]]\n` });
+    expect(report.unresolved_links).toEqual([{ referrer: "notes/a.md", target: "{{title}}.base" }]);
+  });
+
+  test("a template's real missing link is still reported", async () => {
+    const report = await health({
+      "templates/Meeting.md": `${FRONT}# {{title}}\n\n[[Missing Note]]\n`,
+    });
+    expect(report.unresolved_links).toEqual([
+      { referrer: "templates/Meeting.md", target: "Missing Note" },
+    ]);
+  });
+
+  test("a link from a template is no inbound link, so its target stays an orphan", async () => {
+    const report = await health({
+      "templates/Meeting.md": `${FRONT}# {{title}}\n\n[[Target]]\n`,
+      "notes/Target.md": `${FRONT}# Target\n`,
+    });
+    expect(report.orphans).toContain("notes/Target.md");
+    expect(report.unresolved_links).toEqual([]);
+  });
+
+  test("only the root templates/ folder is scaffolding, so other folders named templates are not skipped", async () => {
+    const report = await health({
+      "templates-foo.md": `${FRONT}# Foo\n`,
+      "projects/x/templates/note.md": `${FRONT}![[{{title}}.base]]\n`,
+    });
+    expect(report.orphans).toContain("templates-foo.md");
+    expect(report.dead_ends).toContain("templates-foo.md");
+    expect(report.orphans).toContain("projects/x/templates/note.md");
+    expect(report.unresolved_links).toEqual([
+      { referrer: "projects/x/templates/note.md", target: "{{title}}.base" },
+    ]);
+  });
+
+  test("the core profile reports a template's orphan, dead-end, and placeholder links", async () => {
+    const report = await health(
+      { "templates/Meeting.md": meeting, "templates/Project.md": project },
+      ["--vault", "second-vault"],
+    );
+    expect(report.orphans).toContain("templates/Meeting.md");
+    expect(report.dead_ends).toContain("templates/Meeting.md");
+    expect(report.unresolved_links).toEqual([
+      { referrer: "templates/Project.md", target: "{{date:YYYY-MM-DD}}" },
+      { referrer: "templates/Project.md", target: "{{title}}.base" },
+    ]);
   });
 });
