@@ -486,6 +486,17 @@ const isTargetEnd = (char: string): boolean =>
   isSpace(char) || char === "<" || char === ">" || char === ")";
 
 /**
+ * Drop the brackets around an image's alt text when the whole alt is one
+ * bracketed phrase with no inner brackets, such as arXiv's
+ * `[Uncaptioned image]`. Defuddle writes it as `![[Uncaptioned image]](url)`,
+ * which Obsidian and `health` read as an embed of a missing note, and which
+ * `pointImagesAtAssets` would not recognize as an image.
+ */
+export function unwrapBracketedAlts(text: string): string {
+  return text.replace(/!\[\[([^[\]\n]*)\]\]\(/g, "![$1](");
+}
+
+/**
  * Point Markdown images at their local copies: in `![alt](url)`,
  * `![alt](<url>)`, and `![alt](url "title")`, a `url` that equals a
  * downloaded image URL exactly becomes `assets/<name>`. Links and longer
@@ -653,7 +664,7 @@ export async function captureSource(
     useAsync: false,
   });
   let content = converted.content.trim();
-  content = pointImagesAtAssets(content, assets);
+  content = pointImagesAtAssets(unwrapBracketedAlts(content), assets);
   const sections = [`# ${converted.title || sourceId}`, content];
   if (figures.length > 0) {
     const entries = figures.map((figure) =>

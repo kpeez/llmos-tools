@@ -3,6 +3,14 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.4.2 — 2026-10-08
+
+- `source add` writes an image whose whole alt text is one bracketed phrase,
+  as arXiv's `[Uncaptioned image]` is, as a plain Markdown image
+  (`![Uncaptioned image](url)`), not as `![[Uncaptioned image]](url)`. Obsidian
+  and `health` read the old form as an unresolved embed. Existing captures are
+  frozen and keep the old form.
+
 ## 2.4.1 — 2026-10-08
 
 - `health` reports fewer false positives, and the schema audit drops a dead rule.

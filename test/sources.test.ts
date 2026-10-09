@@ -10,6 +10,7 @@ import {
   type Fetcher,
   networkFetcher,
   pointImagesAtAssets,
+  unwrapBracketedAlts,
 } from "../src/sources.ts";
 import { cli, makeVault, offline, TODAY } from "./helpers.ts";
 
@@ -359,6 +360,21 @@ describe("source add edge cases", () => {
     expect(note.body).toContain("![](assets/a.png)");
   });
 
+  test("an alt text in brackets, as arXiv writes it, becomes a plain image, not an embed", async () => {
+    const root = makeVault();
+    const html = `<html><body><article><p>Intro text of the page.</p>
+      <p><img alt="[Uncaptioned image]" src="https://example.org/u.png"> beside the text.</p>
+      ${figure("Figure 1: x", "a.png")}</article></body></html>`;
+    const network = memory({ [PAGE]: html, "https://example.org/a.png": PNG });
+    await cli(root, ["source", "add", PAGE], { fetch: network.fetch });
+    const [name] = sourceFolders(root);
+    const { body } = parse(
+      readFileSync(join(root, "sources", name as string, "source.md"), "utf8"),
+    );
+    expect(body).toContain("![Uncaptioned image](https://example.org/u.png)");
+    expect(body).not.toContain("[[");
+  });
+
   test("a failure while fetching figures leaves no folder and no staging behind", async () => {
     const root = makeVault();
     const network = memory({
@@ -584,15 +600,24 @@ describe("image links", () => {
     }
   });
 
+  test("only an alt that is one bracketed phrase loses its brackets", () => {
+    expect(unwrapBracketedAlts(`![[Uncaptioned image]](${URL_A})`)).toBe(
+      `![Uncaptioned image](${URL_A})`,
+    );
+    for (const same of ["![[note]]", "![[note]] (caption)", `![[Figure 1] Overview](${URL_A})`])
+      expect(unwrapBracketedAlts(same)).toBe(same);
+  });
+
   test("text built to make a backtracking pattern slow is handled in linear time", () => {
     for (const text of [
       "![a](".repeat(40_000),
       "![".repeat(40_000),
       "](".repeat(100_000),
       `![a](${URL_A}`.repeat(10_000),
+      "![[a".repeat(40_000),
     ]) {
       const started = performance.now();
-      pointImagesAtAssets(text, assets);
+      pointImagesAtAssets(unwrapBracketedAlts(text), assets);
       expect(performance.now() - started).toBeLessThan(1000);
     }
   });
