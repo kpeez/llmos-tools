@@ -18,6 +18,8 @@ import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } f
 // ADRs use proposed/accepted/superseded; other notes use the rest.
 export const STATUSES = new Set([
   "draft",
+  "backlog",
+  "todo",
   "active",
   "review",
   "done",
