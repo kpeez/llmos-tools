@@ -121,6 +121,41 @@ describe("read tools", () => {
     await close();
   });
 
+  test("read narrows to one section or the properties, and list reads a folder", async () => {
+    const root = vault({
+      "notes/gamma.md":
+        "---\nstatus: done\n---\n\n# Gamma\n\n## Results\n\nIt grew.\n\n### Detail\n\nTall.\n\n## Next\n\nPrune.\n",
+    });
+    const { client, close } = await connect(contextFor(root));
+    const section = JSON.parse(
+      (await client.call("read", { note: "gamma", section: "Results" })).text,
+    );
+    expect(section).toMatchObject({ section: "Results", properties: { status: "done" } });
+    expect(section.body).toBe("\nIt grew.\n\n### Detail\n\nTall.\n");
+    const missing = await client.call("read", { note: "gamma", section: "Methods" });
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toContain("# Gamma | ## Results | ### Detail | ## Next");
+    const head = JSON.parse(
+      (await client.call("read", { note: "gamma", properties_only: true })).text,
+    );
+    expect(head).not.toHaveProperty("body");
+    expect(head.properties.status).toBe("done");
+    const listed = JSON.parse((await client.call("list", { folder: "notes/" })).text);
+    expect(listed.map((note: { name: string }) => note.name).sort()).toEqual([
+      "alpha",
+      "beta",
+      "gamma",
+    ]);
+    expect(listed.every((note: object) => !("body" in note))).toBe(true);
+    const bodies = JSON.parse(
+      (await client.call("list", { folder: "inbox", properties_only: false })).text,
+    );
+    expect(bodies).toEqual([
+      expect.objectContaining({ name: "capture", body: expect.stringContaining("A loose idea.") }),
+    ]);
+    await close();
+  });
+
   test("an edit made outside the server is visible to the next read", async () => {
     const root = vault();
     const { client, close } = await connect(contextFor(root));
@@ -365,6 +400,17 @@ describe("hostile arguments are refused", () => {
     });
   }
 
+  test("list leaves out notes linked out of the vault", async () => {
+    const { root } = hostileVault();
+    const { client, close } = await connect(contextFor(root));
+    for (const folder of ["linkdir", "knowledge", "knowledge/linkdir"]) {
+      const result = await client.call("list", { folder, properties_only: false });
+      expect(result.isError).toBe(false);
+      expect(result.text).not.toContain("TOPSECRET");
+    }
+    await close();
+  });
+
   test("daily_append_thought refuses a daily note linked out of the vault", async () => {
     const { root, away } = hostileVault();
     mkdirSync(join(root, "reviews", "daily"), { recursive: true });
@@ -388,6 +434,12 @@ describe("hostile arguments are refused", () => {
     ["read", { note: "al\npha" }],
     ["read", { note: "a".repeat(1025) }],
     ["read", null],
+    ["read", { note: "alpha", section: "" }],
+    ["read", { note: "alpha", properties_only: "yes" }],
+    ["list", {}],
+    ["list", { folder: "../notes" }],
+    ["list", { folder: "/etc" }],
+    ["list", { folder: "notes", vault: "second-vault" }],
     ["subgraph", { note: "alpha", depth: 11 }],
     ["subgraph", { note: "alpha", depth: -1 }],
     ["subgraph", { note: "alpha", depth: 1.5 }],

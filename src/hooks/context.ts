@@ -96,7 +96,11 @@ function sessionContext(root: string, linked: [string, string] | null): string {
 }
 
 const MCP_LINE =
-  `When the ${SERVER_NAME} MCP server is connected, prefer its tools to the llmos-vault CLI: ` +
+  `When the ${SERVER_NAME} MCP server is connected, use its tools before Grep, Read, or the ` +
+  "llmos-vault CLI: search to find notes about a topic; read with section or " +
+  "properties_only when you need one heading or the frontmatter, not the whole note; list " +
+  "with a folder for the properties of every note there; neighbors or subgraph for links; " +
+  "set_property to change one property. All tools: " +
   `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
   "(they stamp updated and authors themselves).";
 

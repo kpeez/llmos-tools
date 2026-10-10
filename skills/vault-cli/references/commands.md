@@ -450,23 +450,27 @@ Example:
 ## `list`
 
 ```text
-Usage: llmos-vault list [--vault llmos|second-vault]
+Usage: llmos-vault list [--vault llmos|second-vault] [--folder PATH] [--properties-only]
 
 Print every note in the vault with its frontmatter and body as JSON.
 
-Use when an agent needs to enumerate or scan all notes -- e.g. finding
-every note missing a property before scripting a bulk decision.
+Use when an agent needs to enumerate or scan notes -- e.g. finding
+every note missing a property before scripting a bulk decision, or the
+status of every experiment in one project. --folder keeps the notes under
+one vault-relative folder; --properties-only leaves out the bodies.
 Do NOT use when you already know which note you want -- use `read`.
 
 Options:
-  --vault  Which registered vault to enumerate. Default: llmos.
+  --vault            Which registered vault to enumerate. Default: llmos.
+  --folder           Only the notes under this vault-relative folder, at any depth.
+  --properties-only  Leave out the body: print only the name, path, and properties.
 
 Example output:
   [{"name": "alpha", "path": "/vault/notes/alpha.md",
     "properties": {"topics": ["gardening"]}, "body": "# Alpha\n..."}]
 
 Example:
-  llmos-vault list --vault llmos
+  llmos-vault list --vault llmos --folder projects/llmos --properties-only
 ```
 
 ## `mcp`
@@ -551,13 +555,16 @@ Example:
 ## `read`
 
 ```text
-Usage: llmos-vault read <note> [--vault llmos|second-vault]
+Usage: llmos-vault read <note> [--vault llmos|second-vault] [--section HEADING] [--properties-only]
 
 Print one note's frontmatter and body as JSON.
 
 Use when an agent needs a note's current content or properties -- to
 inspect before editing, or to script a decision on a property value. Works
-with Obsidian closed.
+with Obsidian closed. --section prints only the text under one heading
+(its subsections included, the heading line left out) and adds a
+`section` key; a heading that is missing or named twice is an error that
+lists the note's headings. --properties-only leaves out the body.
 Do NOT use when you need every note in the vault -- use `list`, which walks
 the vault once instead of resolving names one at a time.
 
@@ -565,14 +572,16 @@ Arguments:
   note  Note basename (wikilink-style) or vault-relative path.
 
 Options:
-  --vault  Which registered vault to read from. Default: llmos.
+  --vault            Which registered vault to read from. Default: llmos.
+  --section          Print only the body under this heading, matched as a [[note#heading]] link matches it.
+  --properties-only  Leave out the body: print only the name, path, and properties.
 
 Example output:
   {"name": "alpha", "path": "/vault/notes/alpha.md",
    "properties": {"topics": ["gardening"]}, "body": "# Alpha\n..."}
 
 Example:
-  llmos-vault read alpha --vault llmos
+  llmos-vault read alpha --vault llmos --section Results
 ```
 
 ## `reindex`

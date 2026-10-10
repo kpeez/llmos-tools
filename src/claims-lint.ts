@@ -348,6 +348,26 @@ function sectionText(source: SourceText, heading: string): Section {
   return { ok: true, text: normalizeText(lines.join("\n")) };
 }
 
+/**
+ * The raw text of a note body under `heading`, as `sectionText` bounds it.
+ * A heading that is missing or named twice is an error that lists the
+ * body's headings, so the caller can pick one without reading the body.
+ */
+export function bodySection(body: string, heading: string): string {
+  const lines = body.split("\n");
+  const headings = headingsOf(lines);
+  const key = headingKey(heading);
+  const matches = headings.filter((h) => h.key === key);
+  if (matches.length !== 1) {
+    const listed = headings.map((h) => lines[h.line]?.trim()).join(" | ");
+    const problem = matches.length === 0 ? "no heading" : `${matches.length} headings`;
+    throw new Error(`the note has ${problem} named "${heading}"; its headings: ${listed}`);
+  }
+  const at = matches[0] as Heading;
+  const next = headings.find((h) => h.line > at.line && h.level <= at.level);
+  return lines.slice(at.line + 1, next ? next.line : lines.length).join("\n");
+}
+
 /** What is wrong with a source note's manifest: its text hash or its source ID. */
 function manifestProblem(note: Note): string | null {
   const { sha256_text: hash, source_id: id } = note.properties;

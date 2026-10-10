@@ -6,7 +6,15 @@
 /** The server name in the plugin's `.mcp.json`. */
 export const SERVER_NAME = "llmos";
 
-export const READ_TOOLS = ["read", "neighbors", "subgraph", "check", "health", "search"] as const;
+export const READ_TOOLS = [
+  "read",
+  "list",
+  "neighbors",
+  "subgraph",
+  "check",
+  "health",
+  "search",
+] as const;
 export const WRITE_TOOLS = ["daily_append_thought", "file_inbox", "set_property"] as const;
 
 /**

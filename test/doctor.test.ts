@@ -8,6 +8,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileSha256, recordHeartbeat } from "../src/heartbeat.ts";
+import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
 import { executable, isolatedEnv, makeVault, scratch, TOOLS, writeFiles } from "./helpers.ts";
 
@@ -125,7 +126,7 @@ describe("llmos-doctor", () => {
       expect(result.stdout).toContain(`PASS ${check}:`);
     }
     expect(result.stdout).toContain("(qmd 2.8.3");
-    expect(result.stdout).toContain("mcp lists 9 tools");
+    expect(result.stdout).toContain(`mcp lists ${READ_TOOLS.length + WRITE_TOOLS.length} tools`);
     expect(result.exitCode).toBe(0);
   });
 

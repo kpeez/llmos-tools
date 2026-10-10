@@ -3,6 +3,22 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.5.0 — 2026-10-10
+
+- Narrow reads, so agents need not read whole notes to answer small questions.
+  - `read --section HEADING` prints only the text under one heading, its
+    subsections included. A heading that is missing or named twice is an
+    error that lists the note's headings.
+  - `read --properties-only` and `list --properties-only` leave out the body.
+  - `list --folder PATH` keeps only the notes under one vault-relative folder.
+  - The MCP `read` tool takes `section` and `properties_only`. A new MCP
+    `list` tool returns the properties of every note under a required
+    `folder`; it leaves out notes linked out of the vault.
+- The session-start hook now routes agents to the MCP tools before `Grep` and
+  `Read`, by task: `search` to find notes, narrow `read` and `list` for
+  properties or one section, `neighbors` and `subgraph` for links. Before, it
+  only preferred the tools over the CLI, and agents almost never called them.
+
 ## 2.4.3 — 2026-10-09
 
 - `discover` no longer counts an embed of an existing file (`![[Reviews.base#Project]]`,

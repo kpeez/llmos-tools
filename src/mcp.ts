@@ -22,6 +22,7 @@
  */
 
 import { existsSync, statSync } from "node:fs";
+import { relative } from "node:path";
 import type { Readable, Writable } from "node:stream";
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { StdioServerTransport, serveStdio } from "@modelcontextprotocol/server/stdio";
@@ -146,6 +147,8 @@ function readTool(name: string, source: Command, extra: Partial<Tool> = {}): Too
 }
 
 function tools(): Tool[] {
+  const readCommand = command("read");
+  const listCommand = command("list");
   const subgraph = command("subgraph");
   const searchCommand = command("search");
   const health = command("health");
@@ -153,7 +156,54 @@ function tools(): Tool[] {
   const fileInbox = command("file-inbox");
   const setProperty = command("set-property");
   return [
-    readTool("read", command("read")),
+    readTool("read", readCommand, {
+      schema: z.strictObject({
+        note: line(1024).describe(help(readCommand, "note")),
+        section: line(500).optional().describe(help(readCommand, "section")),
+        properties_only: z.boolean().optional().describe(help(readCommand, "properties-only")),
+      }),
+      call(args, state) {
+        const root = rootOf(state);
+        const note = insideNote(state, root, args.note as string);
+        const values: Values = { note, "properties-only": args.properties_only === true };
+        if (args.section !== undefined) values.section = args.section as string;
+        return run(readCommand, values, state);
+      },
+    }),
+    {
+      name: "list",
+      command: listCommand,
+      schema: z.strictObject({
+        folder: line(1024).describe(help(listCommand, "folder")),
+        properties_only: z
+          .boolean()
+          .optional()
+          .describe(`${help(listCommand, "properties-only")} Default: true.`),
+      }),
+      annotations: READ,
+      note:
+        "In this server: folder is required and the bodies are left out unless " +
+        "properties_only is false, so one call reads the properties of a whole folder.",
+      async call(args, state) {
+        const root = rootOf(state);
+        const outcome = await run(
+          listCommand,
+          { folder: args.folder as string, "properties-only": args.properties_only !== false },
+          state,
+        );
+        // A symbolic link out of the vault is not a note this server reads.
+        const notes = (outcome.json as { path: string }[]).filter((note) => {
+          try {
+            realTarget(root, relative(root, note.path));
+            return true;
+          } catch (error) {
+            if (error instanceof WriteRefused) return false;
+            throw error;
+          }
+        });
+        return { json: notes };
+      },
+    },
     readTool("neighbors", command("neighbors")),
     readTool("subgraph", subgraph, {
       schema: z.strictObject({
@@ -286,7 +336,7 @@ function describe(tool: Tool): string {
 
 export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vault in $LLMOS_ROOT or ~/.config/llmos/config.json).
 Prefer them to the llmos-vault command line: arguments need no shell quoting, and the vault model and search models stay loaded.
-Read: read (one note), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
+Read: read (one note; section for one heading, properties_only for the frontmatter), list (the properties of every note under a folder), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated and authors themselves.
 Before creating or materially editing a note, follow the vault's AGENTS.md and agents/references/authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 

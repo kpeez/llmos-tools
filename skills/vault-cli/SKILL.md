@@ -8,8 +8,8 @@ description: Route vault operations to the llmos MCP tools when the server is co
 ## Prefer the MCP tools when they are connected
 
 The plugin's `llmos` MCP server offers the common verbs as typed tools for
-the llmOS vault: `read`, `neighbors`, `subgraph`, `check`, `health`, and
-`search` to look notes up; `daily_append_thought`, `file_inbox`, and
+the llmOS vault: `read`, `list`, `neighbors`, `subgraph`, `check`, `health`,
+and `search` to look notes up; `daily_append_thought`, `file_inbox`, and
 `set_property` to write. Claude Code lists them as
 `mcp__plugin_llmos_llmos__<tool>`, Codex as `mcp__llmos__<tool>`; their
 schemas load on demand. When they are present, use them instead of the
@@ -17,7 +17,12 @@ matching verb: arguments need no shell quoting, the vault model and the
 search models stay loaded, and the write tools stamp `updated` and `authors`
 themselves. Each tool's help is the help of the verb below.
 
-Use the CLI for everything else: the second-vault vault, `list`, `move`, `create`,
+Use them before `Grep` and `Read` too, because they return less text:
+`search` finds notes about a topic; `read` with `section` returns one
+heading's text and with `properties_only` only the frontmatter; `list` with
+a `folder` returns the properties of every note there in one call.
+
+Use the CLI for everything else: the second-vault vault, `list` of the whole vault, `move`, `create`,
 `append`, `remove-property`, `daily get-or-create`, `daily recent`,
 `reindex`, and any session where the server is not connected. A `setup` tool
 in its place means the CLI is not installed; run `setup-llmos`.

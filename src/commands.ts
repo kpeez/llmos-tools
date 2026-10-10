@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { homedir } from "node:os";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
 import { checkNote } from "./authoring.ts";
-import { summary as claimsSummary, lintClaims } from "./claims-lint.ts";
+import { bodySection, summary as claimsSummary, lintClaims } from "./claims-lint.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { DAILY_DIR, type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
@@ -212,39 +212,96 @@ async function qmdIndexState(
   }
 }
 
+/** Options that narrow a note's JSON to what the caller needs. */
+const PROPERTIES_ONLY: OptionSpec = {
+  type: "boolean",
+  default: false,
+  help: "Leave out the body: print only the name, path, and properties.",
+};
+
+/** A note's JSON with its body left out when `--properties-only` is set. */
+function narrowed(json: object, values: Values): object {
+  if (values["properties-only"] !== true) return json;
+  const { body: _body, ...rest } = json as { body?: string };
+  return rest;
+}
+
 const read: Command = {
   name: "read",
   summary: "Print one note's frontmatter and body as JSON.",
   description: `Use when an agent needs a note's current content or properties -- to
 inspect before editing, or to script a decision on a property value. Works
-with Obsidian closed.
+with Obsidian closed. --section prints only the text under one heading
+(its subsections included, the heading line left out) and adds a
+\`section\` key; a heading that is missing or named twice is an error that
+lists the note's headings. --properties-only leaves out the body.
 Do NOT use when you need every note in the vault -- use \`list\`, which walks
 the vault once instead of resolving names one at a time.`,
   arguments: [{ name: "note", help: "Note basename (wikilink-style) or vault-relative path." }],
-  options: vaultOption("Which registered vault to read from."),
+  options: {
+    ...vaultOption("Which registered vault to read from."),
+    section: {
+      type: "string",
+      metavar: "HEADING",
+      help: "Print only the body under this heading, matched as a [[note#heading]] link matches it.",
+    },
+    "properties-only": PROPERTIES_ONLY,
+  },
   exampleOutput: `{"name": "alpha", "path": "/vault/notes/alpha.md",
  "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}`,
-  example: "llmos-vault read alpha --vault llmos",
+  example: "llmos-vault read alpha --vault llmos --section Results",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
-    return { json: noteJson(model, model.resolveNote(str(values, "note"))) };
+    const note = model.resolveNote(str(values, "note"));
+    const json = noteJson(model, note);
+    if (values.section === undefined) return { json: narrowed(json, values) };
+    const heading = str(values, "section");
+    return { json: { ...json, section: heading, body: bodySection(note.body, heading) } };
   },
 };
+
+/** A vault-relative folder: relative, no `..` part, no control characters. */
+function folderPrefix(values: Values): string | null {
+  if (values.folder === undefined) return null;
+  const folder = str(values, "folder").replace(/\/+$/, "");
+  if (
+    folder === "" ||
+    folder.startsWith("/") ||
+    folder.split("/").includes("..") ||
+    CONTROL.test(folder)
+  ) {
+    throw new UsageError(`invalid folder ${JSON.stringify(values.folder)}`);
+  }
+  return `${folder}/`;
+}
 
 const list: Command = {
   name: "list",
   summary: "Print every note in the vault with its frontmatter and body as JSON.",
-  description: `Use when an agent needs to enumerate or scan all notes -- e.g. finding
-every note missing a property before scripting a bulk decision.
+  description: `Use when an agent needs to enumerate or scan notes -- e.g. finding
+every note missing a property before scripting a bulk decision, or the
+status of every experiment in one project. --folder keeps the notes under
+one vault-relative folder; --properties-only leaves out the bodies.
 Do NOT use when you already know which note you want -- use \`read\`.`,
   arguments: [],
-  options: vaultOption("Which registered vault to enumerate."),
+  options: {
+    ...vaultOption("Which registered vault to enumerate."),
+    folder: {
+      type: "string",
+      metavar: "PATH",
+      help: "Only the notes under this vault-relative folder, at any depth.",
+    },
+    "properties-only": PROPERTIES_ONLY,
+  },
   exampleOutput: `[{"name": "alpha", "path": "/vault/notes/alpha.md",
   "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}]`,
-  example: "llmos-vault list --vault llmos",
+  example: "llmos-vault list --vault llmos --folder projects/llmos --properties-only",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
-    return { json: model.notes.map((note) => noteJson(model, note)) };
+    const prefix = folderPrefix(values);
+    const notes =
+      prefix === null ? model.notes : model.notes.filter((n) => n.path.startsWith(prefix));
+    return { json: notes.map((note) => narrowed(noteJson(model, note), values)) };
   },
 };
 
