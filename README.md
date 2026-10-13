@@ -9,8 +9,11 @@ by Bun (`src/`, `bin/`). It replaced an earlier Python package
 
 ## Install the maintenance tools
 
-The `setup-llmos` skill installs the CLI. By hand, from a checkout or the
-plugin root, with `bun` on `PATH`:
+On a new host, `scripts/bootstrap.sh` from a checkout installs the CLI, sets
+the vault root, installs the plugin for each agent on `PATH`, and runs
+`llmos-doctor` (see the repository `README.md`). The `setup-llmos` skill also
+installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
+`PATH`:
 
 ```sh
 bun <checkout>/tools/scripts/install.ts

@@ -13,6 +13,11 @@ The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
 `<llmos-plugin-root>` means the directory two levels above this `SKILL.md`.
 The host needs `bun` on `PATH`.
 
+On a new host with a checkout of the repository,
+`<checkout>/tools/scripts/bootstrap.sh` does the install, the vault root, the
+plugin install for each agent on `PATH`, and the first doctor run. Then
+continue at the workflow below.
+
 Install or update the CLI from the plugin root:
 
 ```sh

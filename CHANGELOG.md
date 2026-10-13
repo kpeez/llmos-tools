@@ -3,6 +3,14 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- New `scripts/bootstrap.sh` sets up a host from a checkout in one command.
+  It installs the CLI, sets the vault root to `<checkout>/llmOS`, installs
+  the `llmos` plugin for Claude Code and Codex when they are on `PATH`, runs
+  `llmos-doctor`, and prints the steps that need a person. It keeps a root,
+  marketplace, or plugin that is already configured.
+
 ## 2.5.1 — 2026-10-13
 
 - The daily activity digest calls `github-copilot/claude-haiku-5.5`. The
