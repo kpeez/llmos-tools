@@ -306,21 +306,35 @@ function changed(before: Record<string, string>, after: Record<string, string>):
 }
 
 const KNOWLEDGE_NOTE = "categories/Knowledge.md";
+const REVIEWS_NOTE = "categories/Reviews.md";
 
 describe("health overdue_jobs", () => {
-  /** A vault with no finding when `front` is set: every note links and is linked. */
-  function cleanVault(front: string | null): string {
+  /**
+   * A vault with no finding when both records are current: every note links
+   * and is linked. `front` and `digest` are the frontmatter lines of the
+   * Knowledge and Reviews notes; null leaves that note out.
+   */
+  function cleanVault(
+    front: string | null,
+    digest: string | null = `digested: ${TODAY}\n`,
+  ): string {
     const head = '---\ncreated: "2026-10-01"\n---\n\n';
     const root = join(scratch("vault"), "llmOS");
     mkdirSync(join(root, ".obsidian"), { recursive: true });
+    const links = [front === null ? "" : " [[Knowledge]]", digest === null ? "" : " [[Reviews]]"];
     writeFiles(root, {
       "AGENTS.md": `${head}# Guide\n\n[[a]]\n`,
-      "notes/a.md": `${head}# A\n\n[[b]] [[AGENTS]]${front === null ? "" : " [[Knowledge]]"}\n`,
+      "notes/a.md": `${head}# A\n\n[[b]] [[AGENTS]]${links.join("")}\n`,
       "notes/b.md": `${head}# B\n\n[[a]]\n`,
     });
     if (front !== null) {
       writeFiles(root, {
         [KNOWLEDGE_NOTE]: `---\ncreated: "2026-10-01"\n${front}---\n\n# Knowledge\n\n[[a]]\n`,
+      });
+    }
+    if (digest !== null) {
+      writeFiles(root, {
+        [REVIEWS_NOTE]: `---\ncreated: "2026-10-01"\n${digest}---\n\n# Reviews\n\n[[a]]\n`,
       });
     }
     return root;
@@ -349,6 +363,44 @@ describe("health overdue_jobs", () => {
     );
     const text = await cli(root, ["health"]);
     expect(text.stdout.includes("overdue jobs (1): discover")).toBe(exitCode === 1);
+  });
+
+  test.each([
+    ["the note is missing", null, null, 1],
+    ["the property is missing", "", null, 1],
+    ["the date is 4 days old", "digested: 2026-10-03\n", "2026-10-03", 1],
+    ["the date is 3 days old", "digested: 2026-10-04\n", undefined, 0],
+    ["the date is 2 days ahead", "digested: 2026-10-09\n", "2026-10-09", 1],
+  ] as const)("the digest record: %s", async (_name, digest, lastSuccess, exitCode) => {
+    const root = cleanVault(`discovered: ${TODAY}\n`, digest);
+    const result = await cli(root, ["health", "--json"]);
+    expect(result.exitCode).toBe(exitCode);
+    expect(JSON.parse(result.stdout).overdue_jobs).toEqual(
+      exitCode === 0 ? [] : [{ job: "daily-activity", last_success: lastSuccess, max_age_days: 3 }],
+    );
+  });
+
+  test("the run record of the digest cannot be set, removed, or created by hand", async () => {
+    const root = cleanVault(`discovered: ${TODAY}\n`, "digested: 2026-10-01\n");
+    const before = snapshot(root);
+    for (const argv of [
+      ["set-property", REVIEWS_NOTE, "digested", TODAY],
+      ["remove-property", "Reviews", "digested"],
+    ]) {
+      const result = await cli(root, argv);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("only `llmos-daily-activity` sets it");
+    }
+    expect(snapshot(root)).toEqual(before);
+    const fresh = cleanVault(`discovered: ${TODAY}\n`, null);
+    const create = await cli(fresh, [
+      "create",
+      "categories/Reviews",
+      "--content",
+      `---\ndigested: ${TODAY}\n---\n\nR`,
+    ]);
+    expect(create.exitCode).toBe(1);
+    expect(existsSync(join(fresh, REVIEWS_NOTE))).toBe(false);
   });
 
   test("a note of the same name in another folder does not count", async () => {
@@ -556,7 +608,8 @@ describe("discover", () => {
     expect(properties.authors).toEqual(["claude"]);
     expect(properties.created).toBe("2026-10-01");
     const health = await cli(root, ["health", "--json"]);
-    expect(JSON.parse(health.stdout).overdue_jobs).toEqual([]);
+    const overdue = JSON.parse(health.stdout).overdue_jobs as { job: string }[];
+    expect(overdue.map((job) => job.job)).not.toContain("discover");
   });
 
   test("--no-record, a failed run, and a plain vault leave the vault as it was", async () => {

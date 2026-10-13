@@ -8,7 +8,10 @@
  * write between the `llmos-activity` markers. It is a script, not an agent.
  * It processes yesterday and today
  * (Los Angeles time), or one `--date`. A failed day writes nothing, and the
- * first failure stops the run with a non-zero exit.
+ * first failure stops the run with a non-zero exit. A run without `--date`
+ * that succeeds sets its run record (`DIGEST_PROPERTY` on `DIGEST_NOTE`),
+ * so `llmos-vault health` reports the digest when it stops running. With
+ * `--push` it then commits the notes it wrote and pushes them (`pushNotes`).
  *
  * It replaced the retired Python digest and keeps its contract: the markers
  * from `daily.ts`, the block hash (`blockHash`; the same `gh` output gives
@@ -54,11 +57,13 @@ import { basename, dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.ts";
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
+import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
 import { VaultRootError, vaultRoot } from "./root.ts";
 import { readText } from "./vault.ts";
+import { recordRun } from "./write.ts";
 
 export const LOCAL_TZ = "America/Los_Angeles";
-export const MODEL = "opencode-go/deepseek-v4-flash";
+export const MODEL = "github-copilot/claude-haiku-5.5";
 export const ORGS = ["kpeez", "linux-host-ucdavis"] as const;
 export const TRANSFORM_INSTRUCTIONS =
   "You are a deterministic text transformer inside a script. You receive JSON of one " +
@@ -535,6 +540,9 @@ export function parseOpencodeOutput(stdout: string): string {
       throw new DigestError("opencode run emitted an unsupported event");
     }
     if (type === "step_start" || type === "step_finish") continue;
+    if (type === "error") {
+      throw new DigestError(`opencode run emitted an error: ${opencodeError(line).slice(0, 500)}`);
+    }
     if (type !== "text")
       throw new DigestError(`opencode run emitted unsupported event type: ${type}`);
     if (part?.type !== "text" || typeof part.text !== "string") {
@@ -550,6 +558,24 @@ export function parseOpencodeOutput(stdout: string): string {
     );
   }
   return answers[0] as string;
+}
+
+/**
+ * The message of the first `error` event in `opencode run --format json`
+ * output, or "". opencode reports a failed model call there, not on stderr.
+ */
+export function opencodeError(stdout: string): string {
+  for (const line of stdout.split(/\r?\n/)) {
+    try {
+      const event = JSON.parse(line) as {
+        type?: unknown;
+        error?: { data?: { message?: unknown } };
+      };
+      const message = event?.type === "error" ? event.error?.data?.message : undefined;
+      if (typeof message === "string") return message;
+    } catch {}
+  }
+  return "";
 }
 
 /**
@@ -573,14 +599,50 @@ export function summarize(grouped: Grouped, day: Day, opencodeBin = "opencode"):
       throw new DigestError(`opencode run timed out after ${OPENCODE_TIMEOUT_MS / 1000} s`);
     }
     if (result.exitCode !== 0) {
-      throw new DigestError(
-        `opencode run failed: ${result.stderr.toString().trim().slice(0, 500)}`,
-      );
+      const reason = [result.stderr.toString().trim(), opencodeError(result.stdout.toString())]
+        .filter((part) => part !== "")
+        .join("; ");
+      throw new DigestError(`opencode run failed: ${reason.slice(0, 500)}`);
     }
     return parseOpencodeOutput(decodeUtf8(result.stdout, "opencode run"));
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+// --- Publishing -----------------------------------------------------------------------
+
+/** One `git` call in `cwd`. Throws a `DigestError` with git's stderr when it fails. */
+function git(cwd: string, args: string[]): void {
+  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  if (result.exitCode !== 0) {
+    const stderr = result.stderr.toString().trim().slice(0, 500);
+    throw new DigestError(`git ${args[0]} failed: ${stderr}`);
+  }
+}
+
+/**
+ * Commit `paths` (vault-relative) and push the checkout's branch. Only those
+ * paths are committed, so other edits in the checkout stay as they are. The
+ * branch is rebased on its upstream first; a conflict aborts the rebase and
+ * fails the run. With no change in `paths`, it only pulls and pushes, so a
+ * push that failed on an earlier night is retried.
+ */
+export function pushNotes(root: string, paths: string[], message: string): void {
+  if (paths.length > 0) {
+    git(root, ["add", "--", ...paths]);
+    const staged = Bun.spawnSync(["git", "diff", "--cached", "--quiet", "--", ...paths], {
+      cwd: root,
+    });
+    if (staged.exitCode !== 0) git(root, ["commit", "--quiet", "-m", message, "--", ...paths]);
+  }
+  try {
+    git(root, ["pull", "--quiet", "--rebase", "--autostash"]);
+  } catch (error) {
+    Bun.spawnSync(["git", "rebase", "--abort"], { cwd: root, stdout: "ignore", stderr: "ignore" });
+    throw error;
+  }
+  git(root, ["push", "--quiet"]);
 }
 
 // --- The note ----------------------------------------------------------------------------
@@ -710,18 +772,21 @@ Write the machine-owned ## Projects block of daily notes.
 options:
   -h, --help         show this help message and exit
   --root ROOT        vault root (default: $LLMOS_ROOT, then the llmOS config file)
-  --date YYYY-MM-DD  process only this date (default: yesterday and today, Los Angeles time)
+  --date YYYY-MM-DD  process only this date (default: yesterday and today, Los Angeles time);
+                     a --date run does not set the run record on categories/Reviews.md
+  --push             commit the notes this run wrote, rebase on the upstream, and push
 `;
 
 /** The command-line entry point. Returns the exit code. */
 export function main(argv: string[]): number {
-  let values: { root?: string; date?: string; help?: boolean };
+  let values: { root?: string; date?: string; push?: boolean; help?: boolean };
   try {
     ({ values } = parseArgs({
       args: argv,
       options: {
         root: { type: "string" },
         date: { type: "string" },
+        push: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
     }));
@@ -741,8 +806,27 @@ export function main(argv: string[]): number {
   try {
     const root = values.root || vaultRoot();
     const today = parseDay(localDate(Date.now())) as Day;
-    for (const day of only === undefined ? [today - 1, today] : [only]) {
-      console.log(`${isoDate(day)}: ${processDay(day, root)}`);
+    const days = only === undefined ? [today - 1, today] : [only];
+    const written: string[] = [];
+    for (const day of days) {
+      const outcome = processDay(day, root);
+      console.log(`${isoDate(day)}: ${outcome}`);
+      if (outcome === "created" || outcome === "updated") {
+        written.push(join("reviews", "daily", `${isoDate(day)}.md`));
+      }
+    }
+    if (only === undefined) {
+      try {
+        recordRun(root, DIGEST_NOTE, DIGEST_PROPERTY, isoDate(today), null);
+      } catch (error) {
+        throw new DigestError(
+          `cannot record the run on ${DIGEST_NOTE}: ${(error as Error).message}`,
+        );
+      }
+      written.push(DIGEST_NOTE);
+    }
+    if (values.push) {
+      pushNotes(root, written, `daily activity: ${days.map(isoDate).join(", ")}`);
     }
     return 0;
   } catch (error) {

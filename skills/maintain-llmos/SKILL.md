@@ -54,4 +54,4 @@ Commit routine work straight to `main`. Cut a branch only when a diff is worth r
 
 `llmos-audit` is read-only. It does not stamp `authors`/`updated` — the PostToolUse hook owns those.
 
-The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer. `llmos-vault discover` is a manual job: run it when `health` lists it under `overdue_jobs` (`references/automation.md`, "Run records and manual jobs").
+The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer. `llmos-vault discover` is a manual job: run it when `health` lists it under `overdue_jobs`. When `health` lists `daily-activity`, the nightly digest has stopped: read its journal on linux-host before anything else (`references/automation.md`, "Run records and manual jobs").

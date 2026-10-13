@@ -14,14 +14,7 @@ import { type Command, type Context, type OptionSpec, UsageError, type Values } 
 import { DAILY_DIR, type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
 import { renderReference, renderSkill } from "./docs.ts";
-import {
-  DISCOVER_NOTE,
-  DISCOVER_PROPERTY,
-  isClean,
-  qmdSection,
-  summary,
-  vaultHealth,
-} from "./health.ts";
+import { isClean, qmdSection, RUN_RECORDS, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { runObsidian } from "./obsidian.ts";
 import { detectProvider } from "./provider.ts";
@@ -103,22 +96,28 @@ function propertyKey(values: Values): string {
   return key;
 }
 
-const RUN_RECORD_REFUSAL = `is the run record of \`discover\`; only \`llmos-vault discover\` sets it`;
+/** The refusal for a property that only the job of `record` may write. */
+function runRecordRefusal(record: (typeof RUN_RECORDS)[number]): string {
+  return `'${record.property}' on ${record.note} is the run record of \`${record.job}\`; only \`${record.command}\` sets it`;
+}
 
 /**
- * Refuse the one property that only `discover` may write, in the llmOS vault:
- * the run record `health` reads. The note counts by its real path, so a link
- * to it is refused too.
+ * Refuse a property that only its job may write, in the llmOS vault: a run
+ * record `health` reads. The note counts by its real path, so a link to it is
+ * refused too.
  */
 function refuseRunRecord(vault: string, root: string, path: string, key: string): void {
-  if (vault !== "llmos" || key !== DISCOVER_PROPERTY) return;
-  let same = path === DISCOVER_NOTE;
-  try {
-    same ||= realTarget(root, path) === realTarget(root, DISCOVER_NOTE);
-  } catch {
-    // The record note is missing, or the path is outside the vault: nothing to protect here.
+  if (vault !== "llmos") return;
+  for (const record of RUN_RECORDS) {
+    if (key !== record.property) continue;
+    let same = path === record.note;
+    try {
+      same ||= realTarget(root, path) === realTarget(root, record.note);
+    } catch {
+      // The record note is missing, or the path is outside the vault: nothing to protect here.
+    }
+    if (same) throw new Error(runRecordRefusal(record));
   }
-  if (same) throw new Error(`'${key}' on ${DISCOVER_NOTE} ${RUN_RECORD_REFUSAL}`);
 }
 
 /** A property value: one line, no control characters except tabs. */
@@ -383,7 +382,7 @@ cheaper and returns the same one-hop data without traversal.`,
 const health: Command = {
   name: "health",
   summary:
-    "Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue manual jobs, and qmd index gaps.",
+    "Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps.",
   description: `Use when starting a vault-maintenance pass -- e.g. after a vault change --
 to see every hygiene defect in one headless call. Each section degrades
 independently: when qmd has no index or no such collection, the report
@@ -404,10 +403,12 @@ link to a template still resolves. In the second-vault vault (--vault second-vau
 links count, and templates are checked like any note.
 Orphans, dead-ends, and the referrer of an unresolved link are vault-relative
 note paths with .md, because many notes share a file name.
-overdue_jobs lists the manual jobs (\`discover\`) that are overdue: the
-\`discovered\` date on categories/Knowledge.md (set by each \`discover\` run) is
-missing, not a valid past YYYY-MM-DD date, or more than 10 days old. Run the
-job to clear it. qmd_unembedded
+overdue_jobs lists the jobs whose run record is missing, not a valid past
+YYYY-MM-DD date, or too old: \`discover\` (the \`discovered\` date on
+categories/Knowledge.md, max 10 days) and \`daily-activity\`, the nightly
+digest on linux-host (the \`digested\` date on categories/Reviews.md, max 3 days).
+Run the job to clear it; for \`daily-activity\`, read its journal on linux-host
+first. qmd_unembedded
 counts the documents in the whole qmd index that still need embedding (the
 plugin's Stop hook updates only keyword search); it is informational and does
 not change the exit code. Run \`reindex\` to embed them.
@@ -433,7 +434,8 @@ cheaper and does not walk the whole vault.`,
   exampleOutput: `{"orphans": ["notes/gamma.md"], "dead_ends": ["notes/beta.md"],
  "unresolved_links": [{"referrer": "notes/alpha.md", "target": "ghost"}],
  "schema_violations": [], "stale_inbox": [],
- "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10}], "qmd_gaps": [], "qmd_unembedded": 0,
+ "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10},
+  {"job": "daily-activity", "last_success": "2026-10-03", "max_age_days": 3}], "qmd_gaps": [], "qmd_unembedded": 0,
  "qmd_notice": null}`,
   example: "llmos-vault health --vault llmos --json",
   async run(values, context) {
@@ -538,7 +540,8 @@ Obsidian closed). With --template the running Obsidian app creates it, so
 the template is expanded; this exits 3 when Obsidian is not running.
 Do NOT use when the note already exists -- this refuses to overwrite a
 file; edit the note instead. In the llmos vault it refuses content that
-sets \`discovered\` on categories/Knowledge.md: only \`discover\` sets it.`,
+sets a run record (\`discovered\` on categories/Knowledge.md, \`digested\` on
+categories/Reviews.md): only its job sets it.`,
   arguments: [{ name: "name", help: 'Vault-relative note path (".md" appended if missing).' }],
   options: {
     ...vaultOption("Which registered vault to create the note in."),
@@ -553,14 +556,15 @@ sets \`discovered\` on categories/Knowledge.md: only \`discover\` sets it.`,
     const name = str(values, "name");
     const target = name.endsWith(".md") ? name : `${name}.md`;
     const content = values.content as string | undefined;
+    const record = RUN_RECORDS.find((entry) => entry.note === normalize(target));
     if (
       vault === "llmos" &&
-      normalize(target) === DISCOVER_NOTE &&
+      record !== undefined &&
       content !== undefined &&
       // Line endings as the vault model reads them, so CRLF cannot hide the block.
-      DISCOVER_PROPERTY in readSource(target, content.replace(/\r\n?/g, "\n")).properties
+      record.property in readSource(target, content.replace(/\r\n?/g, "\n")).properties
     ) {
-      throw new Error(`'${DISCOVER_PROPERTY}' on ${DISCOVER_NOTE} ${RUN_RECORD_REFUSAL}`);
+      throw new Error(runRecordRefusal(record));
     }
     const template = values.template === undefined ? undefined : templateName(values);
     newTarget(root, target); // both branches: the new note must stay inside the vault
@@ -643,9 +647,10 @@ untouched (exit 1).
 \`authors\` is append-only: setting it adds \`value\` to the existing list
 instead of overwriting it.
 Do NOT use when rewriting \`created\` -- it is immutable and this call
-exits with an error. In the llmos vault, the \`discovered\` property of
-categories/Knowledge.md is the run record of \`discover\`: this call
-refuses it, also through a link to that note.`,
+exits with an error. In the llmos vault, \`discovered\` on
+categories/Knowledge.md and \`digested\` on categories/Reviews.md are the
+run records of \`discover\` and the nightly digest: this call refuses them,
+also through a link to those notes.`,
   arguments: [
     { name: "note", help: "Note name (wikilink-style resolution) or vault-relative path." },
     { name: "key", help: "Property name." },
@@ -674,9 +679,10 @@ clearing a stale \`status\` flag. Writes the file directly (atomically), so
 it works with Obsidian closed. A property that is not set is reported and
 nothing is written.
 Do NOT use when targeting \`created\` -- it is immutable and this call exits
-with an error. In the llmos vault, the \`discovered\` property of
-categories/Knowledge.md is the run record of \`discover\`: this call
-refuses it, also through a link to that note.`,
+with an error. In the llmos vault, \`discovered\` on
+categories/Knowledge.md and \`digested\` on categories/Reviews.md are the
+run records of \`discover\` and the nightly digest: this call refuses them,
+also through a link to those notes.`,
   arguments: [
     { name: "note", help: "Note name (wikilink-style resolution) or vault-relative path." },
     { name: "key", help: "Property name to remove." },

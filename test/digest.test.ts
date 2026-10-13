@@ -26,6 +26,7 @@ import {
   OPENCODE_AGENT,
   parseGhJson,
   processDay,
+  pushNotes,
   readProjects,
   summarize,
   TRANSFORM_INSTRUCTIONS,
@@ -319,7 +320,7 @@ describe("summarize", () => {
     expect(summarize(grouped(), DAY, bin)).toBe("### Alpha Project");
     const dir = dirname(bin);
     expect(readFileSync(join(dir, "argv"), "utf8")).toBe(
-      "run\n--agent\nllmos-digest\n--format\njson\n--model\nopencode-go/deepseek-v4-flash\n",
+      "run\n--agent\nllmos-digest\n--format\njson\n--model\ngithub-copilot/claude-haiku-5.5\n",
     );
     const stdin = readFileSync(join(dir, "stdin"), "utf8");
     expect(stdin).toStartWith(`${TRANSFORM_INSTRUCTIONS}\n\n`);
@@ -384,6 +385,26 @@ describe("summarize", () => {
       "opencode run failed: provider unavailable",
     );
   });
+
+  test("a non-zero run reports the error event that opencode prints on stdout", () => {
+    const error = JSON.stringify({
+      type: "error",
+      error: { name: "APIError", data: { message: "subscription required", statusCode: 403 } },
+    });
+    expect(() => summarize(grouped(), DAY, fakeOpencode(error, 1))).toThrow(
+      "opencode run failed: subscription required",
+    );
+  });
+
+  test("an error event reports its message, with stderr and on exit 0", () => {
+    const error = JSON.stringify({ type: "error", error: { data: { message: "rate limited" } } });
+    expect(() => summarize(grouped(), DAY, fakeOpencode(error, 1, "warn: retrying\n"))).toThrow(
+      "opencode run failed: warn: retrying; rate limited",
+    );
+    expect(() => summarize(grouped(), DAY, fakeOpencode(error))).toThrow(
+      "opencode run emitted an error: rate limited",
+    );
+  });
 });
 
 describe("block integrity", () => {
@@ -446,4 +467,64 @@ test("gh output with a number that is not a safe integer fails instead of hashin
   for (const text of ['{"n": 1.0}', '{"n": 1e3}', '{"n": 9007199254740993}']) {
     expect(() => parseGhJson(text)).toThrow(DigestError);
   }
+});
+
+describe("pushNotes", () => {
+  const GIT_ENV = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "t",
+    GIT_AUTHOR_EMAIL: "t@example.com",
+    GIT_COMMITTER_NAME: "t",
+    GIT_COMMITTER_EMAIL: "t@example.com",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  function git(cwd: string, ...args: string[]): string {
+    const result = Bun.spawnSync(["git", ...args], { cwd, env: GIT_ENV, stderr: "pipe" });
+    if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+    return result.stdout.toString().trim();
+  }
+  /** A bare remote and two clones of it, each with the vault at `llmOS/`. */
+  function checkouts(): { remote: string; host: string; other: string } {
+    const dir = tempDir();
+    const remote = join(dir, "remote.git");
+    git(dir, "init", "--quiet", "--bare", "--initial-branch=main", remote);
+    const seed = join(dir, "seed");
+    git(dir, "clone", "--quiet", remote, seed);
+    write(join(seed, "llmOS", "reviews", "daily", "2026-07-15.md"), "old\n");
+    write(join(seed, "llmOS", "notes", "draft.md"), "draft\n");
+    git(seed, "add", ".");
+    git(seed, "commit", "--quiet", "-m", "seed");
+    git(seed, "push", "--quiet", "origin", "HEAD:main");
+    const [host, other] = [join(dir, "host"), join(dir, "other")];
+    for (const clone of [host, other]) {
+      git(dir, "clone", "--quiet", remote, clone);
+      // pushNotes runs git with this process's environment, so the identity lives in the clone.
+      git(clone, "config", "user.name", "t");
+      git(clone, "config", "user.email", "t@example.com");
+    }
+    return { remote, host, other };
+  }
+
+  test("commits only its paths, rebases on a moved remote, and pushes", () => {
+    const { remote, host, other } = checkouts();
+    write(join(other, "llmOS", "notes", "mac-host.md"), "from mac-host\n");
+    git(other, "add", ".");
+    git(other, "commit", "--quiet", "-m", "mac-host note");
+    git(other, "push", "--quiet");
+
+    const vault = join(host, "llmOS");
+    write(join(vault, "reviews", "daily", "2026-07-16.md"), "digest\n");
+    write(join(vault, "notes", "draft.md"), "unsaved work\n");
+    pushNotes(vault, ["reviews/daily/2026-07-16.md"], "daily activity: 2026-07-16");
+
+    expect(git(remote, "log", "--format=%s", "main")).toBe(
+      "daily activity: 2026-07-16\nkpm1 note\nseed",
+    );
+    expect(git(remote, "show", "--name-only", "--format=", "main")).toBe(
+      "llmOS/reviews/daily/2026-07-16.md",
+    );
+    expect(readFileSync(join(vault, "notes", "draft.md"), "utf8")).toBe("unsaved work\n");
+    expect(git(host, "status", "--porcelain")).toBe("M llmOS/notes/draft.md");
+  });
 });

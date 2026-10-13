@@ -1,6 +1,6 @@
 {
   "name": "llmos-vault",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "private": true,
   "type": "module",
   "description": "TypeScript vault core and CLI for the llmOS tools",
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@types/bun": "1.4.2",
+    "@types/bun": "1.4.3",
     "typescript": "7.0.2"
   }
 }

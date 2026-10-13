@@ -9,9 +9,10 @@
  * paths from the qmd store (`qmd.ts`), so this module stays synchronous and
  * never imports qmd.
  *
- * A manual job leaves its record in the vault, so every host that syncs the
- * vault sees it: `discover` sets the `discovered` date on the note
- * `DISCOVER_NOTE`. Only the llmOS profile has manual jobs.
+ * A job leaves its run record in the vault, so every host that syncs the
+ * vault sees it (`RUN_RECORDS`): `discover` sets the `discovered` date on
+ * `DISCOVER_NOTE`, and the nightly digest sets the `digested` date on
+ * `DIGEST_NOTE`. Only the llmOS profile has run records.
  */
 
 import { type Day, parseDay } from "./daily.ts";
@@ -56,12 +57,49 @@ export const DISCOVER_PROPERTY = "discovered";
  */
 export const DISCOVER_MAX_AGE_DAYS = 10;
 
+/** The note whose `digested` property records the last successful nightly digest run. */
+export const DIGEST_NOTE = "categories/Reviews.md";
+/** The property of `DIGEST_NOTE` that holds that day, as `YYYY-MM-DD`. */
+export const DIGEST_PROPERTY = "digested";
 /**
- * How many days after today a recorded date may lie: the hosts that run
- * `discover` and `health` can sit in time zones a day apart. A later date is
- * invalid.
+ * How old the last digest run may be, in days: the nightly cadence (1) plus
+ * 2 days of slack, for a failed nightly push from linux-host, where the timer runs.
  */
-export const DISCOVER_CLOCK_SKEW_DAYS = 1;
+export const DIGEST_MAX_AGE_DAYS = 3;
+
+/**
+ * How many days after today a recorded date may lie: the host that ran the
+ * job and the host that runs `health` can sit in time zones a day apart. A
+ * later date is invalid.
+ */
+export const RUN_RECORD_CLOCK_SKEW_DAYS = 1;
+
+/** A job whose last successful run is a date property on one note. */
+export interface RunRecord {
+  job: string;
+  /** The only command that may set the property. */
+  command: string;
+  note: string;
+  property: string;
+  maxAgeDays: number;
+}
+
+export const RUN_RECORDS: readonly RunRecord[] = [
+  {
+    job: "discover",
+    command: "llmos-vault discover",
+    note: DISCOVER_NOTE,
+    property: DISCOVER_PROPERTY,
+    maxAgeDays: DISCOVER_MAX_AGE_DAYS,
+  },
+  {
+    job: "daily-activity",
+    command: "llmos-daily-activity",
+    note: DIGEST_NOTE,
+    property: DIGEST_PROPERTY,
+    maxAgeDays: DIGEST_MAX_AGE_DAYS,
+  },
+];
 
 export interface OverdueJob {
   job: string;
@@ -132,24 +170,27 @@ function staleInbox(
 }
 
 /**
- * The manual jobs that are overdue for the llmOS profile: `discover` is when
- * its record is missing, not a valid `YYYY-MM-DD` date, in the future (the
- * record fails closed, beyond `DISCOVER_CLOCK_SKEW_DAYS`), or more than `DISCOVER_MAX_AGE_DAYS` days old.
+ * The jobs that are overdue for the llmOS profile: a job is overdue when its
+ * record is missing, not a valid `YYYY-MM-DD` date, in the future (the
+ * record fails closed, beyond `RUN_RECORD_CLOCK_SKEW_DAYS`), or more than its
+ * `maxAgeDays` old.
  */
 function overdueJobs(model: VaultModel, profile: Profile, today: Day): OverdueJob[] {
   if (profile !== "llmos") return [];
-  const value = model.notes.find((note) => note.path === DISCOVER_NOTE)?.properties[
-    DISCOVER_PROPERTY
-  ];
-  const text = typeof value === "string" ? value : null;
-  const day = text === null ? null : parseDay(text);
-  if (
-    day !== null &&
-    day - today <= DISCOVER_CLOCK_SKEW_DAYS &&
-    today - day <= DISCOVER_MAX_AGE_DAYS
-  )
-    return [];
-  return [{ job: "discover", last_success: text, max_age_days: DISCOVER_MAX_AGE_DAYS }];
+  return RUN_RECORDS.flatMap((record) => {
+    const value = model.notes.find((note) => note.path === record.note)?.properties[
+      record.property
+    ];
+    const text = typeof value === "string" ? value : null;
+    const day = text === null ? null : parseDay(text);
+    if (
+      day !== null &&
+      day - today <= RUN_RECORD_CLOCK_SKEW_DAYS &&
+      today - day <= record.maxAgeDays
+    )
+      return [];
+    return [{ job: record.job, last_success: text, max_age_days: record.maxAgeDays }];
+  });
 }
 
 /** Aggregate vault hygiene into one report. */

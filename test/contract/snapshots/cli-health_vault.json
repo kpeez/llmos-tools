@@ -654,6 +654,11 @@
         "job": "discover",
         "last_success": null,
         "max_age_days": 10
+      },
+      {
+        "job": "daily-activity",
+        "last_success": null,
+        "max_age_days": 3
       }
     ],
     "health.qmd_gaps": [],

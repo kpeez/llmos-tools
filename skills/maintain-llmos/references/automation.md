@@ -4,13 +4,15 @@ authors:
   - codex
   - claude
 created: 2026-07-15
-updated: 2026-10-08
+updated: 2026-10-13
 ---
 
 # Scheduled and manual jobs
 
 One scheduled job maintains llmOS: the evening daily activity digest. One
-manual job, `discover`, leaves a record in the vault (see "Run records and manual jobs").
+manual job is `discover`. Both leave a run record in the vault, and
+`llmos-vault health` reports a job whose record is too old (see "Run records
+and manual jobs").
 The digest is a script, not an agent — fetch, hash, one model call, verify, write — so it cannot
 drift, half-finish, or decide to do something else. It processes both today and
 yesterday on each run, because an evening pass cannot see work that lands after
@@ -23,7 +25,8 @@ ADR 0009). It writes only between the `llmos-activity` markers in
 never touches `## Thoughts`. It refuses to write a note whose markers are not
 exactly one start and one end.
 
-PR and issue text is untrusted. The model runs as an opencode agent with every
+PR and issue text is untrusted. The model is `github-copilot/claude-haiku-5.5`
+(`MODEL` in `digest.ts`). It runs as an opencode agent with every
 permission denied, so it has no shell, file, or network tools and can only
 return text. The digest accepts only a single text answer that links every PR
 and issue by its GitHub URL (repository and number, so one `#N` cannot stand
@@ -31,7 +34,7 @@ for two repositories), and it writes `<!--` from that answer as `&lt;!--`, so no
 can appear inside the block.
 
 There is no nightly closeout and no weekly synthesis (vault ADR 0010). Neither
-ever ran on a schedule. After a vault change, run `llmos-vault health` yourself. `health` can also report `discover` as overdue.
+ever ran on a schedule. After a vault change, run `llmos-vault health` yourself. `health` also reports `discover` or `daily-activity` when its run record is too old.
 
 ## Timer
 
@@ -46,7 +49,7 @@ Description=llmOS daily activity digest
 [Service]
 Type=oneshot
 Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/bin:/bin
-ExecStart=%h/.local/bin/llmos-daily-activity
+ExecStart=%h/.local/bin/llmos-daily-activity --push
 ```
 
 `~/.config/systemd/user/llmos-daily-activity.timer`:
@@ -71,15 +74,39 @@ holds an older standalone Bun that would run first.
 
 Enable it with `systemctl --user enable --now llmos-daily-activity.timer`. Read
 failures with `journalctl --user -u llmos-daily-activity`. The job needs `gh`
-authenticated with read access to both orgs, `opencode` authenticated for the
-pinned model, and the vault root in `~/.config/llmos/config.json` or
-`$LLMOS_ROOT`. A failed run exits non-zero and writes nothing for the failed
-day.
+authenticated with read access to both orgs, `opencode` authenticated with
+GitHub Copilot (`opencode auth list`), and the vault root in
+`~/.config/llmos/config.json` or `$LLMOS_ROOT`. A failed run exits non-zero, writes nothing for the failed
+day, and leaves the run record as it was. The journal line gives opencode's
+error message, for example a 403 from the model provider.
+
+Do not move the digest to a free OpenCode Zen model. The free tier refuses a
+request from an agent whose permissions are all denied, and the digest needs
+that agent so that PR text cannot reach a tool. Several free models may also
+keep prompts for training, and the prompts hold private-repository PR text.
+
+The digest writes notes on linux-host only, and Obsidian Git commits nothing on
+its own (every interval is 0). The timer therefore passes `--push`: after a
+successful run, the digest commits only the notes it wrote and the run
+record, with the message `daily activity: <dates>`. It then runs `git pull
+--rebase --autostash` and `git push` in the linux-host checkout. Other edits in
+that checkout stay uncommitted. A rebase conflict aborts the rebase and fails
+the run, and a failed push fails it too. The next night's run pushes again.
+The push uses the `gh` credential helper of the checkout's HTTPS remote, so
+it needs no SSH agent.
 
 ## Run records and manual jobs
 
-A manual job runs only when someone starts it, so a missed run makes no
-noise. Each run of `discover` therefore leaves a record in the vault. It sets
+A missed run makes no noise: a manual job runs only when someone starts it,
+and a failed timer run only writes to the journal of one host. Each job
+therefore leaves a record in the vault.
+
+Each successful digest run without `--date` sets `digested: YYYY-MM-DD` (the
+Los Angeles day of the run) and `updated` on `categories/Reviews.md`. A
+`--date` run, which re-processes one day, sets nothing. The digest never adds
+to `authors`.
+
+Each run of `discover` sets
 the property `discovered: YYYY-MM-DD` (the local day of the run) on
 `categories/Knowledge.md`. It also sets `updated` there. It adds the agent's
 name to `authors` only when it detects an agent harness (Claude Code, Codex,
@@ -94,7 +121,11 @@ and pushed like any note edit. After the git sync, `llmos-vault health` on any
 host reads it. A run on mac-host therefore counts on linux-host too.
 
 `health` has an `overdue_jobs` section for the `llmos` vault. It lists
-`discover` when any of these is true:
+`daily-activity` when `digested` on `categories/Reviews.md` is missing, not
+a valid date, more than 1 day after today, or more than 3 days before today
+(the nightly cadence plus 2 days of slack). On mac-host an entry can also mean
+that the nightly push from linux-host failed; run `health` on linux-host to tell the
+two apart. It lists `discover` when any of these is true:
 
 - `categories/Knowledge.md` or its `discovered` property is missing.
 - The value is not a valid `YYYY-MM-DD` date.

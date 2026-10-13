@@ -3,6 +3,26 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.5.1 — 2026-10-13
+
+- The daily activity digest calls `github-copilot/claude-haiku-5.5`. The
+  OpenCode Go subscription behind `opencode-go/deepseek-v4-flash` lapsed, and
+  every nightly run from 2026-10-08 to 2026-10-12 failed with a 403.
+- A failed `opencode run` now reports opencode's error event. opencode prints
+  that error on stdout, so the journal used to show only
+  `opencode run failed:` with no reason.
+- The digest records each successful run without `--date` as `digested:
+  YYYY-MM-DD` on `categories/Reviews.md`. `health` lists `daily-activity`
+  under `overdue_jobs` when that date is missing, invalid, more than 1 day
+  in the future, or more than 3 days old. `set-property`, `remove-property`, and `create` refuse that
+  property, as they refuse `discovered`.
+- `llmos-daily-activity --push` commits only the notes the run wrote and the
+  run record, rebases on the upstream, and pushes. The linux-host timer passes
+  it, so the digest reaches every host without a manual commit.
+- `tools/.tool-versions` pins Bun 1.4.3 for local builds and CI. `just hooks`
+  fails when `bun` is another version, because the committed bundles must
+  match CI's build.
+
 ## 2.5.0 — 2026-10-10
 
 - Narrow reads, so agents need not read whole notes to answer small questions.

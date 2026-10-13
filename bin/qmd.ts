@@ -10,4 +10,5 @@ const child = Bun.spawn([process.execPath, launcher, ...process.argv.slice(2)], 
 });
 const code = await child.exited;
 const signal = child.signalCode;
-process.exit(signal ? 128 + (constants.signals[signal] ?? 0) : code);
+const signalNumber = typeof signal === "number" ? signal : signal ? constants.signals[signal] : 0;
+process.exit(signal ? 128 + (signalNumber ?? 0) : code);

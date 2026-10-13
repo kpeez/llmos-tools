@@ -45,7 +45,10 @@ marketplace drift check, the type check, Biome, and `bun test` (with the
 contract snapshot tests), and it fails when a committed bundle
 (`dist/hooks.js`, or the MCP launcher `dist/mcp.js`) is stale. After changing
 `src/hooks/`, `src/mcp-launcher.ts`, or core code they import, run `just
-hooks` and commit the rebuilt bundles. Changing `hooks/hooks.json` means
+hooks` and commit the rebuilt bundles. `tools/.tool-versions` pins the Bun version for
+local builds and CI (`bun-version-file`); `just hooks` refuses another `bun`,
+because a bundle built by another version differs from CI's. To move Bun,
+change that file and the `@types/bun` version in `package.json` together. Changing `hooks/hooks.json` means
 every host must approve the Codex hooks again.
 
 The MCP server (`src/mcp.ts`, `llmos-vault mcp`) takes its arguments from a

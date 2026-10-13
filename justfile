@@ -31,9 +31,14 @@ contract-record:
 invariants +vaults:
     bun test/contract/invariants.ts {{vaults}}
 
+# Fail unless `bun` is the version in .tool-versions, which CI also reads: a
+# bundle built by another Bun version differs from CI's build.
+bun-version:
+    @test "$(bun --version)" = "$(sed -n 's/^bun //p' .tool-versions)" || { echo "bun $(bun --version) is not the pinned $(sed -n 's/^bun //p' .tool-versions) in tools/.tool-versions; run mise install from tools/" >&2; exit 1; }
+
 # Rebuild the committed plugin bundles: the hooks (dist/hooks.js, from
 # src/hooks/) and the MCP launcher (dist/mcp.js, from src/mcp-launcher.ts).
-hooks:
+hooks: bun-version
     bun run build:hooks
     bun run build:mcp
 

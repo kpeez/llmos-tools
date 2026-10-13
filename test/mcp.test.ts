@@ -247,9 +247,11 @@ describe("write tools stamp updated and authors", () => {
     expect(refused.text).toContain("only `llmos-vault discover` sets it");
     expect(other.isError).toBe(false);
     expect(properties(root, record).discovered).toBe("2026-09-01");
-    expect(health.overdue_jobs).toEqual([
-      { job: "discover", last_success: "2026-09-01", max_age_days: 10 },
-    ]);
+    expect(health.overdue_jobs).toContainEqual({
+      job: "discover",
+      last_success: "2026-09-01",
+      max_age_days: 10,
+    });
   });
 
   test("file_inbox files the note and stamps it and today's note", async () => {
