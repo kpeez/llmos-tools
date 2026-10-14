@@ -28,7 +28,7 @@ The two flags stop Bun from loading the session's project `.env` and
 
 | Event                    | Hook event      | Source        | Purpose                                                                                                     |
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart             | `session-start` | `context.ts`  | Supplies vault context inside the vault and repositories with linked vault docs                            |
+| SessionStart             | `session-start` | `context.ts`, `cloud.ts` | Supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links `.agents/docs` |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
@@ -44,6 +44,14 @@ other. A hook failure never blocks the tool call, and the hooks never import
 qmd (it would cost about 48 ms per call). Embedding is left to a hand-run
 `llmos-vault reindex`; `llmos-vault health` counts the documents that still
 need it.
+
+In a cloud session (`CLAUDE_CODE_REMOTE=true`), the session-start hook first
+runs `git pull --rebase` in the vault clone, with a 6-second limit. Then it
+links `<repository>/.agents/docs` to `<root>/projects/<repository name>` and
+adds `/.agents/docs` to the repository's `.git/info/exclude`. It never replaces
+an existing `.agents/docs`. A failed pull or a missing project folder is
+reported in the session context. The cloud environment's setup script must
+clone the vault and set its root; the hook does neither.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`

@@ -4,8 +4,10 @@
  * `hooks/hooks.json` runs `bun dist/hooks.js <event>` with the harness
  * payload on stdin. Each event keeps the output channel its harness reads:
  *
- * - `session-start`: plain stdout, which becomes session context. It then
- *   records a heartbeat for `llmos-doctor` (`src/heartbeat.ts`).
+ * - `session-start`: plain stdout, which becomes session context. In a cloud
+ *   session it first pulls the vault and links `.agents/docs`
+ *   (`src/hooks/cloud.ts`). It then records a heartbeat for `llmos-doctor`
+ *   (`src/heartbeat.ts`).
  * - `pre-tool-use`, `post-tool-use`: `hookSpecificOutput.additionalContext`
  *   JSON on stdout.
  * - `guard-bash`: exit code 2 with the reason on stderr denies the call.
@@ -16,7 +18,8 @@
  * nothing.
  */
 
-import { isDict, readPayload } from "./common.ts";
+import { cloudSetup } from "./cloud.ts";
+import { isDict, readPayload, resolvedRoot } from "./common.ts";
 import { preToolUse, sessionStart } from "./context.ts";
 import { checkCommand } from "./guard.ts";
 import { beat } from "./heartbeat.ts";
@@ -43,7 +46,10 @@ async function run(event: string | undefined): Promise<void> {
   switch (event) {
     case "session-start": {
       const data = await readPayload();
-      const context = sessionStart(data);
+      // Before the context: the link it creates lets sessionStart see the project.
+      const root = resolvedRoot();
+      const cloud = root === null ? null : cloudSetup(data, root);
+      const context = [sessionStart(data), cloud].filter(Boolean).join("\n");
       if (context) process.stdout.write(`${context}\n`);
       // After the output, and never able to change it: `llmos-doctor` reads
       // this record to prove the hooks run for this agent.

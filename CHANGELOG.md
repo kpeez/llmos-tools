@@ -5,6 +5,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- In a cloud session (`CLAUDE_CODE_REMOTE=true`), the session-start hook
+  pulls the vault clone and links the session's repository to its project
+  notes through `.agents/docs`. A cloud environment's setup script can clone
+  the vault once, and each session then starts with current notes and the
+  same `.agents/docs` link as a local checkout.
 - New `scripts/bootstrap.sh` sets up a host from a checkout in one command.
   It installs the CLI, sets the vault root to `<checkout>/llmOS`, installs
   the `llmos` plugin for Claude Code and Codex when they are on `PATH`, runs
