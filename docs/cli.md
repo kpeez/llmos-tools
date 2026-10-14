@@ -1,0 +1,49 @@
+# CLI and scripts
+
+This page is for people who run the llmOS CLI or its scripts.
+
+## Install
+
+On a new host, `scripts/bootstrap.sh` from a checkout installs the CLI, sets
+the vault root, installs the plugin for each agent on `PATH`, and runs
+`llmos-doctor` (see the [repository README](../../README.md)). The `setup-llmos` skill also
+installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
+`PATH`:
+
+```sh
+bun <checkout>/tools/scripts/install.ts
+```
+
+This copies `tools/` to `~/.local/share/llmos/<version>/`, installs its
+dependencies there, and links `llmos-vault`, `llmos-doctor`, `llmos-audit`,
+`llmos-daily-activity` (`src/digest.ts`), and `qmd` into `~/.local/bin/`. The
+`qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
+`package.json`); keep it the only `qmd` on `PATH`.
+
+## `llmos-vault`
+
+Every `llmos-vault` command resolves the vault root, runs a handler that
+returns a result, and prints JSON, so agents get predictable, parseable
+output for reads, listings, moves, links, daily notes, inbox filing, graph
+neighbors, search, and vault health checks. The command registry
+(`src/commands.ts`) is the one source of each command's help and of
+`skills/vault-cli/references/commands.md`, the routing table skills use to
+pick the right verb (`bun bin/llmos-vault.ts docs` renders it).
+
+Vault-root resolution lives in `src/root.ts`, which the CLI, the digest, the
+hooks, and the MCP server share, so they agree on where the vault is.
+
+## Scripts
+
+- **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
+  the CLI and `qmd` reachable, is the collection indexed, does the MCP server
+  start and list its tools, and have the installed plugin hooks run for each
+  agent.
+- **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
+- **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
+  daily notes from GitHub activity. Deterministic: fetch → hash → one model
+  call → verify → write. It runs the model as an opencode agent with every
+  tool denied.
+- **`scripts/`** — `install.ts`, the CLI install, and `gen-marketplaces.ts`,
+  which writes the marketplace catalogs at the repository root (`just gen`;
+  `just check` and CI fail when a catalog is stale).
