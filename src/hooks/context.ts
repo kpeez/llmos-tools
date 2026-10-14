@@ -79,7 +79,7 @@ function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
   return null;
 }
 
-function sessionContext(root: string, linked: [string, string] | null): string {
+export function sessionContext(root: string, linked: [string, string] | null): string {
   const references = joinPath(root, "agents", "references");
   const routes =
     `For durable vault work, read ${joinPath(root, "AGENTS.md")}, ` +

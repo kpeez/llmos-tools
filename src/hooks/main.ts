@@ -5,7 +5,8 @@
  * payload on stdin. Each event keeps the output channel its harness reads:
  *
  * - `session-start`: plain stdout, which becomes session context. In a cloud
- *   session it first pulls the vault and links `.agents/docs`
+ *   session it first pulls the vault and links `.agents/docs` in each attached
+ *   repository
  *   (`src/hooks/cloud.ts`). It then records a heartbeat for `llmos-doctor`
  *   (`src/heartbeat.ts`).
  * - `pre-tool-use`, `post-tool-use`: `hookSpecificOutput.additionalContext`
@@ -20,7 +21,7 @@
 
 import { cloudSetup } from "./cloud.ts";
 import { isDict, readPayload, resolvedRoot } from "./common.ts";
-import { preToolUse, sessionStart } from "./context.ts";
+import { preToolUse, sessionContext, sessionStart } from "./context.ts";
 import { checkCommand } from "./guard.ts";
 import { beat } from "./heartbeat.ts";
 import { stop, warn } from "./stop.ts";
@@ -49,7 +50,10 @@ async function run(event: string | undefined): Promise<void> {
       // Before the context: the link it creates lets sessionStart see the project.
       const root = resolvedRoot();
       const cloud = root === null ? null : cloudSetup(data, root);
-      const context = [sessionStart(data), cloud].filter(Boolean).join("\n");
+      // A cloud session's working folder holds several repositories, so the
+      // vault context applies even when the cwd itself is not linked.
+      const vault = sessionStart(data) ?? (cloud && root ? sessionContext(root, null) : null);
+      const context = [vault, cloud].filter(Boolean).join("\n");
       if (context) process.stdout.write(`${context}\n`);
       // After the output, and never able to change it: `llmos-doctor` reads
       // this record to prove the hooks run for this agent.

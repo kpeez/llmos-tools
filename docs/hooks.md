@@ -28,7 +28,7 @@ The two flags stop Bun from loading the session's project `.env` and
 
 | Event                    | Hook event      | Source        | Purpose                                                                                                     |
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart             | `session-start` | `context.ts`, `cloud.ts` | Supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links `.agents/docs` |
+| SessionStart             | `session-start` | `context.ts`, `cloud.ts` | Supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links `.agents/docs` in each attached repository |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
@@ -45,13 +45,20 @@ qmd (it would cost about 48 ms per call). Embedding is left to a hand-run
 `llmos-vault reindex`; `llmos-vault health` counts the documents that still
 need it.
 
-In a cloud session (`CLAUDE_CODE_REMOTE=true`), the session-start hook first
-runs `git pull --rebase` in the vault clone, with a 6-second limit. Then it
-links `<repository>/.agents/docs` to `<root>/projects/<repository name>` and
-adds `/.agents/docs` to the repository's `.git/info/exclude`. It never replaces
-an existing `.agents/docs`. A failed pull or a missing project folder is
-reported in the session context. The cloud environment's setup script must
-clone the vault and set its root; the hook does neither.
+In a cloud session (`CLAUDE_CODE_REMOTE=true`), the vault is an attached
+repository, checked out beside the session's code repositories (for example
+`/home/user/llmos` and `/home/user/agent-toolbox`). The cloud's GitHub proxy
+serves only attached repositories, so this is how a cloud session can push
+vault notes. The session-start hook first runs `git pull --rebase origin main`
+in the vault checkout, with a 6-second limit. Then it links
+`<repository>/.agents/docs` to `<root>/projects/<repository name>` for each
+repository beside the vault checkout and for the session's project, and adds
+`/.agents/docs` to each repository's `.git/info/exclude`. It never replaces an
+existing `.agents/docs`. The context tells the agent to push vault notes to
+`main` (`git push origin HEAD:main`), not to the session branch. A failed pull
+or a missing project folder is reported in the context. The cloud
+environment's setup script must set the vault root and install the plugin;
+the hook does neither.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`
