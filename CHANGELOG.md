@@ -3,13 +3,14 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## Unreleased
+## 2.6.0 — 2026-10-15
 
 - `check` and the PostToolUse authoring check report a hard-wrapped
   paragraph or list item (`hard-wrapped-paragraph`). Obsidian shows every
   single newline as a line break, so agents that wrapped prose at 80 columns
   wrote notes that read as ragged broken lines. Block quotes, callouts,
-  tables, code, and hard line breaks keep their lines.
+  tables, code, hard line breaks, and the digest's `llmos-activity` block
+  keep their lines.
 - In a cloud session (`CLAUDE_CODE_REMOTE=true`), the vault is an attached
   repository: the cloud's GitHub proxy serves only attached repositories, so
   a vault cloned by a setup script cannot push. The session-start hook pulls

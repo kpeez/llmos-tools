@@ -10,6 +10,7 @@
 import type { MicromarkToken, Rule } from "markdownlint";
 import { lint } from "markdownlint/sync";
 import { blankCodeSpans } from "./code-spans.ts";
+import { MARKER_END, MARKER_START } from "./daily.ts";
 
 export interface MarkdownFinding {
   code: string;
@@ -53,14 +54,31 @@ function wrappedParagraphLines(tokens: readonly MicromarkToken[], lines: number[
   return lines;
 }
 
+/** Lines inside a daily note's `llmos-activity` block, which only the digest writes. */
+function activityBlockLines(tokens: readonly MicromarkToken[]): Set<number> {
+  const owned = new Set<number>();
+  let start: number | undefined;
+  for (const token of tokens) {
+    // markdownlint blanks HTML comments in `params.lines`, so read the markers from tokens.
+    if (token.type !== "htmlFlow") continue;
+    if (token.text.startsWith(MARKER_START)) start = token.startLine;
+    if (token.text.startsWith(MARKER_END) && start !== undefined) {
+      for (let line = start; line <= token.endLine; line++) owned.add(line);
+      start = undefined;
+    }
+  }
+  return owned;
+}
+
 const hardWrappedParagraph: Rule = {
   names: [WRAP_CODE],
   description: "A paragraph or list item must be one line, because Obsidian shows each newline",
   tags: ["obsidian"],
   parser: "micromark",
   function(params, onError) {
+    const machineOwned = activityBlockLines(params.parsers.micromark.tokens);
     for (const lineNumber of wrappedParagraphLines(params.parsers.micromark.tokens)) {
-      onError({ lineNumber });
+      if (!machineOwned.has(lineNumber)) onError({ lineNumber });
     }
   },
 };

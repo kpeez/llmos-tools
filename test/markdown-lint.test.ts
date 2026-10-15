@@ -66,6 +66,13 @@ describe("check Markdown correctness", () => {
     ]);
   });
 
+  test("the machine-owned activity block of a daily note is not reported", async () => {
+    const text =
+      "---\nstatus: active\n---\n\n## Projects\n\n<!-- llmos-activity:start hash=abc -->\n" +
+      "- digest line\n  wrapped\n<!-- llmos-activity:end -->\n\nThought\nwrapped.\n";
+    expect(await found(text)).toEqual([["hard-wrapped-paragraph", 12]]);
+  });
+
   test("hard line breaks, quotes, tables, and code keep their newlines", async () => {
     const text =
       "# T\n\nHard  \nbreak and\\\nescape.\n\n> quoted\n> source\n\n" +
