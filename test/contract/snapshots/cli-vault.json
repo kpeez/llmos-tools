@@ -743,7 +743,7 @@
       }
     },
     "check notes/messy.md": {
-      "exit": 0,
+      "exit": 1,
       "json": {
         "path": "notes/messy.md",
         "body_links": [
@@ -752,7 +752,14 @@
         "property_links": [
           "Knowledge"
         ],
-        "findings": []
+        "findings": [
+          {
+            "code": "hard-wrapped-paragraph",
+            "line": 11,
+            "message": "This paragraph or list item is hard-wrapped; Obsidian shows each newline as a line break. Put the whole paragraph or item on one line.",
+            "target": ""
+          }
+        ]
       }
     },
     "normalize notes/messy.md": "---\nauthors:\n  - claude\ncategories:\n  - \"[[Knowledge]]\"\ncreated: 2026-07-01\nupdated: 2026-07-17\n---\n\n# Messy fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.   \n",
@@ -817,7 +824,7 @@
       }
     },
     "check notes/normalized.md": {
-      "exit": 0,
+      "exit": 1,
       "json": {
         "path": "notes/normalized.md",
         "body_links": [
@@ -826,7 +833,14 @@
         "property_links": [
           "Knowledge"
         ],
-        "findings": []
+        "findings": [
+          {
+            "code": "hard-wrapped-paragraph",
+            "line": 13,
+            "message": "This paragraph or list item is hard-wrapped; Obsidian shows each newline as a line break. Put the whole paragraph or item on one line.",
+            "target": ""
+          }
+        ]
       }
     },
     "normalize notes/normalized.md": "---\nauthors:\n  - claude\ncategories:\n  - \"[[Knowledge]]\"\ncreated: 2026-07-01\nstatus: active\nupdated: 2026-07-17\n---\n\n# Normalized fixture note\n\nBody content, including a wikilink to [[Some Other Note]] that must survive\nround-tripping untouched.\n",

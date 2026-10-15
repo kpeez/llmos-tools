@@ -5,8 +5,7 @@ created: 2026-10-08
 
 # Example primate faces
 
-The numbers below come from the [[sources/example-study-v1/source|example study]]
-and the [[sources/second-study-v1/source|second study]].
+The numbers below come from the [[sources/example-study-v1/source|example study]] and the [[sources/second-study-v1/source|second study]].
 
 > [!fact] drafted
 > The example dataset holds 6280 face images of 34 individuals.

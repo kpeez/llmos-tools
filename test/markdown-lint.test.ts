@@ -56,6 +56,23 @@ describe("check Markdown correctness", () => {
     expect(await found(text)).toEqual([]);
   });
 
+  test("a hard-wrapped paragraph or list item is reported at its first line", async () => {
+    const text =
+      "# T\n\nOne line\nwrapped here.\n\n- item one\n  continues\n- [[a|b]] alone\n\n1. **Bold\n   wrap.** Rest.\n\nWhole line.\n";
+    expect(await found(text)).toEqual([
+      ["hard-wrapped-paragraph", 3],
+      ["hard-wrapped-paragraph", 6],
+      ["hard-wrapped-paragraph", 10],
+    ]);
+  });
+
+  test("hard line breaks, quotes, tables, and code keep their newlines", async () => {
+    const text =
+      "# T\n\nHard  \nbreak and\\\nescape.\n\n> quoted\n> source\n\n" +
+      `${TABLE}| 1 | 2 |\n\n\`\`\`\ncode\nlines\n\`\`\`\n`;
+    expect(await found(text)).toEqual([]);
+  });
+
   test("line numbers count the frontmatter lines", async () => {
     const text = "---\nstatus: active\ntopics:\n  - a\n---\n\n[x]()\n";
     expect(await found(text)).toEqual([["empty-link", 7]]);

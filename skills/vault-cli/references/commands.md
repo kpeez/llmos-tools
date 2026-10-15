@@ -70,9 +70,11 @@ Reports body links separately from frontmatter links, plus the first
 unlinked .md reference to each known target (code unlinked-note). It also
 reports Markdown that makes Obsidian render the note wrongly: a table row
 with the wrong number of cells (table-column-count), an empty link
-(empty-link), a reversed link (reversed-link), and an unescaped alias pipe
-in a table wikilink, which splits the cell (table-wikilink-pipe; write
-[[target\|label]]). Notes under sources/ and dot folders get no Markdown
+(empty-link), a reversed link (reversed-link), an unescaped alias pipe in
+a table wikilink, which splits the cell (table-wikilink-pipe; write
+[[target\|label]]), and a paragraph or list item split over several lines,
+which Obsidian shows as broken lines (hard-wrapped-paragraph; block quotes
+keep their lines). Notes under sources/ and dot folders get no Markdown
 findings. Exits 1 when findings need review, 0 otherwise. Never rewrites
 content; works with Obsidian closed. This is a conservative authoring aid,
 not a style linter: code examples, missing files, and ambiguous filenames

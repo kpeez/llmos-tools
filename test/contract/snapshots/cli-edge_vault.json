@@ -73,12 +73,6 @@
     "check fm/nested-link.md": [
       "properties-python-cannot-read"
     ],
-    "check links/alias.md": [
-      "message-quotes-json"
-    ],
-    "check notes/references.md": [
-      "message-quotes-json"
-    ],
     "check notes/𝔘nicode.md": [
       "message-quotes-json"
     ],
@@ -3925,6 +3919,12 @@
             "line": 23,
             "target": "llmOS",
             "message": "Existing note reference \"llmOS.md\": link to \"llmOS\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "hard-wrapped-paragraph",
+            "line": 7,
+            "message": "This paragraph or list item is hard-wrapped; Obsidian shows each newline as a line break. Put the whole paragraph or item on one line.",
+            "target": ""
           }
         ]
       }
@@ -4945,6 +4945,12 @@
             "line": 23,
             "target": "llmOS",
             "message": "Existing note reference \"llmOS.md\": link to \"llmOS\" using the note title or a natural phrase, not the filename."
+          },
+          {
+            "code": "hard-wrapped-paragraph",
+            "line": 7,
+            "message": "This paragraph or list item is hard-wrapped; Obsidian shows each newline as a line break. Put the whole paragraph or item on one line.",
+            "target": ""
           }
         ]
       }

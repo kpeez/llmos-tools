@@ -1,9 +1,10 @@
 /**
  * Markdown defects that make Obsidian render a note wrongly: a table row with
- * the wrong number of cells, an empty link, a reversed link, and an
- * unescaped alias pipe in a table wikilink. This is not a style linter.
- * The first three rules come from markdownlint; the pipe rule is a custom
- * markdownlint rule, because only Obsidian splits a cell at `[[a|b]]`.
+ * the wrong number of cells, an empty link, a reversed link, an unescaped
+ * alias pipe in a table wikilink, and a hard-wrapped paragraph. This is not a
+ * style linter. The first three rules come from markdownlint; the other two
+ * are custom markdownlint rules, because only Obsidian splits a cell at
+ * `[[a|b]]` and shows every single newline as a line break.
  */
 
 import type { MicromarkToken, Rule } from "markdownlint";
@@ -17,12 +18,51 @@ export interface MarkdownFinding {
 }
 
 const PIPE_CODE = "table-wikilink-pipe";
+const WRAP_CODE = "hard-wrapped-paragraph";
 
 const CODES: Record<string, string> = {
   MD056: "table-column-count",
   MD042: "empty-link",
   MD011: "reversed-link",
   [PIPE_CODE]: PIPE_CODE,
+  [WRAP_CODE]: WRAP_CODE,
+};
+
+const HARD_BREAKS = new Set(["hardBreakTrailing", "hardBreakEscape"]);
+
+/** Whether inline tokens hold a line ending that is not a hard break, inside emphasis or links too. */
+function hasSoftBreak(tokens: readonly MicromarkToken[]): boolean {
+  return tokens.some(
+    (token, i) =>
+      (token.type === "lineEnding" && !HARD_BREAKS.has(tokens[i - 1]?.type ?? "")) ||
+      hasSoftBreak(token.children),
+  );
+}
+
+/** Start lines of paragraphs with a soft line ending, outside block quotes. */
+function wrappedParagraphLines(tokens: readonly MicromarkToken[], lines: number[] = []): number[] {
+  for (const token of tokens) {
+    // A quoted source keeps its own line breaks (see the schema's quote rule).
+    if (token.type === "blockQuote") continue;
+    if (token.type === "paragraph") {
+      if (hasSoftBreak(token.children)) lines.push(token.startLine);
+      continue;
+    }
+    wrappedParagraphLines(token.children, lines);
+  }
+  return lines;
+}
+
+const hardWrappedParagraph: Rule = {
+  names: [WRAP_CODE],
+  description: "A paragraph or list item must be one line, because Obsidian shows each newline",
+  tags: ["obsidian"],
+  parser: "micromark",
+  function(params, onError) {
+    for (const lineNumber of wrappedParagraphLines(params.parsers.micromark.tokens)) {
+      onError({ lineNumber });
+    }
+  },
 };
 
 // A wikilink or embed whose target or label part holds a pipe not preceded by a backslash.
@@ -65,8 +105,15 @@ const tableWikilinkPipe: Rule = {
 export function markdownFindings(text: string): MarkdownFinding[] {
   const results = lint({
     strings: { note: text },
-    config: { default: false, MD056: true, MD042: true, MD011: true, [PIPE_CODE]: true },
-    customRules: [tableWikilinkPipe],
+    config: {
+      default: false,
+      MD056: true,
+      MD042: true,
+      MD011: true,
+      [PIPE_CODE]: true,
+      [WRAP_CODE]: true,
+    },
+    customRules: [tableWikilinkPipe, hardWrappedParagraph],
   }).note;
   const pipeLines = new Set<number>();
   for (const r of results ?? []) if (r.ruleNames[0] === PIPE_CODE) pipeLines.add(r.lineNumber);
@@ -94,6 +141,8 @@ function describe(
       return `Empty link destination${r.errorContext ? ` in ${r.errorContext}` : ""}; give the link a target or remove the link syntax.`;
     case "reversed-link":
       return `Reversed link syntax${r.errorContext ? ` ${r.errorContext}` : ""}${detail}; write [text](target), not (text)[target].`;
+    case WRAP_CODE:
+      return "This paragraph or list item is hard-wrapped; Obsidian shows each newline as a line break. Put the whole paragraph or item on one line.";
     default:
       return r.errorDetail ?? r.ruleDescription;
   }
