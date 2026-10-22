@@ -3,7 +3,7 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
-## 2.7.0 — 2026-10-22
+## 2.6.1 — 2026-10-22
 
 - The CLI's Bun project (`package.json`, `bun.lock`, `src/`, `bin/`,
   `test/`, `scripts/`, `justfile`) moved from the plugin root to `cli/`.

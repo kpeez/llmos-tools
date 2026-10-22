@@ -200,7 +200,7 @@ Linux, and Claude activation says nothing about Codex.
   before replacing them. Changes to an existing installation may require the
   provider's update command and a fresh session. Claude Code copies a local
   marketplace's plugin with its gitignored files, so a `tools/cli/node_modules`
-  or a pre-2.7.0 `tools/node_modules` in the checkout puts symbolic links in
+  or a pre-2.6.1 `tools/node_modules` in the checkout puts symbolic links in
   the plugin cache, and Claude Desktop then does not copy the plugin to SSH
   hosts. On a host that Claude Desktop reaches over SSH, use the GitHub source
   (`kpeez/llmos`), or remove those folders before the plugin update.

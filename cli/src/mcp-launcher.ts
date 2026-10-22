@@ -38,7 +38,7 @@ export function installedServer(env: Env): { entry: string } | { reason: string 
   } catch {
     return { reason: `the llmOS CLI is not installed (no ${link})` };
   }
-  // `<install>/cli/bin/llmos-vault.ts` (`<install>/bin/` before 2.7.0); an install from before the server lacks src/mcp.ts.
+  // `<install>/cli/bin/llmos-vault.ts` (`<install>/bin/` before 2.6.1); an install from before the server lacks src/mcp.ts.
   if (!existsSync(join(dirname(dirname(entry)), "src", "mcp.ts"))) {
     return { reason: `the installed llmOS CLI (${entry}) predates the MCP server` };
   }
