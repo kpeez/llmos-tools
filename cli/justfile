@@ -1,4 +1,4 @@
-# Task runner for the llmOS tools (run from tools/; `bun install --frozen-lockfile` first).
+# Task runner for the llmOS tools (run from tools/cli/; `bun install --frozen-lockfile` first).
 
 _default:
     @just --list
@@ -9,7 +9,7 @@ gen:
 
 # Fail when a catalog differs from a fresh generation.
 drift: gen
-    git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
+    git diff --exit-code ../../.claude-plugin/marketplace.json ../../.agents/plugins/marketplace.json
 
 types:
     bun run typecheck
@@ -27,23 +27,23 @@ contract-record:
     bun test/contract/record.ts
 
 # Check the frontmatter invariants on a vault. For the real vault, copy it
-# outside llmOS/ first and pass the copy; write any report to ../artifacts/.
+# outside llmOS/ first and pass the copy; write any report to ../../artifacts/.
 invariants +vaults:
     bun test/contract/invariants.ts {{vaults}}
 
 # Fail unless `bun` is the version in .tool-versions, which CI also reads: a
 # bundle built by another Bun version differs from CI's build.
 bun-version:
-    @test "$(bun --version)" = "$(sed -n 's/^bun //p' .tool-versions)" || { echo "bun $(bun --version) is not the pinned $(sed -n 's/^bun //p' .tool-versions) in tools/.tool-versions; run mise install from tools/" >&2; exit 1; }
+    @test "$(bun --version)" = "$(sed -n 's/^bun //p' .tool-versions)" || { echo "bun $(bun --version) is not the pinned $(sed -n 's/^bun //p' .tool-versions) in tools/cli/.tool-versions; run mise install from tools/cli/" >&2; exit 1; }
 
-# Rebuild the committed plugin bundles: the hooks (dist/hooks.js, from
-# src/hooks/) and the MCP launcher (dist/mcp.js, from src/mcp-launcher.ts).
+# Rebuild the committed plugin bundles: the hooks (../dist/hooks.js, from
+# src/hooks/) and the MCP launcher (../dist/mcp.js, from src/mcp-launcher.ts).
 hooks: bun-version
     bun run build:hooks
     bun run build:mcp
 
 # Fail when a committed bundle differs from a fresh build.
 hooks-drift: hooks
-    git diff --exit-code dist/hooks.js dist/mcp.js
+    git diff --exit-code ../dist/hooks.js ../dist/mcp.js
 
 check: drift types lint test hooks-drift

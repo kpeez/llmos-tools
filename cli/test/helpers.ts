@@ -16,7 +16,9 @@ import type { ObsidianRunner } from "../src/obsidian.ts";
 import type { Fetcher } from "../src/sources.ts";
 import { VaultModel } from "../src/vault.ts";
 
-export const TOOLS = resolve(import.meta.dir, "..");
+export const CLI = resolve(import.meta.dir, "..");
+/** The plugin root; the CLI is its `cli/` folder. */
+export const TOOLS = resolve(CLI, "..");
 export const TODAY = "2026-10-07";
 
 /** The network of a test that must not use it. */

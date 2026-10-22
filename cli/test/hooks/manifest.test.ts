@@ -2,11 +2,13 @@
  * Every `hooks.json` command runs the committed bundle with an event the
  * entry point knows. A misspelled event would exit 0 and do nothing, and
  * no harness would report it. The MCP declaration starts the committed
- * launcher in both harnesses and sets Codex approvals per tool.
+ * launcher in both harnesses and sets Codex approvals per tool. The plugin
+ * root holds no `package.json`, so Claude Code installs no dependencies into
+ * the plugin cache.
  */
 
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/mcp-names.ts";
 import { TOOLS } from "./helpers.ts";
@@ -102,4 +104,8 @@ test("Codex approves the read tools and prompts for the write tools", () => {
     setup: "approve",
     ...Object.fromEntries(WRITE_TOOLS.map((tool) => [tool, "prompt"])),
   });
+});
+
+test("the plugin root holds no package.json for Claude Code to install", () => {
+  expect(readdirSync(TOOLS)).not.toContain("package.json");
 });

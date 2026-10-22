@@ -142,7 +142,7 @@ describe("every path-taking command refuses to escape the vault", () => {
     );
   }
   // `docs` paths are relative to the working folder and must stay in tools/.
-  for (const path of ["../escape.md", "../../escape.md", "{away}/secret.md"]) {
+  for (const path of ["../../escape.md", "../../../escape.md", "{away}/secret.md"]) {
     cases.push(
       [`docs --reference ${path}`, ["docs", "--reference", path]],
       [`docs --skill ${path}`, ["docs", "--skill", path]],

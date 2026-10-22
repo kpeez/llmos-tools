@@ -14,14 +14,14 @@ The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
 The host needs `bun` on `PATH`.
 
 On a new host with a checkout of the repository,
-`<checkout>/tools/scripts/bootstrap.sh` does the install, the vault root, the
+`<checkout>/tools/cli/scripts/bootstrap.sh` does the install, the vault root, the
 plugin install for each agent on `PATH`, and the first doctor run. Then
 continue at the workflow below.
 
 Install or update the CLI from the plugin root:
 
 ```sh
-bun "<llmos-plugin-root>/scripts/install.ts"
+bun "<llmos-plugin-root>/cli/scripts/install.ts"
 ```
 
 The script copies the plugin root to `~/.local/share/llmos/<version>/`, runs
@@ -174,7 +174,7 @@ claude -p "Do not use any tools. Did you receive a startup message mentioning 'l
 The plugin declares an MCP server named `llmos` (`.mcp.json` for Claude Code,
 `.codex-mcp.json` for Codex). It needs `bun` on the `PATH` the agent gives
 its MCP servers and the CLI install. Without the install it offers only a
-`setup` tool, which means: run `scripts/install.ts`, then start a new
+`setup` tool, which means: run `cli/scripts/install.ts`, then start a new
 session. In Claude Code, `/mcp` lists the server as `plugin:llmos:llmos`; in
 Codex, `/mcp` lists `llmos`. Codex runs the read tools without a prompt and
 asks before each write tool (`daily_append_thought`, `file_inbox`,
@@ -198,7 +198,12 @@ Linux, and Claude activation says nothing about Codex.
   `claude plugin marketplace add <checkout>` followed by
   `claude plugin install llmos@llmos-vault`. Inspect existing registrations
   before replacing them. Changes to an existing installation may require the
-  provider's update command and a fresh session.
+  provider's update command and a fresh session. Claude Code copies a local
+  marketplace's plugin with its gitignored files, so a `tools/cli/node_modules`
+  or a pre-2.7.0 `tools/node_modules` in the checkout puts symbolic links in
+  the plugin cache, and Claude Desktop then does not copy the plugin to SSH
+  hosts. On a host that Claude Desktop reaches over SSH, use the GitHub source
+  (`kpeez/llmos`), or remove those folders before the plugin update.
 - Verify that `maintain-llmos`, `vault-cli`, and `setup-llmos` are available in
   the fresh agent session. Resolve the configured root, then verify that its
   `agents/references/authoring.md` exists. Do not create a rival copy inside

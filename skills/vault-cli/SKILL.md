@@ -30,7 +30,7 @@ in its place means the CLI is not installed; run `setup-llmos`.
 ## The CLI
 
 `llmos-vault` is a TypeScript CLI run by Bun. Its command registry
-(`src/commands.ts`) is the single source of truth for every verb's
+(`cli/src/commands.ts`) is the single source of truth for every verb's
 parameters, behavior, and output shape. Discovery is two hops: this table
 tells you which verb to run, `llmos-vault <cmd> --help` tells you everything
 else.
@@ -95,7 +95,7 @@ No prior knowledge of the vault, the library, or Obsidian is required.
 
 This table and `references/commands.md` are generated from the command
 registry -- never hand-edit either. After changing a command's help text or
-adding a command, run from `tools/`:
+adding a command, run from `tools/cli/`:
 
 ```sh
 bun bin/llmos-vault.ts docs

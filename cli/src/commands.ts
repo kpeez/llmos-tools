@@ -41,7 +41,7 @@ import {
   stampProperties,
 } from "./write.ts";
 
-const TOOLS = resolve(import.meta.dir, "..");
+const TOOLS = resolve(import.meta.dir, "../..");
 export const DEFAULT_REFERENCE_PATH = join(
   TOOLS,
   "skills",

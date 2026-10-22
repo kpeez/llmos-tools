@@ -31,9 +31,9 @@ import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
 
 export type Env = Record<string, string | undefined>;
 
-const TOOLS = resolve(import.meta.dir, "..");
+const CLI = resolve(import.meta.dir, "..");
 /** The `qmd` command this install provides (`bin/qmd.ts`, linked as `~/.local/bin/qmd`). */
-export const OWN_QMD = join(TOOLS, "bin", "qmd.ts");
+export const OWN_QMD = join(CLI, "bin", "qmd.ts");
 
 const ROOT_REPAIR =
   'Run /setup-llmos, or set it manually: export LLMOS_ROOT="/absolute/path/to/llmos/llmOS"';

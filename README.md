@@ -7,7 +7,7 @@ is TypeScript, run by Bun
 
 ## Install
 
-On a new host, run `scripts/bootstrap.sh` from a checkout (see the
+On a new host, run `cli/scripts/bootstrap.sh` from a checkout (see the
 [repository README](../README.md)). It installs the CLI and the plugin.
 
 To install the plugin by hand, in Claude Code:

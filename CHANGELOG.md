@@ -3,6 +3,26 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.7.0 — 2026-10-22
+
+- The CLI's Bun project (`package.json`, `bun.lock`, `src/`, `bin/`,
+  `test/`, `scripts/`, `justfile`) moved from the plugin root to `cli/`.
+  Claude Code installs the dependencies of a plugin whose root holds a
+  `package.json` and a lockfile, devDependencies included, and Claude Desktop
+  does not copy a plugin with the symbolic links of `node_modules/.bin/` to an
+  SSH host. So hosts reached over SSH from Claude Desktop had no `llmos`
+  plugin. The plugin cache now gets no `node_modules`.
+- Install the CLI with `bun <llmos-plugin-root>/cli/scripts/install.ts`. The
+  install still copies the plugin root to `~/.local/share/llmos/<version>/`,
+  and its `~/.local/bin` links now point into `cli/`. The MCP launcher
+  accepts installs of both layouts.
+- Run `bun` and `just` commands for the CLI from `tools/cli/`.
+- A local-folder marketplace (`plugin marketplace add <checkout>`, as
+  `bootstrap.sh` registers) still copies gitignored files into the plugin
+  cache. Remove `tools/node_modules`, which the move leaves stale, and any
+  `tools/cli/node_modules` from such a checkout before the plugin update, or
+  use the GitHub source on hosts that Claude Desktop reaches over SSH.
+
 ## 2.6.0 — 2026-10-15
 
 - `check` and the PostToolUse authoring check report a hard-wrapped

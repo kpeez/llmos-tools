@@ -10,7 +10,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { SERVER_NAME } from "../src/mcp-names.ts";
-import { isolatedEnv, makeVault, scratch, TOOLS, writeFiles } from "./helpers.ts";
+import { CLI, isolatedEnv, makeVault, scratch, TOOLS, writeFiles } from "./helpers.ts";
 import { McpClient } from "./mcp-client.ts";
 
 const ALPHA = "---\nstatus: draft\n---\n\n# Alpha\n\nREALVAULT\n";
@@ -86,7 +86,7 @@ describe("the MCP launcher", () => {
   test("Claude Code's command runs the installed server, untouched by a hostile project", async () => {
     const vault = makeVault({ "notes/alpha.md": ALPHA });
     const project = hostileProject();
-    const env = { ...home(join(TOOLS, "bin", "llmos-vault.ts"), vault), CLAUDE_PLUGIN_ROOT: TOOLS };
+    const env = { ...home(join(CLI, "bin", "llmos-vault.ts"), vault), CLAUDE_PLUGIN_ROOT: TOOLS };
     const { client, init, close } = await start(claudeArgv(), project, env);
     expect((init.serverInfo as { name: string }).name).toBe(SERVER_NAME);
     const names = (await client.tools()).map((tool) => tool.name);
@@ -120,7 +120,7 @@ describe("the MCP launcher", () => {
     const { client, close } = await start(
       argv,
       TOOLS,
-      home(join(TOOLS, "bin", "llmos-vault.ts"), vault),
+      home(join(CLI, "bin", "llmos-vault.ts"), vault),
     );
     expect((await client.call("read", { note: "alpha" })).text).toContain("REALVAULT");
     expect(await close()).toBe(0);

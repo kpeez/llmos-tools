@@ -4,13 +4,13 @@
  * root from the plugin manifest. The plugin lives in `tools/`; both
  * harnesses read their catalog from the root. Run from anywhere:
  *
- *   bun tools/scripts/gen-marketplaces.ts
+ *   bun tools/cli/scripts/gen-marketplaces.ts
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 
-const PLUGIN_ROOT = resolve(import.meta.dir, "..");
+const PLUGIN_ROOT = resolve(import.meta.dir, "../..");
 const REPO_ROOT = resolve(PLUGIN_ROOT, "..");
 const PLUGIN_SOURCE = `./${basename(PLUGIN_ROOT)}`;
 const MARKETPLACE_NAME = "llmos-vault";

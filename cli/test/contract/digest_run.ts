@@ -25,7 +25,7 @@ import { existingHash } from "../../src/digest.ts";
 import { writeDigestEdgeVault } from "./digest_edge.ts";
 import type { DigestDay } from "./snapshot.ts";
 
-const TOOLS = resolve(import.meta.dir, "../..");
+const CLI = resolve(import.meta.dir, "../..");
 const STUB = join(import.meta.dir, "digest_stub.ts");
 
 interface DigestRun {
@@ -76,15 +76,12 @@ function requiredReferences(logDir: string): string[] {
 /** One digest run for `day` on `root`, with the stubs in `bin` logging to `logDir`. */
 function runDigest(bin: string, root: string, day: string, logDir: string): DigestRun {
   mkdirSync(logDir, { recursive: true });
-  const result = Bun.spawnSync(
-    ["bun", join(TOOLS, "src/digest.ts"), "--root", root, "--date", day],
-    {
-      cwd: TOOLS,
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, DIGEST_LOG_DIR: logDir },
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
+  const result = Bun.spawnSync(["bun", join(CLI, "src/digest.ts"), "--root", root, "--date", day], {
+    cwd: CLI,
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, DIGEST_LOG_DIR: logDir },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   return { exitCode: result.exitCode ?? -1, stdout: result.stdout.toString() };
 }
 

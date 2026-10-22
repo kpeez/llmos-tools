@@ -1,15 +1,16 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "$schema": "./cli/node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "includes": [
-      "src/**",
-      "test/**",
-      "!test/contract/snapshots",
-      "!test/fixtures/web",
-      "bin/**",
-      "scripts/**/*.ts",
-      "*.json"
+      "cli/src/**",
+      "cli/test/**",
+      "!cli/test/contract/snapshots",
+      "!cli/test/fixtures/web",
+      "cli/bin/**",
+      "cli/scripts/**/*.ts",
+      "*.json",
+      "cli/*.json"
     ]
   },
   "formatter": { "indentStyle": "space", "lineWidth": 100 }

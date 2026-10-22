@@ -10,13 +10,13 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  CLI,
   dailyNote,
   executable,
   isolatedEnv,
   makeVault,
   read,
   scratch,
-  TOOLS,
   writeFiles,
 } from "./helpers.ts";
 
@@ -46,7 +46,7 @@ function run(root: string, argv: string[], pathDirs: string[]) {
     TZ: process.env.TZ ?? "UTC",
     PATH: [...pathDirs, dirname(process.execPath), "/usr/bin", "/bin"].join(":"),
   });
-  const result = Bun.spawnSync([process.execPath, join(TOOLS, "bin/llmos-vault.ts"), ...argv], {
+  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos-vault.ts"), ...argv], {
     env,
     stdout: "pipe",
     stderr: "pipe",

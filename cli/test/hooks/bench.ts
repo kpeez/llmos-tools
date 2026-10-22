@@ -11,7 +11,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const TOOLS = join(import.meta.dir, "..", "..");
+const TOOLS = join(import.meta.dir, "..", "..", "..");
 const args = process.argv.slice(2);
 const vault = args[0];
 if (!vault) throw new Error("usage: bun test/hooks/bench.ts <vault-copy> [runs]");

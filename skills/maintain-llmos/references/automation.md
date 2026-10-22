@@ -16,7 +16,7 @@ and manual jobs").
 The digest is a script, not an agent — fetch, hash, one model call, verify, write — so it cannot
 drift, half-finish, or decide to do something else. It processes both today and
 yesterday on each run, because an evening pass cannot see work that lands after
-it. The command is `tools/src/digest.ts`, run by Bun.
+it. The command is `tools/cli/src/digest.ts`, run by Bun.
 
 The digest monitors every project whose landing note has `status: active` and
 whose folder name matches a repository in `kpeez` or `linux-host-ucdavis` (vault
@@ -67,7 +67,7 @@ WantedBy=timers.target
 ```
 
 `%h/.local/bin/llmos-daily-activity` is the link that the CLI install creates
-to `src/digest.ts` in the installed copy of `tools/`. The script starts with
+to `cli/src/digest.ts` in the installed copy of `tools/`. The script starts with
 `#!/usr/bin/env bun`, so the unit's `PATH` must find the mise-managed `bun`
 through the mise shims. Do not put `~/.bun/bin` on it: on linux-host that folder
 holds an older standalone Bun that would run first.

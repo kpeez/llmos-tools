@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileSha256, recordHeartbeat } from "../src/heartbeat.ts";
 import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
-import { executable, isolatedEnv, makeVault, scratch, TOOLS, writeFiles } from "./helpers.ts";
+import { CLI, executable, isolatedEnv, makeVault, scratch, writeFiles } from "./helpers.ts";
 
 const SENTINEL = "---\nstatus: active\n---\n\n# llmOS\n\nShared test vault.\n";
 
@@ -36,7 +36,7 @@ esac
 cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
 `,
   );
-  symlinkSync(join(TOOLS, "bin/qmd.ts"), join(bin, "qmd"));
+  symlinkSync(join(CLI, "bin/qmd.ts"), join(bin, "qmd"));
   const env = isolatedEnv({
     PATH: [bin, dirname(process.execPath), "/usr/bin", "/bin"].join(":"),
     LLMOS_ROOT: root,
@@ -60,7 +60,7 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
   // The CLI installed: the link the plugin's MCP launcher follows.
   mkdirSync(join(env.HOME as string, ".local", "bin"), { recursive: true });
   symlinkSync(
-    join(TOOLS, "bin", "llmos-vault.ts"),
+    join(CLI, "bin", "llmos-vault.ts"),
     join(env.HOME as string, ".local", "bin", "llmos-vault"),
   );
   // The plugin installed for Claude Code, and its hooks seen running.
@@ -93,7 +93,7 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
 }
 
 function doctor(env: Record<string, string>) {
-  const result = Bun.spawnSync([process.execPath, join(TOOLS, "bin/llmos-doctor.ts")], {
+  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos-doctor.ts")], {
     env,
     stdout: "pipe",
     stderr: "pipe",

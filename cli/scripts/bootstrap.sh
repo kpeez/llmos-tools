@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Set up llmOS on this host from a checkout, in one command:
 #
-#   <checkout>/tools/scripts/bootstrap.sh
+#   <checkout>/tools/cli/scripts/bootstrap.sh
 #
-# 1. Installs the llmOS CLI (scripts/install.ts).
+# 1. Installs the llmOS CLI (cli/scripts/install.ts).
 # 2. Points the CLI at <checkout>/llmOS, unless a root is already configured.
 # 3. Installs the llmos plugin for each agent on PATH (claude, codex). It adds
 #    this checkout as the llmos-vault marketplace only when no marketplace of
@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-tools="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tools="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 checkout="$(dirname "$tools")"
 vault="$checkout/llmOS"
 bin="$HOME/.local/bin"
@@ -38,7 +38,7 @@ json_has() {
 }
 
 step "Install the llmOS CLI"
-bun "$tools/scripts/install.ts"
+bun "$tools/cli/scripts/install.ts"
 
 step "Set the vault root"
 if [ -n "${LLMOS_ROOT:-}" ]; then

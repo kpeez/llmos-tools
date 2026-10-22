@@ -103,7 +103,7 @@ candidate clusters, uncovered ones first.
 9. **Commit, push, and open a draft PR** on `kpeez/llmos` with the body that
    `references/pull-request.md` defines. Push checkpoints as you go.
 
-If `tools/` changed, run `just check` from `tools/` as well.
+If `tools/` changed, run `just check` from `tools/cli/` as well.
 
 ## Budget and split
 

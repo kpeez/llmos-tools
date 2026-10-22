@@ -8,7 +8,7 @@ on:
 
 defaults:
   run:
-    working-directory: tools
+    working-directory: tools/cli
 
 jobs:
   check:
@@ -17,21 +17,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: tools/.tool-versions
+          bun-version-file: tools/cli/.tool-versions
       - run: bun install --frozen-lockfile
       - name: Marketplace catalogs match the plugin manifest
         run: |
           bun scripts/gen-marketplaces.ts
-          git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
+          git diff --exit-code ../../.claude-plugin/marketplace.json ../../.agents/plugins/marketplace.json
       - run: bun run typecheck
-      - run: bunx biome ci
+      - run: bunx biome ci ..
       - name: Tests, including the contract snapshots
         run: bun test
       - name: Hook and MCP launcher bundles match their source
         run: |
           bun run build:hooks
           bun run build:mcp
-          git diff --exit-code dist/hooks.js dist/mcp.js
+          git diff --exit-code ../dist/hooks.js ../dist/mcp.js
       - name: Smoke the CLI entry points
         run: |
           for entry in bin/llmos-vault.ts bin/llmos-audit.ts bin/llmos-doctor.ts src/digest.ts; do

@@ -9,8 +9,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const TOOLS = join(import.meta.dir, "..", "..");
-export const ENTRY = join(TOOLS, "src", "hooks", "main.ts");
+export const CLI = join(import.meta.dir, "..", "..");
+export const TOOLS = join(CLI, "..");
+export const ENTRY = join(CLI, "src", "hooks", "main.ts");
 export const BUNDLE = join(TOOLS, "dist", "hooks.js");
 
 export interface HookResult {

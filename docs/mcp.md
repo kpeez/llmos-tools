@@ -35,7 +35,7 @@ approvals: read tools run without a prompt, write tools prompt. Both run
 `bun --no-install --no-env-file --config=/dev/null`, so a session's project
 can never load its `.env`, `bunfig.toml` preload, or packages into the server.
 
-The launcher (`src/mcp-launcher.ts`) runs `llmos-vault mcp` from the install
+The launcher (`cli/src/mcp-launcher.ts`) runs `llmos-vault mcp` from the install
 that `~/.local/bin/llmos-vault` links to, with `GGML_METAL_NO_RESIDENCY=1` (on
 macOS a process that loaded a qmd model aborts at exit without it). When the
 CLI is missing or predates the server, it serves one tool, `setup`, that says

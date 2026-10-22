@@ -14,7 +14,7 @@ sessions may retain their previous plugin definitions.
 ## How they run
 
 `hooks/hooks.json` wires four lifecycle events to one file,
-`dist/hooks.js`, which `bun build` bundles from `src/hooks/`. It runs from
+`dist/hooks.js`, which `bun build` bundles from `cli/src/hooks/`. It runs from
 the plugin cache with no install step and needs only `bun` on the hook
 `PATH`. The same command serves Claude and Codex: each entry names its event
 on the command line, and the JSON payload arrives on stdin.
@@ -35,7 +35,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
 | Stop                     | `stop`          | `stop.ts`     | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds |
 
-The stamp writes through the frontmatter serializer in `src/frontmatter.ts`,
+The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a
 frontmatter block, with a block the serializer refuses, or with invalid UTF-8
 is left unchanged. The stamp and reindex hooks share a session-scoped dirty
@@ -66,8 +66,8 @@ records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.
 for an agent whose installed hooks have not run. See the `setup-llmos`
 skill.
 
-After changing `src/hooks/` or `src/mcp-launcher.ts`, rebuild both bundles
-with `just hooks` and commit them; `just check` and CI fail when one is stale. `bun test/hooks/bench.ts
+After changing `cli/src/hooks/` or `cli/src/mcp-launcher.ts`, rebuild both bundles
+with `just hooks` (from `cli/`) and commit them; `just check` and CI fail when one is stale. `bun test/hooks/bench.ts
 <vault-copy>` times every event.
 
 Hooks observe supported tool calls, not all filesystem access. Direct file

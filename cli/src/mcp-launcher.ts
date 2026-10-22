@@ -3,7 +3,7 @@
  * plugin's `.mcp.json` runs it in every Claude Code and Codex session.
  *
  * It runs the installed CLI's server (`llmos-vault mcp`): the
- * `~/.local/bin/llmos-vault` link that `scripts/install.ts` makes, when the
+ * `~/.local/bin/llmos-vault` link that `cli/scripts/install.ts` makes, when the
  * install it points into has the server. That server runs as a child with
  * `GGML_METAL_NO_RESIDENCY=1`, which must be set before the qmd models'
  * native library loads (see `bin/llmos-vault.ts`).
@@ -38,7 +38,7 @@ export function installedServer(env: Env): { entry: string } | { reason: string 
   } catch {
     return { reason: `the llmOS CLI is not installed (no ${link})` };
   }
-  // `<install>/bin/llmos-vault.ts`; an install from before the server lacks src/mcp.ts.
+  // `<install>/cli/bin/llmos-vault.ts` (`<install>/bin/` before 2.7.0); an install from before the server lacks src/mcp.ts.
   if (!existsSync(join(dirname(dirname(entry)), "src", "mcp.ts"))) {
     return { reason: `the installed llmOS CLI (${entry}) predates the MCP server` };
   }
@@ -47,7 +47,7 @@ export function installedServer(env: Env): { entry: string } | { reason: string 
 
 export const SETUP_TEXT =
   "The llmOS vault tools are unavailable in this session: REASON. Run the setup-llmos " +
-  "skill (it installs the CLI with scripts/install.ts), then start a new session. Until " +
+  "skill (it installs the CLI with cli/scripts/install.ts), then start a new session. Until " +
   "then, read and edit vault notes with the ordinary file tools.";
 
 /** Serve the single `setup` tool until stdin closes. */

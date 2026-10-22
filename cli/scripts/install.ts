@@ -2,14 +2,19 @@
 /**
  * Install the llmOS CLI on this host (run by setup-llmos):
  *
- *   bun "<llmos-plugin-root>/scripts/install.ts"
+ *   bun "<llmos-plugin-root>/cli/scripts/install.ts"
  *
- * Copies the plugin root (this script's parent folder) to
+ * Copies the plugin root (two folders above this script) to
  * `~/.local/share/llmos/<plugin version>/`, runs `bun install
- * --frozen-lockfile --production` there, and links `llmos-vault`,
+ * --frozen-lockfile --production` in its `cli/` folder, and links `llmos-vault`,
  * `llmos-doctor`, `llmos-audit`, `llmos-daily-activity` (`src/digest.ts`), and
  * `qmd` into `~/.local/bin/`. The plugin
  * folder itself is only read, so a plugin cache is never modified.
+ *
+ * The CLI's `package.json` and `bun.lock` live in `cli/`, not the plugin root:
+ * Claude Code installs dependencies into a plugin cache whose root holds both,
+ * and the symbolic links in `node_modules/.bin/` then stop Claude Desktop from
+ * copying the plugin to an SSH host.
  *
  * An existing `~/.local/bin` entry is replaced only when it is a link into
  * `~/.local/share/llmos/` (an earlier install). Any other entry stops the
@@ -44,7 +49,7 @@ const SKIPPED = new Set([
   ".ty_cache",
 ]);
 
-const source = resolve(import.meta.dir, "..");
+const source = resolve(import.meta.dir, "../..");
 const home = process.env.HOME || homedir();
 const dataRoot = join(home, ".local", "share", "llmos");
 const binDir = join(home, ".local", "bin");
@@ -90,7 +95,7 @@ cpSync(source, staging, {
 const installed = Bun.spawnSync(
   [process.execPath, "install", "--frozen-lockfile", "--production"],
   {
-    cwd: staging,
+    cwd: join(staging, "cli"),
     stdout: "inherit",
     stderr: "inherit",
   },
@@ -110,7 +115,7 @@ mkdirSync(binDir, { recursive: true });
 for (const name of COMMANDS) {
   const link = join(binDir, name);
   rmSync(link, { force: true });
-  symlinkSync(join(target, ENTRY_POINTS[name] ?? `bin/${name}.ts`), link);
+  symlinkSync(join(target, "cli", ENTRY_POINTS[name] ?? `bin/${name}.ts`), link);
 }
 
 for (const argv of [

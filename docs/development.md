@@ -16,15 +16,22 @@ tools/
 ├── hooks/                 # hooks.json: session/tool lifecycle hooks (see below)
 ├── dist/                  # committed bundles: hooks.js and the MCP launcher mcp.js
 ├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex)
-├── src/                   # TypeScript core and the CLI's command registry
-├── bin/                   # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
-├── test/                  # bun tests, contract snapshots, and fixture vaults
-└── scripts/               # install.ts (the CLI install) and gen-marketplaces.ts
+└── cli/                   # the CLI's Bun project: package.json, bun.lock, justfile
+    ├── src/               # TypeScript core and the CLI's command registry
+    ├── bin/               # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
+    ├── test/              # bun tests, contract snapshots, and fixture vaults
+    └── scripts/           # install.ts (the CLI install), gen-marketplaces.ts, bootstrap.sh
 ```
+
+The plugin root holds no `package.json`. Claude Code installs the dependencies
+of a plugin whose root holds a `package.json` and a lockfile, and Claude
+Desktop does not copy a plugin with the symbolic links of `node_modules/.bin/`
+to an SSH host. So the Bun project lives in `cli/`, and every `bun` and `just`
+command runs from there.
 
 ## TypeScript core
 
-`src/` is the TypeScript core: the vault model, the CLI, the digest, the
+`cli/src/` is the TypeScript core: the vault model, the CLI, the digest, the
 plugin hooks, and the MCP server.
 
 - `frontmatter.ts` parses frontmatter with the `yaml` package's Document API
@@ -55,12 +62,12 @@ plugin hooks, and the MCP server.
   bundled into `dist/mcp.js`, `mcp-check.ts` the doctor's server check, and
   `mcp-names.ts` the tool names the hooks share (see [MCP server](mcp.md)).
 
-Set up with `bun install --frozen-lockfile`; check with `just types`,
+From `cli/`, set up with `bun install --frozen-lockfile`; check with `just types`,
 `just lint`, and `just test`, or all of them with `just check`.
 
 ## Tests
 
-`test/` holds the `bun test` unit tests for the TypeScript core and the hook
+`cli/test/` holds the `bun test` unit tests for the TypeScript core and the hook
 tests in `test/hooks/` (gating, guards, stamp format, reindex; each runs the
 hook as a `bun` process, as the harnesses do). `test/contract/` pins the
 external contract with committed snapshots: the CLI's JSON output and exit
