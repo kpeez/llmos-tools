@@ -2,6 +2,7 @@ name: tools
 
 on:
   push:
+    branches: [main]
     paths: ["tools/**", ".claude-plugin/**", ".agents/plugins/**", ".github/workflows/tools.yml"]
   pull_request:
     paths: ["tools/**", ".claude-plugin/**", ".agents/plugins/**", ".github/workflows/tools.yml"]
