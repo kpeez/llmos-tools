@@ -42,7 +42,7 @@ const landing = (status: string, body: string): string => `---\nstatus: ${status
 
 const FILES: Record<string, string> = {
   "AGENTS.md": "# Digest edge vault\n",
-  "templates/daily-note.md": TEMPLATE,
+  "categories/templates/daily-note.md": TEMPLATE,
   // Monitored. The title is non-ASCII and comes after a `##` line.
   "projects/alpha/alpha.md": landing(
     "active",
@@ -59,12 +59,12 @@ const FILES: Record<string, string> = {
   "projects/eta/eta.md": "---\nstatus: active\nbroken: [\n---\n\n# Eta\n",
   "projects/theta/notes.md": landing("active", "# Theta notes\n"),
   // An existing note with CRLF line endings, a stale hash, and a thought.
-  "reviews/daily/2026-07-17.md":
+  "daily/2026-07-17.md":
     "---\r\nstatus: active\r\n---\r\n\r\n# 2026-07-17\r\n\r\n## Thoughts\r\n\r\nKeep me.\r\n\r\n" +
     `## Projects\r\n\r\n<!-- llmos-activity:start hash=${"0".repeat(64)} -->\r\nstale\r\n` +
     "<!-- llmos-activity:end -->\r\n",
   // An existing note with a Projects heading and no markers.
-  "reviews/daily/2026-07-18.md": "# 2026-07-18\n\n## Projects\n\n## Later\n\nKeep.\n",
+  "daily/2026-07-18.md": "# 2026-07-18\n\n## Projects\n\n## Later\n\nKeep.\n",
 };
 
 export function writeDigestEdgeVault(root: string): void {

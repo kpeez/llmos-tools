@@ -28,8 +28,8 @@ Vault root: <absolute path of the worktree's llmOS/ folder>
 
 The note holds [!fact] callouts: a status title, a fact sentence, one quoted
 passage, and a source line that links a heading of a captured source in
-sources/<slug>/source.md. A [!conflict] callout holds a statement and two quote
-and source pairs. The format is in agents/references/schema.md.
+raw/<slug>/source.md. A [!conflict] callout holds a statement and two quote
+and source pairs. The format is in schema.md at the vault root.
 
 For every [!fact] whose status is drafted:
 

@@ -30,7 +30,7 @@ import type { QMDStore } from "@tobilu/qmd";
 import * as z from "zod";
 import type { Command, Context, Outcome, Values } from "./cli.ts";
 import { COMMANDS, searchMode } from "./commands.ts";
-import { DAILY_DIR } from "./daily.ts";
+import { DAILY_DIR } from "./layout.ts";
 import { SERVER_NAME } from "./mcp-names.ts";
 import { detectProvider } from "./provider.ts";
 import { openQmd, qmdLocation, search } from "./qmd.ts";
@@ -338,7 +338,7 @@ export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vaul
 Prefer them to the llmos-vault command line: arguments need no shell quoting, and the vault model and search models stay loaded.
 Read: read (one note; section for one heading, properties_only for the frontmatter), list (the properties of every note under a folder), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated and authors themselves.
-Before creating or materially editing a note, follow the vault's AGENTS.md and agents/references/authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
+Before creating or materially editing a note, follow the vault's AGENTS.md and authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 
 /**
  * A fingerprint of every file the model reads (the notes and the other files

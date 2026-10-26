@@ -133,7 +133,7 @@ const SOURCE_TWO_BODY = `# T
 Our dataset reports 6,380 images in total over all the folds.
 `;
 
-const LINK = "[[sources/s/source#Data|S]]";
+const LINK = "[[raw/s/source#Data|S]]";
 const Q_SET = '"The set has 1093 monkeys and 3.5 layers in the larger study"';
 const Q_SCORE =
   '"The top-1 score is 95 % for ResNet-50 and DINOv2 (v2) on the closed-set protocol"';
@@ -153,7 +153,7 @@ const Q_SIXTEEN = '"We kept sixteen stratified splits of the data in the second 
 const Q_MARKED = '"We counted 1399 images of macaques in the main run of the study"';
 const Q_FIVE =
   '"We report the mean accuracy over five stratified splits of the data in the main run"';
-const TABLE = "[[sources/s/source#Table|S]]";
+const TABLE = "[[raw/s/source#Table|S]]";
 const Q_ROW = '"ResNet-18 closed set 54.69 65.92 82.48"';
 const Q_MATH = '"SphereFace on lemurs 90.82 ± 1.80 N/A"';
 const Q_OTHER = '"Other text here for the third section of this long page"';
@@ -180,8 +180,8 @@ async function lintNote(
   files: Record<string, string> = {},
 ): Promise<ClaimsReport> {
   const root = makeVault({
-    "sources/s/source.md": sourceNote(SOURCE_BODY),
-    "sources/t/source.md": sourceNote(SOURCE_TWO_BODY),
+    "raw/s/source.md": sourceNote(SOURCE_BODY),
+    "raw/t/source.md": sourceNote(SOURCE_TWO_BODY),
     "knowledge/n.md": `# N\n\n${blocks.join("\n\n")}\n`,
     ...files,
   });
@@ -233,15 +233,15 @@ describe("quote matching", () => {
 
   test("a quote under another heading is found only in that section", async () => {
     expect(await codes(callout("checked", "Text.", Q_OTHER))).toEqual(["quote-not-in-section"]);
-    expect(
-      await codes(callout("checked", "Text.", Q_SET, "[[sources/s/source#Deeper|S]]")),
-    ).toEqual(["quote-not-in-section"]);
+    expect(await codes(callout("checked", "Text.", Q_SET, "[[raw/s/source#Deeper|S]]"))).toEqual([
+      "quote-not-in-section",
+    ]);
   });
 
   test("a heading link ignores case and the punctuation a link cannot hold", async () => {
-    expect(
-      await codes(callout("checked", "Text.", Q_OTHER, "[[sources/s/source#other|S]]")),
-    ).toEqual([]);
+    expect(await codes(callout("checked", "Text.", Q_OTHER, "[[raw/s/source#other|S]]"))).toEqual(
+      [],
+    );
   });
 });
 
@@ -353,7 +353,7 @@ describe("number matching", () => {
   });
 
   test("a link label is not read", async () => {
-    const link = "[[sources/s/source#Data|5000 monkeys, a false label]]";
+    const link = "[[raw/s/source#Data|5000 monkeys, a false label]]";
     expect(await codes(callout("checked", "It has 3.5 layers.", Q_SET, link))).toEqual([]);
   });
 
@@ -495,10 +495,10 @@ describe("normalization", () => {
     const row = "ResNet-18+Cross Entropy | 97.97 ± 0.70 | 96.52 ± 1.95 | 98.08 ± 0.45";
     const body =
       "## Table\n\n| ResNet-18+Cross Entropy | 97.97 $\\pm$ 0.70 | 96.52 $\\pm$ 1.95 | 98.08 $\\pm$ 0.45 |\n";
-    const link = "[[sources/s/source#Table|S]]";
+    const link = "[[raw/s/source#Table|S]]";
     const lint = await lintNote(
       [callout("checked", "ResNet-18 reaches 97.97 ± 0.70.", `"${row}"`, link)],
-      { "sources/s/source.md": sourceNote(body) },
+      { "raw/s/source.md": sourceNote(body) },
     );
     expect(lint.findings).toEqual([]);
   });
@@ -528,7 +528,7 @@ describe("linear time", () => {
     const body = `## Data\n\n${"[a](".repeat(50_000)}\n\n# ${" ".repeat(100_000)}x\n\n${"#".repeat(100_000)}\n\n${"1,".repeat(50_000)}\n`;
     const start = performance.now();
     const report = await lintNote([callout("checked", "It has 3.5 layers.", Q_SET)], {
-      "sources/s/source.md": sourceNote(body),
+      "raw/s/source.md": sourceNote(body),
     });
     expect(performance.now() - start).toBeLessThan(1000);
     expect(report.findings.map((f) => f.code)).toEqual(["quote-not-in-source"]);
@@ -577,12 +577,12 @@ describe("structure and status", () => {
     ],
     [
       "a link without a heading",
-      callout("checked", "T.", Q_SET, "[[sources/s/source|S]]"),
+      callout("checked", "T.", Q_SET, "[[raw/s/source|S]]"),
       "missing-heading",
     ],
     [
       "a heading the source lacks",
-      callout("checked", "T.", Q_SET, "[[sources/s/source#Nope|S]]"),
+      callout("checked", "T.", Q_SET, "[[raw/s/source#Nope|S]]"),
       "heading-not-found",
     ],
     [
@@ -591,7 +591,7 @@ describe("structure and status", () => {
         "checked",
         "T.",
         '"First section text for the repeated heading here today"',
-        "[[sources/s/source#Twice|S]]",
+        "[[raw/s/source#Twice|S]]",
       ),
       "ambiguous-heading",
     ],
@@ -708,7 +708,7 @@ describe("source integrity", () => {
     ["no source ID", { source_id: null }],
   ])("a source with %s fails the facts that cite it", async (_name, manifest) => {
     const report = await lintNote([cited], {
-      "sources/s/source.md": sourceNote(SOURCE_BODY, manifest),
+      "raw/s/source.md": sourceNote(SOURCE_BODY, manifest),
     });
     expect(report.findings.map((f) => f.code)).toEqual(["source-integrity"]);
     expect(report.fully_checked).toBe(0);
@@ -716,13 +716,13 @@ describe("source integrity", () => {
 
   test("a source that was changed after capture fails", async () => {
     const changed = sourceNote(SOURCE_BODY, { sha256_text: hash }).replace("1093", "1099");
-    const report = await lintNote([cited], { "sources/s/source.md": changed });
+    const report = await lintNote([cited], { "raw/s/source.md": changed });
     expect(report.findings.map((f) => f.code)).toContain("source-integrity");
   });
 
   test("a source that nothing cites is not checked", async () => {
     const report = await lintNote([cited], {
-      "sources/t/source.md": sourceNote(SOURCE_TWO_BODY, { sha256_text: "0".repeat(64) }),
+      "raw/t/source.md": sourceNote(SOURCE_TWO_BODY, { sha256_text: "0".repeat(64) }),
     });
     expect(report.findings).toEqual([]);
   });
@@ -732,7 +732,7 @@ describe("conflicts", () => {
   const pair = (quote: string, link = LINK) => `> > ${quote}\n> — ${link}`;
   const conflict = (statement: string, ...pairs: string[]) =>
     `> [!conflict] open\n> ${statement}\n${pairs.join("\n")}\n\n^conflict-c`;
-  const SECOND = "[[sources/t/source#Data|T]]";
+  const SECOND = "[[raw/t/source#Data|T]]";
   const Q_SECOND = '"Our dataset reports 6,380 images in total over all the folds"';
 
   test("each quote is checked against its own source section", async () => {
@@ -741,11 +741,7 @@ describe("conflicts", () => {
     ).toEqual([]);
     expect(
       await codes(
-        conflict(
-          "Image counts differ.",
-          pair(Q_RATES),
-          pair(Q_SECOND, "[[sources/t/source#Nope|T]]"),
-        ),
+        conflict("Image counts differ.", pair(Q_RATES), pair(Q_SECOND, "[[raw/t/source#Nope|T]]")),
       ),
     ).toEqual(["heading-not-found"]);
   });
@@ -763,7 +759,7 @@ describe("conflicts", () => {
     expect(await codes(conflict("Image counts differ.", pair(Q_RATES), pair(Q_SET)))).toEqual([
       "malformed",
     ]);
-    const copy = { "sources/t/source.md": sourceNote(SOURCE_BODY) };
+    const copy = { "raw/t/source.md": sourceNote(SOURCE_BODY) };
     const same = conflict("Image counts differ.", pair(Q_RATES), pair(Q_RATES, SECOND));
     expect((await lintNote([same], copy)).findings.map((f) => f.code)).toEqual(["malformed"]);
   });

@@ -4,9 +4,10 @@
  *
  * The algorithm, in short:
  *
- * 1. Candidate notes are every note outside `archive/`, `knowledge/`, `sources/`,
- *    `reviews/`, `templates/`, `agents/`, and `categories/` (the inbox stays:
- *    it is raw material). Notes in `knowledge/` only mark coverage.
+ * 1. Candidate notes are every note outside `knowledge/`, `daily/`, and
+ *    `categories/`, except the rule notes at the vault root and the captured
+ *    sources (`raw/<slug>/source.md`). The inbox drops in `raw/` stay: they
+ *    are raw material. Notes in `knowledge/` only mark coverage.
  * 2. Each candidate holds keys: the arXiv ids and DOIs in its text
  *    (`extractIds`), the wikilink targets that resolve to no note and name no
  *    file (dangling; `![[Reviews.base#Project]]` is none), and the `topics` whose topic note does not exist.
@@ -33,24 +34,27 @@ import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { UsageError } from "./cli.ts";
 import { DISCOVER_NOTE, DISCOVER_PROPERTY } from "./health.ts";
+import {
+  AUTHORING_NOTE,
+  DAILY_DIR,
+  INGEST_CONTRACT_NOTE,
+  isInboxDrop,
+  RAW_DIR,
+  SCHEMA_NOTE,
+} from "./layout.ts";
 import { detectProvider } from "./provider.ts";
 import { documentVectors, openQmd, qmdLocation } from "./qmd.ts";
 import { extractWikilinks, type Note, type VaultModel } from "./vault.ts";
 import { recordRun } from "./write.ts";
 
 /** Folders whose notes are never candidates. */
-export const EXCLUDED_FOLDERS = [
-  "archive/",
-  "knowledge/",
-  "sources/",
-  "reviews/",
-  "templates/",
-  "agents/",
-  "categories/",
-];
-/** Whether a note is a candidate for clustering. */
+export const EXCLUDED_FOLDERS = ["knowledge/", `${DAILY_DIR}/`, "categories/"];
+/** The vault's own rules, at its root, are never candidates. */
+const RULE_NOTES = new Set([SCHEMA_NOTE, AUTHORING_NOTE, INGEST_CONTRACT_NOTE]);
+/** Whether a note is a candidate for clustering. In `raw/`, only inbox drops are. */
 export function isCandidate(path: string): boolean {
-  return !EXCLUDED_FOLDERS.some((folder) => path.startsWith(folder));
+  if (path.startsWith(`${RAW_DIR}/`)) return isInboxDrop(path);
+  return !RULE_NOTES.has(path) && !EXCLUDED_FOLDERS.some((folder) => path.startsWith(folder));
 }
 
 /** A key held by more notes than this is too generic to link them. */

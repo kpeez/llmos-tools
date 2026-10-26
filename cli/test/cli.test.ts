@@ -6,7 +6,7 @@ import { COMMANDS, DEFAULT_REFERENCE_PATH, DEFAULT_SKILL_PATH } from "../src/com
 import { renderReference, renderSkill } from "../src/docs.ts";
 import { cli, dailyNote, makeVault, read, recordedObsidian, TODAY } from "./helpers.ts";
 
-const DAILY = `reviews/daily/${TODAY}.md`;
+const DAILY = `daily/${TODAY}.md`;
 const ALPHA =
   "---\ncreated: 2026-07-01\nstatus: draft\nauthors:\n  - human\n---\n\n# Alpha\n\nBody.\n";
 
@@ -244,7 +244,7 @@ describe("file-inbox", () => {
   const capture = "---\ncreated: 2026-07-16\n---\n\n# Capture\n";
 
   test("moves, stamps destination properties and authors, and records the filing", async () => {
-    const root = makeVault({ "inbox/capture-1.md": capture, [DAILY]: dailyNote(TODAY) });
+    const root = makeVault({ "raw/capture-1.md": capture, [DAILY]: dailyNote(TODAY) });
     const obsidian = recordedObsidian(root);
     const env = { CLAUDECODE: "1" };
     const { isolatedEnv } = await import("./helpers.ts");
@@ -270,48 +270,57 @@ describe("file-inbox", () => {
     expect(read(root, "knowledge/some-note.md")).toContain("authors:\n  - claude\ncategories");
   });
 
-  test("keeps a note's own categories and stamps none for the archive", async () => {
+  test("keeps a note's own categories", async () => {
     const paper = '---\ncategories:\n  - "[[Papers]]"\ncreated: 2026-07-16\n---\n\n# Paper\n';
+    const root = makeVault({ "raw/paper.md": paper, [DAILY]: dailyNote(TODAY) });
+    const result = await cli(root, ["file-inbox", "paper", "knowledge/paper.md"], {
+      obsidian: recordedObsidian(root).runner,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(read(root, "knowledge/paper.md")).toBe(paper);
+  });
+
+  test("stamps [[Sources]] only on a captured source's note in raw/", async () => {
     const root = makeVault({
-      "inbox/paper.md": paper,
-      "inbox/old.md": capture,
+      "notes/drop.md": capture,
+      "notes/source.md": capture,
       [DAILY]: dailyNote(TODAY),
     });
     for (const [note, destination] of [
-      ["paper", "knowledge/paper.md"],
-      ["old", "archive/old.md"],
+      ["notes/drop.md", "raw/batch/drop.md"],
+      ["notes/source.md", "raw/arxiv-1/source.md"],
     ] as const) {
       const result = await cli(root, ["file-inbox", note, destination], {
         obsidian: recordedObsidian(root).runner,
       });
       expect(result.exitCode).toBe(0);
     }
-    expect(read(root, "knowledge/paper.md")).toBe(paper);
-    expect(read(root, "archive/old.md")).toBe(capture);
+    expect(read(root, "raw/batch/drop.md")).not.toContain("categories");
+    expect(read(root, "raw/arxiv-1/source.md")).toContain('categories:\n  - "[[Sources]]"');
   });
 
   test("refuses an unknown area or an unreadable block before any move", async () => {
     const root = makeVault({
-      "inbox/capture-1.md": capture,
-      "inbox/broken.md": "---\ntitle: [unclosed\n---\n\nx\n",
+      "raw/capture-1.md": capture,
+      "raw/broken.md": "---\ntitle: [unclosed\n---\n\nx\n",
     });
     const obsidian = recordedObsidian(root);
     for (const argv of [
-      ["file-inbox", "capture-1", "templates/x.md"],
+      ["file-inbox", "capture-1", "categories/templates/x.md"],
       ["file-inbox", "broken", "knowledge/broken.md"],
     ]) {
       expect((await cli(root, argv, { obsidian: obsidian.runner })).exitCode).toBe(1);
     }
     expect(obsidian.calls).toEqual([]);
-    expect(existsSync(join(root, "inbox/capture-1.md"))).toBe(true);
+    expect(existsSync(join(root, "raw/capture-1.md"))).toBe(true);
   });
 
   test("exits 3 and leaves the note in place when Obsidian is not running", async () => {
-    const root = makeVault({ "inbox/capture-1.md": capture });
+    const root = makeVault({ "raw/capture-1.md": capture });
     const result = await cli(root, ["file-inbox", "capture-1", "knowledge/x.md"], {
       obsidian: recordedObsidian(root, true).runner,
     });
     expect(result.exitCode).toBe(3);
-    expect(read(root, "inbox/capture-1.md")).toBe(capture);
+    expect(read(root, "raw/capture-1.md")).toBe(capture);
   });
 });

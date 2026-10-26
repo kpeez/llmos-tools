@@ -27,22 +27,6 @@
         "body": "# Health fixture vault\n"
       },
       {
-        "name": "fresh-capture",
-        "path": "<vault>/inbox/fresh-capture.md",
-        "properties": {
-          "created": "2026-07-15"
-        },
-        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
-      },
-      {
-        "name": "stale-capture",
-        "path": "<vault>/inbox/stale-capture.md",
-        "properties": {
-          "created": "2026-06-01"
-        },
-        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
-      },
-      {
         "name": "bad-status",
         "path": "<vault>/notes/bad-status.md",
         "properties": {
@@ -74,6 +58,22 @@
           "created": "2026-07-01"
         },
         "body": "# Linker\n\nLinks to [[hub]].\n"
+      },
+      {
+        "name": "fresh-capture",
+        "path": "<vault>/raw/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      },
+      {
+        "name": "stale-capture",
+        "path": "<vault>/raw/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
       }
     ],
     "daily_recent": {
@@ -128,112 +128,6 @@
         "root": "AGENTS",
         "nodes": [
           "AGENTS"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/fresh-capture.md": {
-      "exit": 0,
-      "json": {
-        "name": "fresh-capture",
-        "path": "<vault>/inbox/fresh-capture.md",
-        "properties": {
-          "created": "2026-07-15"
-        },
-        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
-      }
-    },
-    "neighbors inbox/fresh-capture.md": {
-      "exit": 0,
-      "json": {
-        "note": "fresh-capture",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/fresh-capture.md": {
-      "exit": 0,
-      "json": {
-        "root": "fresh-capture",
-        "nodes": [
-          "fresh-capture"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/fresh-capture.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/fresh-capture.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/fresh-capture.md": "---\ncreated: 2026-07-15\n---\n\n# Fresh capture\n\nJust captured, not stale yet.\n",
-    "subgraph2 inbox/fresh-capture.md": {
-      "exit": 0,
-      "json": {
-        "root": "fresh-capture",
-        "nodes": [
-          "fresh-capture"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/stale-capture.md": {
-      "exit": 0,
-      "json": {
-        "name": "stale-capture",
-        "path": "<vault>/inbox/stale-capture.md",
-        "properties": {
-          "created": "2026-06-01"
-        },
-        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
-      }
-    },
-    "neighbors inbox/stale-capture.md": {
-      "exit": 0,
-      "json": {
-        "note": "stale-capture",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/stale-capture.md": {
-      "exit": 0,
-      "json": {
-        "root": "stale-capture",
-        "nodes": [
-          "stale-capture"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/stale-capture.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/stale-capture.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/stale-capture.md": "---\ncreated: 2026-06-01\n---\n\n# Stale capture\n\nCaptured a while ago, never filed.\n",
-    "subgraph2 inbox/stale-capture.md": {
-      "exit": 0,
-      "json": {
-        "root": "stale-capture",
-        "nodes": [
-          "stale-capture"
         ],
         "unresolved": [],
         "edges": []
@@ -541,6 +435,112 @@
         ]
       }
     },
+    "read raw/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "name": "fresh-capture",
+        "path": "<vault>/raw/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      }
+    },
+    "neighbors raw/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "note": "fresh-capture",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh-capture",
+        "nodes": [
+          "fresh-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/fresh-capture.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/fresh-capture.md": "---\ncreated: 2026-07-15\n---\n\n# Fresh capture\n\nJust captured, not stale yet.\n",
+    "subgraph2 raw/fresh-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh-capture",
+        "nodes": [
+          "fresh-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "name": "stale-capture",
+        "path": "<vault>/raw/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
+      }
+    },
+    "neighbors raw/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "note": "stale-capture",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale-capture",
+        "nodes": [
+          "stale-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/stale-capture.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/stale-capture.md": "---\ncreated: 2026-06-01\n---\n\n# Stale capture\n\nCaptured a while ago, never filed.\n",
+    "subgraph2 raw/stale-capture.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale-capture",
+        "nodes": [
+          "stale-capture"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
     "by_name AGENTS": {
       "exit": 0,
       "json": {
@@ -550,28 +550,6 @@
           "created": "2026-07-01"
         },
         "body": "# Health fixture vault\n"
-      }
-    },
-    "by_name fresh-capture": {
-      "exit": 0,
-      "json": {
-        "name": "fresh-capture",
-        "path": "<vault>/inbox/fresh-capture.md",
-        "properties": {
-          "created": "2026-07-15"
-        },
-        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
-      }
-    },
-    "by_name stale-capture": {
-      "exit": 0,
-      "json": {
-        "name": "stale-capture",
-        "path": "<vault>/inbox/stale-capture.md",
-        "properties": {
-          "created": "2026-06-01"
-        },
-        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
       }
     },
     "by_name bad-status": {
@@ -619,19 +597,41 @@
         "body": "# Linker\n\nLinks to [[hub]].\n"
       }
     },
+    "by_name fresh-capture": {
+      "exit": 0,
+      "json": {
+        "name": "fresh-capture",
+        "path": "<vault>/raw/fresh-capture.md",
+        "properties": {
+          "created": "2026-07-15"
+        },
+        "body": "# Fresh capture\n\nJust captured, not stale yet.\n"
+      }
+    },
+    "by_name stale-capture": {
+      "exit": 0,
+      "json": {
+        "name": "stale-capture",
+        "path": "<vault>/raw/stale-capture.md",
+        "properties": {
+          "created": "2026-06-01"
+        },
+        "body": "# Stale capture\n\nCaptured a while ago, never filed.\n"
+      }
+    },
     "health.orphans": [
       "AGENTS.md",
-      "inbox/fresh-capture.md",
-      "inbox/stale-capture.md",
       "notes/bad-status.md",
-      "notes/linker.md"
+      "notes/linker.md",
+      "raw/fresh-capture.md",
+      "raw/stale-capture.md"
     ],
     "health.dead_ends": [
       "AGENTS.md",
-      "inbox/fresh-capture.md",
-      "inbox/stale-capture.md",
       "notes/bad-status.md",
-      "notes/dead-end.md"
+      "notes/dead-end.md",
+      "raw/fresh-capture.md",
+      "raw/stale-capture.md"
     ],
     "health.unresolved_links": [
       {
@@ -646,8 +646,8 @@
       }
     ],
     "health.stale_inbox": [
-      "inbox/fresh-capture.md",
-      "inbox/stale-capture.md"
+      "raw/fresh-capture.md",
+      "raw/stale-capture.md"
     ],
     "health.overdue_jobs": [
       {

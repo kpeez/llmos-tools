@@ -63,7 +63,7 @@ export function makeVault(files: Record<string, string> = {}): string {
   mkdirSync(join(root, ".obsidian"), { recursive: true });
   writeFiles(root, {
     "AGENTS.md": "# Test vault\n",
-    "templates/daily-note.md": DAILY_TEMPLATE,
+    "categories/templates/daily-note.md": DAILY_TEMPLATE,
     ...files,
   });
   return root;
@@ -114,7 +114,7 @@ export function recordedObsidian(root: string, notRunning = false): RecordedObsi
       return { exitCode: 0, stdout: `Moved: ${path} -> ${params.to}\n`, stderr: "" };
     }
     if (argv[1] === "create" && params.template !== undefined) {
-      const template = read(root, `templates/${params.template}.md`);
+      const template = read(root, `categories/templates/${params.template}.md`);
       const day = path.slice(path.lastIndexOf("/") + 1, -3);
       writeFiles(root, { [path]: template.replaceAll("{{date:YYYY-MM-DD}}", day) });
       return { exitCode: 0, stdout: `Created: ${path}\n`, stderr: "" };

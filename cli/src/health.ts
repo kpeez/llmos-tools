@@ -16,16 +16,11 @@
  */
 
 import { type Day, parseDay } from "./daily.ts";
+import { isInboxDrop, TEMPLATES_DIR } from "./layout.ts";
 import { categoryHubs, collectErrors, isValidCategory } from "./schema.ts";
 import type { Note, UnresolvedLink, VaultModel } from "./vault.ts";
 
 export type Profile = "llmos" | "core";
-
-/**
- * The inbox folder's own hub note. It describes the inbox and is not an
- * inbox item, so it is never stale and the orphan list leaves it out.
- */
-export const INBOX_HUB = "inbox/Inbox.md";
 
 /**
  * Whether a note carries a valid category (`isValidCategory`). Its category
@@ -38,13 +33,13 @@ function hasValidCategory(note: Note, hubs: ReadonlySet<string>): boolean {
 }
 
 /**
- * Whether a note is a template: scaffolding in the root `templates/` folder.
+ * Whether a note is a template: scaffolding in `categories/templates/`.
  * In the llmos vault such a note is never an orphan or a dead-end, its
  * placeholder links (`{{title}}`) are not unresolved links, and its own links
  * do not count as inbound links. A link to a template still resolves.
  */
 function isTemplate(note: Note): boolean {
-  return note.path.startsWith("templates/");
+  return note.path.startsWith(`${TEMPLATES_DIR}/`);
 }
 
 /** The note whose `discovered` property records the last `discover` run. */
@@ -159,9 +154,8 @@ function staleInbox(
 ): string[] {
   const stale: string[] = [];
   for (const note of model.notes) {
-    if (!note.path.startsWith("inbox/") || (profile === "llmos" && note.path === INBOX_HUB)) {
-      continue;
-    }
+    const inbox = profile === "llmos" ? isInboxDrop(note.path) : note.path.startsWith("inbox/");
+    if (!inbox) continue;
     const created = note.properties.created;
     const createdDay = typeof created === "string" ? parseDay(created) : null;
     if (createdDay === null || day - createdDay >= staleAfterDays) stale.push(note.path);
@@ -199,7 +193,7 @@ export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHea
   const hubs = categoryHubs(model);
   return {
     ...model.linkFindings(
-      (note) => llmos && (hasValidCategory(note, hubs) || note.path === INBOX_HUB),
+      (note) => llmos && hasValidCategory(note, hubs),
       (note) => llmos && isTemplate(note),
     ),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),

@@ -286,6 +286,31 @@
         "body": "# Projects\n"
       },
       {
+        "name": "skip",
+        "path": "<vault>/categories/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      },
+      {
+        "name": "2026-10-01",
+        "path": "<vault>/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      },
+      {
+        "name": "2026-10-02",
+        "path": "<vault>/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
+      },
+      {
         "name": "anchor",
         "path": "<vault>/fm/anchor.md",
         "properties": {
@@ -526,76 +551,6 @@
         "body": "Fine tune.\n"
       },
       {
-        "name": "basic-date",
-        "path": "<vault>/inbox/basic-date.md",
-        "properties": {
-          "created": "20261005"
-        },
-        "body": "Basic date.\n"
-      },
-      {
-        "name": "fresh",
-        "path": "<vault>/inbox/fresh.md",
-        "properties": {
-          "created": "2026-10-06"
-        },
-        "body": "Fresh.\n"
-      },
-      {
-        "name": "invalid-date",
-        "path": "<vault>/inbox/invalid-date.md",
-        "properties": {
-          "created": "2026-02-30"
-        },
-        "body": "Invalid.\n"
-      },
-      {
-        "name": "deep",
-        "path": "<vault>/inbox/nested/deep.md",
-        "properties": {},
-        "body": "# No frontmatter\n"
-      },
-      {
-        "name": "no-created",
-        "path": "<vault>/inbox/no-created.md",
-        "properties": {
-          "status": "draft"
-        },
-        "body": "No created.\n"
-      },
-      {
-        "name": "stale",
-        "path": "<vault>/inbox/stale.md",
-        "properties": {
-          "created": "2026-01-01"
-        },
-        "body": "Stale.\n"
-      },
-      {
-        "name": "trailing-date",
-        "path": "<vault>/inbox/trailing-date.md",
-        "properties": {
-          "created": "20261005xx"
-        },
-        "body": "Trailing characters.\n"
-      },
-      {
-        "name": "week-date-tail",
-        "path": "<vault>/inbox/week-date-tail.md",
-        "properties": {
-          "created": "2026W403xx"
-        },
-        "body": "Week date, trailing.\n"
-      },
-      {
-        "name": "week-date",
-        "path": "<vault>/inbox/week-date.md",
-        "properties": {
-          "created": "2026-W40-3"
-        },
-        "body": "Week date.\n"
-      },
-      {
         "name": "unhubbed",
         "path": "<vault>/knowledge/unhubbed.md",
         "properties": {
@@ -739,23 +694,74 @@
         "body": "# llmOS\n\nBack to [[llmOS]] and [[llmos]].\n"
       },
       {
-        "name": "2026-10-01",
-        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "name": "basic-date",
+        "path": "<vault>/raw/basic-date.md",
         "properties": {
-          "created": "2026-10-01",
-          "project": [
-            "[[projects/llmos/llmos|llmOS]]"
-          ]
+          "created": "20261005"
         },
-        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+        "body": "Basic date.\n"
       },
       {
-        "name": "2026-10-02",
-        "path": "<vault>/reviews/daily/2026-10-02.md",
+        "name": "fresh",
+        "path": "<vault>/raw/fresh.md",
         "properties": {
-          "created": "10/02/2026"
+          "created": "2026-10-06"
         },
-        "body": "# 2026-10-02\n"
+        "body": "Fresh.\n"
+      },
+      {
+        "name": "invalid-date",
+        "path": "<vault>/raw/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      },
+      {
+        "name": "deep",
+        "path": "<vault>/raw/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      },
+      {
+        "name": "no-created",
+        "path": "<vault>/raw/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      },
+      {
+        "name": "stale",
+        "path": "<vault>/raw/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      },
+      {
+        "name": "trailing-date",
+        "path": "<vault>/raw/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      },
+      {
+        "name": "week-date-tail",
+        "path": "<vault>/raw/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      },
+      {
+        "name": "week-date",
+        "path": "<vault>/raw/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
       },
       {
         "name": "SKILL",
@@ -764,12 +770,6 @@
           "name": "tool"
         },
         "body": "# Missing description\n"
-      },
-      {
-        "name": "skip",
-        "path": "<vault>/templates/skip.md",
-        "properties": {},
-        "body": "# Skipped\n"
       },
       {
         "name": "short",
@@ -801,7 +801,7 @@
       "json": [
         {
           "name": "2026-10-02",
-          "path": "<vault>/reviews/daily/2026-10-02.md",
+          "path": "<vault>/daily/2026-10-02.md",
           "properties": {
             "created": "10/02/2026"
           },
@@ -809,7 +809,7 @@
         },
         {
           "name": "2026-10-01",
-          "path": "<vault>/reviews/daily/2026-10-01.md",
+          "path": "<vault>/daily/2026-10-01.md",
           "properties": {
             "created": "2026-10-01",
             "project": [
@@ -1446,6 +1446,205 @@
             "link"
           ]
         ]
+      }
+    },
+    "read categories/templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "name": "skip",
+        "path": "<vault>/categories/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      }
+    },
+    "neighbors categories/templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "note": "skip",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 categories/templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "root": "skip",
+        "nodes": [
+          "skip"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check categories/templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "path": "categories/templates/skip.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize categories/templates/skip.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 categories/templates/skip.md": {
+      "exit": 0,
+      "json": {
+        "root": "skip",
+        "nodes": [
+          "skip"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-01",
+        "path": "<vault>/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      }
+    },
+    "neighbors daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "note": "2026-10-01",
+        "outgoing": [
+          "llmos"
+        ],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-01",
+        "nodes": [
+          "2026-10-01",
+          "llmos"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ]
+        ]
+      }
+    },
+    "check daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "path": "daily/2026-10-01.md",
+        "body_links": [],
+        "property_links": [
+          "projects/llmos/llmos"
+        ],
+        "findings": []
+      }
+    },
+    "normalize daily/2026-10-01.md": "---\ncreated: 2026-10-01\nproject:\n  - \"[[projects/llmos/llmos|llmOS]]\"\n---\n\n# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n",
+    "subgraph2 daily/2026-10-01.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-01",
+        "nodes": [
+          "2026-10-01",
+          "Projects",
+          "beta",
+          "llmOS",
+          "llmos"
+        ],
+        "unresolved": [],
+        "edges": [
+          [
+            "2026-10-01",
+            "llmos",
+            "link"
+          ],
+          [
+            "beta",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmOS",
+            "llmos",
+            "link"
+          ],
+          [
+            "llmos",
+            "Projects",
+            "link"
+          ]
+        ]
+      }
+    },
+    "read daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-02",
+        "path": "<vault>/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
+      }
+    },
+    "neighbors daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "note": "2026-10-02",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-02",
+        "nodes": [
+          "2026-10-02"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "path": "daily/2026-10-02.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize daily/2026-10-02.md": "---\ncreated: 10/02/2026\n---\n\n# 2026-10-02\n",
+    "subgraph2 daily/2026-10-02.md": {
+      "exit": 0,
+      "json": {
+        "root": "2026-10-02",
+        "nodes": [
+          "2026-10-02"
+        ],
+        "unresolved": [],
+        "edges": []
       }
     },
     "read fm/anchor.md": {
@@ -3272,484 +3471,6 @@
         ]
       }
     },
-    "read inbox/basic-date.md": {
-      "exit": 0,
-      "json": {
-        "name": "basic-date",
-        "path": "<vault>/inbox/basic-date.md",
-        "properties": {
-          "created": "20261005"
-        },
-        "body": "Basic date.\n"
-      }
-    },
-    "neighbors inbox/basic-date.md": {
-      "exit": 0,
-      "json": {
-        "note": "basic-date",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/basic-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "basic-date",
-        "nodes": [
-          "basic-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/basic-date.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/basic-date.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/basic-date.md": "---\ncreated: 20261005\n---\n\nBasic date.\n",
-    "subgraph2 inbox/basic-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "basic-date",
-        "nodes": [
-          "basic-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/fresh.md": {
-      "exit": 0,
-      "json": {
-        "name": "fresh",
-        "path": "<vault>/inbox/fresh.md",
-        "properties": {
-          "created": "2026-10-06"
-        },
-        "body": "Fresh.\n"
-      }
-    },
-    "neighbors inbox/fresh.md": {
-      "exit": 0,
-      "json": {
-        "note": "fresh",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/fresh.md": {
-      "exit": 0,
-      "json": {
-        "root": "fresh",
-        "nodes": [
-          "fresh"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/fresh.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/fresh.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/fresh.md": "---\ncreated: 2026-10-06\n---\n\nFresh.\n",
-    "subgraph2 inbox/fresh.md": {
-      "exit": 0,
-      "json": {
-        "root": "fresh",
-        "nodes": [
-          "fresh"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/invalid-date.md": {
-      "exit": 0,
-      "json": {
-        "name": "invalid-date",
-        "path": "<vault>/inbox/invalid-date.md",
-        "properties": {
-          "created": "2026-02-30"
-        },
-        "body": "Invalid.\n"
-      }
-    },
-    "neighbors inbox/invalid-date.md": {
-      "exit": 0,
-      "json": {
-        "note": "invalid-date",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/invalid-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "invalid-date",
-        "nodes": [
-          "invalid-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/invalid-date.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/invalid-date.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/invalid-date.md": "---\ncreated: 2026-02-30\n---\n\nInvalid.\n",
-    "subgraph2 inbox/invalid-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "invalid-date",
-        "nodes": [
-          "invalid-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/nested/deep.md": {
-      "exit": 0,
-      "json": {
-        "name": "deep",
-        "path": "<vault>/inbox/nested/deep.md",
-        "properties": {},
-        "body": "# No frontmatter\n"
-      }
-    },
-    "neighbors inbox/nested/deep.md": {
-      "exit": 0,
-      "json": {
-        "note": "deep",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/nested/deep.md": {
-      "exit": 0,
-      "json": {
-        "root": "deep",
-        "nodes": [
-          "deep"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/nested/deep.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/nested/deep.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/nested/deep.md": {
-      "error": "MissingFrontmatter",
-      "message": "note has no frontmatter block (must start with '---')"
-    },
-    "subgraph2 inbox/nested/deep.md": {
-      "exit": 0,
-      "json": {
-        "root": "deep",
-        "nodes": [
-          "deep"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/no-created.md": {
-      "exit": 0,
-      "json": {
-        "name": "no-created",
-        "path": "<vault>/inbox/no-created.md",
-        "properties": {
-          "status": "draft"
-        },
-        "body": "No created.\n"
-      }
-    },
-    "neighbors inbox/no-created.md": {
-      "exit": 0,
-      "json": {
-        "note": "no-created",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/no-created.md": {
-      "exit": 0,
-      "json": {
-        "root": "no-created",
-        "nodes": [
-          "no-created"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/no-created.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/no-created.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/no-created.md": "---\nstatus: draft\n---\n\nNo created.\n",
-    "subgraph2 inbox/no-created.md": {
-      "exit": 0,
-      "json": {
-        "root": "no-created",
-        "nodes": [
-          "no-created"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/stale.md": {
-      "exit": 0,
-      "json": {
-        "name": "stale",
-        "path": "<vault>/inbox/stale.md",
-        "properties": {
-          "created": "2026-01-01"
-        },
-        "body": "Stale.\n"
-      }
-    },
-    "neighbors inbox/stale.md": {
-      "exit": 0,
-      "json": {
-        "note": "stale",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/stale.md": {
-      "exit": 0,
-      "json": {
-        "root": "stale",
-        "nodes": [
-          "stale"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/stale.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/stale.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/stale.md": "---\ncreated: 2026-01-01\n---\n\nStale.\n",
-    "subgraph2 inbox/stale.md": {
-      "exit": 0,
-      "json": {
-        "root": "stale",
-        "nodes": [
-          "stale"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/trailing-date.md": {
-      "exit": 0,
-      "json": {
-        "name": "trailing-date",
-        "path": "<vault>/inbox/trailing-date.md",
-        "properties": {
-          "created": "20261005xx"
-        },
-        "body": "Trailing characters.\n"
-      }
-    },
-    "neighbors inbox/trailing-date.md": {
-      "exit": 0,
-      "json": {
-        "note": "trailing-date",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/trailing-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "trailing-date",
-        "nodes": [
-          "trailing-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/trailing-date.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/trailing-date.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/trailing-date.md": "---\ncreated: 20261005xx\n---\n\nTrailing characters.\n",
-    "subgraph2 inbox/trailing-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "trailing-date",
-        "nodes": [
-          "trailing-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/week-date-tail.md": {
-      "exit": 0,
-      "json": {
-        "name": "week-date-tail",
-        "path": "<vault>/inbox/week-date-tail.md",
-        "properties": {
-          "created": "2026W403xx"
-        },
-        "body": "Week date, trailing.\n"
-      }
-    },
-    "neighbors inbox/week-date-tail.md": {
-      "exit": 0,
-      "json": {
-        "note": "week-date-tail",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/week-date-tail.md": {
-      "exit": 0,
-      "json": {
-        "root": "week-date-tail",
-        "nodes": [
-          "week-date-tail"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/week-date-tail.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/week-date-tail.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/week-date-tail.md": "---\ncreated: 2026W403xx\n---\n\nWeek date, trailing.\n",
-    "subgraph2 inbox/week-date-tail.md": {
-      "exit": 0,
-      "json": {
-        "root": "week-date-tail",
-        "nodes": [
-          "week-date-tail"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read inbox/week-date.md": {
-      "exit": 0,
-      "json": {
-        "name": "week-date",
-        "path": "<vault>/inbox/week-date.md",
-        "properties": {
-          "created": "2026-W40-3"
-        },
-        "body": "Week date.\n"
-      }
-    },
-    "neighbors inbox/week-date.md": {
-      "exit": 0,
-      "json": {
-        "note": "week-date",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 inbox/week-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "week-date",
-        "nodes": [
-          "week-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check inbox/week-date.md": {
-      "exit": 0,
-      "json": {
-        "path": "inbox/week-date.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize inbox/week-date.md": "---\ncreated: 2026-W40-3\n---\n\nWeek date.\n",
-    "subgraph2 inbox/week-date.md": {
-      "exit": 0,
-      "json": {
-        "root": "week-date",
-        "nodes": [
-          "week-date"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
     "read knowledge/unhubbed.md": {
       "exit": 0,
       "json": {
@@ -5391,146 +5112,479 @@
         ]
       }
     },
-    "read reviews/daily/2026-10-01.md": {
+    "read raw/basic-date.md": {
       "exit": 0,
       "json": {
-        "name": "2026-10-01",
-        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "name": "basic-date",
+        "path": "<vault>/raw/basic-date.md",
         "properties": {
-          "created": "2026-10-01",
-          "project": [
-            "[[projects/llmos/llmos|llmOS]]"
-          ]
+          "created": "20261005"
         },
-        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+        "body": "Basic date.\n"
       }
     },
-    "neighbors reviews/daily/2026-10-01.md": {
+    "neighbors raw/basic-date.md": {
       "exit": 0,
       "json": {
-        "note": "2026-10-01",
-        "outgoing": [
-          "llmos"
-        ],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 reviews/daily/2026-10-01.md": {
-      "exit": 0,
-      "json": {
-        "root": "2026-10-01",
-        "nodes": [
-          "2026-10-01",
-          "llmos"
-        ],
-        "unresolved": [],
-        "edges": [
-          [
-            "2026-10-01",
-            "llmos",
-            "link"
-          ]
-        ]
-      }
-    },
-    "check reviews/daily/2026-10-01.md": {
-      "exit": 0,
-      "json": {
-        "path": "reviews/daily/2026-10-01.md",
-        "body_links": [],
-        "property_links": [
-          "projects/llmos/llmos"
-        ],
-        "findings": []
-      }
-    },
-    "normalize reviews/daily/2026-10-01.md": "---\ncreated: 2026-10-01\nproject:\n  - \"[[projects/llmos/llmos|llmOS]]\"\n---\n\n# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n",
-    "subgraph2 reviews/daily/2026-10-01.md": {
-      "exit": 0,
-      "json": {
-        "root": "2026-10-01",
-        "nodes": [
-          "2026-10-01",
-          "Projects",
-          "beta",
-          "llmOS",
-          "llmos"
-        ],
-        "unresolved": [],
-        "edges": [
-          [
-            "2026-10-01",
-            "llmos",
-            "link"
-          ],
-          [
-            "beta",
-            "llmos",
-            "link"
-          ],
-          [
-            "llmOS",
-            "llmos",
-            "link"
-          ],
-          [
-            "llmos",
-            "Projects",
-            "link"
-          ]
-        ]
-      }
-    },
-    "read reviews/daily/2026-10-02.md": {
-      "exit": 0,
-      "json": {
-        "name": "2026-10-02",
-        "path": "<vault>/reviews/daily/2026-10-02.md",
-        "properties": {
-          "created": "10/02/2026"
-        },
-        "body": "# 2026-10-02\n"
-      }
-    },
-    "neighbors reviews/daily/2026-10-02.md": {
-      "exit": 0,
-      "json": {
-        "note": "2026-10-02",
+        "note": "basic-date",
         "outgoing": [],
         "unresolved_outgoing": [],
         "backlinks": [],
         "topic_siblings": []
       }
     },
-    "subgraph1 reviews/daily/2026-10-02.md": {
+    "subgraph1 raw/basic-date.md": {
       "exit": 0,
       "json": {
-        "root": "2026-10-02",
+        "root": "basic-date",
         "nodes": [
-          "2026-10-02"
+          "basic-date"
         ],
         "unresolved": [],
         "edges": []
       }
     },
-    "check reviews/daily/2026-10-02.md": {
+    "check raw/basic-date.md": {
       "exit": 0,
       "json": {
-        "path": "reviews/daily/2026-10-02.md",
+        "path": "raw/basic-date.md",
         "body_links": [],
         "property_links": [],
         "findings": []
       }
     },
-    "normalize reviews/daily/2026-10-02.md": "---\ncreated: 10/02/2026\n---\n\n# 2026-10-02\n",
-    "subgraph2 reviews/daily/2026-10-02.md": {
+    "normalize raw/basic-date.md": "---\ncreated: 20261005\n---\n\nBasic date.\n",
+    "subgraph2 raw/basic-date.md": {
       "exit": 0,
       "json": {
-        "root": "2026-10-02",
+        "root": "basic-date",
         "nodes": [
-          "2026-10-02"
+          "basic-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/fresh.md": {
+      "exit": 0,
+      "json": {
+        "name": "fresh",
+        "path": "<vault>/raw/fresh.md",
+        "properties": {
+          "created": "2026-10-06"
+        },
+        "body": "Fresh.\n"
+      }
+    },
+    "neighbors raw/fresh.md": {
+      "exit": 0,
+      "json": {
+        "note": "fresh",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/fresh.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh",
+        "nodes": [
+          "fresh"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/fresh.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/fresh.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/fresh.md": "---\ncreated: 2026-10-06\n---\n\nFresh.\n",
+    "subgraph2 raw/fresh.md": {
+      "exit": 0,
+      "json": {
+        "root": "fresh",
+        "nodes": [
+          "fresh"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "invalid-date",
+        "path": "<vault>/raw/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      }
+    },
+    "neighbors raw/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "invalid-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "invalid-date",
+        "nodes": [
+          "invalid-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/invalid-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/invalid-date.md": "---\ncreated: 2026-02-30\n---\n\nInvalid.\n",
+    "subgraph2 raw/invalid-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "invalid-date",
+        "nodes": [
+          "invalid-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "name": "deep",
+        "path": "<vault>/raw/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      }
+    },
+    "neighbors raw/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "note": "deep",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "root": "deep",
+        "nodes": [
+          "deep"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/nested/deep.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/nested/deep.md": {
+      "error": "MissingFrontmatter",
+      "message": "note has no frontmatter block (must start with '---')"
+    },
+    "subgraph2 raw/nested/deep.md": {
+      "exit": 0,
+      "json": {
+        "root": "deep",
+        "nodes": [
+          "deep"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/no-created.md": {
+      "exit": 0,
+      "json": {
+        "name": "no-created",
+        "path": "<vault>/raw/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      }
+    },
+    "neighbors raw/no-created.md": {
+      "exit": 0,
+      "json": {
+        "note": "no-created",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/no-created.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-created",
+        "nodes": [
+          "no-created"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/no-created.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/no-created.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/no-created.md": "---\nstatus: draft\n---\n\nNo created.\n",
+    "subgraph2 raw/no-created.md": {
+      "exit": 0,
+      "json": {
+        "root": "no-created",
+        "nodes": [
+          "no-created"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/stale.md": {
+      "exit": 0,
+      "json": {
+        "name": "stale",
+        "path": "<vault>/raw/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      }
+    },
+    "neighbors raw/stale.md": {
+      "exit": 0,
+      "json": {
+        "note": "stale",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/stale.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale",
+        "nodes": [
+          "stale"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/stale.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/stale.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/stale.md": "---\ncreated: 2026-01-01\n---\n\nStale.\n",
+    "subgraph2 raw/stale.md": {
+      "exit": 0,
+      "json": {
+        "root": "stale",
+        "nodes": [
+          "stale"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "trailing-date",
+        "path": "<vault>/raw/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      }
+    },
+    "neighbors raw/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "trailing-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "trailing-date",
+        "nodes": [
+          "trailing-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/trailing-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/trailing-date.md": "---\ncreated: 20261005xx\n---\n\nTrailing characters.\n",
+    "subgraph2 raw/trailing-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "trailing-date",
+        "nodes": [
+          "trailing-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "name": "week-date-tail",
+        "path": "<vault>/raw/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      }
+    },
+    "neighbors raw/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "note": "week-date-tail",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date-tail",
+        "nodes": [
+          "week-date-tail"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/week-date-tail.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/week-date-tail.md": "---\ncreated: 2026W403xx\n---\n\nWeek date, trailing.\n",
+    "subgraph2 raw/week-date-tail.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date-tail",
+        "nodes": [
+          "week-date-tail"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "read raw/week-date.md": {
+      "exit": 0,
+      "json": {
+        "name": "week-date",
+        "path": "<vault>/raw/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
+      }
+    },
+    "neighbors raw/week-date.md": {
+      "exit": 0,
+      "json": {
+        "note": "week-date",
+        "outgoing": [],
+        "unresolved_outgoing": [],
+        "backlinks": [],
+        "topic_siblings": []
+      }
+    },
+    "subgraph1 raw/week-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date",
+        "nodes": [
+          "week-date"
+        ],
+        "unresolved": [],
+        "edges": []
+      }
+    },
+    "check raw/week-date.md": {
+      "exit": 0,
+      "json": {
+        "path": "raw/week-date.md",
+        "body_links": [],
+        "property_links": [],
+        "findings": []
+      }
+    },
+    "normalize raw/week-date.md": "---\ncreated: 2026-W40-3\n---\n\nWeek date.\n",
+    "subgraph2 raw/week-date.md": {
+      "exit": 0,
+      "json": {
+        "root": "week-date",
+        "nodes": [
+          "week-date"
         ],
         "unresolved": [],
         "edges": []
@@ -5584,60 +5638,6 @@
         "root": "SKILL",
         "nodes": [
           "SKILL"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "read templates/skip.md": {
-      "exit": 0,
-      "json": {
-        "name": "skip",
-        "path": "<vault>/templates/skip.md",
-        "properties": {},
-        "body": "# Skipped\n"
-      }
-    },
-    "neighbors templates/skip.md": {
-      "exit": 0,
-      "json": {
-        "note": "skip",
-        "outgoing": [],
-        "unresolved_outgoing": [],
-        "backlinks": [],
-        "topic_siblings": []
-      }
-    },
-    "subgraph1 templates/skip.md": {
-      "exit": 0,
-      "json": {
-        "root": "skip",
-        "nodes": [
-          "skip"
-        ],
-        "unresolved": [],
-        "edges": []
-      }
-    },
-    "check templates/skip.md": {
-      "exit": 0,
-      "json": {
-        "path": "templates/skip.md",
-        "body_links": [],
-        "property_links": [],
-        "findings": []
-      }
-    },
-    "normalize templates/skip.md": {
-      "error": "MissingFrontmatter",
-      "message": "note has no frontmatter block (must start with '---')"
-    },
-    "subgraph2 templates/skip.md": {
-      "exit": 0,
-      "json": {
-        "root": "skip",
-        "nodes": [
-          "skip"
         ],
         "unresolved": [],
         "edges": []
@@ -5902,6 +5902,40 @@
           ]
         },
         "body": "# Projects\n"
+      }
+    },
+    "by_name skip": {
+      "exit": 0,
+      "json": {
+        "name": "skip",
+        "path": "<vault>/categories/templates/skip.md",
+        "properties": {},
+        "body": "# Skipped\n"
+      }
+    },
+    "by_name 2026-10-01": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-01",
+        "path": "<vault>/daily/2026-10-01.md",
+        "properties": {
+          "created": "2026-10-01",
+          "project": [
+            "[[projects/llmos/llmos|llmOS]]"
+          ]
+        },
+        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+      }
+    },
+    "by_name 2026-10-02": {
+      "exit": 0,
+      "json": {
+        "name": "2026-10-02",
+        "path": "<vault>/daily/2026-10-02.md",
+        "properties": {
+          "created": "10/02/2026"
+        },
+        "body": "# 2026-10-02\n"
       }
     },
     "by_name anchor": {
@@ -6228,103 +6262,6 @@
         "body": "Fine tune.\n"
       }
     },
-    "by_name basic-date": {
-      "exit": 0,
-      "json": {
-        "name": "basic-date",
-        "path": "<vault>/inbox/basic-date.md",
-        "properties": {
-          "created": "20261005"
-        },
-        "body": "Basic date.\n"
-      }
-    },
-    "by_name fresh": {
-      "exit": 0,
-      "json": {
-        "name": "fresh",
-        "path": "<vault>/inbox/fresh.md",
-        "properties": {
-          "created": "2026-10-06"
-        },
-        "body": "Fresh.\n"
-      }
-    },
-    "by_name invalid-date": {
-      "exit": 0,
-      "json": {
-        "name": "invalid-date",
-        "path": "<vault>/inbox/invalid-date.md",
-        "properties": {
-          "created": "2026-02-30"
-        },
-        "body": "Invalid.\n"
-      }
-    },
-    "by_name deep": {
-      "exit": 0,
-      "json": {
-        "name": "deep",
-        "path": "<vault>/inbox/nested/deep.md",
-        "properties": {},
-        "body": "# No frontmatter\n"
-      }
-    },
-    "by_name no-created": {
-      "exit": 0,
-      "json": {
-        "name": "no-created",
-        "path": "<vault>/inbox/no-created.md",
-        "properties": {
-          "status": "draft"
-        },
-        "body": "No created.\n"
-      }
-    },
-    "by_name stale": {
-      "exit": 0,
-      "json": {
-        "name": "stale",
-        "path": "<vault>/inbox/stale.md",
-        "properties": {
-          "created": "2026-01-01"
-        },
-        "body": "Stale.\n"
-      }
-    },
-    "by_name trailing-date": {
-      "exit": 0,
-      "json": {
-        "name": "trailing-date",
-        "path": "<vault>/inbox/trailing-date.md",
-        "properties": {
-          "created": "20261005xx"
-        },
-        "body": "Trailing characters.\n"
-      }
-    },
-    "by_name week-date-tail": {
-      "exit": 0,
-      "json": {
-        "name": "week-date-tail",
-        "path": "<vault>/inbox/week-date-tail.md",
-        "properties": {
-          "created": "2026W403xx"
-        },
-        "body": "Week date, trailing.\n"
-      }
-    },
-    "by_name week-date": {
-      "exit": 0,
-      "json": {
-        "name": "week-date",
-        "path": "<vault>/inbox/week-date.md",
-        "properties": {
-          "created": "2026-W40-3"
-        },
-        "body": "Week date.\n"
-      }
-    },
     "by_name unhubbed": {
       "exit": 0,
       "json": {
@@ -6500,29 +6437,101 @@
       "exit": 1,
       "error": "'llmos' is ambiguous, matches: llmOS.md, projects/llmos/llmos.md"
     },
-    "by_name 2026-10-01": {
+    "by_name basic-date": {
       "exit": 0,
       "json": {
-        "name": "2026-10-01",
-        "path": "<vault>/reviews/daily/2026-10-01.md",
+        "name": "basic-date",
+        "path": "<vault>/raw/basic-date.md",
         "properties": {
-          "created": "2026-10-01",
-          "project": [
-            "[[projects/llmos/llmos|llmOS]]"
-          ]
+          "created": "20261005"
         },
-        "body": "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n"
+        "body": "Basic date.\n"
       }
     },
-    "by_name 2026-10-02": {
+    "by_name fresh": {
       "exit": 0,
       "json": {
-        "name": "2026-10-02",
-        "path": "<vault>/reviews/daily/2026-10-02.md",
+        "name": "fresh",
+        "path": "<vault>/raw/fresh.md",
         "properties": {
-          "created": "10/02/2026"
+          "created": "2026-10-06"
         },
-        "body": "# 2026-10-02\n"
+        "body": "Fresh.\n"
+      }
+    },
+    "by_name invalid-date": {
+      "exit": 0,
+      "json": {
+        "name": "invalid-date",
+        "path": "<vault>/raw/invalid-date.md",
+        "properties": {
+          "created": "2026-02-30"
+        },
+        "body": "Invalid.\n"
+      }
+    },
+    "by_name deep": {
+      "exit": 0,
+      "json": {
+        "name": "deep",
+        "path": "<vault>/raw/nested/deep.md",
+        "properties": {},
+        "body": "# No frontmatter\n"
+      }
+    },
+    "by_name no-created": {
+      "exit": 0,
+      "json": {
+        "name": "no-created",
+        "path": "<vault>/raw/no-created.md",
+        "properties": {
+          "status": "draft"
+        },
+        "body": "No created.\n"
+      }
+    },
+    "by_name stale": {
+      "exit": 0,
+      "json": {
+        "name": "stale",
+        "path": "<vault>/raw/stale.md",
+        "properties": {
+          "created": "2026-01-01"
+        },
+        "body": "Stale.\n"
+      }
+    },
+    "by_name trailing-date": {
+      "exit": 0,
+      "json": {
+        "name": "trailing-date",
+        "path": "<vault>/raw/trailing-date.md",
+        "properties": {
+          "created": "20261005xx"
+        },
+        "body": "Trailing characters.\n"
+      }
+    },
+    "by_name week-date-tail": {
+      "exit": 0,
+      "json": {
+        "name": "week-date-tail",
+        "path": "<vault>/raw/week-date-tail.md",
+        "properties": {
+          "created": "2026W403xx"
+        },
+        "body": "Week date, trailing.\n"
+      }
+    },
+    "by_name week-date": {
+      "exit": 0,
+      "json": {
+        "name": "week-date",
+        "path": "<vault>/raw/week-date.md",
+        "properties": {
+          "created": "2026-W40-3"
+        },
+        "body": "Week date.\n"
       }
     },
     "by_name SKILL": {
@@ -6534,15 +6543,6 @@
           "name": "tool"
         },
         "body": "# Missing description\n"
-      }
-    },
-    "by_name skip": {
-      "exit": 0,
-      "json": {
-        "name": "skip",
-        "path": "<vault>/templates/skip.md",
-        "properties": {},
-        "body": "# Skipped\n"
       }
     },
     "by_name short": {
@@ -6565,6 +6565,8 @@
       "a/linker.md",
       "archive/old.md",
       "c/linker2.md",
+      "daily/2026-10-01.md",
+      "daily/2026-10-02.md",
       "fm/anchor.md",
       "fm/block-scalar.md",
       "fm/body-separators.md",
@@ -6592,23 +6594,21 @@
       "fm/top-level-item.md",
       "fm/typed.md",
       "fm/unquoted-wikilink.md",
-      "inbox/basic-date.md",
-      "inbox/fresh.md",
-      "inbox/invalid-date.md",
-      "inbox/nested/deep.md",
-      "inbox/no-created.md",
-      "inbox/stale.md",
-      "inbox/trailing-date.md",
-      "inbox/week-date-tail.md",
-      "inbox/week-date.md",
       "links/alias.md",
       "llmOS.md",
       "notes/dotted-links.md",
       "notes/references.md",
       "notes/𝔘nicode.md",
       "projects/demo/notes/unowned.md",
-      "reviews/daily/2026-10-01.md",
-      "reviews/daily/2026-10-02.md",
+      "raw/basic-date.md",
+      "raw/fresh.md",
+      "raw/invalid-date.md",
+      "raw/nested/deep.md",
+      "raw/no-created.md",
+      "raw/stale.md",
+      "raw/trailing-date.md",
+      "raw/week-date-tail.md",
+      "raw/week-date.md",
       "skills/tool/SKILL.md",
       "x/yy/short.md",
       "z/uses-short.md"
@@ -6619,6 +6619,7 @@
       "archive/old.md",
       "b/dup.md",
       "categories/Projects.md",
+      "daily/2026-10-02.md",
       "fm/anchor.md",
       "fm/body-separators.md",
       "fm/bom.md",
@@ -6643,18 +6644,17 @@
       "fm/typed.md",
       "fm/unquoted-wikilink.md",
       "human/sam3.1-fine-tune.md",
-      "inbox/basic-date.md",
-      "inbox/fresh.md",
-      "inbox/invalid-date.md",
-      "inbox/nested/deep.md",
-      "inbox/no-created.md",
-      "inbox/stale.md",
-      "inbox/trailing-date.md",
-      "inbox/week-date-tail.md",
-      "inbox/week-date.md",
       "notes/AGENTS.v2.md",
       "notes/gamma.md",
-      "reviews/daily/2026-10-02.md",
+      "raw/basic-date.md",
+      "raw/fresh.md",
+      "raw/invalid-date.md",
+      "raw/nested/deep.md",
+      "raw/no-created.md",
+      "raw/stale.md",
+      "raw/trailing-date.md",
+      "raw/week-date-tail.md",
+      "raw/week-date.md",
       "skills/tool/SKILL.md",
       "x/short.md",
       "x/yy/short.md"
@@ -6693,6 +6693,14 @@
       {
         "path": "archive/old.md",
         "message": "missing frontmatter"
+      },
+      {
+        "path": "daily/2026-10-01.md",
+        "message": "daily reviews must not claim project ownership"
+      },
+      {
+        "path": "daily/2026-10-02.md",
+        "message": "created must be an ISO date"
       },
       {
         "path": "fm/bom.md",
@@ -6737,10 +6745,6 @@
       {
         "path": "fm/unquoted-wikilink.md",
         "message": "project contains non-wikilink [\"X\"]"
-      },
-      {
-        "path": "inbox/nested/deep.md",
-        "message": "missing frontmatter"
       },
       {
         "path": "knowledge/unhubbed.md",
@@ -6791,12 +6795,8 @@
         "message": "project-owned note lacks project link"
       },
       {
-        "path": "reviews/daily/2026-10-01.md",
-        "message": "daily reviews must not claim project ownership"
-      },
-      {
-        "path": "reviews/daily/2026-10-02.md",
-        "message": "created must be an ISO date"
+        "path": "raw/nested/deep.md",
+        "message": "missing frontmatter"
       },
       {
         "path": "skills/tool/SKILL.md",
@@ -6804,14 +6804,14 @@
       }
     ],
     "health.stale_inbox": [
-      "inbox/basic-date.md",
-      "inbox/invalid-date.md",
-      "inbox/nested/deep.md",
-      "inbox/no-created.md",
-      "inbox/stale.md",
-      "inbox/trailing-date.md",
-      "inbox/week-date-tail.md",
-      "inbox/week-date.md"
+      "raw/basic-date.md",
+      "raw/invalid-date.md",
+      "raw/nested/deep.md",
+      "raw/no-created.md",
+      "raw/stale.md",
+      "raw/trailing-date.md",
+      "raw/week-date-tail.md",
+      "raw/week-date.md"
     ],
     "health.overdue_jobs": [
       {
@@ -6832,6 +6832,8 @@
     "schema.errors": [
       "AGENTS.md: missing frontmatter",
       "archive/old.md: missing frontmatter",
+      "daily/2026-10-01.md: daily reviews must not claim project ownership",
+      "daily/2026-10-02.md: created must be an ISO date",
       "fm/bom.md: missing frontmatter",
       "fm/duplicate.md: unsupported frontmatter: frontmatter is not valid YAML (DUPLICATE_KEY: Map keys must be unique at line 2, column 1:)",
       "fm/empty-item.md: unsupported frontmatter: frontmatter is not supported: a list item is empty",
@@ -6843,7 +6845,6 @@
       "fm/messy.md: property none is empty",
       "fm/no-frontmatter.md: missing frontmatter",
       "fm/unquoted-wikilink.md: project contains non-wikilink [\"X\"]",
-      "inbox/nested/deep.md: missing frontmatter",
       "knowledge/unhubbed.md: category \"[[Papers]]\" names no hub in categories/",
       "notes/alpha.md: topics contains non-wikilink \"gardening\"",
       "notes/beta.md: topics contains non-wikilink \"gardening\"",
@@ -6856,8 +6857,7 @@
       "projects/demo/notes/unowned.md: categories must be a list",
       "projects/demo/notes/unowned.md: topics contains non-wikilink \"plain\"",
       "projects/demo/notes/unowned.md: project-owned note lacks project link",
-      "reviews/daily/2026-10-01.md: daily reviews must not claim project ownership",
-      "reviews/daily/2026-10-02.md: created must be an ISO date",
+      "raw/nested/deep.md: missing frontmatter",
       "skills/tool/SKILL.md: invalid skill frontmatter"
     ],
     "schema.checked": 64

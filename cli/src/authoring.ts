@@ -10,6 +10,7 @@
 import { lstatSync, readlinkSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
 import { blankCodeSpans, codeSpans } from "./code-spans.ts";
+import { RAW_DIR } from "./layout.ts";
 import { markdownFindings } from "./markdown-lint.ts";
 import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./vault.ts";
 
@@ -255,9 +256,10 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
         "using the note title or a natural phrase, not the filename.",
     });
   }
-  // Captured sources are frozen and hash-checked, and dot folders are not notes.
+  // Raw material is never restyled: captures are frozen and hash-checked, and
+  // drops await ingest. Dot folders are not notes.
   if (
-    !note.path.split("/").some((part, i) => part.startsWith(".") || (i === 0 && part === "sources"))
+    !note.path.split("/").some((part, i) => part.startsWith(".") || (i === 0 && part === RAW_DIR))
   ) {
     for (const found of markdownFindings(note.text)) findings.push({ ...found, target: "" });
   }

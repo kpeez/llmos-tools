@@ -10,6 +10,7 @@
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { DAILY_DIR } from "./layout.ts";
 import type { Note, VaultModel } from "./vault.ts";
 
 const DAY_MS = 86_400_000;
@@ -29,7 +30,6 @@ export function parseDay(text: string): Day | null {
   return Number.isNaN(ms) || isoDate(ms / DAY_MS) !== text ? null : ms / DAY_MS;
 }
 
-export const DAILY_DIR = "reviews/daily";
 // The start marker is a prefix: the digest writes
 // `<!-- llmos-activity:start hash=<sha256> -->`, the template a bare
 // `<!-- llmos-activity:start -->`. Both match on this one string.

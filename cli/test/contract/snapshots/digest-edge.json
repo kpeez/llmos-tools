@@ -96,6 +96,10 @@
       "note": "---\nstatus: active\ncreated: \"2026-07-16\"\nupdated: \"2026-07-16\"\ncategories:\n  - \"[[Reviews]]\"\n---\n\n# 2026-07-16\n\n## Thoughts\n\n## Projects\n\n<!-- llmos-activity:start hash=8654b05fbddd9398db1ca7d76f970125120bc786babf644ceba5d8586a46912f -->\n\n### Stub summary\n\n- References: [#3](https://github.com/linux-host-ucdavis/Beta/pull/3), [#9](https://github.com/linux-host-ucdavis/Beta/issues/9), [#12](https://github.com/kpeez/alpha/pull/12), [#5](https://github.com/kpeez/alpha/issues/5), [#6](https://github.com/kpeez/alpha/issues/6).\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n\n![[Daily Reviews.base#Created on day]]\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9b2eeb03827151f1fa7d357bc0ba7548235785b084d77a36e6ab87c8b24105e2",
+        "daily/2026-07-18.md": "1eefdf18859bd27218cd35930e48e1b141db1c14d967cf46ccd3add960fe6453",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -103,11 +107,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9b2eeb03827151f1fa7d357bc0ba7548235785b084d77a36e6ab87c8b24105e2",
-        "reviews/daily/2026-07-18.md": "1eefdf18859bd27218cd35930e48e1b141db1c14d967cf46ccd3add960fe6453",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-07-16: unchanged (hash match, no model call)\n",
       "differs_from_python": [
@@ -205,6 +205,10 @@
       "note": "---\nstatus: active\n---\n\n# 2026-07-17\n\n## Thoughts\n\nKeep me.\n\n## Projects\n\n<!-- llmos-activity:start hash=4c2db368890cada2c50032dd69378b228f2e1ae4a841fb5ab96cef683c0aef71 -->\n\n### Stub summary\n\n- References: [#4](https://github.com/linux-host-ucdavis/Beta/pull/4).\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "1eefdf18859bd27218cd35930e48e1b141db1c14d967cf46ccd3add960fe6453",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -212,11 +216,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "1eefdf18859bd27218cd35930e48e1b141db1c14d967cf46ccd3add960fe6453",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-07-17: unchanged (hash match, no model call)\n",
       "differs_from_python": [
@@ -314,6 +314,10 @@
       "note": "# 2026-07-18\n\n## Projects\n\n<!-- llmos-activity:start hash=e1ea55e786402fa58e807574aa12b58d92d7a85e1012d43dc64e8ea95fe31dea -->\n\n### Stub summary\n\n- References: .\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n\n## Later\n\nKeep.\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -321,11 +325,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-07-18: unchanged (hash match, no model call)\n",
       "differs_from_python": []
@@ -416,6 +416,10 @@
       "note": null,
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -423,11 +427,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-07-19: silent (no note created)\n",
       "differs_from_python": []
@@ -523,6 +523,11 @@
       "note": "---\nstatus: active\ncreated: \"2026-03-08\"\nupdated: \"2026-03-08\"\ncategories:\n  - \"[[Reviews]]\"\n---\n\n# 2026-03-08\n\n## Thoughts\n\n## Projects\n\n<!-- llmos-activity:start hash=ccabe0ffda848b39984b5b6af5d4cbcd1dfe61f45b0ea3c24458ae1d21dbda6f -->\n\n### Stub summary\n\n- References: [#21](https://github.com/kpeez/alpha/issues/21), [#22](https://github.com/kpeez/alpha/issues/22).\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n\n![[Daily Reviews.base#Created on day]]\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -530,12 +535,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-03-08: unchanged (hash match, no model call)\n",
       "differs_from_python": [
@@ -633,6 +633,12 @@
       "note": "---\nstatus: active\ncreated: \"2026-11-01\"\nupdated: \"2026-11-01\"\ncategories:\n  - \"[[Reviews]]\"\n---\n\n# 2026-11-01\n\n## Thoughts\n\n## Projects\n\n<!-- llmos-activity:start hash=f777e7f6cb96fdc1d410085ec4e150991ee71c2c9f02b48f3ea1179e822d6756 -->\n\n### Stub summary\n\n- References: [#31](https://github.com/kpeez/alpha/issues/31), [#32](https://github.com/kpeez/alpha/issues/32).\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n\n![[Daily Reviews.base#Created on day]]\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
+        "daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -640,13 +646,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "reviews/daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-11-01: unchanged (hash match, no model call)\n",
       "differs_from_python": [
@@ -744,6 +744,13 @@
       "note": "---\nstatus: active\ncreated: \"2026-07-21\"\nupdated: \"2026-07-21\"\ncategories:\n  - \"[[Reviews]]\"\n---\n\n# 2026-07-21\n\n## Thoughts\n\n## Projects\n\n<!-- llmos-activity:start hash=ce5c0ebccba0c0f34866213976e42a94db60d06933ecd1985f5d9723df3cd5de -->\n\n### Stub summary\n\n- References: [#40](https://github.com/linux-host-ucdavis/Beta/pull/40), [#40](https://github.com/kpeez/alpha/pull/40).\n\n_Not monitored (active, no repository): [[a|A]], [[a-b|a-b]], [[gamma|Gamma]]_\n\n<!-- llmos-activity:end -->\n\n![[Daily Reviews.base#Created on day]]\n",
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
+        "daily/2026-07-21.md": "d7d15bf971a4a8442ec9f76a0081ea149a1ebedbef2fb022004f600a8f0b7d7c",
+        "daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -751,14 +758,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "reviews/daily/2026-07-21.md": "d7d15bf971a4a8442ec9f76a0081ea149a1ebedbef2fb022004f600a8f0b7d7c",
-        "reviews/daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "2026-07-21: unchanged (hash match, no model call)\n",
       "differs_from_python": [
@@ -852,6 +852,13 @@
       "note": null,
       "files": {
         "AGENTS.md": "0d752ff313843d195f9594d70738c138a297dbfdb43d7df10a87661cc4b37c8d",
+        "categories/templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa",
+        "daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
+        "daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
+        "daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
+        "daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
+        "daily/2026-07-21.md": "d7d15bf971a4a8442ec9f76a0081ea149a1ebedbef2fb022004f600a8f0b7d7c",
+        "daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
         "projects/a/a.md": "57fbeae60e11cf5028826c841cc700faaccb1741e9fd97de314b860c9d8e7380",
         "projects/a-b/a-b.md": "442c6ba61b0e3f4a4db84cd24a54f5df4f6e6fbea2ac7a7f3d47e371351abf6e",
         "projects/alpha/alpha.md": "e81a9f75e66dcd339c02ca689330314c8e0b5e8cd3c3f3be146fcf72e2fc4e6a",
@@ -859,14 +866,7 @@
         "projects/delta/delta.md": "5fda76f1e345398a4a53222cd7cf53be4b931a5d2b31d88cbd30db58402044d5",
         "projects/eta/eta.md": "3eb92109af8dd6abb9f58442cd8fa1092cc4a88703162b5d3f62ef285001ee1a",
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
-        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390",
-        "reviews/daily/2026-03-08.md": "17836611015d0590993ca3d7ec6d74381e63ceca182fec7b1ea7ebecf3691c9f",
-        "reviews/daily/2026-07-16.md": "185c599a8be4f108f8e76cb3c9cd2a373c70c67e9b5d2a93aa58da5ff25639e3",
-        "reviews/daily/2026-07-17.md": "9d4c2b13e96aebf5d75f64914abe3664a38c55ff115ee247f0df10eeb49fc179",
-        "reviews/daily/2026-07-18.md": "bef3e52eb300dc8e0d0ff3872a3465676a5648f7891e5643b7830bed120302a2",
-        "reviews/daily/2026-07-21.md": "d7d15bf971a4a8442ec9f76a0081ea149a1ebedbef2fb022004f600a8f0b7d7c",
-        "reviews/daily/2026-11-01.md": "4d3bef25ae0a7956eaa22f8f95b8cbdfabe875186ff28169e9849b854ffad0c1",
-        "templates/daily-note.md": "e5743751c5d6f691fd20992e843acbfd37c175039553ae6567d8594de2ec30aa"
+        "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
       "again": "",
       "differs_from_python": []

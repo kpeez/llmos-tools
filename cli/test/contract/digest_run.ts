@@ -105,7 +105,7 @@ export function runEdgeDays(days: readonly string[]): ObservedDay[] {
     return days.map((day, index) => {
       const logDir = join(scratch, "logs", `${index}-first`);
       const first = runDigest(bin, root, day, logDir);
-      const path = join(root, "reviews", "daily", `${day}.md`);
+      const path = join(root, "daily", `${day}.md`);
       const note = existsSync(path) ? readFileSync(path, "utf8") : null;
       const files = fileHashes(root);
       const again = runDigest(bin, root, day, join(scratch, "logs", `${index}-again`));

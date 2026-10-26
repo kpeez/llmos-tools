@@ -60,9 +60,9 @@ function makeVault(): string {
       `---\nstatus: ${status}\n---\n\n# ${title}\n`,
     );
   }
-  mkdirSync(join(root, "reviews", "daily"), { recursive: true });
+  mkdirSync(join(root, "daily"), { recursive: true });
   write(
-    join(root, "templates", "daily-note.md"),
+    join(root, "categories", "templates", "daily-note.md"),
     '---\nstatus: active\ncreated: "{{date:YYYY-MM-DD}}"\n' +
       'updated: "{{date:YYYY-MM-DD}}"\ncategories:\n  - "[[Reviews]]"\n' +
       "---\n\n# {{date:YYYY-MM-DD}}\n\n## Thoughts\n\n## Projects\n\n" +
@@ -102,7 +102,7 @@ const ghWithActivity: Gh = (args) => {
 };
 const ghSilent: Gh = (args) => (args[0] === "repo" ? ghRepoList(args) : []);
 const fakeOk = () => `### Alpha Project\nMerged [#7](${PR.url}).`;
-const notePath = (root: string) => join(root, "reviews", "daily", "2026-07-16.md");
+const notePath = (root: string) => join(root, "daily", "2026-07-16.md");
 
 describe("projects", () => {
   test("a repository name match splits monitored and unseen projects", () => {
@@ -172,7 +172,7 @@ describe("processDay", () => {
   test("a silent day creates nothing", () => {
     const root = makeVault();
     expect(processDay(DAY, root, { gh: ghSilent })).toBe("silent (no note created)");
-    expect(readdirSync(join(root, "reviews", "daily"))).toEqual([]);
+    expect(readdirSync(join(root, "daily"))).toEqual([]);
   });
 
   test("activity creates a note with the block and the unseen projects", () => {
@@ -228,7 +228,7 @@ describe("processDay", () => {
     expect(() => processDay(DAY, root, { gh: ghWithActivity, summarize: incomplete })).toThrow(
       "omitted references: kpeez/alpha#7",
     );
-    expect(readdirSync(join(root, "reviews", "daily"))).toEqual([]);
+    expect(readdirSync(join(root, "daily"))).toEqual([]);
   });
 
   test("the completeness check needs each repository's link when two share a number", () => {
@@ -251,7 +251,7 @@ describe("processDay", () => {
         "omitted references: linux-host-ucdavis/other#7",
       );
     }
-    expect(readdirSync(join(root, "reviews", "daily"))).toEqual([]);
+    expect(readdirSync(join(root, "daily"))).toEqual([]);
     const both = `${alpha}\n### Other\nOpened [#7](${otherUrl}).`;
     expect(processDay(DAY, root, { gh, summarize: () => both })).toBe("created");
   });
@@ -491,7 +491,7 @@ describe("pushNotes", () => {
     git(dir, "init", "--quiet", "--bare", "--initial-branch=main", remote);
     const seed = join(dir, "seed");
     git(dir, "clone", "--quiet", remote, seed);
-    write(join(seed, "llmOS", "reviews", "daily", "2026-07-15.md"), "old\n");
+    write(join(seed, "llmOS", "daily", "2026-07-15.md"), "old\n");
     write(join(seed, "llmOS", "notes", "draft.md"), "draft\n");
     git(seed, "add", ".");
     git(seed, "commit", "--quiet", "-m", "seed");
@@ -514,15 +514,15 @@ describe("pushNotes", () => {
     git(other, "push", "--quiet");
 
     const vault = join(host, "llmOS");
-    write(join(vault, "reviews", "daily", "2026-07-16.md"), "digest\n");
+    write(join(vault, "daily", "2026-07-16.md"), "digest\n");
     write(join(vault, "notes", "draft.md"), "unsaved work\n");
-    pushNotes(vault, ["reviews/daily/2026-07-16.md"], "daily activity: 2026-07-16");
+    pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
 
     expect(git(remote, "log", "--format=%s", "main")).toBe(
       "daily activity: 2026-07-16\nkpm1 note\nseed",
     );
     expect(git(remote, "show", "--name-only", "--format=", "main")).toBe(
-      "llmOS/reviews/daily/2026-07-16.md",
+      "llmOS/daily/2026-07-16.md",
     );
     expect(readFileSync(join(vault, "notes", "draft.md"), "utf8")).toBe("unsaved work\n");
     expect(git(host, "status", "--porcelain")).toBe("M llmOS/notes/draft.md");

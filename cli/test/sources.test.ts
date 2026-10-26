@@ -61,10 +61,10 @@ describe("source add", () => {
     const first = await cli(root, ["source", "add", "1811.00743"], { fetch: network.fetch });
     expect(first.stderr).toBe("");
     expect(first.stdout).toBe(
-      "Captured: arxiv:1811.00743v2 -> sources/arxiv-1811.00743v2 (4 figures)\n",
+      "Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (4 figures)\n",
     );
 
-    const folder = join(root, "sources", "arxiv-1811.00743v2");
+    const folder = join(root, "raw", "arxiv-1811.00743v2");
     const note = parse(readFileSync(join(folder, "source.md"), "utf8"));
     expect(note.properties).toMatchObject({
       origin: "https://arxiv.org/html/1811.00743v2",
@@ -106,28 +106,28 @@ describe("source add", () => {
   });
 
   test("refuses a PDF, and an arXiv paper without HTML, and writes nothing", async () => {
-    const root = makeVault({ "inbox/paper.pdf": "%PDF-1.4" });
+    const root = makeVault({ "raw/paper.pdf": "%PDF-1.4" });
     const network = replay();
-    const pdf = await cli(root, ["source", "add", "inbox/paper.pdf"], { fetch: network.fetch });
+    const pdf = await cli(root, ["source", "add", "raw/paper.pdf"], { fetch: network.fetch });
     expect(pdf.exitCode).toBe(1);
     expect(pdf.stderr).toContain("PDF capture is not supported");
-    expect(existsSync(join(root, "inbox", "paper.pdf"))).toBe(true);
+    expect(existsSync(join(root, "raw", "paper.pdf"))).toBe(true);
 
     const bare = await cli(root, ["source", "add", "1703.07737"], { fetch: network.fetch });
     expect(bare.exitCode).toBe(1);
     expect(bare.stderr).toContain("no HTML version");
-    expect(existsSync(join(root, "sources"))).toBe(false);
+    expect(sourceFolders(root)).toEqual([]);
   });
 
   test("captures the URL held by an inbox note, keeping only captioned figures", async () => {
     const root = makeVault({
-      "inbox/link.md":
+      "raw/link.md":
         "---\ncreated: 2026-10-01\n---\n\nhttps://example.org/papers/open-study.html#top\n",
     });
-    const result = await cli(root, ["source", "add", "inbox/link"], { fetch: replay().fetch });
+    const result = await cli(root, ["source", "add", "raw/link"], { fetch: replay().fetch });
     expect(result.stderr).toBe("");
-    const [name] = readdirSync(join(root, "sources"));
-    const folder = join(root, "sources", name as string);
+    const [name] = sourceFolders(root);
+    const folder = join(root, "raw", name as string);
     const note = parse(readFileSync(join(folder, "source.md"), "utf8"));
     expect(note.properties).toMatchObject({
       source_id: "web:https://example.org/papers/open-study.html",
@@ -135,7 +135,7 @@ describe("source add", () => {
       figures: "1",
     });
     expect(readdirSync(join(folder, "assets"))).toEqual(["pool.jpg"]);
-    expect(existsSync(join(root, "inbox", "link.md"))).toBe(true);
+    expect(existsSync(join(root, "raw", "link.md"))).toBe(true);
   });
 
   test("saves only image responses from public hosts and names what it skips", async () => {
@@ -158,8 +158,8 @@ describe("source add", () => {
     const root = makeVault();
     const result = await cli(root, argv, { fetch: blocked });
     expect(result.stdout).toContain("resolves to a local or private address");
-    const [name] = readdirSync(join(root, "sources"));
-    expect(readdirSync(join(root, "sources", name as string, "assets"))).toEqual([]);
+    const [name] = readdirSync(join(root, "raw"));
+    expect(readdirSync(join(root, "raw", name as string, "assets"))).toEqual([]);
   });
 });
 
@@ -294,9 +294,13 @@ function memory(pages: Record<string, string | Partial<Fetched>>): {
 
 const PNG = { contentType: "image/png", body: encode("png") };
 
-/** The capture folders of a vault, and any staging folder left beside them. */
+/** The capture folders of a vault, and any staging folder left beside them; inbox drops are files. */
 const sourceFolders = (root: string): string[] =>
-  existsSync(join(root, "sources")) ? readdirSync(join(root, "sources")) : [];
+  existsSync(join(root, "raw"))
+    ? readdirSync(join(root, "raw"), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+    : [];
 
 describe("source add edge cases", () => {
   const PAGE = "https://example.org/a";
@@ -315,7 +319,7 @@ describe("source add edge cases", () => {
     const result = await cli(root, ["source", "add", PAGE], { fetch: network.fetch });
     expect(result.stdout).toStartWith("Captured:");
     const [name] = sourceFolders(root);
-    const note = parse(readFileSync(join(root, "sources", name as string, "source.md"), "utf8"));
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
     expect(note.properties.figures).toBe("1");
     const figures = note.body.slice(note.body.indexOf("## Figures"));
     expect(figures).toContain("Figure 1: whole");
@@ -354,7 +358,7 @@ describe("source add edge cases", () => {
     const network = memory({ [PAGE]: html, "https://example.org/a.png": PNG });
     await cli(root, ["source", "add", PAGE], { fetch: network.fetch });
     const [name] = sourceFolders(root);
-    const note = parse(readFileSync(join(root, "sources", name as string, "source.md"), "utf8"));
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
     expect(note.body).toContain("[the file](https://example.org/a.png)");
     expect(note.body).toContain("(https://example.org/a.png?download=1)");
     expect(note.body).toContain("![](assets/a.png)");
@@ -368,9 +372,7 @@ describe("source add edge cases", () => {
     const network = memory({ [PAGE]: html, "https://example.org/a.png": PNG });
     await cli(root, ["source", "add", PAGE], { fetch: network.fetch });
     const [name] = sourceFolders(root);
-    const { body } = parse(
-      readFileSync(join(root, "sources", name as string, "source.md"), "utf8"),
-    );
+    const { body } = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
     expect(body).toContain("![Uncaptioned image](https://example.org/u.png)");
     expect(body).not.toContain("[[");
   });
@@ -435,11 +437,9 @@ describe("source add edge cases", () => {
     const first = await cli(root, ["source", "add", "https://reader:secret@example.org/a#one"], {
       fetch: network.fetch,
     });
-    expect(first.stdout).toStartWith(
-      "Captured: web:https://example.org/a -> sources/example-org-a-",
-    );
+    expect(first.stdout).toStartWith("Captured: web:https://example.org/a -> raw/example-org-a-");
     expect(sourceFolders(root)).toEqual(["example-org-a-3b3bbbea"]);
-    const note = readFileSync(join(root, "sources", "example-org-a-3b3bbbea", "source.md"), "utf8");
+    const note = readFileSync(join(root, "raw", "example-org-a-3b3bbbea", "source.md"), "utf8");
     expect(note).not.toContain("secret");
     const again = await cli(root, ["source", "add", "https://example.org/a#two"], {
       fetch: offline,
@@ -458,7 +458,7 @@ describe("source add edge cases", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Skipped image: https://example.org/c/gone.png: HTTP 404");
     const [name] = sourceFolders(root);
-    const assets = readdirSync(join(root, "sources", name as string, "assets"));
+    const assets = readdirSync(join(root, "raw", name as string, "assets"));
     expect(new Set(assets.map((asset) => asset.toLowerCase())).size).toBe(2);
   });
 
@@ -476,22 +476,22 @@ describe("source add edge cases", () => {
     });
     expect(result.exitCode).toBe(0);
     const [name] = sourceFolders(root);
-    const note = parse(readFileSync(join(root, "sources", name as string, "source.md"), "utf8"));
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
     expect(note.body).toContain("café au lait");
     expect(note.properties.licence).toBe("https://example.org/licenses/by");
   });
 
   test("a note with prose around a URL is not captured", async () => {
     const root = makeVault({
-      "inbox/mixed.md": "---\ncreated: 2026-10-01\n---\n\nRead https://example.org/a later.\n",
+      "raw/mixed.md": "---\ncreated: 2026-10-01\n---\n\nRead https://example.org/a later.\n",
     });
-    const result = await cli(root, ["source", "add", "inbox/mixed"], { fetch: offline });
+    const result = await cli(root, ["source", "add", "raw/mixed"], { fetch: offline });
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("more than a bare URL");
   });
 
   test("another source folder with an unreadable source.md does not block a capture", async () => {
-    const root = makeVault({ "sources/broken/source.md": "---\n: : bad\n---\n" });
+    const root = makeVault({ "raw/broken/source.md": "---\n: : bad\n---\n" });
     const network = memory({ [PAGE]: "<html><body><p>Hello there.</p></body></html>" });
     const result = await cli(root, ["source", "add", PAGE], { fetch: network.fetch });
     expect(result.exitCode).toBe(0);

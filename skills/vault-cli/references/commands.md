@@ -74,7 +74,7 @@ with the wrong number of cells (table-column-count), an empty link
 a table wikilink, which splits the cell (table-wikilink-pipe; write
 [[target\|label]]), and a paragraph or list item split over several lines,
 which Obsidian shows as broken lines (hard-wrapped-paragraph; block quotes
-keep their lines). Notes under sources/ and dot folders get no Markdown
+keep their lines). Notes under raw/ and dot folders get no Markdown
 findings. Exits 1 when findings need review, 0 otherwise. Never rewrites
 content; works with Obsidian closed. This is a conservative authoring aid,
 not a style linter: code examples, missing files, and ambiguous filenames
@@ -109,7 +109,7 @@ Use before opening a consolidation pull request, and whenever a note with
 (drafted, checked, verified, superseded, or `flagged: <reason>`), the fact
 text, one quoted passage, a final `— [[source#heading|label]]` line, and a
 `^fact-<slug>` block ID on its own line after a blank line. The format and
-the rules are in `agents/references/schema.md` (Compiled facts).
+the rules are in `schema.md` at the vault root (Compiled facts).
 Per fact, it checks that the quote occurs in the linked heading's section of
 the source (case and punctuation as written; white space, Unicode forms,
 quote marks, ligatures, soft hyphens, LaTeX symbols, and Markdown markup are
@@ -237,7 +237,7 @@ Options:
   --vault  Must be "llmos" -- daily helpers are an llmOS-profile feature. Default: llmos.
 
 Example output:
-  Appended to: reviews/daily/2026-07-17.md
+  Appended to: daily/2026-07-17.md
 
 Example:
   llmos-vault daily append-thought "TIL obsidian-cli has no heading-targeted append."
@@ -260,7 +260,7 @@ Options:
   --vault  Must be "llmos" -- daily helpers are an llmOS-profile feature. Default: llmos.
 
 Example output:
-  {"name": "2026-07-17", "path": "/vault/reviews/daily/2026-07-17.md",
+  {"name": "2026-07-17", "path": "/vault/daily/2026-07-17.md",
    "properties": {"categories": ["[[Reviews]]"]}, "body": "# 2026-07-17\n..."}
 
 Example:
@@ -284,7 +284,7 @@ Options:
   --vault  Must be "llmos" -- daily helpers are an llmOS-profile feature. Default: llmos.
 
 Example output:
-  [{"name": "2026-07-17", "path": "/vault/reviews/daily/2026-07-17.md",
+  [{"name": "2026-07-17", "path": "/vault/daily/2026-07-17.md",
     "properties": {"categories": ["[[Reviews]]"]}, "body": "# 2026-07-17\n..."}]
 
 Example:
@@ -300,8 +300,8 @@ Rank clusters of notes that restate the same works, as candidates to consolidate
 
 Use when `health` reports discover as overdue, or when you look for the
 next topic for `consolidate-knowledge`. It clusters the vault's notes
-outside archive/, knowledge/, sources/, reviews/, templates/, agents/, and
-categories/. The signals are the arXiv ids and DOIs that notes share, the
+outside knowledge/, daily/, and categories/, except the rule notes at the
+vault root and the captured sources (raw/<slug>/source.md). The signals are the arXiv ids and DOIs that notes share, the
 dangling links (not an embed of an existing Base or image) and missing topic
 notes that they share, and mutual nearest neighbors from the vectors already in the qmd index (no model loads).
 Clusters of three notes or more are ranked: uncovered ones first, then those
@@ -331,8 +331,8 @@ Example output:
   {"generated_at": "2026-10-08T09:30:00.000Z", "vault": "llmos",
    "report_path": "/home/me/code/llmos/artifacts/discover/2026-10-08.json", "qmd_notice": null,
    "clusters": [{"rank": 1, "score": 7.4,
-     "notes": ["projects/a/notes.md", "projects/b/notes.md", "inbox/c.md"], "covered_by": null,
-     "signals": {"shared_ids": [{"id": "arxiv:2403.12345", "notes": ["inbox/c.md", "projects/a/notes.md"]}],
+     "notes": ["projects/a/notes.md", "projects/b/notes.md", "raw/c.md"], "covered_by": null,
+     "signals": {"shared_ids": [{"id": "arxiv:2403.12345", "notes": ["raw/c.md", "projects/a/notes.md"]}],
                  "shared_dangling": 0, "shared_topics": 0, "similar_pairs": 2}}]}
 
 Example:
@@ -379,8 +379,8 @@ line under `## Thoughts` in today's daily note. Safe to re-run: a note
 already at `destination` is not moved again, and existing properties are
 kept. Only the move needs Obsidian.
 Do NOT use when `destination`'s top-level folder is not `knowledge`,
-`projects`, `sources`, or `archive` -- this exits with an error before
-any move is attempted.
+`projects`, or `raw` -- this exits with an error before any move is
+attempted.
 
 Arguments:
   note         Note name (wikilink-style resolution) or vault-relative path of the inbox item.
@@ -414,10 +414,10 @@ or embed that names an existing non-note file (an image, a .base file) is
 resolved by its path, then by its file name. An orphan is a note that no other
 note links to and that has no valid category. In the llmos vault, a note has a
 valid category when its `categories` names a hub note in categories/ (the
-hub's Base lists the note), so such a note is never an orphan. The inbox hub
-note (inbox/Inbox.md) is never an orphan and never a stale inbox item in the
-llmos vault. A note under the root templates/ folder is scaffolding in the llmos
-vault: it is never an orphan or a dead-end, its placeholder links (such as
+hub's Base lists the note), so such a note is never an orphan. In the llmos
+vault the inbox is every note in raw/ except a captured source's
+raw/<slug>/source.md; in the second-vault vault it is inbox/. A note under
+categories/templates/ is scaffolding in the llmos vault: it is never an orphan or a dead-end, its placeholder links (such as
 {{title}}) are not reported, and a link from it does not count as inbound. A
 link to a template still resolves. In the second-vault vault (--vault second-vault) only
 links count, and templates are checked like any note.
@@ -526,10 +526,10 @@ Options:
   --vault  Which registered vault the note lives in. Default: llmos.
 
 Example output:
-  Moved: notes/alpha.md -> archive/alpha.md
+  Moved: notes/alpha.md -> projects/demo/alpha.md
 
 Example:
-  llmos-vault move alpha archive/alpha.md --vault llmos
+  llmos-vault move alpha projects/demo/alpha.md --vault llmos
 ```
 
 ## `neighbors`
@@ -739,7 +739,7 @@ Usage: llmos-vault source add <source> [--vault llmos|second-vault]
 Capture an arXiv paper or web page into a frozen source folder: raw HTML, figures, defuddle text, and a manifest.
 
 Use when an inbox item is a source worth keeping as the original: an arXiv
-paper or an open-access web page. The capture goes to `sources/<slug>/`
+paper or an open-access web page. The capture goes to `raw/<slug>/`
 and holds `raw.html`, `assets/` (the images of the captioned figures,
 taken from the raw HTML), and `source.md`, whose frontmatter is the manifest
 (`origin`, `source_id`, `retrieved`, `licence`, `converter`,
@@ -766,7 +766,7 @@ Options:
   --vault  Must be "llmos" -- sources are an llmOS-profile feature. Default: llmos.
 
 Example output:
-  Captured: arxiv:1811.00743v2 -> sources/arxiv-1811.00743v2 (4 figures)
+  Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (4 figures)
 
 Example:
   llmos-vault source add 1811.00743

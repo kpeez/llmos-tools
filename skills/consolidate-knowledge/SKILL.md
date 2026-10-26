@@ -12,11 +12,11 @@ minutes. It runs inside the agent session; there is no separate orchestrator.
 
 The contract lives in the vault. Read it first:
 
-- `agents/references/schema.md`: "Compiled facts" (the fact format, statuses,
-  and what the lint checks), "Categories and topics", and "Sources".
-- `agents/references/ingest-contract.md`: the fact rules and the conflict rule.
-- `agents/references/authoring.md`, the `ingest-source` skill, and the owning
-  project's `CONTEXT.md` (privacy rules).
+- `schema.md` at the vault root: "Compiled facts" (the fact format,
+  statuses, and what the lint checks), "Categories and topics", and "Sources".
+- `ingest-contract.md` at the vault root: the fact rules and the conflict rule.
+- `authoring.md` at the vault root, the `ingest-source` skill, and the
+  owning project's `CONTEXT.md` (privacy rules).
 
 ## Inputs
 
@@ -50,11 +50,11 @@ candidate clusters, uncovered ones first.
 5. **Write the notes.**
    - The hub is the topic note `knowledge/<topic>.md`: write its prose above
      the embedded Base. For a new cluster, check the `[[Topics]]` hub first,
-     then create the topic note from `templates/topic.md`. Do not create a
-     separate hub note.
-   - Paper notes use `templates/paper.md`, dataset notes `templates/dataset.md`.
-     The properties are in `schema.md`; link the captured source and related
-     notes inline in the body.
+     then create the topic note from `categories/templates/topic.md`. Do not
+     create a separate hub note.
+   - Paper notes use `categories/templates/paper.md`, dataset notes
+     `categories/templates/dataset.md`. The properties are in `schema.md`;
+     link the captured source and related notes inline in the body.
    - Write every fact as `[!fact] drafted`. Never set `checked` before step 7
      and never set `verified`.
    - Tips the lint teaches: copy a quote from `source.md` as it stands (a

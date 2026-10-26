@@ -3,6 +3,35 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.7.0 — 2026-10-26
+
+The vault has a new layout ([ADR 0013](../llmOS/projects/llmos/adrs/0013-flatten-vault-into-raw-knowledge-and-daily.md)).
+An older install reads and writes the old paths, so update the plugin and
+run `bun <llmos-plugin-root>/cli/scripts/install.ts` on every host before
+its next daily digest. Then run `llmos-vault reindex`.
+
+- Daily notes are in `daily/`, not `reviews/daily/`.
+- Captured sources are in `raw/<slug>/`, not `sources/<slug>/`.
+  `source add` writes there, and `claims lint` accepts a source link only
+  to `raw/<slug>/source`.
+- The inbox is every note in `raw/` except a capture's
+  `raw/<slug>/source.md`. `health` lists those notes under `stale_inbox`.
+  The inbox hub note `inbox/Inbox.md` is gone. The second-vault vault keeps
+  `inbox/`.
+- `schema.md`, `authoring.md`, and `ingest-contract.md` are at the vault
+  root, not in `agents/references/`. The hooks and the MCP server name the
+  new paths.
+- Note templates are in `categories/templates/`, and the Bases are in
+  `categories/` beside their hubs. The digest builds a new daily note from
+  `categories/templates/daily-note.md`.
+- `file-inbox` files into `knowledge`, `projects`, or `raw`. It stamps
+  `[[Sources]]` only on a capture's `raw/<slug>/source.md`; any other note
+  in `raw/` gets no category. The `archive` area is gone: an archived project stays in `projects/<slug>/` with
+  `status: archived`.
+- `discover` skips the root rule notes and the captured sources, and it
+  keeps the inbox notes in `raw/` as candidates.
+- The CLI names the vault's folders in one module, `cli/src/layout.ts`.
+
 ## 2.6.1 — 2026-10-22
 
 - The CLI's Bun project (`package.json`, `bun.lock`, `src/`, `bin/`,

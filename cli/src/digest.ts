@@ -58,6 +58,7 @@ import { parseArgs } from "node:util";
 import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.ts";
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
+import { DAILY_DIR, TEMPLATES_DIR } from "./layout.ts";
 import { VaultRootError, vaultRoot } from "./root.ts";
 import { readText } from "./vault.ts";
 import { recordRun } from "./write.ts";
@@ -708,7 +709,7 @@ export function replaceBlock(text: string, block: string): string {
 }
 
 export function newNoteText(day: Day, root: string, block: string): string {
-  const template = readText(join(root, "templates", "daily-note.md"));
+  const template = readText(join(root, TEMPLATES_DIR, "daily-note.md"));
   return replaceBlock(template.replaceAll("{{date:YYYY-MM-DD}}", isoDate(day)), block);
 }
 
@@ -741,7 +742,7 @@ export function processDay(day: Day, root: string, options: ProcessOptions = {})
   const [monitored, unseen] = readProjects(root, listOrgRepos(gh));
   const repos = monitored.flatMap((project) => project.repos);
   const grouped = groupByProject(fetchActivity(day, repos, gh), monitored);
-  const notePath = join(root, "reviews", "daily", `${isoDate(day)}.md`);
+  const notePath = join(root, DAILY_DIR, `${isoDate(day)}.md`);
 
   if (grouped.size === 0) {
     return existsSync(notePath) ? "silent (note untouched)" : "silent (no note created)";
@@ -812,7 +813,7 @@ export function main(argv: string[]): number {
       const outcome = processDay(day, root);
       console.log(`${isoDate(day)}: ${outcome}`);
       if (outcome === "created" || outcome === "updated") {
-        written.push(join("reviews", "daily", `${isoDate(day)}.md`));
+        written.push(join(DAILY_DIR, `${isoDate(day)}.md`));
       }
     }
     if (only === undefined) {

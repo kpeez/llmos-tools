@@ -20,7 +20,7 @@ describe("extractIds", () => {
     ],
     [
       "arXiv: prefix and slug",
-      "arXiv:2403.11111, sources/arxiv-2403.33333v1/",
+      "arXiv:2403.11111, raw/arxiv-2403.33333v1/",
       ["arxiv:2403.11111", "arxiv:2403.33333"],
     ],
     ["bare token", "see 2403.55555v3", ["arxiv:2403.55555"]],
@@ -213,8 +213,8 @@ describe("findClusters", () => {
     // Project landing notes embed `![[Reviews.base#Project]]`; the file exists, so it joins nothing.
     const embeds = "![[Reviews.base#Project]]\n![[Decisions.base]]\n![[figures/plot.png]]\n";
     const files: Record<string, string> = {
-      "templates/bases/Reviews.base": "views: []\n",
-      "templates/bases/Decisions.base": "views: []\n",
+      "categories/Reviews.base": "views: []\n",
+      "categories/Decisions.base": "views: []\n",
       "figures/plot.png": "png",
     };
     for (const i of [1, 2, 3]) files[`projects/p${i}/p${i}.md`] = `# P${i}\n\n${embeds}`;
@@ -231,17 +231,30 @@ describe("findClusters", () => {
     expect(findClusters(group(MAX_KEY_NOTES + 1, 0))).toEqual([]);
   });
 
-  test.each([
-    "archive/",
-    "knowledge/",
-    "sources/",
-    "reviews/",
-    "templates/",
-    "agents/",
-    "categories/",
-  ])("notes in %s are not candidates", (folder) => {
-    expect(findClusters(group(3, 0, folder.slice(0, -1)))).toEqual([]);
-    expect(findClusters(group(3, 0))).toHaveLength(1);
+  test.each(["knowledge/", "daily/", "categories/", "categories/templates/"])(
+    "notes in %s are not candidates",
+    (folder) => {
+      expect(findClusters(group(3, 0, folder.slice(0, -1)))).toEqual([]);
+      expect(findClusters(group(3, 0))).toHaveLength(1);
+    },
+  );
+
+  test("captured sources are not candidates; inbox drops in raw/, nested or not, are", () => {
+    const keys = note("10.1234/a 10.1234/b");
+    const captures = {
+      "raw/s1/source.md": keys,
+      "raw/s2/source.md": keys,
+      "raw/s3/source.md": keys,
+    };
+    expect(findClusters(model(captures))).toEqual([]);
+    expect(findClusters(group(3, 0, "raw"))).toHaveLength(1);
+    expect(findClusters(group(3, 0, "raw/batch"))).toHaveLength(1);
+  });
+
+  test("the rule notes at the vault root are not candidates", () => {
+    const keys = note("10.1234/a 10.1234/b");
+    const files = { "schema.md": keys, "authoring.md": keys, "ingest-contract.md": keys };
+    expect(findClusters(model(files))).toEqual([]);
   });
 
   test.each([
@@ -422,7 +435,7 @@ describe("health overdue_jobs", () => {
   test("a wikilink never joins a DOI key", () => {
     const keys = extractIds("[[10.1234/abc/Secret Name]] 10.1234/def[[Other Secret]]");
     expect(keys).toEqual(["doi:10.1234/def"]);
-    expect(extractIds("[[sources/arxiv-2403.11111v1]]", new Date(2026, 9, 8))).toEqual([
+    expect(extractIds("[[raw/arxiv-2403.11111v1]]", new Date(2026, 9, 8))).toEqual([
       "arxiv:2403.11111",
     ]);
   });
@@ -497,7 +510,7 @@ function clusterVault(withKnowledgeNote = true): string {
   const files: Record<string, string> = {
     "projects/a/notes.md": note("https://arxiv.org/abs/2403.11111v2 and 10.1234/abc"),
     "projects/b/notes.md": note("arXiv:2403.11111 and doi:10.1234/ABC."),
-    "inbox/c.md": note("https://arxiv.org/pdf/2403.11111.pdf and 10.1234/abc"),
+    "raw/c.md": note("https://arxiv.org/pdf/2403.11111.pdf and 10.1234/abc"),
     "projects/d/notes.md": note("bare 2403.11111 and (10.1234/abc)"),
     "knowledge/hub.md": note("The hub."),
     // The covered cluster shares four keys, so it scores higher than the first one.
@@ -534,7 +547,7 @@ describe("discover", () => {
     expect(result.exitCode).toBe(0);
     const report = JSON.parse(result.stdout);
     expect(report.clusters.map((c: { notes: string[] }) => c.notes)).toEqual([
-      ["inbox/c.md", "projects/a/notes.md", "projects/b/notes.md", "projects/d/notes.md"],
+      ["projects/a/notes.md", "projects/b/notes.md", "projects/d/notes.md", "raw/c.md"],
       ["projects/e/notes.md", "projects/f/notes.md", "projects/g/notes.md"],
     ]);
     const [first, second] = report.clusters;
@@ -645,7 +658,7 @@ describe("discover", () => {
     else {
       // The link points inside the vault, where the write guard alone would allow it.
       writeFiles(root, { "projects/hub-copy.md": note("# Knowledge hub") });
-      mkdirSync(join(root, "categories"));
+      mkdirSync(join(root, "categories"), { recursive: true });
       symlinkSync(join(root, "projects/hub-copy.md"), join(root, KNOWLEDGE_NOTE));
     }
     const before = snapshot(root);

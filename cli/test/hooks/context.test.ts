@@ -30,9 +30,9 @@ afterEach(removeTemporaryFolders);
 /** A vault with the schema and authoring references and a provider MEMORY.md. */
 function contextVault(root: string): string {
   makeVault(root);
-  writeFile(join(root, "agents", "references", "schema.md"), `${SCHEMA_SENTINEL}\n`);
+  writeFile(join(root, "schema.md"), `${SCHEMA_SENTINEL}\n`);
   writeFile(
-    join(root, "agents", "references", "authoring.md"),
+    join(root, "authoring.md"),
     `${AUTHORING_SENTINEL}\nUse [[wikilinks]], Bases, and Canvas where useful.\n`,
   );
   writeFile(join(root, "agents", "claude", "MEMORY.md"), `${MEMORY_SENTINEL}\n`);
@@ -72,7 +72,7 @@ describe("session-start", () => {
 
     expect(result.stdout).toContain(vault);
     expect(result.stdout.toLowerCase()).toContain("thoughts");
-    expect(result.stdout).toContain(join(vault, "reviews", "daily", `${todayIso()}.md`));
+    expect(result.stdout).toContain(join(vault, "daily", `${todayIso()}.md`));
     // Agents see only the deferred MCP tool names, so the context names them.
     expect(result.stdout).toContain("llmos MCP server");
     expect(result.stdout).toContain("daily_append_thought");
@@ -96,7 +96,7 @@ describe("session-start", () => {
     expect(result.stdout).toContain(
       `${join(repo, ".agents", "docs")} (resolves to ${projectDocs})`,
     );
-    expect(result.stdout).toContain("agents/references/authoring.md");
+    expect(result.stdout).toContain("authoring.md");
     expect(result.exitCode).toBe(0);
   });
 
@@ -234,7 +234,7 @@ describe("pre-tool-use", () => {
 
     const context = additionalContext(result, "PreToolUse");
     expect(context).toContain("Obsidian vault note");
-    expect(context).toContain("agents/references/authoring.md");
+    expect(context).toContain("authoring.md");
     expect(context).toContain("llmos-vault read");
     expect(context).toContain("qmd");
     expect(context).not.toContain(SCHEMA_SENTINEL);
@@ -281,7 +281,7 @@ describe("pre-tool-use", () => {
 
     const context = additionalContext(result, "PreToolUse");
     expect(context).toContain("Obsidian vault note");
-    expect(context).toContain("agents/references/authoring.md");
+    expect(context).toContain("authoring.md");
   });
 
   test("recognizes an llmos-vault read with --vault=llmos and ignores other vaults", () => {
@@ -453,7 +453,7 @@ describe("pre-tool-use", () => {
   test("truncates long authoring guidance", () => {
     const tmp = temporaryFolder();
     const vault = contextVault(join(tmp, "vault"));
-    writeFile(join(vault, "agents", "references", "authoring.md"), `${"é".repeat(9000)}\n`);
+    writeFile(join(vault, "authoring.md"), `${"é".repeat(9000)}\n`);
     const note = writeFile(join(vault, "note.md"), "# Note\n");
 
     const result = runHook(

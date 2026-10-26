@@ -6,19 +6,16 @@
  */
 
 import { normalize } from "node:path";
+import { CAPTURE_NOTE } from "./layout.ts";
 import { projectAlias } from "./schema.ts";
 
-export const RECOGNIZED_AREAS = new Set(["knowledge", "projects", "sources", "archive"]);
-// Each value names a hub in `categories/`. Archiving does not change what a
-// note is, so `archive` implies no category.
-const AREA_CATEGORIES: Record<string, string> = {
-  knowledge: "[[Knowledge]]",
-  sources: "[[Sources]]",
-};
+export const RECOGNIZED_AREAS = new Set(["knowledge", "projects", "raw"]);
 
 /**
- * Derive the properties a destination path implies: the area's default
- * category, or none for `archive`. A project's landing page
+ * Derive the properties a destination path implies. A note in `knowledge/`
+ * gets `[[Knowledge]]`; a captured source's `raw/<slug>/source.md` gets
+ * `[[Sources]]`, and any other note in `raw/` is an inbox drop with no
+ * category. A project's landing page
  * (`projects/<slug>/<slug>.md`) gets `[[Projects]]` and no self-link; any
  * other project note gets the project link alone. The path is normalized
  * first (`./`, `//`, `..`). Throws for a destination outside the recognized
@@ -34,10 +31,9 @@ export function destinationProperties(root: string, destination: string): Record
         `areas (${[...RECOGNIZED_AREAS].sort().join(", ")})`,
     );
   }
-  if (area !== "projects") {
-    const category = AREA_CATEGORIES[area];
-    return category === undefined ? {} : { categories: [category] };
-  }
+  if (area === "knowledge") return { categories: ["[[Knowledge]]"] };
+  if (area === "raw")
+    return CAPTURE_NOTE.test(parts.join("/")) ? { categories: ["[[Sources]]"] } : {};
 
   if (parts.length < 2) throw new Error(`destination '${destination}' names no project slug`);
   const slug = parts[1] as string;

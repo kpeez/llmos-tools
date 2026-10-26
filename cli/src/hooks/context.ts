@@ -11,6 +11,7 @@
  */
 
 import { basename } from "node:path";
+import { AUTHORING_NOTE, DAILY_DIR, SCHEMA_NOTE } from "../layout.ts";
 import {
   READ_TOOLS as MCP_READ_TOOLS,
   MCP_WRITE_TOOL,
@@ -80,17 +81,16 @@ function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
 }
 
 export function sessionContext(root: string, linked: [string, string] | null): string {
-  const references = joinPath(root, "agents", "references");
   const routes =
     `For durable vault work, read ${joinPath(root, "AGENTS.md")}, ` +
-    `${joinPath(references, "schema.md")}, and ${joinPath(references, "authoring.md")}.`;
+    `${joinPath(root, SCHEMA_NOTE)}, and ${joinPath(root, AUTHORING_NOTE)}.`;
   const access = linked
     ? `This project session reaches llmOS through ${linked[0]} ` +
       `(resolves to ${linked[1]}). Treat those files as Obsidian vault notes. `
     : `llmOS root: ${root}. `;
   const daily =
     `Insight worth keeping goes under ## Thoughts in ` +
-    `${joinPath(root, "reviews", "daily", `${localDate()}.md`)} -- prose only, and never a ` +
+    `${joinPath(root, DAILY_DIR, `${localDate()}.md`)} -- prose only, and never a ` +
     "restatement of commits, issues, or PRs, which GitHub already records.";
   return `${access}${routes}\n${daily}\n${MCP_LINE}`;
 }
@@ -204,7 +204,7 @@ export function toolInputOf(data: Payload): Payload | null {
 }
 
 function authoringContext(root: string): string {
-  const authoring = joinPath(root, "agents", "references", "authoring.md");
+  const authoring = joinPath(root, AUTHORING_NOTE);
   if (!isFile(authoring)) {
     return (
       "llmOS notes are Obsidian notes: use [[wikilinks]] for internal links, " +
@@ -230,7 +230,7 @@ function authoringContext(root: string): string {
 }
 
 function readContext(root: string): string {
-  const authoring = joinPath(root, "agents", "references", "authoring.md");
+  const authoring = joinPath(root, AUTHORING_NOTE);
   return (
     "This is an Obsidian vault note. Preserve its frontmatter, wikilinks, " +
     "embeds, and local context. Use `llmos-vault read`/`neighbors` or qmd " +
@@ -289,7 +289,7 @@ export function preToolUse(data: Payload): string | null {
 
 /** `context` after the vault's note schema, when the schema file can be read. */
 function withSchema(root: string, context: string): string {
-  const schema = joinPath(root, "agents", "references", "schema.md");
+  const schema = joinPath(root, SCHEMA_NOTE);
   if (!isFile(schema)) return context;
   try {
     return `${readText(schema).trim()}\n\n${context}`;

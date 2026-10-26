@@ -5,21 +5,19 @@ description: Maintain the shared llmOS Obsidian vault. Use when an agent files o
 
 # Maintain llmOS
 
-Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003) — `agents/` holds only `references/`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
+Treat llmOS as the canonical shared store; keep reusable knowledge shared. No provider writes memory into the vault (ADR-0003). The rule notes `schema.md`, `authoring.md`, and `ingest-contract.md` sit at the vault root. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
 
 ## Workflow
 
 1. Use the `llmos` MCP tools when the server is connected (`read`, `neighbors`, `search`, `daily_append_thought`, `set_property`, and the rest; see the `vault-cli` skill), and the installed `llmos-vault` and `llmos-audit` commands otherwise, for vault resolution and maintenance. Never derive the vault from the working directory or a file's location (ADR-0001).
-2. Read `[[llmOS]]`, `AGENTS.md`, `agents/references/schema.md`, and
-   `agents/references/authoring.md`, then the nearest area or canonical project
-   note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
+2. Read `[[llmOS]]`, `AGENTS.md`, `schema.md`, and `authoring.md`, then the
+   nearest area or canonical project note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
 3. Delegate broad vault exploration (multi-note reads, wide `qmd` sweeps) to a bounded subagent; keep synthesis and cross-cutting decisions with the primary agent.
 4. Use the MCP `search` tool or `llmos-vault search "<terms>"` (or `qmd search -c llmos`) for exact retrieval, and `semantic: true` or `--semantic` (vector search, about 1 s; `qmd vsearch -c llmos`) for retrieval by meaning. Use `hybrid: true` or `--hybrid` (query expansion and reranking, 13 to 22 s per query; `qmd query -c llmos`) only when both miss. Read full hits with the MCP `read` tool, `llmos-vault read`, or `qmd get` before using them.
 5. Classify linked `categories`, linked `topics`, and linked `project` (omitting
    empty properties), then file the result with the matching template using the
-   schema and directory map at `$LLMOS_ROOT/agents/references/schema.md`; use
-   `$LLMOS_ROOT/agents/references/authoring.md` for body links and Obsidian
-   features. These vault files remain canonical through a repository's
+   schema and directory map at `$LLMOS_ROOT/schema.md`; use
+   `$LLMOS_ROOT/authoring.md` for body links and Obsidian features. These vault files remain canonical through a repository's
    `.agents/docs` symlink.
 6. In body prose, label internal links with a readable title, concept, or phrase
    that fits the sentence. Keep `.md` extensions and vault paths out of visible
@@ -32,7 +30,7 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. No pr
 8. Record insight, not activity. GitHub already holds what happened, and the
    evening digest writes it into each daily note's `## Projects` block. When a
    day produces a lesson, an open question, or a decision with no ADR yet, write
-   it under `## Thoughts` in `reviews/daily/YYYY-MM-DD.md` — prose, in your own
+   it under `## Thoughts` in `daily/YYYY-MM-DD.md`. Write prose, in your own
    words. Never restate commits, issues, or PRs there. The `## Projects` block is
    machine-owned — the digest regenerates it wholesale, so never hand-write the
    day's activity into it.

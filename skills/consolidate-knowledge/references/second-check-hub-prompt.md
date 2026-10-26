@@ -26,7 +26,7 @@ Vault root: <absolute path of the worktree's llmOS/ folder>
 The prose summarizes papers, datasets, and other notes. Paper and dataset notes
 hold [!fact]
 callouts: a fact sentence, a quote, and a link to a heading of a captured source
-in sources/<slug>/source.md. A flagged fact cites a source that is not captured.
+in raw/<slug>/source.md. A flagged fact cites a source that is not captured.
 A prose statement should link the ^fact-... block that states it, or say that
 it is unsupported, uncaptured, or computed. To resolve a block link
 [[Note#^fact-id]], run: rg -n '^\^fact-id$' <vault root>/knowledge/<Note>.md

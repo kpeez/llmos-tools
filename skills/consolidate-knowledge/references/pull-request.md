@@ -33,11 +33,11 @@ P=llmOS/projects/<project>                       # the owning project
 SHAPES='<regex of the identifier shape(s) from the project notes>'
 ids()   { rg -oNI "$SHAPES" "$P" | sort -u; }     # a pipe: nothing on disk
 names() { <command that reads the owner's private name list from the vault>; }
-files() { git diff --name-only -z $B...HEAD -- . ':!llmOS/sources'; }
+files() { git diff --name-only -z $B...HEAD -- . ':!llmOS/raw/*/*'; }
 added() { git diff -U0 $B...HEAD -- "$@" | rg '^\+[^+]'; }   # added lines
 scan() {   # scan <list-function>: counts and paths only, never matched text
   [ "$("$1" | wc -l)" -gt 0 ] || { echo "EMPTY LIST: not a pass"; return 1; }
-  echo "added lines with hits: $(added . ':!llmOS/sources' | rg -F -w -f <("$1") | wc -l)"
+  echo "added lines with hits: $(added . ':!llmOS/raw/*/*' | rg -F -w -f <("$1") | wc -l)"
   files | while IFS= read -r -d '' f; do
     added -- "$f" | rg -q -F -w -f <("$1") && echo "hit: $f"
   done
@@ -48,8 +48,9 @@ rg -F -w -f <(ids) <pr-body-file> | wc -l       # the PR body: ids, expect 0
 rg -F -w -f <(names) <pr-body-file> | wc -l     # the PR body: names, expect 0
 ```
 
-- Run it after you commit and before you push. The scan excludes
-  `llmOS/sources/`, which holds frozen captures of published pages.
+- Run it after you commit and before you push. The scan excludes the capture
+  folders `llmOS/raw/<slug>/`, which hold frozen copies of published pages. It
+  still scans the inbox drops directly in `llmOS/raw/`.
 - Each count prints, `0` included. Report counts and paths only. An empty list
   is never a pass.
 - The scan covers added lines only. The file list is context: a member note

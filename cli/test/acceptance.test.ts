@@ -65,7 +65,7 @@ describe("with Obsidian unreachable", () => {
   ] as const) {
     test(`${label}: writes succeed headlessly and move exits 3`, () => {
       const day = today();
-      const daily = `reviews/daily/${day}.md`;
+      const daily = `daily/${day}.md`;
       const marker = "<!-- llmos-activity:start hash=9a8b7c6d5e4f -->";
       const root = makeVault({ "notes/alpha.md": ALPHA });
       writeFiles(root, { [daily]: dailyNote(day, marker) });

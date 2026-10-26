@@ -13,6 +13,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { PropertyValue } from "./frontmatter.ts";
+import { DAILY_DIR, TEMPLATES_DIR } from "./layout.ts";
 import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
 
 // ADRs use proposed/accepted/superseded; other notes use the rest.
@@ -77,7 +78,9 @@ export interface SchemaReport {
 }
 
 function skipped(parts: string[]): boolean {
-  return parts[0] === "templates" || parts.some((part) => part.startsWith("."));
+  return (
+    parts.join("/").startsWith(`${TEMPLATES_DIR}/`) || parts.some((part) => part.startsWith("."))
+  );
 }
 
 /**
@@ -110,7 +113,7 @@ function noteErrors(
   const parts = relative.split("/");
   const properties = note.properties;
 
-  const isDailyReview = parts[0] === "reviews" && parts[1] === "daily";
+  const isDailyReview = parts[0] === DAILY_DIR;
   if (newNotes.has(relative) || isDailyReview) {
     const created = properties.created;
     if (typeof created !== "string" || !ISO_DATE.test(created)) {

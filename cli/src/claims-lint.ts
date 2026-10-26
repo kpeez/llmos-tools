@@ -6,8 +6,7 @@
  * captured source, and, after one blank line, a `^fact-<slug>` block ID. The
  * lint checks that the quote occurs in the linked heading's section of the
  * source text and that every number in the fact occurs in the quote. The
- * format and the rules are in `llmOS/agents/references/schema.md` (Compiled
- * facts). The lint is necessary, not sufficient: it cannot see swapped
+ * format and the rules are in `llmOS/schema.md` (Compiled facts). The lint is necessary, not sufficient: it cannot see swapped
  * numbers, negation, or a real quote that does not support the fact.
  *
  * The lint returns a report and never prints or exits. A finding fails the
@@ -15,6 +14,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { CAPTURE_NOTE } from "./layout.ts";
 import type { Note, VaultModel } from "./vault.ts";
 
 export type FindingCode =
@@ -87,7 +87,6 @@ const ID_FORMS = {
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const HEADING = /^ {0,3}(#{1,6})[ \t]+(.*)$/;
 const SOURCE_LINE = /^\[\[([^\]|#]*)(?:#([^\]|]*))?(?:\|[^\]]*)?\]\]$/;
-const SOURCE_NOTE = /^sources\/[^/]+\/source\.md$/;
 const ELISION = /\[\s*(?:\.{3}|…)\s*\]|…|\.{3}/;
 const ALNUM = /[\p{L}\p{N}]/u;
 const DIGIT = /\d/;
@@ -912,11 +911,8 @@ function checkQuote(
   }
   const [, target = "", heading] = link;
   const source = model.resolveLink(target.trim(), note);
-  if (source === undefined || !SOURCE_NOTE.test(source.path)) {
-    finding(
-      "bad-source-link",
-      `"${target.trim()}" is not a captured source (sources/<slug>/source)`,
-    );
+  if (source === undefined || !CAPTURE_NOTE.test(source.path)) {
+    finding("bad-source-link", `"${target.trim()}" is not a captured source (raw/<slug>/source)`);
     return null;
   }
   const text = sourceText(source);

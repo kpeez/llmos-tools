@@ -108,14 +108,14 @@ const NOTES: Record<string, string> = {
   "fm/nested-link.md": note('source:\n  note: "[[beta]]"\n', "# Nested link\n"),
 
   // Schema audit.
-  "templates/skip.md": "# Skipped\n",
+  "categories/templates/skip.md": "# Skipped\n",
   "archive/old.md": "# Archived note\n",
   "skills/tool/SKILL.md": note("name: tool\n", "# Missing description\n"),
-  "reviews/daily/2026-10-01.md": note(
+  "daily/2026-10-01.md": note(
     'created: 2026-10-01\nproject:\n  - "[[projects/llmos/llmos|llmOS]]"\n',
     "# 2026-10-01\n\n<!-- llmos-activity:start hash=abc -->\n<!-- llmos-activity:end -->\n",
   ),
-  "reviews/daily/2026-10-02.md": note("created: 10/02/2026\n", "# 2026-10-02\n"),
+  "daily/2026-10-02.md": note("created: 10/02/2026\n", "# 2026-10-02\n"),
   "projects/demo/notes/unowned.md": note(
     "status: someday\nauthors: [claude, robot]\ntype: x\ncategories: Knowledge\n" +
       'topics:\n  - plain\n  - "[[ok]]"\nblank:\n',
@@ -130,15 +130,15 @@ const NOTES: Record<string, string> = {
   ),
 
   // Inbox staleness, including ISO week dates and invalid dates.
-  "inbox/fresh.md": note("created: 2026-10-06\n", "Fresh.\n"),
-  "inbox/stale.md": note("created: 2026-01-01\n", "Stale.\n"),
-  "inbox/week-date.md": note("created: 2026-W40-3\n", "Week date.\n"),
-  "inbox/basic-date.md": note("created: 20261005\n", "Basic date.\n"),
-  "inbox/invalid-date.md": note("created: 2026-02-30\n", "Invalid.\n"),
-  "inbox/trailing-date.md": note("created: 20261005xx\n", "Trailing characters.\n"),
-  "inbox/week-date-tail.md": note("created: 2026W403xx\n", "Week date, trailing.\n"),
-  "inbox/no-created.md": note("status: draft\n", "No created.\n"),
-  "inbox/nested/deep.md": "# No frontmatter\n",
+  "raw/fresh.md": note("created: 2026-10-06\n", "Fresh.\n"),
+  "raw/stale.md": note("created: 2026-01-01\n", "Stale.\n"),
+  "raw/week-date.md": note("created: 2026-W40-3\n", "Week date.\n"),
+  "raw/basic-date.md": note("created: 20261005\n", "Basic date.\n"),
+  "raw/invalid-date.md": note("created: 2026-02-30\n", "Invalid.\n"),
+  "raw/trailing-date.md": note("created: 20261005xx\n", "Trailing characters.\n"),
+  "raw/week-date-tail.md": note("created: 2026W403xx\n", "Week date, trailing.\n"),
+  "raw/no-created.md": note("status: draft\n", "No created.\n"),
+  "raw/nested/deep.md": "# No frontmatter\n",
 
   // Authoring check: references in prose, code, comments, URLs, and links.
   "notes/references.md": note(

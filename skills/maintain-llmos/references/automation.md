@@ -21,7 +21,7 @@ it. The command is `tools/cli/src/digest.ts`, run by Bun.
 The digest monitors every project whose landing note has `status: active` and
 whose folder name matches a repository in `kpeez` or `linux-host-ucdavis` (vault
 ADR 0009). It writes only between the `llmos-activity` markers in
-`reviews/daily/YYYY-MM-DD.md`, creates a note only on a day with activity, and
+`daily/YYYY-MM-DD.md`, creates a note only on a day with activity, and
 never touches `## Thoughts`. It refuses to write a note whose markers are not
 exactly one start and one end.
 

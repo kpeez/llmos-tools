@@ -206,8 +206,8 @@ Linux, and Claude activation says nothing about Codex.
   (`kpeez/llmos`), or remove those folders before the plugin update.
 - Verify that `maintain-llmos`, `vault-cli`, and `setup-llmos` are available in
   the fresh agent session. Resolve the configured root, then verify that its
-  `agents/references/authoring.md` exists. Do not create a rival copy inside
-  the code repository or installed plugin cache.
+  `authoring.md` exists. Do not create a rival copy inside the code repository
+  or installed plugin cache.
 - From a repository with a real `.agents/docs` or `.agent/docs` symlink into
   the vault, verify startup guidance, a supported read, and a disposable edit
   through that symlink. Confirm the read receives retrieval guidance and the

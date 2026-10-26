@@ -41,13 +41,13 @@ const NOTE = "---\nstatus: draft\ntopics:\n  - garden\n---\n\n# Alpha\n\nSee [[b
 const BETA = "---\nstatus: draft\ntopics:\n  - garden\n---\n\n# Beta\n\nThe zebrafish tank.\n";
 const CAPTURE = "---\nstatus: draft\n---\n\n# Capture\n\nA loose idea.\n";
 const SECRET = "---\nstatus: draft\n---\n\n# Secret\n\nTOPSECRET\n";
-const DAILY = `reviews/daily/${TODAY}.md`;
+const DAILY = `daily/${TODAY}.md`;
 
 function vault(files: Record<string, string> = {}): string {
   return makeVault({
     "notes/alpha.md": NOTE,
     "notes/beta.md": BETA,
-    "inbox/capture.md": CAPTURE,
+    "raw/capture.md": CAPTURE,
     ...files,
   });
 }
@@ -148,7 +148,7 @@ describe("read tools", () => {
     ]);
     expect(listed.every((note: object) => !("body" in note))).toBe(true);
     const bodies = JSON.parse(
-      (await client.call("list", { folder: "inbox", properties_only: false })).text,
+      (await client.call("list", { folder: "raw", properties_only: false })).text,
     );
     expect(bodies).toEqual([
       expect.objectContaining({ name: "capture", body: expect.stringContaining("A loose idea.") }),
@@ -267,7 +267,7 @@ describe("write tools stamp updated and authors", () => {
       isError: false,
       text: "Filed: capture -> knowledge/capture.md",
     });
-    expect(existsSync(join(root, "inbox/capture.md"))).toBe(false);
+    expect(existsSync(join(root, "raw/capture.md"))).toBe(false);
     expect(properties(root, "knowledge/capture.md")).toMatchObject({
       categories: ["[[Knowledge]]"],
       updated: TODAY,
@@ -288,7 +288,7 @@ describe("write tools stamp updated and authors", () => {
     await close();
     expect(result.isError).toBe(true);
     expect(result.text).toContain("Obsidian");
-    expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+    expect(read(root, "raw/capture.md")).toBe(CAPTURE);
   });
 
   test("the provider comes from the client name, else the environment", () => {
@@ -398,7 +398,7 @@ describe("hostile arguments are refused", () => {
       expect(readdirSync(away).sort()).toEqual(["secret.md"]);
       expect(readFileSync(join(away, "secret.md"), "utf8")).toBe(SECRET);
       expect(existsSync(join(root, "..", "escape.md"))).toBe(false);
-      expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+      expect(read(root, "raw/capture.md")).toBe(CAPTURE);
     });
   }
 
@@ -415,7 +415,7 @@ describe("hostile arguments are refused", () => {
 
   test("daily_append_thought refuses a daily note linked out of the vault", async () => {
     const { root, away } = hostileVault();
-    mkdirSync(join(root, "reviews", "daily"), { recursive: true });
+    mkdirSync(join(root, "daily"), { recursive: true });
     writeFileSync(join(away, "daily.md"), dailyNote(TODAY));
     symlinkSync(join(away, "daily.md"), join(root, DAILY));
     const { client, close } = await connect(contextFor(root));
@@ -475,7 +475,7 @@ describe("hostile arguments are refused", () => {
       expect(obsidian.calls).toEqual([]);
       expect(read(root, "notes/alpha.md")).toBe(NOTE);
       expect(read(root, DAILY)).toBe(dailyNote(TODAY));
-      expect(read(root, "inbox/capture.md")).toBe(CAPTURE);
+      expect(read(root, "raw/capture.md")).toBe(CAPTURE);
     });
   }
 });

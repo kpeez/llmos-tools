@@ -30,7 +30,7 @@ function outside(): string {
 
 describe("write targets", () => {
   test("absolute and climbing paths are refused before anything is written", async () => {
-    const root = makeVault({ "inbox/capture.md": NOTE, "notes/alpha.md": NOTE });
+    const root = makeVault({ "raw/capture.md": NOTE, "notes/alpha.md": NOTE });
     const away = outside();
     const obsidian = recordedObsidian(root);
     for (const argv of [
@@ -172,7 +172,7 @@ describe("every path-taking command refuses to escape the vault", () => {
   for (const [label, argv] of cases) {
     test(label, async () => {
       const away = outside();
-      const root = makeVault({ "notes/alpha.md": NOTE, "inbox/capture.md": NOTE });
+      const root = makeVault({ "notes/alpha.md": NOTE, "raw/capture.md": NOTE });
       symlinkSync(join(away, "secret.md"), join(root, "link.md"));
       symlinkSync(away, join(root, "linkdir"));
       const obsidian = recordedObsidian(root);

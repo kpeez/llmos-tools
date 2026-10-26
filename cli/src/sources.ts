@@ -1,6 +1,6 @@
 /**
  * Source capture: freeze one web page or arXiv paper into
- * `sources/<slug>/` with its raw HTML (`raw.html`), the images of its
+ * `raw/<slug>/` with its raw HTML (`raw.html`), the images of its
  * captioned figures (`assets/`), and the defuddle text with a manifest in
  * its frontmatter (`source.md`). Nothing edits the folder afterwards.
  *
@@ -32,6 +32,7 @@ import { Defuddle } from "defuddle/node";
 import { parseHTML } from "linkedom";
 import { parse, serialize } from "./frontmatter.ts";
 import { destinationProperties } from "./inbox.ts";
+import { RAW_DIR } from "./layout.ts";
 import { newTarget, realTarget } from "./write.ts";
 
 /** One fetched resource: the status, the final URL after redirects, and the bytes. */
@@ -559,7 +560,7 @@ export function pointImagesAtAssets(
 
 /**
  * Capture `argument` (an arXiv ID or URL, a web URL, or an inbox note that
- * holds only a URL) into `sources/<slug>/`. When the source is already
+ * holds only a URL) into `raw/<slug>/`. When the source is already
  * there, nothing is fetched or written. A PDF, an old-style arXiv ID, or an
  * arXiv paper without HTML is refused with `SourceRefused`.
  */
@@ -569,12 +570,12 @@ export async function captureSource(
   context: CaptureContext,
 ): Promise<CaptureResult> {
   const target = resolveTarget(root, argument);
-  const sources = dirname(dirname(newTarget(root, "sources/x/source.md")));
+  const sources = dirname(dirname(newTarget(root, `${RAW_DIR}/x/source.md`)));
   const unchanged = (name: string): CaptureResult => {
     const manifest = manifestOf(join(sources, name));
     return {
       status: "unchanged",
-      folder: `sources/${name}`,
+      folder: `${RAW_DIR}/${name}`,
       sourceId: String(manifest.source_id),
       figures: Number(manifest.figures),
       skipped: [],
@@ -683,7 +684,7 @@ export async function captureSource(
   const slug = slugOf(target, sourceId);
   const note = serialize(
     {
-      ...destinationProperties(root, `sources/${slug}/source.md`),
+      ...destinationProperties(root, `${RAW_DIR}/${slug}/source.md`),
       created: context.today(),
       origin,
       source_id: sourceId,
@@ -700,7 +701,7 @@ export async function captureSource(
 
   const folder = join(sources, slug);
   if (existsSync(folder)) {
-    throw new SourceRefused(`sources/${slug} holds another source; nothing was written.`);
+    throw new SourceRefused(`${RAW_DIR}/${slug} holds another source; nothing was written.`);
   }
   const madeSources = !existsSync(sources);
   mkdirSync(sources, { recursive: true });
@@ -730,12 +731,12 @@ export async function captureSource(
     syncFolder(sources);
   } catch (error) {
     warnings.push(
-      `could not flush sources/ to disk: ${error instanceof Error ? error.message : error}`,
+      `could not flush ${RAW_DIR}/ to disk: ${error instanceof Error ? error.message : error}`,
     );
   }
   return {
     status: "captured",
-    folder: `sources/${slug}`,
+    folder: `${RAW_DIR}/${slug}`,
     sourceId,
     figures: figures.length,
     skipped,

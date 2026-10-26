@@ -9,7 +9,7 @@ This page is for people who change the code in `tools/`. Agent rules live in
 tools/
 ├── skills/
 │   ├── consolidate-knowledge/ # consolidates a note cluster into a hub plus paper and dataset notes
-│   ├── ingest-source/     # sorts inbox items; captures sources with `source add`
+│   ├── ingest-source/     # sorts inbox drops in raw/; captures sources with `source add`
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos-vault CLI
