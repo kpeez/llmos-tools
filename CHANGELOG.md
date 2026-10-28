@@ -3,6 +3,29 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.8.0 — 2026-10-28
+
+- `source add` captures PDFs: a PDF file, a URL that serves a PDF, or an
+  arXiv paper without an HTML version. It writes `raw.pdf`, the figure
+  crops in `assets/`, and the text in `source.md`. MinerU converts the PDF
+  on this machine (`--tier advanced --disable-image-analysis`), and the
+  manifest's `converter` names its version. Install MinerU on each host that
+  captures PDFs: `uv venv ~/.mineru`, then
+  `uv pip install --python ~/.mineru "mineru>=4.0,<5"`, and set
+  `LLMOS_MINERU` to `~/.mineru/bin/mineru-kit`. Without MinerU, a PDF
+  capture fails and says how to install it; web captures do not need it.
+- `source add` takes `--licence` for a PDF that does not state its
+  licence, and `--origin` for the URL that a PDF file came from.
+- When defuddle keeps less than a tenth of a long page's visible words,
+  `source add` runs it again on the page's article container. On a bioRxiv
+  full-text page, defuddle had kept only the reference list. When no
+  container holds at least a tenth of the words, the capture keeps
+  defuddle's text and prints a warning.
+- `set-property` and the MCP `set_property` tool add a value to
+  `categories`, `project`, and `topics` as a list item, as they already did
+  for `authors`. Before, they wrote a string, and the schema audit refused
+  the note. To replace one of these lists, remove the property first.
+
 ## 2.7.0 — 2026-10-26
 
 The vault has a new layout ([ADR 0013](../llmOS/projects/llmos/adrs/0013-flatten-vault-into-raw-knowledge-and-daily.md)).
