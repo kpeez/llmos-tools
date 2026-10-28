@@ -39,6 +39,8 @@ Then check the output:
 - `Captured: ...` means a new folder exists. A line `Skipped image: ...` names
   a figure image that was not saved and why; report it.
 - `Already captured: ...` means nothing changed. This is not an error.
+- A line `Warning: defuddle kept ...` means `source.md` may miss the page's
+  article. Read it. For a paper whose text is missing, capture its PDF too.
 - A non-zero exit means nothing was captured, for example when MinerU is not
   installed or fails. Leave the drop in `raw/`, report the message, and do not
   work around it with a hand-made source folder.

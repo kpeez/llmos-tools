@@ -65,7 +65,7 @@ export function defaultContext(env: Env = process.env): Context {
     today: localDate,
     obsidian: spawnObsidian,
     fetch: httpFetch,
-    convertPdf: mineruConverter(env.LLMOS_MINERU || "mineru-kit"),
+    convertPdf: mineruConverter((env.LLMOS_MINERU || "mineru-kit").replace(/^~(?=\/)/, home)),
   };
 }
 

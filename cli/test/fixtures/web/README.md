@@ -10,3 +10,10 @@ an HTTP 404.
   recorded images shrunk to 48 pixels (`sips -Z 48`) to keep the repository
   small. They are stand-ins; the capture treats them as opaque bytes.
 - `example.org/` holds a small hand-written page for the plain-URL path.
+- `www.biorxiv.org/content/10.1101/2000.01.01.000001v1.full.html` is a bioRxiv
+  full-text page recorded on 2026-10-28 and reduced to the parts that make
+  defuddle take its reference list for the page. Its prose, title, and
+  attribute prose are replaced with placeholder words, and the page's own URL
+  is a placeholder. Figure URLs still carry the original article ID, and
+  numbers inside the scrubbed captions are the original ones; only the cited
+  references keep their words.

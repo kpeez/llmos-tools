@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { parse } from "../src/frontmatter.ts";
 import type { PdfConversion, PdfConverter } from "../src/pdf.ts";
@@ -735,5 +735,71 @@ describe("source add of a PDF", () => {
     expect(result.stderr).toContain("MinerU exited with code 1");
     expect(sourceFolders(root)).toEqual([]);
     expect(readFileSync(join(root, "raw", "paper.pdf"), "utf8")).toBe(PDF);
+  });
+});
+
+describe("source add of a page that defuddle misreads", () => {
+  const url = "https://www.biorxiv.org/content/10.1101/2000.01.01.000001v1.full";
+  const page = readFileSync(
+    join(RECORDED, "www.biorxiv.org", "content", "10.1101", "2000.01.01.000001v1.full.html"),
+    "utf8",
+  );
+
+  test("a HighWire page whose reference list defuddle takes for the page is captured from its article", async () => {
+    const root = makeVault();
+    const result = await cli(root, ["source", "add", url], { fetch: replay().fetch });
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toStartWith(`Captured: web:${url} -> raw/biorxiv-org-content-`);
+    const [name] = sourceFolders(root);
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
+    expect(String(note.properties.converter)).toMatch(
+      /^defuddle@\S+ contentSelector=\.article\.fulltext-view$/,
+    );
+    expect(note.body.match(/\blorem\b/g)?.length).toBeGreaterThan(500);
+  });
+
+  test("a page that no article container rescues keeps the defuddle text with a warning", async () => {
+    const root = makeVault();
+    const plain = page.replace('class="article fulltext-view"', 'class="plain"');
+    const result = await cli(root, ["source", "add", url], {
+      fetch: memory({ [url]: plain }).fetch,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("\nWarning: defuddle kept ");
+    const [name] = sourceFolders(root);
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
+    expect(String(note.properties.converter)).toMatch(/^defuddle@\S+$/);
+  });
+});
+
+describe("source add of a PDF, edge cases", () => {
+  const PDF = "%PDF-1.4 a study";
+  const convertPdf: PdfConverter = async () => conversion();
+
+  test("a PDF file without --origin takes its slug from the file name; a folder named .pdf is refused", async () => {
+    const root = makeVault({ "raw/My Paper.pdf": PDF });
+    mkdirSync(join(root, "raw", "folder.pdf"));
+    const folder = await cli(root, ["source", "add", "raw/folder.pdf"], { convertPdf });
+    expect(folder.exitCode).toBe(1);
+    expect(folder.stderr).toContain("no PDF file at 'raw/folder.pdf'");
+
+    const result = await cli(root, ["source", "add", "raw/My Paper.pdf"], { convertPdf });
+    expect(result.stdout).toStartWith(`Captured: sha256:${sha256(PDF)} -> raw/my-paper-`);
+  });
+
+  test("an arXiv PDF answer that is not a PDF is refused", async () => {
+    const abstract = readFileSync(join(RECORDED, "arxiv.org", "abs", "1811.00743v2.html"), "utf8");
+    const network = memory({
+      "https://arxiv.org/abs/1811.00743": abstract,
+      "https://arxiv.org/pdf/1811.00743v2": "<html>Not here</html>",
+    });
+    const root = makeVault();
+    const result = await cli(root, ["source", "add", "1811.00743"], {
+      fetch: network.fetch,
+      convertPdf,
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("not a PDF");
+    expect(sourceFolders(root)).toEqual([]);
   });
 });

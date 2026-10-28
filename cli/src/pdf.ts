@@ -57,7 +57,7 @@ export function mineruConverter(command: string): PdfConverter {
     const mineru = Bun.which(command);
     if (mineru === null) {
       throw new SourceRefused(
-        `MinerU ('${command}') is not installed, so the PDF cannot be converted. Install it with \`uv venv ~/.mineru\` and \`uv pip install --python ~/.mineru "mineru>=4.0,<5"\`, then set LLMOS_MINERU=~/.mineru/bin/mineru-kit.`,
+        `MinerU ('${command}') is not installed, so the PDF cannot be converted. Install it with \`uv venv ~/.mineru\` and \`uv pip install --python ~/.mineru "mineru>=4.0,<5"\`, then set LLMOS_MINERU to ~/.mineru/bin/mineru-kit.`,
       );
     }
     const unzip = Bun.which("unzip");

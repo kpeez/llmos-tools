@@ -25,6 +25,7 @@ import {
   renameSync,
   rmdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { isIP } from "node:net";
@@ -287,6 +288,8 @@ interface Converted {
   figures: number;
   assets: { name: string; bytes: Uint8Array }[];
   skipped: string[];
+  /** Doubts about the text that do not stop the capture. */
+  warnings: string[];
 }
 
 const ARXIV_ID = /^(\d{4}\.\d{4,5})(v\d+)?$/;
@@ -359,11 +362,17 @@ function resolveTarget(root: string, argument: string, fromNote = false): Target
 /** The real path of a PDF named by a vault-relative path, else by a file system path. */
 function pdfFile(root: string, path: string): string {
   const inVault = join(root, path);
-  if (!isAbsolute(path) && !relative(root, inVault).startsWith("..") && existsSync(inVault)) {
-    return realTarget(root, path);
+  const file =
+    !isAbsolute(path) && !relative(root, inVault).startsWith("..") && existsSync(inVault)
+      ? realTarget(root, path)
+      : resolve(path);
+  if (!existsSync(file) || !statSync(file).isFile()) {
+    throw new SourceRefused(`no PDF file at '${path}'.`);
   }
-  if (!existsSync(resolve(path))) throw new SourceRefused(`no PDF file at '${path}'.`);
-  return resolve(path);
+  if (statSync(file).size > MAX_BODY_BYTES) {
+    throw new SourceRefused(`'${path}' is larger than ${MAX_BODY_BYTES} bytes.`);
+  }
+  return file;
 }
 
 /** `text` as the recorded origin of a PDF file: a clean http or https URL. */
@@ -383,7 +392,7 @@ function slugOf(target: Target, sourceId: string, origin: string): string {
   const text =
     url !== null && /^https?:$/.test(url.protocol)
       ? `${url.hostname.replace(/^www\./, "")}${url.pathname}`
-      : basename(named).replace(/\.pdf$/i, "");
+      : basename(named.replace(/^file:/, "")).replace(/\.pdf$/i, "");
   const words = text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -713,13 +722,18 @@ async function locateArxivPdf(
   const known = existingFolder(sources, target, sourceId);
   if (known !== undefined) return known;
   const pdfUrl = `https://arxiv.org/pdf/${target.id}${version}`;
+  const pdf = await context.fetch(pdfUrl);
+  const raw = body(pdfUrl, pdf);
+  if (!/pdf/i.test(pdf.contentType)) {
+    throw new SourceRefused(`${pdfUrl} is ${pdf.contentType || "of unknown type"}, not a PDF.`);
+  }
   return {
     kind: "arXiv PDF",
     format: "pdf",
     sourceId,
     origin: pdfUrl,
     licence: arxivLicence(abstract, abstractUrl),
-    raw: body(pdfUrl, await context.fetch(pdfUrl)),
+    raw,
   };
 }
 
@@ -763,6 +777,74 @@ async function locateArxiv(
   };
 }
 
+/**
+ * Article containers to point defuddle at when its own choice of content
+ * misses the article. `.article.fulltext-view` is the HighWire layout of
+ * bioRxiv, medRxiv, and many journals, where defuddle can take the reference
+ * list for the whole page.
+ */
+const ARTICLE_SELECTORS = [".article.fulltext-view", "[role=main]", "main", "article"];
+
+/** Defuddle text with less than this share of the page's visible words missed the article. */
+const MIN_TEXT_SHARE = 0.1;
+
+/** A page with fewer visible words has no article to miss, so its text is not checked. */
+const MIN_PAGE_WORDS = 500;
+
+/** Words of three letters or more, not counting link targets and bare URLs. */
+function wordCount(text: string): number {
+  const shown = text.replace(/\]\([^)]*\)/g, "]").replace(/https?:\/\/\S+/g, "");
+  return (shown.match(/[A-Za-z]{3,}/g) ?? []).length;
+}
+
+function visibleWords(html: string): number {
+  const { document } = parseHTML(html);
+  for (const hidden of document.querySelectorAll("script, style, noscript, nav, header, footer"))
+    hidden.remove();
+  return wordCount(document.body?.textContent ?? "");
+}
+
+/**
+ * The defuddle text of a page and the converter that made it. When defuddle's
+ * own choice holds too little of the page, it runs again on each article
+ * container the page has, and the first that holds enough wins; the converter
+ * then names that selector. When none does, the first text stays with a
+ * warning: a page whose side text dwarfs its article looks the same.
+ */
+async function pageText(
+  html: string,
+  origin: string,
+): Promise<{ title: string; content: string; converter: string; warnings: string[] }> {
+  // `useAsync: false` keeps defuddle's site extractors (YouTube, Reddit, ...)
+  // from calling the global fetch, outside the fetcher and its address checks.
+  const run = (contentSelector?: string) =>
+    Defuddle(parseHTML(html).document, origin, {
+      markdown: true,
+      useAsync: false,
+      ...(contentSelector === undefined ? {} : { contentSelector }),
+    });
+  const page = visibleWords(html);
+  const enough = (content: string): boolean =>
+    page < MIN_PAGE_WORDS || wordCount(content) >= MIN_TEXT_SHARE * page;
+  const first = await run();
+  if (enough(first.content)) return { ...first, converter: converterName(), warnings: [] };
+  const { document } = parseHTML(html);
+  for (const selector of ARTICLE_SELECTORS) {
+    if (document.querySelector(selector) === null) continue;
+    const retry = await run(selector);
+    if (enough(retry.content)) {
+      return {
+        ...retry,
+        converter: `${converterName()} contentSelector=${selector}`,
+        warnings: [],
+      };
+    }
+  }
+  const kept = wordCount(first.content);
+  const warning = `defuddle kept ${kept} of the page's ${page} visible words and no article container held more; check that source.md holds the text.`;
+  return { ...first, converter: converterName(), warnings: [warning] };
+}
+
 /** The defuddle text of a page, with the images of its captioned figures fetched. */
 async function convertPage(
   html: string,
@@ -796,12 +878,7 @@ async function convertPage(
     }
   }
 
-  // `useAsync: false` keeps defuddle's site extractors (YouTube, Reddit, ...)
-  // from calling the global fetch, outside the fetcher and its address checks.
-  const converted = await Defuddle(parseHTML(html).document, origin, {
-    markdown: true,
-    useAsync: false,
-  });
+  const converted = await pageText(html, origin);
   let content = converted.content.trim();
   content = pointImagesAtAssets(unwrapBracketedAlts(content), assets);
   const sections = [`# ${converted.title || sourceId}`, content];
@@ -819,10 +896,11 @@ async function convertPage(
   }
   return {
     text: sections.join("\n\n"),
-    converter: converterName(),
+    converter: converted.converter,
     figures: figures.length,
     assets: [...assets.values()],
     skipped,
+    warnings: converted.warnings,
   };
 }
 
@@ -865,7 +943,11 @@ export async function captureSource(
   let converted: Converted;
   if (located.format === "pdf") {
     const conversion = await context.convertPdf(located.raw);
-    converted = { ...pdfText(conversion, sourceId), converter: mineruName(conversion.structured) };
+    converted = {
+      ...pdfText(conversion, sourceId),
+      converter: mineruName(conversion.structured),
+      warnings: [],
+    };
   } else {
     converted = await convertPage(located.html, origin, sourceId, context);
   }
@@ -916,7 +998,7 @@ export async function captureSource(
     throw error;
   }
   // The folder is in place: a failed flush of its parent is a warning, not a failed capture.
-  const warnings: string[] = [];
+  const warnings = [...converted.warnings];
   try {
     syncFolder(sources);
   } catch (error) {

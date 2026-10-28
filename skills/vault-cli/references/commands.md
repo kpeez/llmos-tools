@@ -749,7 +749,11 @@ version is pinned to the version fetched (`arxiv:1811.00743v2`).
 `source` accepts an arXiv ID, an arXiv or web URL, a PDF file (a
 vault-relative inbox drop such as `raw/paper.pdf`, or a file system path),
 or an inbox note that holds only a URL. The inbox item stays where it is.
-A web page is converted by defuddle. A PDF, a URL that serves one, and an
+A web page is converted by defuddle. When defuddle keeps less than a tenth
+of the words of a page of 500 words or more, it runs again on the page's
+article container (`.article.fulltext-view`, `[role=main]`, `main`,
+`article`), and `converter` names the selector; when none holds the
+text, the capture keeps defuddle's text and prints a warning. A PDF, a URL that serves one, and an
 arXiv paper without HTML are converted by MinerU on this machine: set
 `LLMOS_MINERU` to the path of `mineru-kit`, or put `mineru-kit` on
 `PATH`. MinerU takes minutes for a long paper and prints its progress on
