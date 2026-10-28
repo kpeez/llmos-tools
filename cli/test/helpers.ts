@@ -13,6 +13,7 @@ import { dirname, join, resolve } from "node:path";
 import { type CliResult, type Context, runCli } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
+import type { PdfConverter } from "../src/pdf.ts";
 import type { Fetcher } from "../src/sources.ts";
 import { VaultModel } from "../src/vault.ts";
 
@@ -20,6 +21,11 @@ export const CLI = resolve(import.meta.dir, "..");
 /** The plugin root; the CLI is its `cli/` folder. */
 export const TOOLS = resolve(CLI, "..");
 export const TODAY = "2026-10-07";
+
+/** The PDF converter of a test that must not run MinerU. */
+export const noConverter: PdfConverter = async () => {
+  throw new Error("the test reached the PDF converter");
+};
 
 /** The network of a test that must not use it. */
 export const offline: Fetcher = async (url) => {
@@ -141,7 +147,12 @@ export function isolatedEnv(extra: Record<string, string> = {}): Record<string, 
 export function cli(
   root: string,
   argv: string[],
-  options: { obsidian?: ObsidianRunner; env?: Record<string, string>; fetch?: Fetcher } = {},
+  options: {
+    obsidian?: ObsidianRunner;
+    env?: Record<string, string>;
+    fetch?: Fetcher;
+    convertPdf?: PdfConverter;
+  } = {},
 ): Promise<CliResult> {
   const context: Context = {
     env: options.env ?? isolatedEnv(),
@@ -150,6 +161,7 @@ export function cli(
     today: () => TODAY,
     obsidian: options.obsidian ?? recordedObsidian(root).runner,
     fetch: options.fetch ?? offline,
+    convertPdf: options.convertPdf ?? noConverter,
   };
   return runCli(argv, COMMANDS, context);
 }

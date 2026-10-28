@@ -28,6 +28,7 @@ import {
   dailyNote,
   isolatedEnv,
   makeVault,
+  noConverter,
   offline,
   read,
   recordedObsidian,
@@ -63,6 +64,7 @@ function contextFor(
     today: () => TODAY,
     obsidian: options.obsidian ?? recordedObsidian(root).runner,
     fetch: offline,
+    convertPdf: noConverter,
   };
 }
 

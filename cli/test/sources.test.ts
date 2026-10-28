@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { parse } from "../src/frontmatter.ts";
+import type { PdfConversion, PdfConverter } from "../src/pdf.ts";
 import {
   assertPublicUrl,
   BlockedUrl,
@@ -10,6 +11,7 @@ import {
   type Fetcher,
   networkFetcher,
   pointImagesAtAssets,
+  SourceRefused,
   unwrapBracketedAlts,
 } from "../src/sources.ts";
 import { cli, makeVault, offline, TODAY } from "./helpers.ts";
@@ -105,18 +107,28 @@ describe("source add", () => {
     }
   });
 
-  test("refuses a PDF, and an arXiv paper without HTML, and writes nothing", async () => {
-    const root = makeVault({ "raw/paper.pdf": "%PDF-1.4" });
-    const network = replay();
-    const pdf = await cli(root, ["source", "add", "raw/paper.pdf"], { fetch: network.fetch });
-    expect(pdf.exitCode).toBe(1);
-    expect(pdf.stderr).toContain("PDF capture is not supported");
-    expect(existsSync(join(root, "raw", "paper.pdf"))).toBe(true);
-
-    const bare = await cli(root, ["source", "add", "1703.07737"], { fetch: network.fetch });
-    expect(bare.exitCode).toBe(1);
-    expect(bare.stderr).toContain("no HTML version");
-    expect(sourceFolders(root)).toEqual([]);
+  test("an arXiv paper without HTML is captured from the PDF of the version its abstract shows", async () => {
+    const abstract = readFileSync(join(RECORDED, "arxiv.org", "abs", "1811.00743v2.html"), "utf8");
+    const pdfUrl = "https://arxiv.org/pdf/1811.00743v2";
+    const network = memory({
+      "https://arxiv.org/abs/1811.00743": abstract,
+      [pdfUrl]: { contentType: "application/pdf", body: encode("%PDF-1.4") },
+    });
+    const root = makeVault();
+    const result = await cli(root, ["source", "add", "1811.00743"], {
+      fetch: network.fetch,
+      convertPdf: async () => conversion(),
+    });
+    expect(result.stdout).toBe(
+      "Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (1 figures)\n",
+    );
+    const folder = join(root, "raw", "arxiv-1811.00743v2");
+    expect(parse(readFileSync(join(folder, "source.md"), "utf8")).properties).toMatchObject({
+      origin: pdfUrl,
+      source_id: "arxiv:1811.00743v2",
+      licence: "http://arxiv.org/licenses/nonexclusive-distrib/1.0/",
+    });
+    expect(readFileSync(join(folder, "raw.pdf"), "utf8")).toBe("%PDF-1.4");
   });
 
   test("captures the URL held by an inbox note, keeping only captioned figures", async () => {
@@ -413,21 +425,13 @@ describe("source add edge cases", () => {
     }
   });
 
-  test("a web page that is a 404 or a PDF is refused and writes nothing", async () => {
+  test("a web page that is a 404 is refused and writes nothing", async () => {
     const root = makeVault();
-    const network = memory({
-      "https://example.org/paper": { contentType: "application/pdf", body: encode("%PDF") },
-    });
     const missing = await cli(root, ["source", "add", "https://example.org/gone"], {
-      fetch: network.fetch,
+      fetch: memory({}).fetch,
     });
     expect(missing.exitCode).toBe(1);
     expect(missing.stderr).toContain("HTTP 404");
-    const pdf = await cli(root, ["source", "add", "https://example.org/paper"], {
-      fetch: network.fetch,
-    });
-    expect(pdf.exitCode).toBe(1);
-    expect(pdf.stderr).toContain("is a PDF");
     expect(sourceFolders(root)).toEqual([]);
   });
 
@@ -620,5 +624,116 @@ describe("image links", () => {
       pointImagesAtAssets(unwrapBracketedAlts(text), assets);
       expect(performance.now() - started).toBeLessThan(1000);
     }
+  });
+});
+
+const image = (name: string, caption?: string) => ({
+  type: "image",
+  captions: caption === undefined ? [] : [{ content: caption }],
+  image_source: `images/${name}`,
+});
+/** A converted one-page paper: one figure of three panels, and an image nothing shows. */
+const conversion = (): PdfConversion => ({
+  markdown: "Intro text.\n\n![](images/page_0_image_1.jpg)\n\nMore text.\n",
+  structured: {
+    pages: [
+      {
+        page_idx: 0,
+        blocks: [
+          { type: "text", captions: [] },
+          image("page_0_image_1.jpg", "a"),
+          image("page_0_image_2.jpg"),
+          image("page_0_image_3.jpg", "Fig. 1 | The whole figure."),
+        ],
+      },
+    ],
+    metadata: { producer: { version: "4.0.12" }, document: { title: "A study" } },
+    extensions: { mineru: { tier: "advanced" } },
+  },
+  images: new Map(
+    ["page_0_image_1.jpg", "page_0_image_2.jpg", "page_0_image_3.jpg", "page_0_image_9.jpg"].map(
+      (name) => [`images/${name}`, encode(name)],
+    ),
+  ),
+});
+describe("source add of a PDF", () => {
+  const PDF = "%PDF-1.4 a study";
+
+  test("captures a PDF file with its figure panels, and capturing it again converts nothing", async () => {
+    const root = makeVault({ "raw/paper.pdf": PDF });
+    let conversions = 0;
+    const convertPdf: PdfConverter = async () => {
+      conversions++;
+      return conversion();
+    };
+    const argv = ["source", "add", "raw/paper.pdf", "--origin", "https://example.org/study.pdf"];
+    const first = await cli(root, [...argv, "--licence", "CC BY 4.0"], { convertPdf });
+    const sourceId = `sha256:${sha256(PDF)}`;
+    expect(first.stderr).toBe("");
+    expect(first.stdout).toStartWith(`Captured: ${sourceId} -> raw/example-org-study-pdf-`);
+    expect(first.stdout).toEndWith("(1 figures)\n");
+
+    const [name] = sourceFolders(root);
+    const folder = join(root, "raw", name as string);
+    expect(readFileSync(join(folder, "raw.pdf"), "utf8")).toBe(PDF);
+    expect(readdirSync(join(folder, "assets")).sort()).toEqual([
+      "page_0_image_1.jpg",
+      "page_0_image_2.jpg",
+      "page_0_image_3.jpg",
+    ]);
+    const note = parse(readFileSync(join(folder, "source.md"), "utf8"));
+    expect(note.properties).toMatchObject({
+      origin: "https://example.org/study.pdf",
+      source_id: sourceId,
+      licence: "CC BY 4.0",
+      converter: "mineru@4.0.12 --tier advanced --disable-image-analysis",
+      sha256_raw: sha256(PDF),
+      sha256_text: sha256(note.body),
+      figures: "1",
+    });
+    expect(note.body).toStartWith("# A study\n\nIntro text.\n\n![](assets/page_0_image_1.jpg)");
+    expect(note.body.slice(note.body.indexOf("## Figures"))).toBe(
+      "## Figures\n\nFig. 1 | The whole figure.\n\n![](assets/page_0_image_1.jpg)\n\n![](assets/page_0_image_2.jpg)\n\n![](assets/page_0_image_3.jpg)\n",
+    );
+
+    const before = snapshot(folder);
+    const again = await cli(root, ["source", "add", "raw/paper.pdf"], { convertPdf });
+    expect(again.stdout).toContain(`Already captured: ${sourceId}`);
+    expect(conversions).toBe(1);
+    expect(snapshot(folder)).toEqual(before);
+  });
+
+  test("a web URL that serves a PDF is captured as a web source", async () => {
+    const url = "https://example.org/paper";
+    const network = memory({ [url]: { contentType: "application/pdf", body: encode(PDF) } });
+    const root = makeVault();
+    const convertPdf: PdfConverter = async () => conversion();
+    const origin = await cli(root, ["source", "add", url, "--origin", "https://example.org/x"], {
+      fetch: network.fetch,
+      convertPdf,
+    });
+    expect(origin.exitCode).toBe(1);
+    expect(origin.stderr).toContain("--origin is only for a PDF");
+    expect(sourceFolders(root)).toEqual([]);
+
+    const result = await cli(root, ["source", "add", url], { fetch: network.fetch, convertPdf });
+    expect(result.stdout).toStartWith(`Captured: web:${url} -> raw/example-org-paper-`);
+    const [name] = sourceFolders(root);
+    const note = parse(readFileSync(join(root, "raw", name as string, "source.md"), "utf8"));
+    expect(note.properties).toMatchObject({ origin: url, licence: "not stated" });
+    expect(existsSync(join(root, "raw", name as string, "raw.pdf"))).toBe(true);
+  });
+
+  test("a failed conversion writes nothing and leaves the PDF in place", async () => {
+    const root = makeVault({ "raw/paper.pdf": PDF });
+    const result = await cli(root, ["source", "add", "raw/paper.pdf"], {
+      convertPdf: async () => {
+        throw new SourceRefused("MinerU exited with code 1; nothing was written.");
+      },
+    });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("MinerU exited with code 1");
+    expect(sourceFolders(root)).toEqual([]);
+    expect(readFileSync(join(root, "raw", "paper.pdf"), "utf8")).toBe(PDF);
   });
 });

@@ -21,6 +21,7 @@ import {
   type ObsidianRunner,
   spawnObsidian,
 } from "./obsidian.ts";
+import { mineruConverter, type PdfConverter } from "./pdf.ts";
 import { resolveVaultRoot } from "./root.ts";
 import { type Fetcher, httpFetch } from "./sources.ts";
 import { VaultModel } from "./vault.ts";
@@ -39,6 +40,8 @@ export interface Context {
   obsidian: ObsidianRunner;
   /** The network, for verbs that capture web pages. */
   fetch: Fetcher;
+  /** The PDF converter of `source add`. */
+  convertPdf: PdfConverter;
 }
 
 /** Today's local date as `YYYY-MM-DD`. */
@@ -62,6 +65,7 @@ export function defaultContext(env: Env = process.env): Context {
     today: localDate,
     obsidian: spawnObsidian,
     fetch: httpFetch,
+    convertPdf: mineruConverter(env.LLMOS_MINERU || "mineru-kit"),
   };
 }
 

@@ -67,6 +67,11 @@ function str(values: Values, name: string): string {
   return value;
 }
 
+/** A string value that may be absent. */
+function optionalStr(values: Values, name: string): string | undefined {
+  return values[name] === undefined ? undefined : str(values, name);
+}
+
 /** The `--vault` name: llmos or second-vault. */
 function vaultName(values: Values): string {
   const vault = str(values, "vault");
@@ -755,39 +760,63 @@ attempted.`,
 const sourceAdd: Command = {
   name: "source add",
   summary:
-    "Capture an arXiv paper or web page into a frozen source folder: raw HTML, figures, defuddle text, and a manifest.",
+    "Capture an arXiv paper, web page, or PDF into a frozen source folder: raw bytes, figures, converted text, and a manifest.",
   description: `Use when an inbox item is a source worth keeping as the original: an arXiv
-paper or an open-access web page. The capture goes to \`raw/<slug>/\`
-and holds \`raw.html\`, \`assets/\` (the images of the captioned figures,
-taken from the raw HTML), and \`source.md\`, whose frontmatter is the manifest
+paper, an open-access web page, or a PDF. The capture goes to \`raw/<slug>/\`
+and holds \`raw.html\` or \`raw.pdf\`, \`assets/\` (the images of the
+captioned figures), and \`source.md\`, whose frontmatter is the manifest
 (\`origin\`, \`source_id\`, \`retrieved\`, \`licence\`, \`converter\`,
 \`sha256_raw\`, \`sha256_text\`, \`figures\`). An arXiv paper is read from its
-\`arxiv.org/html/<id>\` version, and an ID without a version is pinned to
-the version fetched (\`arxiv:1811.00743v2\`). \`source\` accepts an arXiv ID,
-an arXiv or web URL, or an inbox note that holds only a URL. The inbox note
-stays where it is. Writes the files directly, so it works with Obsidian
+\`arxiv.org/html/<id>\` version, else from its PDF, and an ID without a
+version is pinned to the version fetched (\`arxiv:1811.00743v2\`).
+\`source\` accepts an arXiv ID, an arXiv or web URL, a PDF file (a
+vault-relative inbox drop such as \`raw/paper.pdf\`, or a file system path),
+or an inbox note that holds only a URL. The inbox item stays where it is.
+A web page is converted by defuddle. A PDF, a URL that serves one, and an
+arXiv paper without HTML are converted by MinerU on this machine: set
+\`LLMOS_MINERU\` to the path of \`mineru-kit\`, or put \`mineru-kit\` on
+\`PATH\`. MinerU takes minutes for a long paper and prints its progress on
+stderr. A PDF file's source ID is \`sha256:<hash of its bytes>\`; give
+\`--origin\` for the URL it came from and \`--licence\` with the licence the
+PDF states. These two options are refused for a capture that reads them
+from the source. Writes the files directly, so it works with Obsidian
 closed. Only public http and https hosts are requested (no IP addresses,
 no local or private networks, at most five redirects, at most 50 MB a
 file). A figure image from a non-public host, with a failing status, or of a
 non-image type is skipped and named in the output. A source already
-captured is not fetched or changed: the command says so and exits 0. An ID without a version counts any captured version of
+captured is not fetched, converted, or changed: the command says so and exits 0. An ID without a version counts any captured version of
 that paper as captured; ask for \`<id>vN\` to capture a newer one. No agent
-edits a source folder afterwards.
-Do NOT use when the item is a PDF, or an arXiv paper without an HTML
-version: there is no converter yet, so this exits 1 and leaves the item
-where it is.`,
+edits a source folder afterwards. When MinerU is missing or fails, this exits
+1 and writes nothing.`,
   arguments: [
     {
       name: "source",
-      help: "An arXiv ID (1811.00743 or 1811.00743v2), a URL, or a vault-relative inbox note that holds only a URL.",
+      help: "An arXiv ID (1811.00743 or 1811.00743v2), a URL, a PDF file, or a vault-relative inbox note that holds only a URL.",
     },
   ],
-  options: vaultOption('Must be "llmos" -- sources are an llmOS-profile feature.'),
-  exampleOutput: "Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (4 figures)",
-  example: "llmos-vault source add 1811.00743",
+  options: {
+    ...vaultOption('Must be "llmos" -- sources are an llmOS-profile feature.'),
+    origin: {
+      type: "string",
+      metavar: "URL",
+      help: "A PDF file only: the http or https URL it came from, recorded as `origin` (default `file:<name>`).",
+    },
+    licence: {
+      type: "string",
+      metavar: "TEXT",
+      help: "A PDF file or web PDF only: the licence as the PDF states it (default `not stated`).",
+    },
+  },
+  exampleOutput: `Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (4 figures)
+Captured: sha256:9f2c...e1 -> raw/biorxiv-org-content-10-1101-2026-01-01-1-full-pdf-3c5d9a1e (4 figures)`,
+  example: `llmos-vault source add 1811.00743
+llmos-vault source add raw/paper.pdf --origin https://www.biorxiv.org/content/10.1101/2026.01.01.1.full.pdf --licence "CC BY 4.0"`,
   async run(values, context) {
     const root = llmosOnly(vaultName(values), context);
-    const result = await captureSource(root, str(values, "source"), context);
+    const result = await captureSource(root, str(values, "source"), context, {
+      origin: optionalStr(values, "origin"),
+      licence: optionalStr(values, "licence"),
+    });
     const skipped =
       result.skipped.map((line) => `\nSkipped image: ${line}`).join("") +
       result.warnings.map((line) => `\nWarning: ${line}`).join("");

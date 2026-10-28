@@ -1,12 +1,13 @@
 /**
- * Source capture: freeze one web page or arXiv paper into
- * `raw/<slug>/` with its raw HTML (`raw.html`), the images of its
- * captioned figures (`assets/`), and the defuddle text with a manifest in
- * its frontmatter (`source.md`). Nothing edits the folder afterwards.
+ * Source capture: freeze one web page, arXiv paper, or PDF into
+ * `raw/<slug>/` with its raw bytes (`raw.html` or `raw.pdf`), the images of
+ * its figures (`assets/`), and the converted text with a manifest in its
+ * frontmatter (`source.md`). Nothing edits the folder afterwards.
  *
- * The network is the injected `Fetcher`, so tests replay recorded pages.
- * A capture builds the folder beside its final place and renames it in, so
- * a failure leaves nothing behind.
+ * The network is the injected `Fetcher`, so tests replay recorded pages, and
+ * the PDF converter is the injected `PdfConverter`. A capture builds the
+ * folder beside its final place and renames it in, so a failure leaves
+ * nothing behind.
  */
 
 import { createHash } from "node:crypto";
@@ -27,12 +28,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { isIP } from "node:net";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Defuddle } from "defuddle/node";
 import { parseHTML } from "linkedom";
 import { parse, serialize } from "./frontmatter.ts";
 import { destinationProperties } from "./inbox.ts";
 import { RAW_DIR } from "./layout.ts";
+import { mineruName, type PdfConverter, pdfText } from "./pdf.ts";
 import { newTarget, realTarget } from "./write.ts";
 
 /** One fetched resource: the status, the final URL after redirects, and the bytes. */
@@ -243,12 +245,49 @@ export interface CaptureResult {
 
 export interface CaptureContext {
   fetch: Fetcher;
+  convertPdf: PdfConverter;
   today: () => string;
+}
+
+/** `--origin` and `--licence`: what a PDF file or a web PDF cannot state itself. */
+export interface CaptureOptions {
+  origin?: string;
+  licence?: string;
 }
 
 type Target =
   | { kind: "arxiv"; id: string; version: string | undefined }
-  | { kind: "web"; url: string };
+  | { kind: "web"; url: string }
+  | { kind: "file"; path: string };
+
+/** Each kind of capture, and the options it takes instead of reading the value from the source. */
+const TAKES = {
+  "web page": { origin: false, licence: false },
+  "arXiv HTML": { origin: false, licence: false },
+  "arXiv PDF": { origin: false, licence: false },
+  "web PDF": { origin: false, licence: true },
+  "PDF file": { origin: true, licence: true },
+} as const;
+
+type Kind = keyof typeof TAKES;
+
+/** A source found and fetched, not yet converted. */
+type Located = {
+  kind: Kind;
+  sourceId: string;
+  origin: string;
+  licence: string;
+  raw: Uint8Array;
+} & ({ format: "html"; html: string } | { format: "pdf" });
+
+/** The converted text of a source and the files that go beside it. */
+interface Converted {
+  text: string;
+  converter: string;
+  figures: number;
+  assets: { name: string; bytes: Uint8Array }[];
+  skipped: string[];
+}
 
 const ARXIV_ID = /^(\d{4}\.\d{4,5})(v\d+)?$/;
 const ARXIV_PATH = /^\/(?:abs|pdf|html)\/(\d{4}\.\d{4,5})(v\d+)?(?:\.pdf)?\/?$/i;
@@ -256,7 +295,7 @@ const OLD_ID = /^(?:[a-z-]+(?:\.[A-Za-z]{2})?\/\d{7})(?:v\d+)?$/i;
 const OLD_ARXIV_PATH =
   /^\/(?:abs|pdf|html)\/([a-z-]+(?:\.[A-Za-z]{2})?\/\d{7}(?:v\d+)?)(?:\.pdf)?\/?$/i;
 const HTML_TYPE = /^(?:text\/html|application\/xhtml\+xml)/i;
-const NO_PDF = "PDF capture is not supported yet because no converter exists";
+const NOT_STATED = "not stated";
 
 function sha256(data: string | Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
@@ -279,8 +318,9 @@ function refuseOldId(id: string): never {
 }
 
 /**
- * What an argument names: an arXiv ID or URL, a web URL, or an inbox note
- * (a vault-relative path) that holds only a URL. A PDF is refused.
+ * What an argument names: an arXiv ID or URL, a web URL, a PDF file (in the
+ * vault or elsewhere), or an inbox note (a vault-relative path) that holds
+ * only a URL.
  */
 function resolveTarget(root: string, argument: string, fromNote = false): Target {
   const text = argument.trim();
@@ -297,10 +337,9 @@ function resolveTarget(root: string, argument: string, fromNote = false): Target
       const old = OLD_ARXIV_PATH.exec(url.pathname);
       if (old) refuseOldId(old[1] as string);
     }
-    if (/\.pdf$/i.test(url.pathname)) throw new SourceRefused(`${NO_PDF}; left ${text} in place.`);
     return { kind: "web", url: url.href };
   }
-  if (/\.pdf$/i.test(text)) throw new SourceRefused(`${NO_PDF}; left ${text} in place.`);
+  if (/\.pdf$/i.test(text)) return { kind: "file", path: pdfFile(root, text) };
   const note = text.endsWith(".md") ? text : `${text}.md`;
   if (fromNote || !existsSync(join(root, note))) {
     throw new SourceRefused(
@@ -317,10 +356,35 @@ function resolveTarget(root: string, argument: string, fromNote = false): Target
   return resolveTarget(root, link[1] as string, true);
 }
 
-function slugOf(target: Target, sourceId: string): string {
+/** The real path of a PDF named by a vault-relative path, else by a file system path. */
+function pdfFile(root: string, path: string): string {
+  const inVault = join(root, path);
+  if (!isAbsolute(path) && !relative(root, inVault).startsWith("..") && existsSync(inVault)) {
+    return realTarget(root, path);
+  }
+  if (!existsSync(resolve(path))) throw new SourceRefused(`no PDF file at '${path}'.`);
+  return resolve(path);
+}
+
+/** `text` as the recorded origin of a PDF file: a clean http or https URL. */
+function originOption(text: string): string {
+  const cleaned = cleanUrl(text);
+  if (cleaned === null || !/^https?:/.test(cleaned)) {
+    throw new SourceRefused(`--origin must be an http or https URL, not '${text}'.`);
+  }
+  return cleaned;
+}
+
+/** The slug words come from the URL of a web source or a PDF's `--origin`, else from the file name. */
+function slugOf(target: Target, sourceId: string, origin: string): string {
   if (target.kind === "arxiv") return `arxiv-${sourceId.slice("arxiv:".length)}`;
-  const url = new URL(target.url);
-  const words = `${url.hostname.replace(/^www\./, "")}${url.pathname}`
+  const named = target.kind === "web" ? target.url : origin;
+  const url = URL.parse(named);
+  const text =
+    url !== null && /^https?:$/.test(url.protocol)
+      ? `${url.hostname.replace(/^www\./, "")}${url.pathname}`
+      : basename(named).replace(/\.pdf$/i, "");
+  const words = text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -451,14 +515,18 @@ function converterName(): string {
   return `defuddle@${version}`;
 }
 
-/** A file name for the image at `url`, unique among `taken` ignoring case (macOS folds case). */
+/** `name` made safe as a file name and unique among `taken` ignoring case (macOS folds case). */
+export function uniqueName(name: string, taken: Set<string>): string {
+  const base = name.replace(/[^A-Za-z0-9._-]/g, "_");
+  let unique = base;
+  for (let n = 2; taken.has(unique.toLowerCase()); n++) unique = `${n}-${base}`;
+  taken.add(unique.toLowerCase());
+  return unique;
+}
+
+/** A file name for the image at `url`. */
 function assetName(url: string, taken: Set<string>): string {
-  const last = new URL(url).pathname.split("/").pop() || "figure";
-  const base = last.replace(/[^A-Za-z0-9._-]/g, "_");
-  let name = base;
-  for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${n}-${base}`;
-  taken.add(name.toLowerCase());
-  return name;
+  return uniqueName(new URL(url).pathname.split("/").pop() || "figure", taken);
 }
 
 /** Write `data` to a new file and flush it to disk. */
@@ -505,11 +573,12 @@ export function unwrapBracketedAlts(text: string): string {
  * it takes time proportional to the text length times the longest asset URL;
  * an earlier regex took quadratic time on text such as `![a](` repeated.
  * Unlike that regex, an image written inside the target of a non-asset image
- * is also rewritten.
+ * is also rewritten. Each rewritten URL is added to `used`.
  */
 export function pointImagesAtAssets(
   text: string,
   assets: ReadonlyMap<string, { name: string }>,
+  used?: Set<string>,
 ): string {
   const longest = [...assets.keys()].reduce((most, url) => Math.max(most, url.length), 0);
   const pieces: string[] = [];
@@ -550,6 +619,7 @@ export function pointImagesAtAssets(
     if (text[close] !== ")") continue;
 
     pieces.push(text.slice(copied, start), `assets/${asset.name}`);
+    used?.add(url);
     copied = start + url.length;
     from = close + 1;
     i = close;
@@ -558,80 +628,148 @@ export function pointImagesAtAssets(
   return pieces.join("");
 }
 
+/** Whether a response is a PDF: its type says so, or a non-HTML type at a `.pdf` path. */
+function isPdf(response: Fetched): boolean {
+  if (/pdf/i.test(response.contentType)) return true;
+  return (
+    !HTML_TYPE.test(response.contentType) && /\.pdf$/i.test(URL.parse(response.url)?.pathname ?? "")
+  );
+}
+
+/** The text of an HTML page; any other type is refused. */
+function htmlOf(url: string, response: Fetched): string {
+  if (!HTML_TYPE.test(response.contentType)) {
+    throw new SourceRefused(
+      `${url} is ${response.contentType || "of unknown type"}, not an HTML page.`,
+    );
+  }
+  return decodePage(response.body, response.contentType);
+}
+
 /**
- * Capture `argument` (an arXiv ID or URL, a web URL, or an inbox note that
- * holds only a URL) into `raw/<slug>/`. When the source is already
- * there, nothing is fetched or written. A PDF, an old-style arXiv ID, or an
- * arXiv paper without HTML is refused with `SourceRefused`.
+ * Find and fetch the source `target` names, or return the name of the folder
+ * that already holds it.
  */
-export async function captureSource(
-  root: string,
-  argument: string,
+async function locate(
+  target: Target,
   context: CaptureContext,
-): Promise<CaptureResult> {
-  const target = resolveTarget(root, argument);
-  const sources = dirname(dirname(newTarget(root, `${RAW_DIR}/x/source.md`)));
-  const unchanged = (name: string): CaptureResult => {
-    const manifest = manifestOf(join(sources, name));
-    return {
-      status: "unchanged",
-      folder: `${RAW_DIR}/${name}`,
-      sourceId: String(manifest.source_id),
-      figures: Number(manifest.figures),
-      skipped: [],
-      warnings: [],
-    };
-  };
+  sources: string,
+  options: CaptureOptions,
+): Promise<Located | string> {
+  if (target.kind === "file") {
+    const raw = new Uint8Array(readFileSync(target.path));
+    const sourceId = `sha256:${sha256(raw)}`;
+    const known = existingFolder(sources, target, sourceId);
+    if (known !== undefined) return known;
+    const origin =
+      options.origin === undefined ? `file:${basename(target.path)}` : originOption(options.origin);
+    const licence = options.licence ?? NOT_STATED;
+    return { kind: "PDF file", format: "pdf", sourceId, origin, licence, raw };
+  }
+  if (target.kind === "arxiv") return locateArxiv(target, context, sources);
 
-  let sourceId: string | undefined;
-  if (target.kind === "web") sourceId = `web:${target.url}`;
-  else if (target.version) sourceId = `arxiv:${target.id}${target.version}`;
+  const sourceId = `web:${target.url}`;
   const known = existingFolder(sources, target, sourceId);
-  if (known !== undefined) return unchanged(known);
+  if (known !== undefined) return known;
+  const page = await context.fetch(target.url);
+  const raw = body(target.url, page);
+  const origin = cleanUrl(page.url) ?? target.url;
+  if (isPdf(page)) {
+    const licence = options.licence ?? NOT_STATED;
+    return { kind: "web PDF", format: "pdf", sourceId, origin, licence, raw };
+  }
+  const html = htmlOf(target.url, page);
+  const licence = webLicence(html, origin);
+  return { kind: "web page", format: "html", sourceId, origin, licence, raw, html };
+}
 
-  const pageUrl =
-    target.kind === "arxiv"
-      ? `https://arxiv.org/html/${target.id}${target.version ?? ""}`
-      : target.url;
+/** The version an arXiv abstract page shows: the one entry of its submission history that is not a link. */
+function shownVersion(page: string): string | undefined {
+  const { document } = parseHTML(page);
+  const shown = [...document.querySelectorAll(".submission-history strong")].filter(
+    (entry) => entry.querySelector("a") === null,
+  );
+  const versions = shown.map((entry) => /^\[(v\d+)\]$/.exec((entry.textContent ?? "").trim())?.[1]);
+  return versions.length === 1 ? versions[0] : undefined;
+}
+
+/** An arXiv paper without an HTML version, from its PDF, pinned to the version its abstract page shows. */
+async function locateArxivPdf(
+  target: Extract<Target, { kind: "arxiv" }>,
+  context: CaptureContext,
+  sources: string,
+): Promise<Located | string> {
+  const asked = `${target.id}${target.version ?? ""}`;
+  const abstractUrl = `https://arxiv.org/abs/${asked}`;
+  const abstract = decodePage(body(abstractUrl, await context.fetch(abstractUrl)), "text/html");
+  const version = shownVersion(abstract);
+  if (version === undefined) {
+    throw new SourceRefused(`cannot tell which version of ${target.id} ${abstractUrl} shows.`);
+  }
+  if (target.version !== undefined && target.version !== version) {
+    throw new SourceRefused(`${abstractUrl} shows ${version}, not ${target.version}.`);
+  }
+  const sourceId = `arxiv:${target.id}${version}`;
+  const known = existingFolder(sources, target, sourceId);
+  if (known !== undefined) return known;
+  const pdfUrl = `https://arxiv.org/pdf/${target.id}${version}`;
+  return {
+    kind: "arXiv PDF",
+    format: "pdf",
+    sourceId,
+    origin: pdfUrl,
+    licence: arxivLicence(abstract, abstractUrl),
+    raw: body(pdfUrl, await context.fetch(pdfUrl)),
+  };
+}
+
+/** An arXiv paper from its HTML version, pinned to the version arXiv served. */
+async function locateArxiv(
+  target: Extract<Target, { kind: "arxiv" }>,
+  context: CaptureContext,
+  sources: string,
+): Promise<Located | string> {
+  const asked = target.version === undefined ? undefined : `arxiv:${target.id}${target.version}`;
+  const known = existingFolder(sources, target, asked);
+  if (known !== undefined) return known;
+
+  const pageUrl = `https://arxiv.org/html/${target.id}${target.version ?? ""}`;
   const page = await context.fetch(pageUrl);
-  if (target.kind === "arxiv" && page.status === 404) {
-    throw new SourceRefused(
-      `arXiv has no HTML version of ${target.id}${target.version ?? ""}; ${NO_PDF}, so the item stays where it is.`,
-    );
-  }
+  if (page.status === 404) return locateArxivPdf(target, context, sources);
   const raw = body(pageUrl, page);
-  if (/pdf/i.test(page.contentType)) throw new SourceRefused(`${pageUrl} is a PDF; ${NO_PDF}.`);
-  if (!HTML_TYPE.test(page.contentType)) {
-    throw new SourceRefused(
-      `${pageUrl} is ${page.contentType || "of unknown type"}, not an HTML page.`,
-    );
+  const html = htmlOf(pageUrl, page);
+  const link = new RegExp(`href="/abs/${target.id.replace(".", "\\.")}(v\\d+)"`, "g");
+  const versions = new Set([...html.matchAll(link)].map((match) => match[1]));
+  const version = [...versions][0];
+  if (versions.size !== 1 || version === undefined) {
+    throw new SourceRefused(`cannot tell which version of ${target.id} ${pageUrl} served.`);
   }
-  const html = decodePage(raw, page.contentType);
-
-  let origin = cleanUrl(page.url) ?? pageUrl;
-  let licence: string;
-  if (target.kind === "arxiv") {
-    const link = new RegExp(`href="/abs/${target.id.replace(".", "\\.")}(v\\d+)"`, "g");
-    const versions = new Set([...html.matchAll(link)].map((match) => match[1]));
-    const version = [...versions][0];
-    if (versions.size !== 1 || version === undefined) {
-      throw new SourceRefused(`cannot tell which version of ${target.id} ${pageUrl} served.`);
-    }
-    if (target.version !== undefined && target.version !== version) {
-      throw new SourceRefused(`${pageUrl} served ${version}, not ${target.version}.`);
-    }
-    sourceId = `arxiv:${target.id}${version}`;
-    origin = `https://arxiv.org/html/${target.id}${version}`;
-    const again = existingFolder(sources, target, sourceId);
-    if (again !== undefined) return unchanged(again);
-    const abstractUrl = `https://arxiv.org/abs/${target.id}${version}`;
-    const abstract = body(abstractUrl, await context.fetch(abstractUrl));
-    licence = arxivLicence(decodePage(abstract, "text/html"), abstractUrl);
-  } else {
-    licence = webLicence(html, origin);
+  if (target.version !== undefined && target.version !== version) {
+    throw new SourceRefused(`${pageUrl} served ${version}, not ${target.version}.`);
   }
-  if (sourceId === undefined) throw new Error("no source ID was set");
+  const sourceId = `arxiv:${target.id}${version}`;
+  const again = existingFolder(sources, target, sourceId);
+  if (again !== undefined) return again;
+  const abstractUrl = `https://arxiv.org/abs/${target.id}${version}`;
+  const abstract = body(abstractUrl, await context.fetch(abstractUrl));
+  return {
+    kind: "arXiv HTML",
+    format: "html",
+    sourceId,
+    origin: `https://arxiv.org/html/${target.id}${version}`,
+    licence: arxivLicence(decodePage(abstract, "text/html"), abstractUrl),
+    raw,
+    html,
+  };
+}
 
+/** The defuddle text of a page, with the images of its captioned figures fetched. */
+async function convertPage(
+  html: string,
+  origin: string,
+  sourceId: string,
+  context: CaptureContext,
+): Promise<Converted> {
   const figures = captionedFigures(html, origin);
   const taken = new Set<string>();
   const assets = new Map<string, { name: string; bytes: Uint8Array }>();
@@ -679,9 +817,61 @@ export async function captureSource(
     );
     sections.push(`## Figures\n\n${entries.join("\n\n")}`);
   }
+  return {
+    text: sections.join("\n\n"),
+    converter: converterName(),
+    figures: figures.length,
+    assets: [...assets.values()],
+    skipped,
+  };
+}
+
+/**
+ * Capture `argument` (an arXiv ID or URL, a web URL, a PDF file, or an inbox
+ * note that holds only a URL) into `raw/<slug>/`. When the source is already
+ * there, nothing is fetched, converted, or written. An arXiv paper without
+ * HTML is captured from its PDF. An old-style arXiv ID, or an option the
+ * kind of capture does not take, is refused with `SourceRefused`.
+ */
+export async function captureSource(
+  root: string,
+  argument: string,
+  context: CaptureContext,
+  options: CaptureOptions = {},
+): Promise<CaptureResult> {
+  const target = resolveTarget(root, argument);
+  const sources = dirname(dirname(newTarget(root, `${RAW_DIR}/x/source.md`)));
+  const located = await locate(target, context, sources, options);
+  if (typeof located === "string") {
+    const manifest = manifestOf(join(sources, located));
+    return {
+      status: "unchanged",
+      folder: `${RAW_DIR}/${located}`,
+      sourceId: String(manifest.source_id),
+      figures: Number(manifest.figures),
+      skipped: [],
+      warnings: [],
+    };
+  }
+  const { sourceId, origin } = located;
+  for (const name of ["origin", "licence"] as const) {
+    if (options[name] !== undefined && !TAKES[located.kind][name]) {
+      throw new SourceRefused(
+        `--${name} is only for a PDF; a ${located.kind} capture reads its ${name} from the source. Nothing was written.`,
+      );
+    }
+  }
+
+  let converted: Converted;
+  if (located.format === "pdf") {
+    const conversion = await context.convertPdf(located.raw);
+    converted = { ...pdfText(conversion, sourceId), converter: mineruName(conversion.structured) };
+  } else {
+    converted = await convertPage(located.html, origin, sourceId, context);
+  }
   // The hash covers the text exactly as the canonical writer stores it.
-  const text = parse(serialize({}, sections.join("\n\n"))).body;
-  const slug = slugOf(target, sourceId);
+  const text = parse(serialize({}, converted.text)).body;
+  const slug = slugOf(target, sourceId, origin);
   const note = serialize(
     {
       ...destinationProperties(root, `${RAW_DIR}/${slug}/source.md`),
@@ -689,11 +879,11 @@ export async function captureSource(
       origin,
       source_id: sourceId,
       retrieved: context.today(),
-      licence,
-      converter: converterName(),
-      sha256_raw: sha256(raw),
+      licence: located.licence,
+      converter: converted.converter,
+      sha256_raw: sha256(located.raw),
       sha256_text: sha256(text),
-      figures: String(figures.length),
+      figures: String(converted.figures),
     },
     text,
   );
@@ -709,8 +899,8 @@ export async function captureSource(
   try {
     chmodSync(staging, 0o755); // mkdtemp makes it private; the folder is shared vault content
     mkdirSync(join(staging, "assets"));
-    writeSynced(join(staging, "raw.html"), raw);
-    for (const asset of assets.values())
+    writeSynced(join(staging, `raw.${located.format}`), located.raw);
+    for (const asset of converted.assets)
       writeSynced(join(staging, "assets", asset.name), asset.bytes);
     writeSynced(join(staging, "source.md"), note);
     syncFolder(join(staging, "assets"));
@@ -738,8 +928,8 @@ export async function captureSource(
     status: "captured",
     folder: `${RAW_DIR}/${slug}`,
     sourceId,
-    figures: figures.length,
-    skipped,
+    figures: converted.figures,
+    skipped: converted.skipped,
     warnings,
   };
 }

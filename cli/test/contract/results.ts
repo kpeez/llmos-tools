@@ -19,7 +19,7 @@ import { COMMANDS } from "../../src/commands.ts";
 import { normalize } from "../../src/frontmatter.ts";
 import { collectErrors } from "../../src/schema.ts";
 import { AmbiguousNoteError, NoteNotFoundError, type VaultModel } from "../../src/vault.ts";
-import { offline } from "../helpers.ts";
+import { noConverter, offline } from "../helpers.ts";
 
 export interface ContractResults {
   list: unknown[];
@@ -60,6 +60,7 @@ export async function contractResults(
       throw new Error("the contract results run read verbs only");
     },
     fetch: offline,
+    convertPdf: noConverter,
   };
   const cli = async (
     ...argv: string[]
