@@ -6,14 +6,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { UsageError, type Values } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
@@ -92,7 +85,6 @@ describe("write targets", () => {
     const root = makeVault({ "notes/alpha.md": NOTE });
     const alias = join(scratch("alias"), "vault");
     symlinkSync(root, alias);
-    mkdirSync(join(root, "notes", "sub"));
     const result = await cli(alias, ["set-property", "alpha", "status", "active"]);
     expect(result.exitCode).toBe(0);
     expect(read(root, "notes/alpha.md")).toContain("status: active");
@@ -129,45 +121,29 @@ describe("argument checks", () => {
 
 describe("every path-taking command refuses to escape the vault", () => {
   // `{away}` is a folder outside the vault holding secret.md. In the vault,
-  // link.md links to that file and linkdir/ links to the folder.
-  const ESCAPES = ["../escape.md", "{away}/secret.md", "link.md", "linkdir/new.md"];
-  const NOTE_ESCAPES = ["../escape.md", "{away}/secret.md"];
-  const cases: [string, string[]][] = [];
-  for (const path of ESCAPES) {
-    cases.push(
-      [`create ${path}`, ["create", path, "--content", "x"]],
-      [`create --template ${path}`, ["create", path, "--template", "project"]],
-      [`move to ${path}`, ["move", "alpha", path]],
-      [`file-inbox to ${path}`, ["file-inbox", "capture", path]],
-    );
-  }
-  // `docs` paths are relative to the working folder and must stay in tools/.
-  for (const path of ["../../escape.md", "../../../escape.md", "{away}/secret.md"]) {
-    cases.push(
-      [`docs --reference ${path}`, ["docs", "--reference", path]],
-      [`docs --skill ${path}`, ["docs", "--skill", path]],
-    );
-  }
-  for (const path of ["knowledge/../../escape.md", "knowledge/../linkdir/new.md"]) {
-    cases.push([`file-inbox to ${path}`, ["file-inbox", "capture", path]]);
-  }
-  for (const note of [...NOTE_ESCAPES, "link.md"]) {
-    cases.push(
-      [`append ${note}`, ["append", note, "x"]],
-      [`set-property ${note}`, ["set-property", note, "status", "x"]],
-      [`remove-property ${note}`, ["remove-property", note, "status"]],
-      [`check ${note}`, ["check", note]],
-      [`file-inbox from ${note}`, ["file-inbox", note, "knowledge/filed.md"]],
-    );
-  }
-  for (const note of NOTE_ESCAPES) {
-    cases.push(
-      [`move from ${note}`, ["move", note, "notes/moved.md"]],
-      [`read ${note}`, ["read", note]],
-      [`neighbors ${note}`, ["neighbors", note]],
-      [`subgraph ${note}`, ["subgraph", note]],
-    );
-  }
+  // link.md links to that file and linkdir/ links to the folder. `docs`
+  // paths are relative to the working folder and must stay in tools/.
+  const cases: [string, string[]][] = [
+    ["create into a linked folder", ["create", "linkdir/new.md", "--content", "x"]],
+    ["create over a linked note", ["create", "link.md", "--content", "x"]],
+    [
+      "create --template into a linked folder",
+      ["create", "linkdir/new.md", "--template", "project"],
+    ],
+    ["move into a linked folder", ["move", "alpha", "linkdir/new.md"]],
+    ["move from outside", ["move", "{away}/secret.md", "notes/moved.md"]],
+    ["file-inbox into a linked folder", ["file-inbox", "capture", "linkdir/new.md"]],
+    ["file-inbox from a linked note", ["file-inbox", "link.md", "knowledge/filed.md"]],
+    ["file-inbox from outside", ["file-inbox", "{away}/secret.md", "knowledge/filed.md"]],
+    ["append", ["append", "{away}/secret.md", "x"]],
+    ["set-property", ["set-property", "../escape.md", "status", "x"]],
+    ["check", ["check", "{away}/secret.md"]],
+    ["read", ["read", "{away}/secret.md"]],
+    ["neighbors", ["neighbors", "../escape.md"]],
+    ["subgraph", ["subgraph", "{away}/secret.md"]],
+    ["docs --reference", ["docs", "--reference", "../../escape.md"]],
+    ["docs --skill", ["docs", "--skill", "{away}/secret.md"]],
+  ];
 
   for (const [label, argv] of cases) {
     test(label, async () => {

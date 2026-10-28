@@ -46,4 +46,9 @@ hooks: bun-version
 hooks-drift: hooks
     git diff --exit-code ../dist/hooks.js ../dist/mcp.js
 
+# Drive the real CLI, MCP server, and hooks on a scratch fixture vault.
+# Evidence goes to ../../artifacts/verify-llmos/; feature names limit the run.
+verify-llmos *features:
+    @bun ../../.agents/skills/verify-llmos/scripts/verify.ts run {{features}}
+
 check: drift types lint test hooks-drift

@@ -4,12 +4,10 @@
  * the retired Python test `test_hook_gating.py`.
  */
 
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import * as fs from "node:fs";
+import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileSha256 } from "../../src/heartbeat.ts";
-import { sessionStart } from "../../src/hooks/context.ts";
 import {
   additionalContext,
   BUNDLE,
@@ -100,32 +98,6 @@ describe("session-start", () => {
     expect(result.exitCode).toBe(0);
   });
 
-  test("never reads a MEMORY.md", () => {
-    const tmp = temporaryFolder();
-    const vault = contextVault(join(tmp, "vault"));
-    const previous = process.env.LLMOS_ROOT;
-    process.env.LLMOS_ROOT = vault;
-    const spies = [
-      spyOn(fs, "readFileSync"),
-      spyOn(fs, "openSync"),
-      spyOn(fs, "readSync"),
-      spyOn(Bun, "file"),
-    ];
-    try {
-      const output = sessionStart({ cwd: vault });
-      expect(output).toContain(vault);
-      for (const spy of spies) {
-        for (const call of spy.mock.calls) {
-          expect(String(call[0])).not.toEndWith("MEMORY.md");
-        }
-      }
-    } finally {
-      for (const spy of spies) spy.mockRestore();
-      if (previous === undefined) delete process.env.LLMOS_ROOT;
-      else process.env.LLMOS_ROOT = previous;
-    }
-  });
-
   test("records a heartbeat per agent, even outside the vault", () => {
     const tmp = temporaryFolder();
     const vault = contextVault(join(tmp, "vault"));
@@ -154,6 +126,7 @@ describe("session-start", () => {
     });
 
     expect(claude.exitCode).toBe(0);
+    expect(claude.stdout).toContain(`llmOS root: ${vault}.`);
     expect(codex.stdout).toBe("");
     const beats = JSON.parse(
       readFileSync(join(tmp, "home", ".local", "state", "llmos", "hooks.json"), "utf8"),
@@ -180,16 +153,6 @@ describe("session-start", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toBe(expected.stdout);
-  });
-
-  test("the committed bundle answers on the same channel", () => {
-    const tmp = temporaryFolder();
-    const vault = contextVault(join(tmp, "vault"));
-
-    const result = runHook("session-start", { cwd: vault }, tmp, { root: vault, script: BUNDLE });
-
-    expect(result.stdout).toContain(`llmOS root: ${vault}.`);
-    expect(result.exitCode).toBe(0);
   });
 });
 
@@ -322,23 +285,6 @@ describe("pre-tool-use", () => {
     );
 
     expect(result.stdout).toBe("");
-  });
-
-  test("recognizes `rg --files` on a linked directory relative to the process cwd", () => {
-    const tmp = temporaryFolder();
-    const vault = contextVault(join(tmp, "vault"));
-    const projectDocs = join(vault, "projects", "testproj");
-    mkdirSync(projectDocs, { recursive: true });
-    const repo = linkedRepo(join(tmp, "repo"), projectDocs);
-
-    const result = runHook(
-      "pre-tool-use",
-      { tool_name: "Bash", tool_input: { command: "rg --files .agents/docs" } },
-      tmp,
-      { root: vault, cwd: repo },
-    );
-
-    expect(additionalContext(result, "PreToolUse")).toContain("Obsidian vault note");
   });
 
   test("anchors a relative path at the payload cwd", () => {

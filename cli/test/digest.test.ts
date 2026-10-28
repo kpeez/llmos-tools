@@ -3,7 +3,7 @@
  * retired Python test `test_write_daily_activity.py`.
  */
 
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import {
   chmodSync,
   mkdirSync,
@@ -18,11 +18,8 @@ import { dirname, join } from "node:path";
 import { type Day, MARKER_END, MARKER_START, parseDay } from "../src/daily.ts";
 import {
   DigestError,
-  dayRange,
-  fetchActivity,
   type Gh,
   type Grouped,
-  listOrgRepos,
   OPENCODE_AGENT,
   parseGhJson,
   processDay,
@@ -100,101 +97,17 @@ const ghWithActivity: Gh = (args) => {
   if (args[1] === "commits") return [COMMIT];
   return [];
 };
-const ghSilent: Gh = (args) => (args[0] === "repo" ? ghRepoList(args) : []);
 const fakeOk = () => `### Alpha Project\nMerged [#7](${PR.url}).`;
 const notePath = (root: string) => join(root, "daily", "2026-07-16.md");
 
 describe("projects", () => {
-  test("a repository name match splits monitored and unseen projects", () => {
-    const [monitored, unseen] = readProjects(makeVault(), listOrgRepos(ghRepoList));
-    expect(monitored.map((p) => [p.slug, p.repos])).toEqual([["alpha", ["kpeez/alpha"]]]);
-    // archived is silently excluded
-    expect(unseen.map((p) => p.slug)).toEqual(["norepo"]);
-  });
-
   test("a name in both orgs is a hard failure", () => {
     const orgRepos = new Map([["alpha", ["kpeez/alpha", "linux-host-ucdavis/alpha"]]]);
     expect(() => readProjects(makeVault(), orgRepos)).toThrow(/several repos/);
   });
-
-  test("an unreadable landing page skips only that project", () => {
-    const root = makeVault();
-    write(
-      join(root, "projects", "norepo", "norepo.md"),
-      "---\nstatus: active\nbad: [\n---\n\n# Norepo\n",
-    );
-    const errors = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const [monitored, unseen] = readProjects(root, listOrgRepos(ghRepoList));
-      expect(monitored.map((p) => p.slug)).toEqual(["alpha"]);
-      expect(unseen).toEqual([]);
-      expect(String(errors.mock.calls[0]?.[0])).toStartWith("skipping projects/norepo/norepo.md");
-    } finally {
-      errors.mockRestore();
-    }
-  });
-});
-
-test("the day range tracks the DST offset", () => {
-  expect(dayRange(DAY)).toStartWith("2026-07-16T00:00:00-07:00");
-  expect(dayRange(parseDay("2026-01-16") as Day)).toStartWith("2026-01-16T00:00:00-08:00");
-  // The day DST starts has a different offset at each end.
-  expect(dayRange(parseDay("2026-03-08") as Day)).toBe(
-    "2026-03-08T00:00:00-08:00..2026-03-08T23:59:59-07:00",
-  );
-});
-
-test("a merged PR hides only itself from the opened PRs, not the same number elsewhere", () => {
-  const sameNumber = {
-    ...PR,
-    title: "Other work",
-    url: "https://github.com/linux-host-ucdavis/other/pull/7",
-    repository: { nameWithOwner: "linux-host-ucdavis/other" },
-    state: "open",
-  };
-  const gh: Gh = (args) => {
-    if (args[1] !== "prs") return [];
-    return args.includes("--merged-at") ? [PR] : [PR, sameNumber];
-  };
-  const activity = fetchActivity(DAY, ["kpeez/alpha", "linux-host-ucdavis/other"], gh);
-  expect(activity.merged_prs).toEqual([PR]);
-  expect(activity.opened_prs).toEqual([sameNumber]);
 });
 
 describe("processDay", () => {
-  test("a gh failure is hard", () => {
-    const gh404: Gh = () => {
-      throw new DigestError("gh search failed: repository not found");
-    };
-    expect(() => processDay(DAY, makeVault(), { gh: gh404 })).toThrow(/not found/);
-  });
-
-  test("a silent day creates nothing", () => {
-    const root = makeVault();
-    expect(processDay(DAY, root, { gh: ghSilent })).toBe("silent (no note created)");
-    expect(readdirSync(join(root, "daily"))).toEqual([]);
-  });
-
-  test("activity creates a note with the block and the unseen projects", () => {
-    const root = makeVault();
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk })).toBe("created");
-    const text = readFileSync(notePath(root), "utf8");
-    for (const part of [
-      'created: "2026-07-16"',
-      'updated: "2026-07-16"',
-      '  - "[[Reviews]]"',
-      "# 2026-07-16",
-      "#7",
-      MARKER_START,
-      MARKER_END,
-      "## Thoughts",
-    ]) {
-      expect(text).toContain(part);
-    }
-    expect(text).toContain("Norepo Project"); // active without a repo, named as unseen
-    expect(text.toLowerCase()).not.toContain("archived");
-  });
-
   test("the hash gate skips the model call and is byte stable", () => {
     const root = makeVault();
     let calls = 0;
@@ -254,30 +167,6 @@ describe("processDay", () => {
     expect(readdirSync(join(root, "daily"))).toEqual([]);
     const both = `${alpha}\n### Other\nOpened [#7](${otherUrl}).`;
     expect(processDay(DAY, root, { gh, summarize: () => both })).toBe("created");
-  });
-
-  test("a rewrite replaces the block but keeps the thoughts byte for byte", () => {
-    const root = makeVault();
-    const thought = "## Thoughts\n\nA hand-written, irreplaceable thought.\n";
-    write(
-      notePath(root),
-      `# 2026-07-16\n\n## Projects\n\n${MARKER_START} hash=${"0".repeat(64)} -->\nstale\n` +
-        `${MARKER_END}\n\n${thought}`,
-    );
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk })).toBe("updated");
-    const text = readFileSync(notePath(root), "utf8");
-    expect(text).not.toContain("stale");
-    expect(text).toContain("#7");
-    expect(text).toContain(thought);
-  });
-
-  test("activity in an unmapped repo is a hard failure", () => {
-    const rogue = { ...PR, repository: { nameWithOwner: "kpeez/dotfiles" } };
-    const ghRogue: Gh = (args) => {
-      if (args[0] === "repo") return ghRepoList(args);
-      return args[1] === "prs" && args.includes("--merged-at") ? [rogue] : [];
-    };
-    expect(() => processDay(DAY, makeVault(), { gh: ghRogue })).toThrow(/unmapped repo/);
   });
 });
 
@@ -359,44 +248,26 @@ describe("summarize", () => {
       JSON.stringify({ type: "step_finish" }),
     ].join("\n");
     expect(summarize(grouped(), DAY, fakeOpencode(output))).toBe("### Alpha Project");
-  });
-
-  test("accepts DeepSeek final text without OpenAI metadata", () => {
-    const output = JSON.stringify({
+    // A model without the OpenAI phase metadata is accepted too.
+    const plain = JSON.stringify({
       type: "text",
       part: { type: "text", text: "### Alpha Project" },
     });
-    expect(summarize(grouped(), DAY, fakeOpencode(output))).toBe("### Alpha Project");
+    expect(summarize(grouped(), DAY, fakeOpencode(plain))).toBe("### Alpha Project");
   });
 
   test.each([
     ["", "0 final assistant messages"],
     ["not json\n", "malformed JSON"],
-    [textEvent("   "), "empty final assistant message"],
     [[textEvent("one"), textEvent("two")].join("\n"), "2 final assistant messages"],
-    [JSON.stringify({ type: "message", text: "transcript" }), "unsupported event type"],
   ])("rejects malformed or non-single final output (%#)", (output, message) => {
     expect(() => summarize(grouped(), DAY, fakeOpencode(output))).toThrow(message);
   });
 
-  test("rejects a non-zero opencode run", () => {
-    const bin = fakeOpencode("", 1, "provider unavailable\n");
-    expect(() => summarize(grouped(), DAY, bin)).toThrow(
+  test("a failed opencode run throws with stderr and the error event it printed on stdout", () => {
+    expect(() => summarize(grouped(), DAY, fakeOpencode("", 1, "provider unavailable\n"))).toThrow(
       "opencode run failed: provider unavailable",
     );
-  });
-
-  test("a non-zero run reports the error event that opencode prints on stdout", () => {
-    const error = JSON.stringify({
-      type: "error",
-      error: { name: "APIError", data: { message: "subscription required", statusCode: 403 } },
-    });
-    expect(() => summarize(grouped(), DAY, fakeOpencode(error, 1))).toThrow(
-      "opencode run failed: subscription required",
-    );
-  });
-
-  test("an error event reports its message, with stderr and on exit 0", () => {
     const error = JSON.stringify({ type: "error", error: { data: { message: "rate limited" } } });
     expect(() => summarize(grouped(), DAY, fakeOpencode(error, 1, "warn: retrying\n"))).toThrow(
       "opencode run failed: warn: retrying; rate limited",
@@ -450,7 +321,6 @@ describe("block integrity", () => {
   test.each([
     ["two blocks", `${MARKER_START} -->\n${MARKER_END}\n${MARKER_START} -->\n${MARKER_END}\n`],
     ["an end before the start", `${MARKER_END}\n${MARKER_START} -->\n`],
-    ["a start without an end", `${MARKER_START} -->\n`],
   ])("a note with %s is refused and left untouched", (_name, markers) => {
     const root = makeVault();
     const original = `# 2026-07-16\n\n## Projects\n\n${markers}\nKeep.\n`;

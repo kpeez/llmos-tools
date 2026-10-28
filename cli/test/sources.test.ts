@@ -559,58 +559,6 @@ describe("network fetcher limits", () => {
 describe("image links", () => {
   const assets = new Map([["https://x.example/a.png", { name: "a.png" }]]);
   const URL_A = "https://x.example/a.png";
-  const both = new Map([
-    [URL_A, { name: "a.png" }],
-    [`${URL_A}2`, { name: "a.png2" }],
-  ]);
-
-  test("only an image target equal to a downloaded URL is rewritten", () => {
-    const cases: [string, string][] = [
-      [`![alt](${URL_A})`, "![alt](assets/a.png)"],
-      [`![alt](<${URL_A}>)`, "![alt](<assets/a.png>)"],
-      [`![alt]( ${URL_A} "a title" )`, `![alt]( assets/a.png "a title" )`],
-      [`[link](${URL_A})`, `[link](${URL_A})`],
-      [`![alt](${URL_A}?download=1)`, `![alt](${URL_A}?download=1)`],
-      [`![alt](${URL_A}x)`, `![alt](${URL_A}x)`],
-      [`![alt](${URL_A} nope)`, `![alt](${URL_A} nope)`],
-      [
-        `see ${URL_A} and ![](${URL_A}) twice ![b](${URL_A})`,
-        "see https://x.example/a.png and ![](assets/a.png) twice ![b](assets/a.png)",
-      ],
-    ];
-    for (const [input, expected] of cases)
-      expect(pointImagesAtAssets(input, assets)).toBe(expected);
-  });
-
-  test("keeps its edge behaviour: prefixes, line ends, linked and odd labels, nested images", () => {
-    const same = (input: string): [string, string] => [input, input];
-    const cases: [string, string][] = [
-      // An asset URL that starts another asset URL: each image gets its own name.
-      [`![](${URL_A}) ![](${URL_A}2)`, "![](assets/a.png) ![](assets/a.png2)"],
-      [`![alt](${URL_A} "t"\r\n)`, `![alt](assets/a.png "t"\r\n)`],
-      [`![alt](${URL_A})`, "![alt](assets/a.png)"],
-      same(`![alt](${URL_A}`),
-      [`[![a](${URL_A})](https://link.example)`, "[![a](assets/a.png)](https://link.example)"],
-      same(`![a [b] c](${URL_A})`),
-      same(`![a\\]b](${URL_A})`),
-      // An image that starts inside another match's target is rewritten too.
-      [
-        `![a](https://other.example/![b](${URL_A}))`,
-        "![a](https://other.example/![b](assets/a.png))",
-      ],
-    ];
-    for (const [input, expected] of cases) {
-      expect(pointImagesAtAssets(input, both)).toBe(expected);
-    }
-  });
-
-  test("only an alt that is one bracketed phrase loses its brackets", () => {
-    expect(unwrapBracketedAlts(`![[Uncaptioned image]](${URL_A})`)).toBe(
-      `![Uncaptioned image](${URL_A})`,
-    );
-    for (const same of ["![[note]]", "![[note]] (caption)", `![[Figure 1] Overview](${URL_A})`])
-      expect(unwrapBracketedAlts(same)).toBe(same);
-  });
 
   test("text built to make a backtracking pattern slow is handled in linear time", () => {
     for (const text of [

@@ -40,6 +40,14 @@ Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
 to a temporary folder, as `test/helpers.ts` `isolatedEnv` does.
 
+After a change to a command's behavior, the MCP server, or the hooks
+(`src/`, `../dist/`, `../hooks/`), also run `just verify-llmos`. It drives the
+real CLI, the MCP server, and the hook bundle on a scratch copy of a fixture
+vault, and keeps the evidence in `../../artifacts/verify-llmos/<timestamp>/`.
+The `verify-llmos` skill (`../../.agents/skills/verify-llmos/`) holds the
+feature map and says which commands cannot run without Obsidian.
+`scripts/bootstrap.sh` links `.agents/skills` into `.claude/skills` for Claude Code.
+
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
 the real vault in `../../llmOS/`; point `LLMOS_ROOT` at a temporary vault for a

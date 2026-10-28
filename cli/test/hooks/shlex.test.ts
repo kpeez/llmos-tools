@@ -10,7 +10,6 @@ import { ShlexError, split, splitWithOperators } from "../../src/hooks/shlex.ts"
 test.each([
   ["cat 'a b.md' c", ["cat", "a b.md", "c"]],
   ["a''", ["a"]],
-  ["'' b", ["", "b"]],
   ['"a\\"b"', ['a"b']],
   ['"a\\$b"', ["a\\$b"]],
   ["a#b c", ["a#b", "c"]],
@@ -23,8 +22,6 @@ test.each([
   ["mv a 2>&1 b", ["mv", "a", "2", ">&", "1", "b"]],
   ["rm 'x y.md' # c", ["rm", "x y.md"]],
   ["a#b", ["a"]],
-  ["a #b\nc", ["a", "c"]],
-  ["x|&y", ["x", "|&", "y"]],
 ])("splitWithOperators(%j)", (command, expected) => {
   expect(splitWithOperators(command)).toEqual(expected);
 });

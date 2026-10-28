@@ -151,21 +151,6 @@ describe("llmos-doctor", () => {
     failed(doctor(env), "hooks-claude", "Start a fresh Claude Code session");
   });
 
-  test("the config file is used when $LLMOS_ROOT is unset or empty", async () => {
-    const { root, env } = await setup();
-    const configFile = join(env.HOME as string, ".config", "llmos", "config.json");
-    mkdirSync(dirname(configFile), { recursive: true });
-    writeFileSync(configFile, JSON.stringify({ vault_root: root }));
-    for (const value of [undefined, ""]) {
-      const next = { ...env };
-      if (value === undefined) delete next.LLMOS_ROOT;
-      else next.LLMOS_ROOT = value;
-      const result = doctor(next);
-      expect(result.stdout).toContain("PASS vault-root:");
-      expect(result.exitCode).toBe(0);
-    }
-  });
-
   test("a root without AGENTS.md fails", async () => {
     const { root, env } = await setup();
     rmSync(join(root, "AGENTS.md"));

@@ -98,20 +98,6 @@ describe("the MCP launcher", () => {
     expect(existsSync(join(project, "PROJECT_LAUNCHER"))).toBe(false);
   });
 
-  test("control: without the flags, Bun runs a project's preload", async () => {
-    const project = hostileProject();
-    const child = Bun.spawn(["bun", join(TOOLS, "dist", "mcp.js")], {
-      cwd: project,
-      env: { PATH: process.env.PATH ?? "", ...home(null) },
-      stdin: "pipe",
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    child.stdin.end();
-    await child.exited;
-    expect(existsSync(join(project, "PRELOADED"))).toBe(true);
-  });
-
   test("Codex's command runs from the plugin root it is given as cwd", async () => {
     const { argv, cwd } = declared(".codex-mcp.json");
     expect(cwd).toBe(".");

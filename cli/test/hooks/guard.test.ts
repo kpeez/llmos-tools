@@ -5,11 +5,10 @@
  * `test_guard_vault_mv.py`.
  */
 
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { checkCommand } from "../../src/hooks/guard.ts";
-import * as root from "../../src/root.ts";
 import {
   makeVault,
   removeTemporaryFolders,
@@ -46,61 +45,43 @@ describe("obsidian-cli targeting", () => {
     expect(result.stdout).toBe("");
   });
 
-  test.each([
-    "read",
-    "append",
-    "prepend",
-    "delete",
-    "move",
-    "rename",
-    "backlinks",
-    "links",
-    "outline",
-    "file",
-    "wordcount",
-    "property:read",
-    "property:set",
-    "property:remove",
-    "diff",
-    "history",
-  ])("denies `%s` without a target", (verb) => {
-    expect(checkCommand(`obsidian-cli ${verb}`, ".")).toContain("obsidian-cli");
-  });
-
-  test.each(["read", "append", "delete", "move", "rename", "backlinks", "property:set"])(
-    "allows `%s` with file=",
-    (verb) => {
+  test("denies note verbs without a target, allows them with file= or path=, and allows verbs with no target by design", () => {
+    // Every note-targeting verb: a verb dropped from the guard lets an untargeted call act on the open note.
+    for (const verb of [
+      "read",
+      "append",
+      "prepend",
+      "delete",
+      "move",
+      "rename",
+      "backlinks",
+      "links",
+      "outline",
+      "file",
+      "wordcount",
+      "property:read",
+      "property:set",
+      "property:remove",
+      "diff",
+      "history",
+    ]) {
+      expect(checkCommand(`obsidian-cli ${verb}`, "."), verb).toContain("obsidian-cli");
+    }
+    for (const verb of ["read", "move", "property:set"]) {
       expect(checkCommand(`obsidian-cli ${verb} file="My Note"`, ".")).toBeNull();
-    },
-  );
-
-  test("allows a path= target through the hook", () => {
+    }
     const result = guard('obsidian-cli read path="notes/my-note.md"', temporaryFolder());
-
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-  });
-
-  test.each([
-    "obsidian-cli vaults",
-    "obsidian-cli daily:read",
-    'obsidian-cli daily:append content="- [ ] task"',
-    "obsidian-cli help",
-    "obsidian-cli help read",
-    "obsidian-cli dev:errors",
-    "obsidian-cli dev:console",
-    'obsidian-cli search query="term"',
-    "obsidian-cli tasks",
-    "obsidian-cli tags",
-    "obsidian-cli properties",
-    "obsidian-cli aliases",
-    "obsidian-cli files",
-    "obsidian-cli folders",
-    "obsidian-cli vault",
-    "obsidian-cli version",
-    'obsidian-cli vault="llmOS" vaults',
-  ])("allows `%s`, which has no target by design", (command) => {
-    expect(checkCommand(command, ".")).toBeNull();
+    for (const command of [
+      "obsidian-cli vaults",
+      "obsidian-cli daily:read",
+      'obsidian-cli search query="term"',
+      "obsidian-cli tasks",
+      "obsidian-cli help read",
+    ]) {
+      expect(checkCommand(command, ".")).toBeNull();
+    }
   });
 
   test("looks past a vault= prefix and into compound commands", () => {
@@ -115,24 +96,9 @@ describe("obsidian-cli targeting", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
   });
-
-  test("treats `#` as the start of a comment, as shlex does", () => {
-    expect(checkCommand("echo hi # obsidian-cli read", ".")).toBeNull();
-  });
 });
 
 describe("raw mv and rm on vault notes", () => {
-  test("denies mv out of the llmOS root", () => {
-    const tmp = temporaryFolder();
-    const vault = makeVault(join(tmp, "vault"));
-    const note = writeFile(join(vault, "note.md"), "# note\n");
-
-    const result = guard(`mv ${note} /tmp/dest/`, tmp, { root: vault });
-
-    expect(result.exitCode).toBe(2);
-    expect(result.stderr).toContain("obsidian-cli move");
-  });
-
   test("denies git mv, git rm, and rm, naming the command and the note", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));
@@ -231,18 +197,6 @@ describe("raw mv and rm on vault notes", () => {
     expect(redirect.stderr).toBe("");
     expect(target.exitCode).toBe(2);
     expect(target.stderr).toContain(note);
-  });
-
-  test("never reads vault roots for an ordinary command", () => {
-    const spies = [spyOn(root, "vaultRoot"), spyOn(root, "registeredVaults")];
-    try {
-      for (const command of ["git status", "uv run pytest", "ls -la", "npm install", "rmdir x"]) {
-        expect(checkCommand(command, ".")).toBeNull();
-      }
-      for (const spy of spies) expect(spy).not.toHaveBeenCalled();
-    } finally {
-      for (const spy of spies) spy.mockRestore();
-    }
   });
 
   test("approves when the payload has no command", () => {

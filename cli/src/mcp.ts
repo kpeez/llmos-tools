@@ -358,11 +358,8 @@ export function vaultSignature(root: string): string {
 }
 
 /** One vault model per root, loaded again when a note file changes. */
-export class WarmVault {
+class WarmVault {
   private cached: { root: string; signature: string; model: VaultModel } | null = null;
-  /** How many times a model was read from disk (for tests). */
-  loads = 0;
-
   model(root: string): VaultModel {
     // The fingerprint is taken before the load: a file that changes during
     // the load makes the next call load again, never keep a stale model.
@@ -370,7 +367,6 @@ export class WarmVault {
     const cached = this.cached;
     if (cached && cached.root === root && cached.signature === signature) return cached.model;
     const model = VaultModel.load(root);
-    this.loads++;
     this.cached = { root, signature, model };
     return model;
   }

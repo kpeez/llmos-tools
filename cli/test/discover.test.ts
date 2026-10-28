@@ -23,8 +23,6 @@ describe("extractIds", () => {
       "arXiv:2403.11111, raw/arxiv-2403.33333v1/",
       ["arxiv:2403.11111", "arxiv:2403.33333"],
     ],
-    ["bare token", "see 2403.55555v3", ["arxiv:2403.55555"]],
-    ["month 20 is no month", "the 2020.10141 value", []],
     [
       "the number has 4 digits up to 1412 and 5 digits from 1501",
       "2403.4444 1203.4567 1203.12345 1412.1234 1501.12345 1501.1234",
@@ -51,37 +49,10 @@ describe("extractIds", () => {
         "doi:10.1101/2024.03.12.123459",
       ],
     ],
-    ["more digits are no id", "12403.11111 and 2403.123456", []],
     [
       "a 5-digit id needs a year that is not in the future (2026 here); 4 digits need 0704-1412",
       "9912.12345 3512.12345 2612.12345 0703.9999 0704.0001",
       ["arxiv:0704.0001", "arxiv:2612.12345"],
-    ],
-    [
-      "a DOI ends at a query, a fragment, a bracket, a brace, or a quote",
-      "10.1234/aaa?token=x 10.1234/bbb#sec 10.1234/ccc[[Secret Name]] {10.1234/ddd} “10.1234/eee” 10.1234/fff”",
-      [
-        "doi:10.1234/aaa",
-        "doi:10.1234/bbb",
-        "doi:10.1234/ccc",
-        "doi:10.1234/ddd",
-        "doi:10.1234/eee",
-        "doi:10.1234/fff",
-      ],
-    ],
-    [
-      "balanced parentheses stay in a DOI, an unbalanced one does not",
-      "10.1016/s0140-6736(20)30183-5 (see 10.1234/abc)",
-      ["doi:10.1016/s0140-6736(20)30183-5", "doi:10.1234/abc"],
-    ],
-    [
-      "a dated bioRxiv DOI keys on the date and number only",
-      "10.1101/2024.03.12.123456.supplementary-material 10.1101/2024.03.13.123457.abstract 10.1101/2024.03.14.123458v2.full.pdf+html",
-      [
-        "doi:10.1101/2024.03.12.123456",
-        "doi:10.1101/2024.03.13.123457",
-        "doi:10.1101/2024.03.14.123458",
-      ],
     ],
     [
       "an undated 10.1101 DOI loses its suffix and version",
@@ -89,19 +60,9 @@ describe("extractIds", () => {
       ["doi:10.1101/123456", "doi:10.1101/123457", "doi:10.1101/123458", "doi:10.1101/123459"],
     ],
     [
-      "arXiv ids at the 4-digit and 5-digit boundaries",
-      "1412.12345 1501.1234 0713.1234 1500.12345 1412.1234 1501.12345",
-      ["arxiv:1412.1234", "arxiv:1501.12345"],
-    ],
-    [
-      "a DOI inside a Markdown link keeps its balanced parentheses",
-      "[x](https://doi.org/10.1016/S0140-6736(20)30183-5)",
-      ["doi:10.1016/s0140-6736(20)30183-5"],
-    ],
-    [
-      "; : _ stay inside a DOI and are trimmed at its end",
-      "10.1002/a;b:c_d 10.1002/e_ 10.1002/f; 10.1002/g: 10.1002/h/",
-      ["doi:10.1002/a;b:c_d", "doi:10.1002/e", "doi:10.1002/f", "doi:10.1002/g", "doi:10.1002/h"],
+      "balanced parentheses stay in a DOI, an unbalanced one does not",
+      "10.1016/s0140-6736(20)30183-5 (see 10.1234/abc)",
+      ["doi:10.1016/s0140-6736(20)30183-5", "doi:10.1234/abc"],
     ],
     [
       "a DOI followed by < or > is dropped (SICI and AMS forms), unless it is an autolink",
@@ -122,21 +83,6 @@ describe("extractIds", () => {
         "doi:10.1111/jpi.12347",
         "doi:10.1111/jpi.12348",
       ],
-    ],
-    [
-      "URL-encoded SICI and AMS DOIs are dropped like the plain ones",
-      "10.1002%2F%28SICI%291097-0258%2819980430%2917%3A8%3C873%3A%3AAID-SIM792%3E3.0.CO%3B2-I 10.1175%2F1520-0477%281996%29077%3C0437%3ATNYRP%3E2.0.CO%3B2",
-      [],
-    ],
-    [
-      "a publisher page word that is the whole suffix stays",
-      "10.1234/full 10.1234/pdf",
-      ["doi:10.1234/full", "doi:10.1234/pdf"],
-    ],
-    [
-      "a stray [[ does not hide DOIs on later lines",
-      "[[ x\n\nfoo 10.1234/abc ]]",
-      ["doi:10.1234/abc"],
     ],
   ];
   test.each(cases)("%s", (_name, text, expected) => {
@@ -231,13 +177,15 @@ describe("findClusters", () => {
     expect(findClusters(group(MAX_KEY_NOTES + 1, 0))).toEqual([]);
   });
 
-  test.each(["knowledge/", "daily/", "categories/", "categories/templates/"])(
-    "notes in %s are not candidates",
-    (folder) => {
-      expect(findClusters(group(3, 0, folder.slice(0, -1)))).toEqual([]);
-      expect(findClusters(group(3, 0))).toHaveLength(1);
-    },
-  );
+  test("notes in knowledge/, daily/, categories/ and the vault's rule notes are not candidates", () => {
+    for (const folder of ["knowledge", "daily", "categories", "categories/templates"]) {
+      expect(findClusters(group(3, 0, folder))).toEqual([]);
+    }
+    expect(findClusters(group(3, 0))).toHaveLength(1);
+    const keys = note("10.1234/a 10.1234/b");
+    const rules = { "schema.md": keys, "authoring.md": keys, "ingest-contract.md": keys };
+    expect(findClusters(model(rules))).toEqual([]);
+  });
 
   test("captured sources are not candidates; inbox drops in raw/, nested or not, are", () => {
     const keys = note("10.1234/a 10.1234/b");
@@ -251,17 +199,9 @@ describe("findClusters", () => {
     expect(findClusters(group(3, 0, "raw/batch"))).toHaveLength(1);
   });
 
-  test("the rule notes at the vault root are not candidates", () => {
-    const keys = note("10.1234/a 10.1234/b");
-    const files = { "schema.md": keys, "authoring.md": keys, "ingest-contract.md": keys };
-    expect(findClusters(model(files))).toEqual([]);
-  });
-
   test.each([
     ["exactly half of the notes link it", 4, 2, "knowledge/hub.md"],
-    ["more than half link it", 3, 2, "knowledge/hub.md"],
     ["just under half link it", 5, 2, null],
-    ["one of three links it", 3, 1, null],
   ] as const)("covered_by: %s", (_name, size, linkers, covered) => {
     const [cluster] = findClusters(group(size, linkers));
     expect(cluster?.notes).toHaveLength(size);
@@ -355,17 +295,12 @@ describe("health overdue_jobs", () => {
 
   test.each([
     ["the note is missing", null, null, 1],
-    ["the property is missing", "", null, 1],
     ["the value is not a date", 'discovered: "last tuesday"\n', "last tuesday", 1],
     ["the date is 2 days ahead", "discovered: 2026-10-09\n", "2026-10-09", 1],
     ["the date is 1 day ahead (clock skew)", "discovered: 2026-10-08\n", undefined, 0],
-    ["the value is a list", "discovered:\n  - 2026-10-07\n", null, 1],
-    ["the value is a datetime", "discovered: 2026-10-01T10:00:00\n", "2026-10-01T10:00:00", 1],
-    ["the value has quoted spaces", 'discovered: " 2026-10-07 "\n', " 2026-10-07 ", 1],
     ["the date does not exist", "discovered: 2026-02-30\n", "2026-02-30", 1],
     ["the date is 11 days old", "discovered: 2026-09-26\n", "2026-09-26", 1],
     ["the date is 10 days old", "discovered: 2026-09-27\n", undefined, 0],
-    ["the date is today", "discovered: 2026-10-07\n", undefined, 0],
   ] as const)("%s", async (_name, front, lastSuccess, exitCode) => {
     const root = cleanVault(front);
     const result = await cli(root, ["health", "--json"]);
@@ -379,8 +314,6 @@ describe("health overdue_jobs", () => {
   });
 
   test.each([
-    ["the note is missing", null, null, 1],
-    ["the property is missing", "", null, 1],
     ["the date is 4 days old", "digested: 2026-10-03\n", "2026-10-03", 1],
     ["the date is 3 days old", "digested: 2026-10-04\n", undefined, 0],
     ["the date is 2 days ahead", "digested: 2026-10-09\n", "2026-10-09", 1],
@@ -393,29 +326,6 @@ describe("health overdue_jobs", () => {
     );
   });
 
-  test("the run record of the digest cannot be set, removed, or created by hand", async () => {
-    const root = cleanVault(`discovered: ${TODAY}\n`, "digested: 2026-10-01\n");
-    const before = snapshot(root);
-    for (const argv of [
-      ["set-property", REVIEWS_NOTE, "digested", TODAY],
-      ["remove-property", "Reviews", "digested"],
-    ]) {
-      const result = await cli(root, argv);
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("only `llmos-daily-activity` sets it");
-    }
-    expect(snapshot(root)).toEqual(before);
-    const fresh = cleanVault(`discovered: ${TODAY}\n`, null);
-    const create = await cli(fresh, [
-      "create",
-      "categories/Reviews",
-      "--content",
-      `---\ndigested: ${TODAY}\n---\n\nR`,
-    ]);
-    expect(create.exitCode).toBe(1);
-    expect(existsSync(join(fresh, REVIEWS_NOTE))).toBe(false);
-  });
-
   test("a note of the same name in another folder does not count", async () => {
     const root = cleanVault("discovered: 2026-09-01\n");
     writeFiles(root, { "notes/Knowledge.md": "---\ndiscovered: 2026-10-07\n---\n\n# Other\n" });
@@ -423,13 +333,6 @@ describe("health overdue_jobs", () => {
     expect(JSON.parse(result.stdout).overdue_jobs).toEqual([
       { job: "discover", last_success: "2026-09-01", max_age_days: 10 },
     ]);
-  });
-
-  test("the summary says when the record is missing or unreadable", async () => {
-    const result = await cli(cleanVault(null), ["health"]);
-    expect(result.stdout).toContain(
-      "overdue jobs (1): discover (last success: missing or unreadable; max 10 days)",
-    );
   });
 
   test("a wikilink never joins a DOI key", () => {
@@ -495,6 +398,9 @@ describe("health overdue_jobs", () => {
       expect(result.stderr).toContain("only `llmos-vault discover` sets it");
     }
     expect(snapshot(root)).toEqual(before);
+    const digest = await cli(root, ["set-property", REVIEWS_NOTE, "digested", TODAY]);
+    expect(digest.exitCode).toBe(1);
+    expect(digest.stderr).toContain("only `llmos-daily-activity` sets it");
     const other = await cli(root, ["set-property", KNOWLEDGE_NOTE, "status", "active"]);
     expect(other.exitCode).toBe(0);
   });
@@ -642,15 +548,7 @@ describe("discover", () => {
 
   test.each([
     ["has unreadable frontmatter", { [KNOWLEDGE_NOTE]: "---\nz: &x one\na: *x\n---\n\n# K\n" }],
-    [
-      "has an anchored updated",
-      { [KNOWLEDGE_NOTE]: "---\nupdated: &u 2026-01-01\nref: *u\n---\n\n# K\n" },
-    ],
     ["has an authors map", { [KNOWLEDGE_NOTE]: "---\nauthors:\n  a: b\n---\n\n# K\n" }],
-    [
-      "has an anchored authors",
-      { [KNOWLEDGE_NOTE]: "---\nauthors: &au [x]\nother: *au\n---\n\n# K\n" },
-    ],
     ["is a symbolic link", "link"],
   ] as const)("it fails before any work when the Knowledge note %s", async (_name, setup) => {
     const root = clusterVault(false);

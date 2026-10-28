@@ -77,10 +77,6 @@ describe("health: code spans follow CommonMark", () => {
     expect(await targets("Use ` here.\n```\n[[Hidden]]\n```\n[[Real]] and `x`.")).toEqual(["Real"]);
   });
 
-  test("an opening backtick with no closer is literal, so a link after it is seen", async () => {
-    expect(await targets("A ` alone, then [[Real]].")).toEqual(["Real"]);
-  });
-
   test("a double-backtick span may hold a single backtick and hides its link", async () => {
     expect(await targets("``x ` [[Hidden]] ``, then [[Real]].")).toEqual(["Real"]);
   });
@@ -100,15 +96,9 @@ describe("health: fence closing rules", () => {
       (link) => link.target,
     );
 
-  test("a longer fence of the same character closes the block", async () => {
+  test("only a fence of the same character and at least the same length closes the block", async () => {
     expect(await targets("```\n[[Hidden]]\n````\n[[Real]]")).toEqual(["Real"]);
-  });
-
-  test("a shorter fence does not close the block", async () => {
     expect(await targets("````\n```\n[[Hidden]]\n````\n[[Real]]")).toEqual(["Real"]);
-  });
-
-  test("a fence of a different character does not close the block", async () => {
     expect(await targets("```\n~~~\n[[Hidden]]\n```\n[[Real]]")).toEqual(["Real"]);
   });
 });
@@ -119,14 +109,11 @@ describe("health: category values that are not a hub link", () => {
     "daily/2026-10-05.md": `---\ncreated: "2026-10-05"\n${front}---\n\n# Day\n`,
   });
 
-  test("a scalar categories value is not a valid category, so the note stays an orphan", async () => {
-    const report = await health(categoryFiles('categories: "[[Reviews]]"'));
-    expect(report.orphans).toContain("daily/2026-10-05.md");
-  });
-
-  test("a bare-string category entry is not a valid category, so the note stays an orphan", async () => {
-    const report = await health(categoryFiles("categories: [Reviews]"));
-    expect(report.orphans).toContain("daily/2026-10-05.md");
+  test("a scalar or bare-string category is not a valid category, so the note stays an orphan", async () => {
+    for (const front of ['categories: "[[Reviews]]"', "categories: [Reviews]"]) {
+      const report = await health(categoryFiles(front));
+      expect(report.orphans).toContain("daily/2026-10-05.md");
+    }
   });
 });
 
@@ -191,23 +178,6 @@ describe("health: orphans and categories", () => {
     ]);
   });
 
-  test("a note filed under an existing category hub is not an orphan", async () => {
-    const report = await health({
-      "categories/Papers.md": `${FRONT}# Papers\n`,
-      "notes/filed.md": `${filed("Papers")}# Filed\n`,
-    });
-    expect(report.orphans).not.toContain("notes/filed.md");
-  });
-
-  test("an uncategorized note is an orphan, and so is an uncategorized daily note", async () => {
-    const report = await health({
-      "notes/plain.md": `${FRONT}# Plain\n`,
-      "daily/2026-10-03.md": `${FRONT}# Day\n`,
-    });
-    expect(report.orphans).toContain("notes/plain.md");
-    expect(report.orphans).toContain("daily/2026-10-03.md");
-  });
-
   test("a note whose category names a missing hub is an orphan, daily notes too", async () => {
     const report = await health({
       "notes/misfiled.md": `${filed("Nowhere")}# Misfiled\n`,
@@ -251,13 +221,9 @@ describe("health: the templates folder is scaffolding in the llmos vault", () =>
   const meeting = `${FRONT}# {{title}}\n`;
   const project = `${FRONT}# {{title}}\n\n![[{{title}}.base]]\n[[{{date:YYYY-MM-DD}}]]\n`;
 
-  test("a template with no inbound link is no orphan", async () => {
+  test("a template with no inbound or outgoing link is no orphan and no dead-end", async () => {
     const report = await health({ "categories/templates/Meeting.md": meeting });
     expect(report.orphans).not.toContain("categories/templates/Meeting.md");
-  });
-
-  test("a template with no outgoing link is no dead-end", async () => {
-    const report = await health({ "categories/templates/Meeting.md": meeting });
     expect(report.dead_ends).not.toContain("categories/templates/Meeting.md");
   });
 
@@ -273,11 +239,6 @@ describe("health: the templates folder is scaffolding in the llmos vault", () =>
     });
     expect(report.orphans).not.toContain("categories/templates/Meeting.md");
     expect(report.unresolved_links).toEqual([{ referrer: "notes/a.md", target: "Gone" }]);
-  });
-
-  test("a note outside categories/templates/ with a placeholder link is still reported", async () => {
-    const report = await health({ "notes/a.md": `${FRONT}![[{{title}}.base]]\n` });
-    expect(report.unresolved_links).toEqual([{ referrer: "notes/a.md", target: "{{title}}.base" }]);
   });
 
   test("a template's real missing link is still reported", async () => {

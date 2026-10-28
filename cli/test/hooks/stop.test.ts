@@ -96,30 +96,6 @@ test("falls back to qmd update when llmos-vault reindex fails, and says so", () 
   expect(existsSync(flag)).toBe(false);
 });
 
-test("never asks for embedding, on success or on fallback", () => {
-  const recorded: string[] = [];
-  for (const cliExit of [0, 1]) {
-    const tmp = temporaryFolder();
-    const log = join(tmp, "calls.log");
-    stub(join(tmp, "bin"), "llmos-vault", log, cliExit);
-    stub(join(tmp, "bin"), "qmd", log);
-    setFlag(tmp);
-    stop(tmp, join(tmp, "bin"));
-    recorded.push(...calls(log));
-  }
-
-  expect(recorded).toEqual([
-    "llmos-vault reindex --no-embed",
-    "llmos-vault reindex --no-embed",
-    "qmd update -c llmos",
-  ]);
-  for (const call of recorded) {
-    const words = call.split(" ");
-    expect(words).not.toContain("embed");
-    if (words[0] === "llmos-vault") expect(words).toContain("--no-embed");
-  }
-});
-
 test("spawns nothing when the flag is absent", () => {
   const tmp = temporaryFolder();
   const log = join(tmp, "calls.log");

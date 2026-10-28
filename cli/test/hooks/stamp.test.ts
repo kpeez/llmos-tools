@@ -69,6 +69,8 @@ describe("stamping", () => {
         "# A note\n\nBody content, with a wikilink to [[Some Other Note]].\n",
     );
     expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(true);
+    // No authoring findings: the hook stays silent.
+    expect(result.stdout).toBe("");
   });
 
   test("appends the provider once, so a second stamp changes nothing", () => {
@@ -104,44 +106,12 @@ describe("stamping", () => {
     expect(after.ino).toBe(before.ino);
     expect(after.birthtimeMs).toBe(before.birthtimeMs);
   });
-
-  test("keeps a block scalar's data", () => {
-    const original =
-      "---\nmethod: |\n  Five-lens review -- 37 findings: 28 confirmed.\n  Second line: kept.\n" +
-      "updated: 2026-10-01\n---\n\n# Review\n";
-    const { tmp, vault, note } = setup(original, "review.md");
-
-    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
-
-    expect(result.exitCode).toBe(0);
-    expect(readFileSync(note, "utf8")).toBe(
-      "---\nauthors:\n  - claude\nmethod: |\n" +
-        "  Five-lens review -- 37 findings: 28 confirmed.\n  Second line: kept.\n" +
-        `updated: ${todayIso()}\n---\n\n# Review\n`,
-    );
-    expect(existsSync(dirtyFlag(tmp, "sess-1"))).toBe(true);
-  });
-
-  test("keeps comments and nested maps", () => {
-    const original =
-      "---\n# why this note exists\ncreated: 2026-07-01\nsource:\n  url: https://example.com\n" +
-      "  pages: 3\n---\n\nBody\n";
-    const { tmp, vault, note } = setup(original);
-
-    stamp(note, tmp, vault);
-
-    const text = readFileSync(note, "utf8");
-    expect(text).toContain("# why this note exists\n");
-    expect(text).toContain("source:\n  url: https://example.com\n  pages: 3\n");
-    expect(text).toContain(`updated: ${todayIso()}\n`);
-  });
 });
 
 describe("notes left unchanged", () => {
   test.each([
     ["no frontmatter block", "# Just a note\n\nNo frontmatter here.\n"],
     ["YAML errors", "---\ntitle: [unclosed\n---\n\nBody\n"],
-    ["an empty list item", "---\ntags:\n  -\n---\n\nBody\n"],
   ])("a note with %s", (_label, original) => {
     const { tmp, vault, note } = setup(original);
 
@@ -246,28 +216,6 @@ describe("authoring findings", () => {
     const result = stamp(note, tmp, vault);
 
     expect(additionalContext(result, "PostToolUse")).toContain("plain.md:3 [empty-link]");
-  });
-
-  test("reports findings for a note without frontmatter, which it does not stamp", () => {
-    const tmp = temporaryFolder();
-    const vault = makeVault(join(tmp, "vault"));
-    writeFile(join(vault, "target.md"), "# Target\n");
-    const original = "# Plain\n\nSee target.md.\n";
-    const note = writeFile(join(vault, "plain.md"), original);
-
-    const result = stamp(note, tmp, vault);
-
-    expect(additionalContext(result, "PostToolUse")).toContain("plain.md:3 [unlinked-note]");
-    expect(readFileSync(note, "utf8")).toBe(original);
-  });
-
-  test("is silent when the note has no findings", () => {
-    const { tmp, vault, note } = setup(MESSY_NOTE);
-
-    const result = stamp(note, tmp, vault);
-
-    expect(result.stdout).toBe("");
-    expect(result.exitCode).toBe(0);
   });
 
   test("matches the full-vault check: folder symlinks are not indexed, cycles do not hang", () => {

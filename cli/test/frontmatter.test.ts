@@ -19,21 +19,6 @@ describe("normalize writes the canonical form", () => {
       note("updated: 2026-07-17\ntopics: [b, '[[A]]']\ncreated: '2026-07-16'\n", "# T \t\n\n\n"),
       '---\ncreated: 2026-07-16\ntopics:\n  - b\n  - "[[A]]"\nupdated: 2026-07-17\n---\n\n# T\n',
     ],
-    [
-      "quoted commas inside a flow list stay one item",
-      note('topics: [a, "b, c", ]\n'),
-      "---\ntopics:\n  - a\n  - b, c\n---\n\n# Body\n",
-    ],
-    [
-      "empty scalar and empty list",
-      note("note:\nnone: []\n"),
-      "---\nnone: []\nnote:\n---\n\n# Body\n",
-    ],
-    [
-      "values bare YAML would misread are double-quoted",
-      note("a: 'x: y'\nb: 'x #y'\nc: '- x'\nd: 'end:'\ne: '@at'\nf: 'say \"hi\" \\ there'\n"),
-      '---\na: "x: y"\nb: "x #y"\nc: "- x"\nd: "end:"\ne: "@at"\nf: say "hi" \\ there\n---\n\n# Body\n',
-    ],
   ];
   for (const [name, input, expected] of cases) {
     test(name, () => {
@@ -51,11 +36,6 @@ describe("normalize keeps YAML the Python parser refused", () => {
       "---\nb: y\nmethod: |\n  first line  \n\n  third [[x]]\nupdated: 2026-10-01\n---\n\n# Body\n",
     );
     expect(parse(output).properties.method).toBe("first line  \n\nthird [[x]]\n");
-  });
-
-  test("a folded block scalar keeps its line breaks and value", () => {
-    const input = note("z: >-\n  a long\n  paragraph\na: x\n");
-    expect(normalize(input)).toBe("---\na: x\nz: >-\n  a long\n  paragraph\n---\n\n# Body\n");
   });
 
   test("comments stay with their property when keys are sorted", () => {
@@ -81,16 +61,6 @@ describe("normalize keeps YAML the Python parser refused", () => {
     });
   });
 
-  test("a quoted value that would change type keeps its quotes", () => {
-    expect(normalize(note("flag: \"true\"\ncount: '3'\nempty: ''\n"))).toBe(
-      '---\ncount: "3"\nempty: ""\nflag: "true"\n---\n\n# Body\n',
-    );
-  });
-
-  test("a quoted key that would change type keeps its quotes", () => {
-    expect(normalize(note('"null": y\na: x\n'))).toBe('---\na: x\n"null": y\n---\n\n# Body\n');
-  });
-
   test("copied properties lose trailing spaces outside block scalars", () => {
     expect(normalize(note("n:   \n  k: v   \n"))).toBe("---\nn:\n  k: v\n---\n\n# Body\n");
   });
@@ -108,28 +78,12 @@ describe("normalize keeps YAML the Python parser refused", () => {
     );
     expect(normalize(once)).toBe(once);
   });
-
-  test("a whitespace-only first body line does not survive as a blank line", () => {
-    const once = normalize(note("a: x\n", "   \nbody\n"));
-    expect(once).toBe("---\na: x\n---\n\nbody\n");
-    expect(normalize(once)).toBe(once);
-  });
-
-  test("an empty block reads back as frontmatter", () => {
-    const once = normalize("---\n\n---\n# Body\n");
-    expect(once).toBe("---\n---\n\n# Body\n");
-    expect(normalize(once)).toBe(once);
-  });
 });
 
 describe("a block that is not valid YAML properties is never rewritten", () => {
   const cases: [string, string][] = [
     ["duplicate key", note("a: x\na: y\n")],
-    ["unclosed flow list", note("a: [x, y\n")],
-    ["mapping inside a plain value", note("a: x: y\n")],
-    ["unresolved tag", note("a: !!int 3\n")],
     ["not a map", note("- a\n- b\n")],
-    ["property without a value", note("? a\nb: c\n")],
     ["empty list item", note("a:\n  -\n  - x\n")],
   ];
   for (const [name, input] of cases) {

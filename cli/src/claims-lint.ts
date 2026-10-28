@@ -183,7 +183,7 @@ function plainSuperscripts(text: string): string {
  * `±`, `×`, `≤`, `≥`, and `≈` set off by single spaces; runs of white space
  * made one space; and `95 %` made `95%`. Every pattern is linear in the text.
  */
-export function normalizeText(text: string): string {
+function normalizeText(text: string): string {
   return superscripts(markup(text))
     .replace(INLINE_TAG, "")
     .replace(SUBSCRIPT_TAG, "_$1")
@@ -228,7 +228,7 @@ function glued(text: string, i: number): boolean {
 }
 
 /** Whether every segment occurs in `text`, in order, without starting or ending inside a word or number. */
-export function containsInOrder(text: string, segments: readonly string[]): boolean {
+function containsInOrder(text: string, segments: readonly string[]): boolean {
   let cursor = 0;
   for (const segment of segments) {
     let at = text.indexOf(segment, cursor);
@@ -250,7 +250,7 @@ interface Heading {
 }
 
 /** A heading as a link names it: normalized, without the characters a link cannot hold, in lower case. */
-export function headingKey(text: string): string {
+function headingKey(text: string): string {
   return normalizeText(text)
     .replace(/[#|^:[\]]/g, " ")
     .replace(/\s+/g, " ")

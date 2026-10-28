@@ -160,7 +160,7 @@ function offsetForWall(wall: number): string {
 }
 
 /** The local day as a `gh` date range with explicit offsets (PDT or PST). */
-export function dayRange(day: Day): string {
+function dayRange(day: Day): string {
   const iso = isoDate(day);
   const start = day * DAY_MS;
   const end = start + DAY_MS - 1000;
@@ -382,7 +382,7 @@ export function readProjects(
 }
 
 /** Four `gh` search calls. Every repo must be reachable; a 404 is a hard failure. */
-export function fetchActivity(day: Day, repos: string[], gh: Gh = runGh): Activity {
+function fetchActivity(day: Day, repos: string[], gh: Gh = runGh): Activity {
   const repoFlags = repos.flatMap((repo) => ["--repo", repo]);
   const range = dayRange(day);
   const search = (kind: string, qualifier: string, fields: string) =>

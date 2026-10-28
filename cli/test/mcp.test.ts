@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import type { Context } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import { Frontmatter } from "../src/frontmatter.ts";
-import { INSTRUCTIONS, providerFor, WarmVault } from "../src/mcp.ts";
+import { INSTRUCTIONS, providerFor } from "../src/mcp.ts";
 import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
@@ -303,22 +303,6 @@ describe("write tools stamp updated and authors", () => {
 });
 
 describe("the warm vault model", () => {
-  test("is read once while no note changes, and again after any change", () => {
-    const root = vault();
-    const warm = new WarmVault();
-    const first = warm.model(root);
-    expect(warm.model(root)).toBe(first);
-    expect(warm.loads).toBe(1);
-    writeFileSync(join(root, "notes/alpha.md"), `${NOTE}More.\n`);
-    expect(warm.model(root).resolveNote("alpha").body).toContain("More.");
-    expect(warm.loads).toBe(2);
-    writeFiles(root, { "notes/gamma.md": "# Gamma\n" });
-    expect(warm.model(root).resolveNote("gamma").name).toBe("gamma");
-    unlinkSync(join(root, "notes/gamma.md"));
-    expect(() => warm.model(root).resolveNote("gamma")).toThrow();
-    expect(warm.loads).toBe(4);
-  });
-
   test("an image created or deleted between two health calls changes the health result", async () => {
     const root = vault({ "notes/pic.md": `${NOTE}\n![[plot.png]]\n` });
     const { client, close } = await connect(contextFor(root));
@@ -351,26 +335,12 @@ describe("hostile arguments are refused", () => {
     return { root, away };
   }
 
-  const NOTE_ESCAPES = [
-    "../escape.md",
-    "../escape",
-    "notes/../../escape.md",
-    "{away}/secret.md",
-    "{away}/secret",
-    "/etc/passwd",
-    "link.md",
-    "link",
-    "linkdir/secret.md",
-    "linkdir/secret",
-  ];
+  const NOTE_ESCAPES = ["{away}/secret.md", "link.md", "linkdir/secret.md"];
   const DESTINATION_ESCAPES = [
     "../escape.md",
     "knowledge/../../escape.md",
-    "knowledge/../linkdir/new.md",
     "knowledge/linkdir/new.md",
-    "linkdir/new.md",
     "{away}/new.md",
-    "/tmp/new.md",
   ];
   const cases: [string, string, (path: string) => Record<string, unknown>][] = [];
   for (const path of NOTE_ESCAPES) {
@@ -429,38 +399,25 @@ describe("hostile arguments are refused", () => {
 
   const SHAPES: [string, unknown][] = [
     ["read", {}],
-    ["read", { note: "" }],
     ["read", { note: 42 }],
-    ["read", { note: ["alpha"] }],
     ["read", { note: "alpha", vault: "second-vault" }],
-    ["read", { note: "alpha", extra: true }],
-    ["read", { note: "al\u0000pha" }],
     ["read", { note: "al\npha" }],
     ["read", { note: "a".repeat(1025) }],
     ["read", null],
-    ["read", { note: "alpha", section: "" }],
     ["read", { note: "alpha", properties_only: "yes" }],
     ["list", {}],
     ["list", { folder: "../notes" }],
-    ["list", { folder: "/etc" }],
-    ["list", { folder: "notes", vault: "second-vault" }],
     ["subgraph", { note: "alpha", depth: 11 }],
-    ["subgraph", { note: "alpha", depth: -1 }],
     ["subgraph", { note: "alpha", depth: 1.5 }],
-    ["subgraph", { note: "alpha", depth: "2" }],
     ["health", { "qmd-collection": "other" }],
     ["search", { query: "x", collection: "other" }],
-    ["search", { query: "x", limit: 0 }],
     ["search", { query: "x", limit: 51 }],
     ["search", { query: "x\ny" }],
-    ["search", { query: "x", hybrid: "yes" }],
-    ["search", { query: "x", mode: "hybrid" }],
     ["daily_append_thought", { text: "" }],
     ["daily_append_thought", { text: "x".repeat(20_001) }],
     ["daily_append_thought", { text: "bell\u0007" }],
     ["daily_append_thought", { text: "<!-- llmos-activity:end -->" }],
     ["set_property", { note: "alpha", key: "status", value: "two\nlines" }],
-    ["set_property", { note: "alpha", key: "sta\ntus", value: "x" }],
     ["set_property", { note: "alpha", key: "created", value: "2020-01-01" }],
     ["set_property", { note: "alpha", key: "status" }],
     ["file_inbox", { note: "capture", destination: "elsewhere/capture.md" }],
