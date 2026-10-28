@@ -119,6 +119,20 @@ describe("headless writes", () => {
     );
   });
 
+  test("set-property adds a link to a link property's list", async () => {
+    const root = makeVault({ "notes/alpha.md": ALPHA });
+    for (const link of [
+      "[[projects/one/one|One]]",
+      "[[projects/one/one|One]]",
+      "[[projects/two/two|Two]]",
+    ]) {
+      expect((await cli(root, ["set-property", "alpha", "project", link])).exitCode).toBe(0);
+    }
+    expect(read(root, "notes/alpha.md")).toContain(
+      'project:\n  - "[[projects/one/one|One]]"\n  - "[[projects/two/two|Two]]"\n',
+    );
+  });
+
   test("created is immutable and an unreadable block is never rewritten", async () => {
     const broken = "---\ntitle: [unclosed\n---\n\nBody.\n";
     const root = makeVault({ "notes/alpha.md": ALPHA, "notes/broken.md": broken });

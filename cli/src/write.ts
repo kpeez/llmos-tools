@@ -43,6 +43,7 @@ import {
 } from "node:path";
 import { bodyWithThought } from "./daily.ts";
 import { Frontmatter, MissingFrontmatter } from "./frontmatter.ts";
+import { LINK_FIELDS } from "./schema.ts";
 import { readText } from "./vault.ts";
 
 /** A write the caller asked for cannot be done; nothing was written. */
@@ -190,14 +191,17 @@ function editBody(root: string, relative: string, edit: (body: string) => string
   atomicReplace(real, frontmatter.toString());
 }
 
+const LIST_PROPERTIES = new Set<string>(["authors", ...LINK_FIELDS]);
+
 /**
- * Set property `key` to `value`. `authors` is append-only: the value is
- * added to the list unless it is already there. `created` never changes.
+ * Set property `key` to `value`. The schema's list properties (`authors` and
+ * the link fields) are append-only: the value is added to the list unless it
+ * is already there. `created` never changes.
  */
 export function setProperty(root: string, relative: string, key: string, value: string): void {
   const real = realTarget(root, relative);
   const frontmatter = frontmatterOf(readText(real));
-  if (key === "authors") frontmatter.appendUnique(key, value);
+  if (LIST_PROPERTIES.has(key)) frontmatter.appendUnique(key, value);
   else frontmatter.setScalar(key, value);
   atomicReplace(real, frontmatter.toString());
 }

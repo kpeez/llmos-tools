@@ -705,11 +705,14 @@ Set a property on a note.
 
 Use when an agent needs to set or update a single frontmatter property
 without hand-editing YAML -- e.g. flipping a status flag. The value is
-written as a string. Writes the file directly (atomically), so it works
+written as a string, except for the list properties below. Writes the file
+directly (atomically), so it works
 with Obsidian closed. A note whose frontmatter cannot be read is left
 untouched (exit 1).
-`authors` is append-only: setting it adds `value` to the existing list
-instead of overwriting it.
+`authors`, `categories`, `project`, and `topics` are lists and
+append-only: setting one adds `value` (one item, such as one wikilink) to
+the existing list instead of overwriting it. To replace a list, remove the
+property first.
 Do NOT use when rewriting `created` -- it is immutable and this call
 exits with an error. In the llmos vault, `discovered` on
 categories/Knowledge.md and `digested` on categories/Reviews.md are the
@@ -719,7 +722,7 @@ also through a link to those notes.
 Arguments:
   note   Note name (wikilink-style resolution) or vault-relative path.
   key    Property name.
-  value  Property value to set (or add to `authors`).
+  value  Property value to set, or one item to add to a list property.
 
 Options:
   --vault  Which registered vault the note lives in. Default: llmos.
