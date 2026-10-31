@@ -564,15 +564,18 @@ export function parseOpencodeOutput(stdout: string): string {
 /**
  * The message of the first `error` event in `opencode run --format json`
  * output, or "". opencode reports a failed model call there, not on stderr.
+ * Some errors carry it in `error.data.message` and others in `error.message`
+ * (in opencode 2.2, an unknown agent or an unavailable model), so read both.
  */
 export function opencodeError(stdout: string): string {
   for (const line of stdout.split(/\r?\n/)) {
     try {
       const event = JSON.parse(line) as {
         type?: unknown;
-        error?: { data?: { message?: unknown } };
+        error?: { message?: unknown; data?: { message?: unknown } };
       };
-      const message = event?.type === "error" ? event.error?.data?.message : undefined;
+      const message =
+        event?.type === "error" ? (event.error?.data?.message ?? event.error?.message) : undefined;
       if (typeof message === "string") return message;
     } catch {}
   }
@@ -582,11 +585,25 @@ export function opencodeError(stdout: string): string {
 /**
  * One `opencode run` call as the tool-less `OPENCODE_AGENT`, from an empty
  * scratch folder, so no project config or instructions apply.
+ *
+ * `--standalone` gives the call its own server. Without it, `opencode run`
+ * attaches to the background `opencode serve --service` when one is running,
+ * and that server never sees `OPENCODE_CONFIG_CONTENT` or the scratch folder,
+ * so it fails with `Agent not found: "llmos-digest"`.
  */
 export function summarize(grouped: Grouped, day: Day, opencodeBin = "opencode"): string {
   const scratch = mkdtempSync(join(tmpdir(), "llmos-digest-"));
   try {
-    const argv = ["run", "--agent", OPENCODE_AGENT, "--format", "json", "--model", MODEL];
+    const argv = [
+      "run",
+      "--standalone",
+      "--agent",
+      OPENCODE_AGENT,
+      "--format",
+      "json",
+      "--model",
+      MODEL,
+    ];
     const result = Bun.spawnSync([opencodeBin, ...argv], {
       cwd: scratch,
       env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(OPENCODE_CONFIG) },

@@ -209,7 +209,7 @@ describe("summarize", () => {
     expect(summarize(grouped(), DAY, bin)).toBe("### Alpha Project");
     const dir = dirname(bin);
     expect(readFileSync(join(dir, "argv"), "utf8")).toBe(
-      "run\n--agent\nllmos-digest\n--format\njson\n--model\ngithub-copilot/claude-haiku-5.5\n",
+      "run\n--standalone\n--agent\nllmos-digest\n--format\njson\n--model\ngithub-copilot/claude-haiku-5.5\n",
     );
     const stdin = readFileSync(join(dir, "stdin"), "utf8");
     expect(stdin).toStartWith(`${TRANSFORM_INSTRUCTIONS}\n\n`);
@@ -274,6 +274,16 @@ describe("summarize", () => {
     );
     expect(() => summarize(grouped(), DAY, fakeOpencode(error))).toThrow(
       "opencode run emitted an error: rate limited",
+    );
+  });
+
+  test("a failed opencode run reports an error event without data (opencode 2.2)", () => {
+    const error = JSON.stringify({
+      type: "error",
+      error: { type: "unknown", message: 'Agent not found: "llmos-digest"' },
+    });
+    expect(() => summarize(grouped(), DAY, fakeOpencode(error, 1))).toThrow(
+      'opencode run failed: Agent not found: "llmos-digest"',
     );
   });
 });
