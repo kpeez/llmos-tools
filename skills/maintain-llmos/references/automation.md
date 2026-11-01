@@ -76,7 +76,9 @@ Enable it with `systemctl --user enable --now llmos-daily-activity.timer`. Read
 failures with `journalctl --user -u llmos-daily-activity`. The job needs `gh`
 authenticated with read access to both orgs, `opencode` authenticated with
 GitHub Copilot (`opencode auth list`), and the vault root in
-`~/.config/llmos/config.json` or `$LLMOS_ROOT`. A failed run exits non-zero, writes nothing for the failed
+`~/.config/llmos/config.json` or `$LLMOS_ROOT`. When the model's summary
+omits the link to a PR or issue, the digest calls the model again, up to three
+calls a day. A failed run exits non-zero, writes nothing for the failed
 day, and leaves the run record as it was. The journal line gives opencode's
 error message, for example a 403 from the model provider.
 

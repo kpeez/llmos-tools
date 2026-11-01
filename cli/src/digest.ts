@@ -4,8 +4,9 @@
  * machine-owned `## Projects` block of daily notes.
  *
  * Fetch with `gh` -> hash -> one `opencode run` call -> check that every PR
- * and issue is linked with its repository (`checkCompleteness`) -> atomic
- * write between the `llmos-activity` markers. It is a script, not an agent.
+ * and issue is linked with its repository (`checkCompleteness`; an omission
+ * gets a new call, up to `SUMMARY_ATTEMPTS` calls) -> atomic write between
+ * the `llmos-activity` markers. It is a script, not an agent.
  * It processes yesterday and today
  * (Los Angeles time), or one `--date`. A failed day writes nothing, and the
  * first failure stops the run with a non-zero exit. A run without `--date`
@@ -84,6 +85,7 @@ export const OPENCODE_CONFIG = {
   },
 };
 const OPENCODE_TIMEOUT_MS = 600_000;
+const SUMMARY_ATTEMPTS = 3;
 const DAY_MS = 86_400_000;
 
 export class DigestError extends Error {
@@ -677,6 +679,25 @@ export function checkCompleteness(prose: string, expected: Reference[]): void {
   }
 }
 
+/**
+ * The model's summary, once it links every reference. The model sometimes
+ * drops one link out of many, and the same prompt then links all of them,
+ * so an omission gets a new call, up to `SUMMARY_ATTEMPTS` calls in all.
+ */
+function completeSummary(grouped: Grouped, day: Day, summarizer: Summarizer): string {
+  const expected = expectedReferences(grouped);
+  for (let attempt = 1; ; attempt++) {
+    const prose = summarizer(grouped, day);
+    try {
+      checkCompleteness(neutralize(prose), expected);
+      return prose;
+    } catch (error) {
+      if (attempt === SUMMARY_ATTEMPTS) throw error;
+      console.error(`${isoDate(day)}: ${(error as Error).message}; calling the model again`);
+    }
+  }
+}
+
 export function buildBlock(prose: string, unseen: Project[], hash: string): string {
   const lines = [`${MARKER_START} hash=${hash} -->`, "", neutralize(prose), ""];
   if (unseen.length > 0) {
@@ -769,10 +790,9 @@ export function processDay(day: Day, root: string, options: ProcessOptions = {})
   const text = existsSync(notePath) ? readText(notePath) : "";
   if (existingHash(text) === hash) return "unchanged (hash match, no model call)";
 
-  const prose = options.summarize
-    ? options.summarize(grouped, day)
-    : summarize(grouped, day, options.opencodeBin);
-  checkCompleteness(neutralize(prose), expectedReferences(grouped));
+  const prose = completeSummary(grouped, day, (g, d) =>
+    options.summarize ? options.summarize(g, d) : summarize(g, d, options.opencodeBin),
+  );
   const block = buildBlock(prose, unseen, hash);
   if (text) {
     atomicWrite(notePath, replaceBlock(text, block));

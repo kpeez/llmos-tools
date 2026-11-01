@@ -135,12 +135,25 @@ describe("processDay", () => {
     expect(readFileSync(notePath(root), "utf8")).not.toContain("Norepo Project");
   });
 
-  test("the completeness check fails on an omission and writes nothing", () => {
+  test("an omission gets a new model call", () => {
     const root = makeVault();
-    const incomplete = () => "### Alpha Project\nBusy day.";
+    const answers = ["### Alpha Project\nBusy day.", fakeOk()];
+    const flaky = () => answers.shift() as string;
+    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: flaky })).toBe("created");
+    expect(answers).toEqual([]);
+  });
+
+  test("the completeness check fails after repeated omissions and writes nothing", () => {
+    const root = makeVault();
+    let calls = 0;
+    const incomplete = () => {
+      calls++;
+      return "### Alpha Project\nBusy day.";
+    };
     expect(() => processDay(DAY, root, { gh: ghWithActivity, summarize: incomplete })).toThrow(
       "omitted references: kpeez/alpha#7",
     );
+    expect(calls).toBe(3);
     expect(readdirSync(join(root, "daily"))).toEqual([]);
   });
 
