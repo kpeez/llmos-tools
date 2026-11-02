@@ -37,7 +37,10 @@
  * - `<!--` in the model's text or a project title is written as `&lt;!--`,
  *   so no marker (and no HTML comment) can appear inside the block;
  * - a note is rewritten only when it has exactly one start and one end
- *   marker, in that order, and only the text between them changes.
+ *   marker, in that order, and only the text between them changes. The
+ *   write reads the note again after the model call, so text that another
+ *   writer added during the call stays (`.agents/skills/verify-daily-digest`
+ *   model-checks this).
  */
 
 import { createHash } from "node:crypto";
@@ -794,8 +797,10 @@ export function processDay(day: Day, root: string, options: ProcessOptions = {})
     options.summarize ? options.summarize(g, d) : summarize(g, d, options.opencodeBin),
   );
   const block = buildBlock(prose, unseen, hash);
-  if (text) {
-    atomicWrite(notePath, replaceBlock(text, block));
+  // The model call takes minutes. A thought or a new note written meanwhile
+  // must survive, so replace the block in the note as it is now.
+  if (existsSync(notePath)) {
+    atomicWrite(notePath, replaceBlock(readText(notePath), block));
     return "updated";
   }
   mkdirSync(dirname(notePath), { recursive: true });

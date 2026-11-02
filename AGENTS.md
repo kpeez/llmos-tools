@@ -46,6 +46,12 @@ real CLI, the MCP server, and the hook bundle on a scratch copy of a fixture
 vault, and keeps the evidence in `../../artifacts/verify-llmos/<timestamp>/`.
 The `verify-llmos` skill (`../../.agents/skills/verify-llmos/`) holds the
 feature map and says which commands cannot run without Obsidian.
+After a change to how the digest or anything else writes daily notes
+(`src/digest.ts`, `src/daily.ts`, `src/write.ts`), also run `just
+verify-daily-digest`. It model-checks with TLA+ that the digest never deletes
+text written to a note during its model call. The `verify-daily-digest`
+skill (`../../.agents/skills/verify-daily-digest/`) says what the model
+covers and how to read a failure.
 `scripts/bootstrap.sh` links `.agents/skills` into `.claude/skills` for Claude Code.
 
 Preserve unrelated working-tree changes. Changes here go through a pull

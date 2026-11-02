@@ -51,4 +51,9 @@ hooks-drift: hooks
 verify-llmos *features:
     @bun ../../.agents/skills/verify-llmos/scripts/verify.ts run {{features}}
 
+# Model-check with TLA+ that the digest keeps text written to a daily note
+# during its model call (the verify-daily-digest skill).
+verify-daily-digest:
+    @bun ../../.agents/skills/verify-daily-digest/scripts/check.ts
+
 check: drift types lint test hooks-drift

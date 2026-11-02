@@ -135,6 +135,33 @@ describe("processDay", () => {
     expect(readFileSync(notePath(root), "utf8")).not.toContain("Norepo Project");
   });
 
+  test("a thought written during the model call stays in the note", () => {
+    const root = makeVault();
+    processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk });
+    write(join(root, "projects", "norepo", "norepo.md"), "---\nstatus: archived\n---\n\n# N\n");
+    const addsThought = () => {
+      const note = readFileSync(notePath(root), "utf8");
+      writeFileSync(notePath(root), note.replace("## Thoughts\n", "## Thoughts\n\nA thought.\n"));
+      return fakeOk();
+    };
+    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: addsThought })).toBe("updated");
+    const note = readFileSync(notePath(root), "utf8");
+    expect(note).toContain("A thought.");
+    expect(note).not.toContain("Norepo Project");
+  });
+
+  test("a note created during the model call keeps its text", () => {
+    const root = makeVault();
+    const createsNote = () => {
+      write(notePath(root), "# 2026-07-16\n\n## Thoughts\n\nA thought.\n");
+      return fakeOk();
+    };
+    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: createsNote })).toBe("updated");
+    const note = readFileSync(notePath(root), "utf8");
+    expect(note).toContain("A thought.");
+    expect(note).toContain(PR.url);
+  });
+
   test("an omission gets a new model call", () => {
     const root = makeVault();
     const answers = ["### Alpha Project\nBusy day.", fakeOk()];
