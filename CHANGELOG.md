@@ -3,6 +3,19 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.8.1 — 2026-11-07
+
+- The session-start hook links a vault project's agent folders in every
+  session, local or cloud, and in every git worktree:
+  `.agents/docs` to `<root>/projects/<repo>`, `.agents/scratch` to
+  `~/agent-scratch/<repo>/`, and `artifacts` to `~/artifacts/<repo>/`. The
+  repository name comes from the main checkout, so a worktree folder's name
+  no longer picks the vault folder. A worktree reuses a link target of the
+  main checkout. The hook never replaces a path that exists, and it adds
+  each link to the `info/exclude` file that all worktrees share. A
+  repository without a vault project folder gets no link and no note.
+  A link that fails adds a note and does not stop the other links.
+
 ## 2.8.0 — 2026-10-28
 
 - `source add` captures PDFs: a PDF file, a URL that serves a PDF, or an

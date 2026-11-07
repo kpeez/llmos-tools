@@ -112,3 +112,24 @@ export function todayIso(): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+export const GIT_ENV = {
+  GIT_AUTHOR_NAME: "test",
+  GIT_AUTHOR_EMAIL: "test@example.com",
+  GIT_COMMITTER_NAME: "test",
+  GIT_COMMITTER_EMAIL: "test@example.com",
+  GIT_CONFIG_NOSYSTEM: "1",
+  GIT_CONFIG_GLOBAL: "/dev/null",
+};
+
+/** Run `git` in `cwd` with a fixed identity and no user config; throws on failure. */
+export function git(cwd: string, ...args: string[]): void {
+  const result = Bun.spawnSync({
+    cmd: ["git", "-c", "init.defaultBranch=main", ...args],
+    cwd,
+    env: { ...process.env, ...GIT_ENV },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${result.stderr}`);
+}

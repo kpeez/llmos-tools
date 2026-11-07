@@ -8,6 +8,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
+  GIT_ENV,
+  git,
   makeVault,
   removeTemporaryFolders,
   runHook,
@@ -16,26 +18,6 @@ import {
 } from "./helpers.ts";
 
 afterEach(removeTemporaryFolders);
-
-const GIT_ENV = {
-  GIT_AUTHOR_NAME: "test",
-  GIT_AUTHOR_EMAIL: "test@example.com",
-  GIT_COMMITTER_NAME: "test",
-  GIT_COMMITTER_EMAIL: "test@example.com",
-  GIT_CONFIG_NOSYSTEM: "1",
-  GIT_CONFIG_GLOBAL: "/dev/null",
-};
-
-function git(cwd: string, ...args: string[]): void {
-  const result = Bun.spawnSync({
-    cmd: ["git", "-c", "init.defaultBranch=main", ...args],
-    cwd,
-    env: { ...process.env, ...GIT_ENV },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${result.stderr}`);
-}
 
 interface CloudFixture {
   tmp: string;
@@ -110,11 +92,12 @@ describe("session-start in a cloud session", () => {
     expect(result.stdout).toContain("git push origin HEAD:main");
   });
 
-  test("reports a repository with no vault project folder and does not link it", () => {
+  test("leaves a repository with no vault project folder alone, without a note", () => {
     const fixture = cloudFixture();
     const result = runCloud(fixture);
-    expect(result.stdout).toContain("No vault project folder");
+    expect(result.stdout).not.toContain(fixture.unknown);
     expect(existsSync(join(fixture.unknown, ".agents"))).toBe(false);
+    expect(existsSync(join(fixture.unknown, "artifacts"))).toBe(false);
   });
 
   test("keeps an existing .agents/docs", () => {
@@ -147,7 +130,7 @@ describe("session-start in a cloud session", () => {
 });
 
 describe("session-start outside the cloud", () => {
-  test("neither pulls nor links", () => {
+  test("neither pulls nor links the repositories beside the vault", () => {
     const fixture = cloudFixture();
     const result = runCloud(fixture, { CLAUDE_CODE_REMOTE: "" });
     expect(result.exitCode).toBe(0);
