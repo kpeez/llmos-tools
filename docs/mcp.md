@@ -3,9 +3,9 @@
 This page is for people who use or change the `llmos` MCP server.
 
 The plugin declares an MCP server named `llmos`, which starts in every Claude
-Code and Codex session where the plugin is enabled. Its tools are typed, so
-multi-line text needs no shell quoting, and it keeps one vault model and the
-qmd search models loaded between calls.
+Code, Codex, and Antigravity (`agy`) session where the plugin is enabled. Its
+tools are typed, so multi-line text needs no shell quoting, and it keeps one
+vault model and the qmd search models loaded between calls.
 
 | Tools | Kind |
 | --- | --- |
@@ -31,9 +31,11 @@ Claude Code reads `.mcp.json`, which runs the committed launcher
 `${CLAUDE_PLUGIN_ROOT}/dist/mcp.js`. Codex reads `.codex-mcp.json` (named in
 `.codex-plugin/plugin.json`): Codex does not expand plugin-root variables, so
 it uses `cwd: "."`, which Codex joins to the plugin root, and it sets the
-approvals: read tools run without a prompt, write tools prompt. Both run
-`bun --no-install --no-env-file --config=/dev/null`, so a session's project
-can never load its `.env`, `bunfig.toml` preload, or packages into the server.
+approvals: read tools run without a prompt, write tools prompt. Antigravity
+(`agy`) reads `mcp_config.json`, which expands `${PLUGIN_ROOT}/dist/mcp.js`.
+Every manifest runs `bun --no-install --no-env-file --config=/dev/null`, so a
+session's project can never load its `.env`, `bunfig.toml` preload, or packages
+into the server.
 
 The launcher (`cli/src/mcp-launcher.ts`) runs `llmos-vault mcp` from the install
 that `~/.local/bin/llmos-vault` links to, with `GGML_METAL_NO_RESIDENCY=1` (on

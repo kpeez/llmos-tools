@@ -76,6 +76,9 @@ async function start(argv: string[], cwd: string, env: Record<string, string>) {
 /** The placeholder Claude Code substitutes in a plugin server's args. */
 // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal placeholder text.
 const PLUGIN_ROOT = "${CLAUDE_PLUGIN_ROOT}";
+/** The placeholder Antigravity (agy) substitutes in a plugin server's args. */
+// biome-ignore lint/suspicious/noTemplateCurlyInString: the literal placeholder text.
+const AGY_PLUGIN_ROOT = "${PLUGIN_ROOT}";
 
 /** Claude Code's command, with the plugin root substituted, run in the project. */
 function claudeArgv(): string[] {
@@ -138,8 +141,8 @@ describe("the MCP launcher", () => {
     expect(await close()).toBe(0);
   });
 
-  test("both declarations start the launcher with the safe Bun flags and no shell", () => {
-    for (const file of [".mcp.json", ".codex-mcp.json"]) {
+  test("all declarations start the launcher with the safe Bun flags and no shell", () => {
+    for (const file of [".mcp.json", ".codex-mcp.json", "mcp_config.json"]) {
       const { argv } = declared(file);
       expect(argv.slice(0, 4)).toEqual([
         "bun",
@@ -151,5 +154,6 @@ describe("the MCP launcher", () => {
     }
     expect(declared(".mcp.json").argv[4]).toBe(`${PLUGIN_ROOT}/dist/mcp.js`);
     expect(declared(".codex-mcp.json").argv[4]).toBe("./dist/mcp.js");
+    expect(declared("mcp_config.json").argv[4]).toBe(`${AGY_PLUGIN_ROOT}/dist/mcp.js`);
   });
 });

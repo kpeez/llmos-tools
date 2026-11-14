@@ -24,6 +24,12 @@ codex plugin marketplace add kpeez/llmos
 codex plugin add llmos@llmos-vault
 ```
 
+In Antigravity (`agy`):
+
+```sh
+agy plugin install https://github.com/kpeez/llmos/tree/main/tools
+```
+
 To install the CLI by hand, see [CLI and scripts](docs/cli.md#install).
 
 ## Quick start

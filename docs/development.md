@@ -15,7 +15,7 @@ tools/
 │   └── vault-cli/         # routing table for the llmos-vault CLI
 ├── hooks/                 # hooks.json: session/tool lifecycle hooks (see below)
 ├── dist/                  # committed bundles: hooks.js and the MCP launcher mcp.js
-├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex)
+├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex, mcp_config.json for agy)
 └── cli/                   # the CLI's Bun project: package.json, bun.lock, justfile
     ├── src/               # TypeScript core and the CLI's command registry
     ├── bin/               # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd

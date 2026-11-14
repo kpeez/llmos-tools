@@ -79,12 +79,19 @@ test("the MCP PreToolUse matcher fires for the write tools under both harness na
 });
 
 test("each manifest declares one llmos server in its own file", () => {
-  // Claude Code expands ${CLAUDE_PLUGIN_ROOT} in args; Codex does not, but
-  // joins a relative cwd to the plugin root. With an `mcpServers` path,
-  // Codex reads only that file, never the root `.mcp.json`.
+  // Claude Code expands ${CLAUDE_PLUGIN_ROOT} and agy expands ${PLUGIN_ROOT}
+  // in args; Codex does not, and joins a relative cwd to the plugin root.
+  // With an `mcpServers` path, Codex reads only that file, never `.mcp.json`.
   expect(json(".claude-plugin/plugin.json").mcpServers).toBe("./.mcp.json");
   expect(json(".codex-plugin/plugin.json").mcpServers).toBe("./.codex-mcp.json");
-  for (const file of [".mcp.json", ".codex-mcp.json"]) {
+  expect(json(".antigravity-plugin/plugin.json")).not.toHaveProperty("mcpServers");
+  const claudePlugin = json(".claude-plugin/plugin.json");
+  const codexPlugin = json(".codex-plugin/plugin.json");
+  const agyPlugin = json(".antigravity-plugin/plugin.json");
+  expect(agyPlugin.name).toBe(SERVER_NAME);
+  expect(agyPlugin.version).toBe(claudePlugin.version);
+  expect(codexPlugin.version).toBe(claudePlugin.version);
+  for (const file of [".mcp.json", ".codex-mcp.json", "mcp_config.json"]) {
     expect(Object.keys(json(file).mcpServers as object)).toEqual([SERVER_NAME]);
   }
 });
