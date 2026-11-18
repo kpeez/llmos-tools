@@ -93,10 +93,48 @@ export async function readPayload(): Promise<Payload> {
   }
 }
 
-/** The payload's `session_id`, or "default". */
+/** Whether `data` or `env` indicates an Antigravity (`agy`) hook invocation. */
+export function isAntigravityPayload(
+  data: Payload,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  if (env.ANTIGRAVITY_CLI) return true;
+  return (
+    typeof data.hookEventName === "string" &&
+    ("conversationId" in data || "workspacePaths" in data || "toolCall" in data)
+  );
+}
+
+/** The payload's `session_id` (or Antigravity `conversationId`), or "default". */
 export function sessionId(data: Payload): string {
-  const id = data.session_id;
+  const id = firstTruthy([data.session_id, data.conversationId], "default");
   return typeof id === "string" && id ? id : "default";
+}
+
+/** The first `workspacePaths` entry in an Antigravity payload, if present. */
+export function workspacePath(data: Payload): string | undefined {
+  return Array.isArray(data.workspacePaths) && typeof data.workspacePaths[0] === "string"
+    ? data.workspacePaths[0]
+    : undefined;
+}
+
+/** Resolved working directory from `cwd` or `workspacePaths[0]`. */
+export function payloadCwd(data: Payload): string | null {
+  return pathFrom(data.cwd) ?? pathFrom(workspacePath(data));
+}
+
+/** The payload's tool name (`tool_name`, `name`, or Antigravity `toolCall.name`). */
+export function toolNameOf(data: Payload): string {
+  const callName = isDict(data.toolCall) ? data.toolCall.name : undefined;
+  const name = firstTruthy([data.tool_name, data.name, callName], "");
+  return typeof name === "string" ? name : "";
+}
+
+/** The payload's `tool_input`, Codex's `input`, or Antigravity `toolCall.args`, if any. */
+export function toolInputOf(data: Payload): Payload | null {
+  const callArgs = isDict(data.toolCall) ? data.toolCall.args : undefined;
+  const toolInput = firstTruthy([data.tool_input, data.input, callArgs], {});
+  return isDict(toolInput) ? toolInput : null;
 }
 
 /** `~` and `~/...` expanded with `$HOME`. */

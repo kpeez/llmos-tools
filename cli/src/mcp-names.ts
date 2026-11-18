@@ -25,3 +25,24 @@ export const WRITE_TOOLS = ["daily_append_thought", "file_inbox", "set_property"
 export const MCP_WRITE_TOOL = new RegExp(
   `^mcp__(?:plugin_llmos_)?${SERVER_NAME}__(?:${WRITE_TOOLS.join("|")})$`,
 );
+
+/** Antigravity direct tool name for an llmOS MCP write tool. */
+export const AGY_MCP_WRITE_TOOL = new RegExp(
+  `^mcp_${SERVER_NAME}_(?:${SERVER_NAME}_)?(?:${WRITE_TOOLS.join("|")})$`,
+);
+
+/** Whether a tool call invokes one of the llmOS MCP write tools in any harness. */
+export function isMcpWriteTool(
+  toolName: string,
+  toolInput: Record<string, unknown> | null,
+): boolean {
+  if (MCP_WRITE_TOOL.test(toolName) || AGY_MCP_WRITE_TOOL.test(toolName)) return true;
+  return (
+    toolName === "call_mcp_tool" &&
+    toolInput !== null &&
+    (toolInput.ServerName === SERVER_NAME ||
+      toolInput.ServerName === `${SERVER_NAME}_${SERVER_NAME}`) &&
+    typeof toolInput.ToolName === "string" &&
+    (WRITE_TOOLS as readonly string[]).includes(toolInput.ToolName)
+  );
+}

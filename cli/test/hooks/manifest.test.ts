@@ -116,3 +116,40 @@ test("Codex approves the read tools and prompts for the write tools", () => {
 test("the plugin root holds no package.json for Claude Code to install", () => {
   expect(readdirSync(TOOLS)).not.toContain("package.json");
 });
+
+test("Antigravity root hooks.json runs the bundle with valid events and matchers", () => {
+  const agyCommand = /^bun --no-env-file --config=\/dev\/null \.\/dist\/hooks\.js ([a-z-]+)$/;
+  const hooks = json("hooks.json").llmos as Record<string, unknown>;
+  const sessionStart = hooks.SessionStart as { command: string }[];
+  const preToolUse = hooks.PreToolUse as Groups;
+  const postToolUse = hooks.PostToolUse as Groups;
+  const stop = hooks.Stop as { command: string }[];
+
+  expect(sessionStart.map((h) => agyCommand.exec(h.command)?.[1])).toEqual(["session-start"]);
+  expect(stop.map((h) => agyCommand.exec(h.command)?.[1])).toEqual(["stop"]);
+  expect(
+    preToolUse.flatMap((group) => group.hooks.map((h) => agyCommand.exec(h.command)?.[1])),
+  ).toEqual(["pre-tool-use", "guard-bash"]);
+  expect(
+    postToolUse.flatMap((group) => group.hooks.map((h) => agyCommand.exec(h.command)?.[1])),
+  ).toEqual(["post-tool-use"]);
+
+  const preMatcher = new RegExp(`^(?:${preToolUse[0]?.matcher})$`);
+  for (const tool of [
+    "read_file",
+    "write_file",
+    "edit_file",
+    "grep_search",
+    "find_by_name",
+    "run_command",
+    "call_mcp_tool",
+    "mcp_llmos_llmos_daily_append_thought",
+  ]) {
+    expect(preMatcher.test(tool)).toBe(true);
+  }
+  const guardMatcher = new RegExp(`^(?:${preToolUse[1]?.matcher})$`);
+  expect(guardMatcher.test("run_command")).toBe(true);
+  const postMatcher = new RegExp(`^(?:${postToolUse[0]?.matcher})$`);
+  expect(postMatcher.test("write_file")).toBe(true);
+  expect(postMatcher.test("edit_file")).toBe(true);
+});

@@ -16,7 +16,7 @@
  */
 
 import { type Day, parseDay } from "./daily.ts";
-import { isInboxDrop, TEMPLATES_DIR } from "./layout.ts";
+import { isInboxDrop, isMemoryNote, TEMPLATES_DIR } from "./layout.ts";
 import { categoryHubs, collectErrors, isValidCategory } from "./schema.ts";
 import type { Note, UnresolvedLink, VaultModel } from "./vault.ts";
 
@@ -195,6 +195,7 @@ export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHea
     ...model.linkFindings(
       (note) => llmos && hasValidCategory(note, hubs),
       (note) => llmos && isTemplate(note),
+      (note) => llmos && isMemoryNote(note.path),
     ),
     schema_violations: schemaViolations(model, options.profile ?? "llmos"),
     stale_inbox: staleInbox(

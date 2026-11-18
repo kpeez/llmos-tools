@@ -531,31 +531,37 @@ export class VaultModel {
    * that `isScaffold` accepts is never an orphan or a dead-end. Its links
    * still resolve their targets, but they do not count as inbound links, and
    * its placeholder links (see `isPlaceholder`) are not reported as unresolved.
+   * A note that `exemptFromLinks` accepts (such as project memory notes) is
+   * never an orphan, a dead-end, or a source of unresolved or inbound links.
    */
   linkFindings(
     exemptFromOrphans: (note: Note) => boolean = () => false,
     isScaffold: (note: Note) => boolean = () => false,
+    exemptFromLinks: (note: Note) => boolean = () => false,
   ): LinkFindings {
     const linkedTo = new Set<Note>();
     const unresolved: UnresolvedLink[] = [];
     for (const note of this.notes) {
       const hits = this.resolved.get(note) ?? [];
       const scaffold = isScaffold(note);
+      const exempt = exemptFromLinks(note);
       note.targets.forEach((target, i) => {
         const hit = hits[i];
         if (hit === undefined) {
-          if (!(scaffold && isPlaceholder(target)))
+          if (!exempt && !(scaffold && isPlaceholder(target)))
             unresolved.push({ referrer: note.path, target });
-        } else if (hit && hit !== note && !scaffold) linkedTo.add(hit);
+        } else if (hit && hit !== note && !scaffold && !exempt) linkedTo.add(hit);
       });
     }
     return {
       orphans: this.notes
-        .filter((n) => !linkedTo.has(n) && !exemptFromOrphans(n) && !isScaffold(n))
+        .filter(
+          (n) => !linkedTo.has(n) && !exemptFromOrphans(n) && !isScaffold(n) && !exemptFromLinks(n),
+        )
         .map((n) => n.path)
         .sort(),
       dead_ends: this.notes
-        .filter((n) => n.targets.length === 0 && !isScaffold(n))
+        .filter((n) => n.targets.length === 0 && !isScaffold(n) && !exemptFromLinks(n))
         .map((n) => n.path)
         .sort(),
       unresolved_links: unresolved.sort(

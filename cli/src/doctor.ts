@@ -272,7 +272,7 @@ const WARN_AFTER_DAYS = 7;
 const DAY_MS = 86_400_000;
 
 interface Agent {
-  key: "claude" | "codex";
+  key: "claude" | "codex" | "agy";
   name: string;
   /** The installed plugin folder; `undefined` when the plugin is not installed. */
   installPath: string | null | undefined;
@@ -336,6 +336,22 @@ function codexInstall(env: Env): string | null | undefined {
   return versions[0] ? join(cache, versions[0]) : null;
 }
 
+/** Antigravity's install record: `~/.gemini/config/plugins/llmos` when enabled in `config.json`. */
+function agyInstall(env: Env): string | undefined {
+  const geminiConfig = join(env.HOME || homedir(), ".gemini", "config");
+  const pluginDir = join(geminiConfig, "plugins", "llmos");
+  if (!isDirectory(pluginDir)) return undefined;
+  try {
+    const config = JSON.parse(readFileSync(join(geminiConfig, "config.json"), "utf8")) as {
+      plugins?: Record<string, { enabled?: unknown }>;
+    };
+    if (config.plugins?.llmos?.enabled === false) return undefined;
+  } catch {
+    // Missing or unreadable config.json; discovered plugins are enabled by default.
+  }
+  return pluginDir;
+}
+
 /**
  * The hook heartbeat checks, one per agent: the hooks must have run (the
  * session-start hook records each run, `src/heartbeat.ts`) with the bundle
@@ -372,14 +388,23 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
         "hook is skipped silently), and put bun on Codex's login-shell PATH (setup-llmos).",
       update: `codex plugin marketplace upgrade llmos-vault && codex plugin add ${PLUGIN_ID}`,
     },
+    {
+      key: "agy",
+      name: "Antigravity",
+      installPath: agyInstall(env),
+      repair:
+        "Start a fresh Antigravity session, then rerun llmos-doctor. If it still fails, verify " +
+        "hooks.json is at the plugin root and bun is on PATH.",
+      update: `agy plugin install ${PLUGIN_ID}`,
+    },
   ];
 
   const installed = agents.filter((agent) => agent.installPath !== undefined);
   if (installed.length === 0) {
     fail(
       "hooks",
-      `the ${PLUGIN_ID} plugin is installed for neither Claude Code nor Codex`,
-      `Install it (setup-llmos): claude plugin install ${PLUGIN_ID}, or codex plugin add ${PLUGIN_ID}`,
+      `the ${PLUGIN_ID} plugin is installed for neither Claude Code, Codex, nor Antigravity`,
+      `Install it (setup-llmos): claude plugin install ${PLUGIN_ID}, codex plugin add ${PLUGIN_ID}, or agy plugin install ${PLUGIN_ID}`,
     );
   }
   for (const agent of agents) {

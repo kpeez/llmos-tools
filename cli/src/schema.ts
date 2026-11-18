@@ -13,7 +13,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { PropertyValue } from "./frontmatter.ts";
-import { DAILY_DIR, TEMPLATES_DIR } from "./layout.ts";
+import { DAILY_DIR, isMemoryNote, TEMPLATES_DIR } from "./layout.ts";
 import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
 
 // ADRs use proposed/accepted/superseded; other notes use the rest.
@@ -78,8 +78,11 @@ export interface SchemaReport {
 }
 
 function skipped(parts: string[]): boolean {
+  const path = parts.join("/");
   return (
-    parts.join("/").startsWith(`${TEMPLATES_DIR}/`) || parts.some((part) => part.startsWith("."))
+    path.startsWith(`${TEMPLATES_DIR}/`) ||
+    isMemoryNote(path) ||
+    parts.some((part) => part.startsWith("."))
   );
 }
 
@@ -180,8 +183,8 @@ function noteErrors(
 /**
  * Check every note in the model against the llmOS property contract and
  * return the violation messages and the number of notes checked. Each
- * `categories` value must name a hub in `categories/` exactly. Templates and
- * anything under a dot folder are skipped.
+ * `categories` value must name a hub in `categories/` exactly. Templates,
+ * shared project memory notes, and anything under a dot folder are skipped.
  */
 export function collectErrors(model: VaultModel): SchemaReport {
   const errors: string[] = [];

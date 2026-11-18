@@ -1,0 +1,52 @@
+{
+  "llmos": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bun --no-env-file --config=/dev/null ./dist/hooks.js session-start",
+        "timeout": 10
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "read_file|write_file|edit_file|grep_search|find_by_name|run_command|call_mcp_tool|mcp_llmos_llmos_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --no-env-file --config=/dev/null ./dist/hooks.js pre-tool-use",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --no-env-file --config=/dev/null ./dist/hooks.js guard-bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --no-env-file --config=/dev/null ./dist/hooks.js post-tool-use",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bun --no-env-file --config=/dev/null ./dist/hooks.js stop",
+        "timeout": 30
+      }
+    ]
+  }
+}

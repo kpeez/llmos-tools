@@ -15,11 +15,14 @@ import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:
 import { basename, join } from "node:path";
 import { checkNote } from "../authoring.ts";
 import { Frontmatter } from "../frontmatter.ts";
+import { isMemoryNote } from "../layout.ts";
 import { detectProvider } from "../provider.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
   COLLECTION,
+  firstTruthy,
   flagPath,
+  isAntigravityPayload,
   isFile,
   isUnder,
   localDate,
@@ -28,8 +31,11 @@ import {
   resolvedRoot,
   sessionId,
   suffix,
+  toolInputOf,
+  toolNameOf,
+  workspacePath,
 } from "./common.ts";
-import { targetPaths, toolInputOf } from "./context.ts";
+import { targetPaths } from "./context.ts";
 
 const MAX_FINDINGS = 8;
 const MAX_LINE = 240;
@@ -183,23 +189,37 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   if (root === null) return null;
   const toolInput = toolInputOf(data);
   if (toolInput === null) return null;
-  const toolName = typeof data.tool_name === "string" ? data.tool_name : "";
-  const targets = targetPaths(toolInput, { cwd: data.cwd, toolName, root }).filter(
+  const toolName = toolNameOf(data);
+  const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
+  const targets = targetPaths(toolInput, { cwd, toolName, root }).filter(
     (target) => isUnder(target, root) && suffix(target) === ".md" && isFile(target),
   );
   if (targets.length === 0) return null;
-  // List the vault only when a note could have an unlinked-reference finding
-  // (the listing is the slowest part of this hook), and start it before
+
+  const rootPrefix = root.endsWith("/") ? root : `${root}/`;
+  const durableTargets: string[] = [];
+  const memoryTargets: string[] = [];
+  for (const target of targets) {
+    const relative = target.slice(rootPrefix.length);
+    if (isMemoryNote(relative)) memoryTargets.push(target);
+    else durableTargets.push(target);
+  }
+
+  // List the vault only when a durable note could have an unlinked-reference
+  // finding (the listing is the slowest part of this hook), and start it before
   // stamping so it overlaps. Markdown findings need no listing.
-  const listing = targets.some(mentionsNotePath)
+  const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  const provider = detectProvider(process.env);
+  const provider = detectProvider(process.env) ?? (isAntigravityPayload(data) ? "gemini" : null);
   let stamped = false;
-  for (const target of targets) {
+  for (const target of durableTargets) {
     if (stampNote(target, provider)) stamped = true;
   }
-  if (stamped) closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
+  if (stamped || memoryTargets.length > 0) {
+    closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
+  }
+  if (durableTargets.length === 0) return null;
   const listed = await listing;
-  return listed ? authoringDiagnostics(root, targets, listed) : null;
+  return listed ? authoringDiagnostics(root, durableTargets, listed) : null;
 }

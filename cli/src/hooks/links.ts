@@ -13,9 +13,27 @@
  * not the repository's `.gitignore`. A second run changes nothing.
  */
 
-import { appendFileSync, lstatSync, mkdirSync, readlinkSync, symlinkSync } from "node:fs";
+import {
+  appendFileSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readlinkSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import { expandUser, isDir, isFile, isUnder, joinPath, readText } from "./common.ts";
+import { MEMORY_DIR } from "../layout.ts";
+import {
+  expandUser,
+  isDict,
+  isDir,
+  isFile,
+  isSymlink,
+  isUnder,
+  joinPath,
+  readText,
+} from "./common.ts";
 
 interface Repository {
   /** The worktree's top level, where the links go. */
@@ -25,6 +43,8 @@ interface Repository {
   /** The shared Git directory (`git rev-parse --git-common-dir`). */
   common: string;
   root: string;
+  /** The matching folder name under `<root>/projects/`. */
+  slug: string;
 }
 
 interface LinkSpec {
@@ -36,12 +56,14 @@ interface LinkSpec {
   makeTarget: boolean;
 }
 
+const CLAUDE_SETTINGS_REL = ".claude/settings.local.json";
+
 const LINKS: LinkSpec[] = [
   {
     path: ".agents/docs",
     // The vault's own repository needs no link to a folder inside itself.
-    target: ({ main, root }) =>
-      isUnder(root, main) ? null : joinPath(root, "projects", basename(main)),
+    target: ({ main, root, slug }) =>
+      isUnder(root, main) ? null : joinPath(root, "projects", slug),
     makeTarget: false,
   },
   {
@@ -56,7 +78,31 @@ const LINKS: LinkSpec[] = [
   },
 ];
 
-/** The worktree containing `path`, or `null` outside a Git worktree. */
+/**
+ * The vault project folder under `<root>/projects/` matching `main`, or `null`.
+ * Checks the exact directory name first, then strips a leading dot and
+ * lowercases (so `.dotfiles` -> `dotfiles` and `llmOS` -> `llmos`), matching
+ * directory entries on disk so case-insensitive filesystems use the canonical
+ * vault folder name.
+ */
+export function projectSlug(main: string, root: string): string | null {
+  const projectsDir = joinPath(root, "projects");
+  let entries: string[];
+  try {
+    entries = readdirSync(projectsDir);
+  } catch {
+    return null;
+  }
+  const name = basename(main);
+  if (entries.includes(name) && isDir(joinPath(projectsDir, name))) return name;
+  const normalized = name.replace(/^\./, "").toLowerCase();
+  if (normalized && entries.includes(normalized) && isDir(joinPath(projectsDir, normalized))) {
+    return normalized;
+  }
+  return null;
+}
+
+/** The worktree containing `path`, or `null` outside a Git worktree or vault project. */
 function repositoryAt(path: string, root: string): Repository | null {
   const result = Bun.spawnSync({
     cmd: [
@@ -76,7 +122,9 @@ function repositoryAt(path: string, root: string): Repository | null {
   if (!top || !common) return null;
   // A worktree of a bare repository has no main checkout; name it by itself.
   const main = basename(common) === ".git" ? dirname(common) : top;
-  return { top, main, common, root };
+  const slug = projectSlug(main, root);
+  if (slug === null) return null;
+  return { top, main, common, root, slug };
 }
 
 function exists(path: string): boolean {
@@ -111,17 +159,63 @@ function exclude(repository: Repository, path: string): void {
   appendFileSync(file, `${separator}${line}\n`);
 }
 
+function readJsonObject(path: string): Record<string, unknown> | null {
+  if (!exists(path)) return {};
+  if (isSymlink(path) || !isFile(path)) return null;
+  try {
+    const parsed: unknown = JSON.parse(readText(path));
+    return isDict(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Make the missing links of the worktree containing `path`. Returns one note
- * per link made or failed; none when the repository is not a vault project or
- * has every link already. A failed link never stops the links after it.
+ * Whether `<main>/.claude/settings.local.json` already points `autoMemoryDirectory`
+ * at `<root>/projects/<slug>/memory` before `linkAgentDirs` runs.
+ */
+export function hasAutoMemoryDir(projectPath: string, root: string): boolean {
+  const repository = repositoryAt(projectPath, root);
+  if (repository === null) return false;
+  const memoryDir = joinPath(root, "projects", repository.slug, MEMORY_DIR);
+  const settingsPath = joinPath(repository.main, CLAUDE_SETTINGS_REL);
+  if (isSymlink(settingsPath) || !isFile(settingsPath)) return false;
+  try {
+    const parsed: unknown = JSON.parse(readText(settingsPath));
+    return isDict(parsed) && parsed.autoMemoryDirectory === memoryDir;
+  } catch {
+    return false;
+  }
+}
+
+function provisionMemory(repository: Repository): void {
+  const memoryDir = joinPath(repository.root, "projects", repository.slug, MEMORY_DIR);
+  mkdirSync(memoryDir, { recursive: true });
+  const settingsPath = joinPath(repository.main, CLAUDE_SETTINGS_REL);
+  if (isSymlink(dirname(settingsPath))) return;
+  const existing = readJsonObject(settingsPath);
+  if (existing === null) return;
+  if (existing.autoMemoryDirectory !== memoryDir) {
+    mkdirSync(dirname(settingsPath), { recursive: true });
+    writeFileSync(
+      settingsPath,
+      `${JSON.stringify({ ...existing, autoMemoryDirectory: memoryDir }, null, 2)}\n`,
+    );
+  }
+  exclude(repository, CLAUDE_SETTINGS_REL);
+}
+
+/**
+ * Make the missing links of the worktree containing `path` and provision shared
+ * project memory (`projects/<slug>/memory` and `.claude/settings.local.json`).
+ * Returns one note per link made or failed; none when the repository is not a
+ * vault project or has every link already. A failed step never stops the rest.
  */
 export function linkAgentDirs(path: string, root: string): string[] {
   let repository: Repository | null;
   try {
     repository = repositoryAt(path, root);
     if (repository === null) return [];
-    if (!isDir(joinPath(root, "projects", basename(repository.main)))) return [];
   } catch (error) {
     return [`Linking the agent folders of ${path} failed: ${message(error)}`];
   }
@@ -134,6 +228,11 @@ export function linkAgentDirs(path: string, root: string): string[] {
     } catch (error) {
       notes.push(`Linking ${link} failed: ${message(error)}`);
     }
+  }
+  try {
+    provisionMemory(repository);
+  } catch (error) {
+    notes.push(`Provisioning shared memory for ${repository.main} failed: ${message(error)}`);
   }
   return notes;
 }

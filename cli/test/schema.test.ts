@@ -36,3 +36,20 @@ test("a category must name a hub in categories/ by its plain name", () => {
     'knowledge/typo.md: category "[[papers]]" names no hub in categories/',
   ]);
 });
+
+test("project memory notes under projects/<project>/memory/ are skipped", () => {
+  const root = makeVault({
+    "projects/demo/memory/MEMORY.md": "# Memory Index\n\n- [Topic](topic.md) — summary\n",
+    "projects/demo/memory/topic.md":
+      "---\nname: Topic note\ndescription: Working memory\nmetadata:\n  node_type: memory\n  type: project\n---\n\nDetails.\n",
+    "projects/demo/memory/nested/sub.md": "# Sub\n",
+    "projects/demo/notes/durable.md": "---\nstatus: draft\n---\n\n# Durable\n",
+  });
+  const { errors, checked } = collectErrors(VaultModel.load(root));
+  // AGENTS.md (from makeVault) + projects/demo/notes/durable.md; the 3 memory notes are skipped.
+  expect(checked).toBe(2);
+  expect(errors).toEqual([
+    "AGENTS.md: missing frontmatter",
+    "projects/demo/notes/durable.md: project-owned note lacks project link",
+  ]);
+});

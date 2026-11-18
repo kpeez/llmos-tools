@@ -3,6 +3,28 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.9.0 — 2026-11-17
+
+- Every host sees the same shared project memory (`projects/<project>/memory/`)
+  through the vault's Git remote, and the sync never damages a vault you are
+  editing. It never rebases, stashes, or resets, and a dirty vault does not
+  pause it: it builds each new commit without the work tree (`git merge-tree`,
+  `git commit-tree`) and moves `main` only with `git merge --ff-only`, which
+  refuses rather than overwrites. The session-start hook runs
+  `git fetch origin main` (4 s limit), then fast-forwards when behind
+  (4 s limit) before it builds the context; a refusal adds one context line (a
+  rebase, merge, or cherry-pick in progress is named too). The Stop hook finds
+  work with local git commands only. When memory files changed, or commits are
+  ahead of `origin/main`, it commits only the memory paths, fetches (5 s),
+  fast-forwards or merges (5 s; a conflict warns and changes nothing on disk),
+  and pushes `HEAD:main` (5 s); with no work it never uses the network. A skip
+  or failure warns on stderr, and the next Stop retries it. A lock file in the
+  git common dir (`llmos-sync.lock`, owner token, stale after 60 s, atomic
+  takeover) makes concurrent runs skip. Sync runs only for a local vault
+  checkout on `main` with an `origin`. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
+- The Stop hook timeout is 30 s in `hooks/hooks.json` and `hooks.json`
+  (it was 15 s).
+
 ## 2.8.1 — 2026-11-07
 
 - The session-start hook links a vault project's agent folders in every

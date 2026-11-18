@@ -28,12 +28,12 @@ The two flags stop Bun from loading the session's project `.env` and
 
 | Event                    | Hook event      | Source        | Purpose                                                                                                     |
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart             | `session-start` | `context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links each attached repository |
+| SessionStart             | `session-start` | `context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
-| Stop                     | `stop`          | `stop.ts`     | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds |
+| Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds. Then commits changed shared project memory and pushes it |
 
 The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a
@@ -83,6 +83,38 @@ vault notes to `main` (`git push origin HEAD:main`), not to the session
 branch. A failed pull is reported in the context. The cloud environment's
 setup script must set the vault root and install the plugin; the hook does
 neither.
+
+In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
+vault's Git remote. It never rewrites the work tree: no `rebase`, `stash`, or
+`reset`, and a dirty vault does not pause it. It builds every new commit
+without the work tree (`git merge-tree --write-tree` and `git commit-tree`) and
+moves `main` only with `git merge --ff-only`, which keeps unrelated edits and
+refuses, rather than overwrites, a file that an incoming change overlaps.
+
+The session-start hook fetches (4-second limit), then, when `HEAD` is behind
+`origin/main` and not ahead, runs `git merge --ff-only origin/main` (4-second
+limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
+failure adds one line to the context: a failed fetch, a fast-forward that
+refuses (with the first line of git's reason), or a rebase, merge, or
+cherry-pick in progress. A diverged branch adds no line; Stop merges it. The
+Stop hook uses local git commands to find changed memory paths and commits
+ahead of `origin/main`. With neither, it never uses the network. Otherwise it
+commits only the memory paths (other staged and unstaged edits stay) and
+fetches (5 seconds). When behind only, it fast-forwards. When ahead and behind,
+it merges the trees with `git merge-tree`, makes a merge commit with
+`git commit-tree`, and fast-forwards to it (5 seconds); a conflict names the
+conflicted paths and changes nothing on disk. Then it checks that every
+unpushed non-merge commit touches only memory, and pushes `HEAD:main`
+(5 seconds). A skip or failure warns on stderr and leaves the commits local;
+the next Stop retries because the branch is ahead. The Stop timeout is 30
+seconds.
+
+A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
+cloud session, the vault is in a Git work tree with an `origin`, the branch is
+`main`, and no rebase, merge, or cherry-pick is in progress. Sync work runs under
+`<git-common-dir>/llmos-sync.lock`; a run that finds a fresh lock skips, and a
+lock older than 60 seconds is taken over by an atomic rename, and a run
+removes the lock only while it still holds that run's token. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`

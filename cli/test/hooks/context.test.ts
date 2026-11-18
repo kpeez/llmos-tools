@@ -11,6 +11,8 @@ import { fileSha256 } from "../../src/heartbeat.ts";
 import {
   additionalContext,
   BUNDLE,
+  GIT_ENV,
+  git,
   makeVault,
   removeTemporaryFolders,
   runHook,
@@ -138,6 +140,106 @@ describe("session-start", () => {
       pluginRoot: claudeRoot,
     });
     expect(Date.now() - Date.parse(beats.codex.time)).toBeLessThan(60_000);
+  });
+
+  test("delivers shared project memory based on provider and existing Claude settings", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    writeFile(join(vault, "projects", "my-repo", "memory", "MEMORY.md"), "# Index\n\n- topic-a\n");
+    const repo = join(tmp, "my-repo");
+    mkdirSync(repo);
+    git(repo, "init", "--quiet");
+
+    // First Claude session (settings.local.json did not exist before the hook ran): injects MEMORY.md.
+    const firstClaude = runHook("session-start", { cwd: repo }, tmp, {
+      root: vault,
+      cwd: repo,
+      env: { ...GIT_ENV, CLAUDECODE: "1" },
+    });
+    expect(firstClaude.stdout).toContain("Shared project memory lives in");
+    expect(firstClaude.stdout).toContain("# Index");
+    expect(firstClaude.stdout).toContain("- topic-a");
+    expect(firstClaude.stdout).not.toContain(MEMORY_SENTINEL);
+
+    // Second Claude session (settings.local.json already points to memoryDir): omits MEMORY.md body.
+    const secondClaude = runHook("session-start", { cwd: repo }, tmp, {
+      root: vault,
+      cwd: repo,
+      env: { ...GIT_ENV, CLAUDECODE: "1" },
+    });
+    expect(secondClaude.stdout).toContain("Shared project memory lives in");
+    expect(secondClaude.stdout).not.toContain("- topic-a");
+
+    // Codex session: always receives MEMORY.md body.
+    const codex = runHook("session-start", { cwd: repo }, tmp, {
+      root: vault,
+      cwd: repo,
+      env: { ...GIT_ENV, CODEX_SANDBOX_NETWORK_DISABLED: "1" },
+    });
+    expect(codex.stdout).toContain("- topic-a");
+  });
+
+  test("truncates MEMORY.md at 200 lines or 25,000 bytes", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    const manyLines = Array.from({ length: 220 }, (_, i) => `line-${i + 1}`).join("\n");
+    writeFile(join(vault, "projects", "llmos", "memory", "MEMORY.md"), `${manyLines}\n`);
+
+    const lineResult = runHook("session-start", { cwd: vault }, tmp, {
+      root: vault,
+      env: { CODEX_SANDBOX_NETWORK_DISABLED: "1" },
+    });
+    expect(lineResult.stdout).toContain("line-200");
+    expect(lineResult.stdout).not.toContain("line-201");
+    expect(lineResult.stdout).toContain("[MEMORY.md truncated]");
+
+    writeFile(join(vault, "projects", "llmos", "memory", "MEMORY.md"), `${"é".repeat(15_000)}\n`);
+    const byteResult = runHook("session-start", { cwd: vault }, tmp, {
+      root: vault,
+      env: { CODEX_SANDBOX_NETWORK_DISABLED: "1" },
+    });
+    expect(byteResult.stdout).toContain("[MEMORY.md truncated]");
+  });
+
+  test("emits Antigravity injectSteps JSON and records agy heartbeat", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    writeFile(join(vault, "projects", "llmos", "memory", "MEMORY.md"), "# Vault Memory\n");
+    const agyPluginRoot = join(tmp, "home", ".gemini", "config", "plugins", "llmos");
+
+    const inside = runHook(
+      "session-start",
+      {
+        hookEventName: "SessionStart",
+        conversationId: "conv-1",
+        workspacePaths: [vault],
+        transcriptPath: join(tmp, "home", ".gemini", "antigravity-cli", "transcript.jsonl"),
+      },
+      tmp,
+      { root: vault, script: BUNDLE, env: { PLUGIN_ROOT: agyPluginRoot } },
+    );
+    expect(inside.exitCode).toBe(0);
+    const parsed = JSON.parse(inside.stdout);
+    const message = parsed.injectSteps[0].systemMessage.systemMessage as string;
+    expect(message).toContain(`llmOS root: ${vault}.`);
+    expect(message).toContain("# Vault Memory");
+
+    const beatsAfterInside = JSON.parse(
+      readFileSync(join(tmp, "home", ".local", "state", "llmos", "hooks.json"), "utf8"),
+    );
+    expect(beatsAfterInside.agy).toMatchObject({
+      bun: Bun.version,
+      bundleSha256: fileSha256(BUNDLE),
+      pluginRoot: agyPluginRoot,
+    });
+
+    const outside = runHook(
+      "session-start",
+      { hookEventName: "SessionStart", conversationId: "conv-2", workspacePaths: [tmp] },
+      tmp,
+      { root: vault, env: { ANTIGRAVITY_CLI: "1" } },
+    );
+    expect(JSON.parse(outside.stdout)).toEqual({});
   });
 
   test("a heartbeat that cannot be written changes nothing", () => {
@@ -429,5 +531,129 @@ describe("pre-tool-use", () => {
       expect(result.stdout).toBe("");
       expect(result.stderr).toBe("");
     }
+  });
+
+  test("skips durable-note guidance on memory reads and gives shared-memory guidance on memory writes", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    const memoryIndex = writeFile(
+      join(vault, "projects", "testproj", "memory", "MEMORY.md"),
+      "# Memory\n",
+    );
+    const topic = writeFile(
+      join(vault, "projects", "testproj", "memory", "topic.md"),
+      "---\nname: Topic\n---\n",
+    );
+
+    const readMem = runHook(
+      "pre-tool-use",
+      { tool_name: "Read", tool_input: { file_path: memoryIndex } },
+      tmp,
+      { root: vault },
+    );
+    expect(readMem.stdout).toBe("");
+    expect(readMem.exitCode).toBe(0);
+
+    const writeMem = runHook(
+      "pre-tool-use",
+      { tool_name: "Write", tool_input: { file_path: topic } },
+      tmp,
+      { root: vault },
+    );
+    const context = additionalContext(writeMem, "PreToolUse");
+    expect(context).toContain("Shared project memory");
+    expect(context).toContain("MEMORY.md");
+    expect(context).not.toContain(SCHEMA_SENTINEL);
+    expect(context).not.toContain(AUTHORING_SENTINEL);
+  });
+
+  test("handles Antigravity PreToolUse payloads for file, shell, and MCP tools", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "projects", "testproj", "notes", "a.md"), "# A\n");
+    const mem = writeFile(join(vault, "projects", "testproj", "memory", "MEMORY.md"), "# M\n");
+
+    const readAgy = runHook(
+      "pre-tool-use",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "read_file", args: { Path: note } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(JSON.parse(readAgy.stdout)).toMatchObject({
+      decision: "allow",
+      reason: expect.stringContaining("Obsidian vault note"),
+    });
+
+    const readMemAgy = runHook(
+      "pre-tool-use",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "read_file", args: { Path: mem } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(JSON.parse(readMemAgy.stdout)).toEqual({ decision: "allow" });
+
+    const writeAgy = runHook(
+      "pre-tool-use",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "edit_file", args: { TargetFile: note } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(JSON.parse(writeAgy.stdout).reason).toContain(SCHEMA_SENTINEL);
+
+    for (const serverName of ["llmos", "llmos_llmos"]) {
+      const mcpWriteViaCall = runHook(
+        "pre-tool-use",
+        {
+          hookEventName: "PreToolUse",
+          conversationId: "conv-1",
+          toolCall: {
+            name: "call_mcp_tool",
+            args: { ServerName: serverName, ToolName: "set_property", Arguments: {} },
+          },
+        },
+        tmp,
+        { root: vault },
+      );
+      expect(JSON.parse(mcpWriteViaCall.stdout).reason).toContain(SCHEMA_SENTINEL);
+    }
+
+    const mcpDirect = runHook(
+      "pre-tool-use",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "mcp_llmos_llmos_daily_append_thought", args: { text: "hi" } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(JSON.parse(mcpDirect.stdout).reason).toContain(SCHEMA_SENTINEL);
+
+    const mcpRead = runHook(
+      "pre-tool-use",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: {
+          name: "call_mcp_tool",
+          args: { ServerName: "llmos", ToolName: "read", Arguments: { note: "a" } },
+        },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(JSON.parse(mcpRead.stdout)).toEqual({ decision: "allow" });
   });
 });

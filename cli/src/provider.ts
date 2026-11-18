@@ -7,6 +7,7 @@
 export const PROVIDER_ENV_MARKERS: readonly (readonly [string, string])[] = [
   ["claude", "CLAUDECODE"],
   ["codex", "CODEX_SANDBOX_NETWORK_DISABLED"],
+  ["gemini", "ANTIGRAVITY_CLI"],
   ["gemini", "GEMINI_CLI"],
 ];
 

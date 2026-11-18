@@ -6,21 +6,28 @@
  * ancestor whose `.agents/docs` or `.agent/docs` symlink leads into it.
  * PreToolUse resolves explicit paths through symlinks before it adds the
  * authoring guidance. Shell coverage is limited to simple, standalone read
- * commands; it is not a shell parser. No provider MEMORY.md is read
- * (ADR-0003).
+ * commands; it is not a shell parser. Shared project memory lives in
+ * `projects/<project>/memory/` (ADR-0020); legacy `agents/<provider>/MEMORY.md`
+ * is never read.
  */
 
 import { basename } from "node:path";
-import { AUTHORING_NOTE, DAILY_DIR, SCHEMA_NOTE } from "../layout.ts";
 import {
+  AUTHORING_NOTE,
+  DAILY_DIR,
+  isMemoryNote,
+  MEMORY_DIR,
+  MEMORY_INDEX,
+  SCHEMA_NOTE,
+} from "../layout.ts";
+import {
+  isMcpWriteTool,
   READ_TOOLS as MCP_READ_TOOLS,
-  MCP_WRITE_TOOL,
   WRITE_TOOLS as MCP_WRITE_TOOLS,
   SERVER_NAME,
 } from "../mcp-names.ts";
 import {
   firstTruthy,
-  isDict,
   isDir,
   isFile,
   isOSError,
@@ -30,20 +37,45 @@ import {
   localDate,
   type Payload,
   pathFrom,
+  payloadCwd,
   readText,
   resolvedRoot,
   suffix,
+  toolInputOf,
+  toolNameOf,
+  workspacePath,
 } from "./common.ts";
+import { hookAgent } from "./heartbeat.ts";
+import { hasAutoMemoryDir } from "./links.ts";
 import { ShlexError, split } from "./shlex.ts";
+
+export { toolInputOf };
 
 const NOTE_SUFFIXES = new Set([".md", ".base", ".canvas"]);
 const PATCH_VERBS = ["*** Update File:", "*** Add File:", "*** Delete File:"];
 const SHELL_READERS = new Set(["cat", "head", "tail", "sed", "rg", "grep"]);
 const VAULT_READ_COMMANDS = new Set(["read", "list", "check", "neighbors", "subgraph", "health"]);
 const SHELL_MARKERS = ["\n", ";", "|", "&", ">", "<", "`", "$(", "${"];
-const DIRECTORY_TOOLS = new Set(["Grep", "Glob", "LS", "Bash"]);
-const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "apply_patch"]);
+const DIRECTORY_TOOLS = new Set([
+  "Grep",
+  "Glob",
+  "LS",
+  "Bash",
+  "grep_search",
+  "find_by_name",
+  "run_command",
+]);
+const WRITE_TOOLS = new Set([
+  "Write",
+  "Edit",
+  "MultiEdit",
+  "apply_patch",
+  "write_file",
+  "edit_file",
+]);
 const MAX_AUTHORING_CONTEXT_CHARS = 8_000;
+const MAX_MEMORY_LINES = 200;
+const MAX_MEMORY_BYTES = 25_000;
 const SKILL_NAMES: Record<string, string> = {
   ".md": "obsidian-markdown",
   ".base": "obsidian-bases",
@@ -80,7 +112,56 @@ function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
   return null;
 }
 
-export function sessionContext(root: string, linked: [string, string] | null): string {
+export interface SessionStartOptions {
+  data?: Payload;
+  claudeAutoMemoryReady?: boolean;
+}
+
+function projectMemoryDir(root: string, linked: [string, string] | null): string | null {
+  if (linked === null) return joinPath(root, "projects", "llmos", MEMORY_DIR);
+  const prefix = root.endsWith("/") ? root : `${root}/`;
+  const target = linked[1];
+  if (!target.startsWith(prefix)) return null;
+  const rel = target.slice(prefix.length);
+  const parts = rel.split("/");
+  if (parts[0] !== "projects" || !parts[1]) return null;
+  return joinPath(root, "projects", parts[1], MEMORY_DIR);
+}
+
+/** First `MAX_MEMORY_LINES` lines / `MAX_MEMORY_BYTES` UTF-8 bytes of `MEMORY.md`. */
+function readBoundedMemoryIndex(indexPath: string): string | null {
+  let raw: string;
+  try {
+    raw = readText(indexPath);
+  } catch (error) {
+    if (isOSError(error)) return null;
+    throw error;
+  }
+  const lines = raw.split("\n");
+  let truncated = lines.length > MAX_MEMORY_LINES;
+  let text = truncated ? lines.slice(0, MAX_MEMORY_LINES).join("\n") : raw;
+  if (Buffer.byteLength(text, "utf8") > MAX_MEMORY_BYTES) {
+    truncated = true;
+    let bytes = 0;
+    let out = "";
+    for (const ch of text) {
+      const size = Buffer.byteLength(ch, "utf8");
+      if (bytes + size > MAX_MEMORY_BYTES) break;
+      out += ch;
+      bytes += size;
+    }
+    text = out;
+  }
+  const trimmed = text.trimEnd();
+  if (!trimmed) return null;
+  return truncated ? `${trimmed}\n[MEMORY.md truncated]` : trimmed;
+}
+
+export function sessionContext(
+  root: string,
+  linked: [string, string] | null,
+  options: SessionStartOptions = {},
+): string {
   const routes =
     `For durable vault work, read ${joinPath(root, "AGENTS.md")}, ` +
     `${joinPath(root, SCHEMA_NOTE)}, and ${joinPath(root, AUTHORING_NOTE)}.`;
@@ -92,7 +173,22 @@ export function sessionContext(root: string, linked: [string, string] | null): s
     `Insight worth keeping goes under ## Thoughts in ` +
     `${joinPath(root, DAILY_DIR, `${localDate()}.md`)} -- prose only, and never a ` +
     "restatement of commits, issues, or PRs, which GitHub already records.";
-  return `${access}${routes}\n${daily}\n${MCP_LINE}`;
+  const sections = [`${access}${routes}`, daily, MCP_LINE];
+  const memoryDir = projectMemoryDir(root, linked);
+  if (memoryDir !== null && isDir(memoryDir)) {
+    sections.push(
+      `Shared project memory lives in ${memoryDir} (${MEMORY_INDEX} index + <slug>.md topic files ` +
+        "with frontmatter name, description, and metadata.type).",
+    );
+    const provider = hookAgent(process.env, options.data ?? {});
+    const autoMemoryReady = options.claudeAutoMemoryReady ?? false;
+    const indexPath = joinPath(memoryDir, MEMORY_INDEX);
+    if ((provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
+      const index = readBoundedMemoryIndex(indexPath);
+      if (index !== null) sections.push(`Shared project memory (${indexPath}):\n${index}`);
+    }
+  }
+  return sections.join("\n");
 }
 
 const MCP_LINE =
@@ -104,15 +200,16 @@ const MCP_LINE =
   `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
   "(they stamp updated and authors themselves).";
 
-export function sessionStart(data: Payload): string | null {
+export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();
   if (root === null) return null;
-  const cwd = pathFrom(data.cwd) ?? pathFrom(process.cwd());
+  const cwd = payloadCwd(data) ?? pathFrom(process.cwd());
   if (cwd === null) return null;
   const inside = isUnder(cwd, root);
   const linked = inside ? null : linkedProjectDocs(cwd, root);
   if (!inside && linked === null) return null;
-  return sessionContext(root, linked);
+  const claudeAutoMemoryReady = options.claudeAutoMemoryReady ?? hasAutoMemoryDir(cwd, root);
+  return sessionContext(root, linked, { data, claudeAutoMemoryReady });
 }
 
 function patchPaths(command: string): string[] {
@@ -178,14 +275,23 @@ export function targetPaths(
   options: { cwd?: unknown; toolName?: string; root?: string | null },
 ): string[] {
   const raw: string[] = [];
-  for (const key of ["file_path", "path", "notebook_path"]) {
+  for (const key of [
+    "file_path",
+    "path",
+    "notebook_path",
+    "Path",
+    "TargetFile",
+    "SearchDirectory",
+    "Directory",
+    "AbsolutePath",
+  ]) {
     const value = toolInput[key];
     if (typeof value === "string") raw.push(value);
   }
-  const command = toolInput.command;
+  const command = firstTruthy([toolInput.command, toolInput.CommandLine], undefined);
   if (typeof command === "string") {
     raw.push(...patchPaths(command));
-    if (options.toolName === "Bash" && options.root) {
+    if ((options.toolName === "Bash" || options.toolName === "run_command") && options.root) {
       raw.push(...simpleShellPaths(command, options.root));
     }
   }
@@ -195,12 +301,6 @@ export function targetPaths(
     if (path !== null) resolved.push(path);
   }
   return resolved;
-}
-
-/** The payload's `tool_input` (or Codex's older `input`) object, if any. */
-export function toolInputOf(data: Payload): Payload | null {
-  const toolInput = firstTruthy([data.tool_input, data.input], {});
-  return isDict(toolInput) ? toolInput : null;
 }
 
 function authoringContext(root: string): string {
@@ -256,22 +356,27 @@ function writeContext(root: string, targets: string[]): string {
   return `${authoringContext(root)}\n\n${routing}`;
 }
 
-function toolNameOf(data: Payload): string {
-  const name = firstTruthy([data.tool_name, data.name], "");
-  return typeof name === "string" ? name : "";
+function memoryWriteContext(): string {
+  return (
+    "Shared project memory (projects/<project>/memory/): keep MEMORY.md as a concise " +
+    "index under 200 lines without YAML frontmatter; write topic .md files with YAML " +
+    "frontmatter (`name`, `description`, `metadata.type`, and `metadata.node_type: memory`). " +
+    "Do not add durable-vault `categories`, `created`, or `project` properties."
+  );
 }
 
 export function preToolUse(data: Payload): string | null {
   const root = resolvedRoot();
   if (root === null) return null;
   const toolName = toolNameOf(data);
+  const toolInput = toolInputOf(data);
   // An llmOS MCP write tool names no file; it always writes vault notes.
-  if (MCP_WRITE_TOOL.test(toolName)) {
+  if (isMcpWriteTool(toolName, toolInput)) {
     return withSchema(root, writeContext(root, [joinPath(root, "note.md")]));
   }
-  const toolInput = toolInputOf(data);
   if (toolInput === null) return null;
-  const targets = targetPaths(toolInput, { cwd: data.cwd, toolName, root });
+  const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
+  const targets = targetPaths(toolInput, { cwd, toolName, root });
   const relevant = targets.filter(
     (target) =>
       isUnder(target, root) &&
@@ -279,12 +384,27 @@ export function preToolUse(data: Payload): string | null {
   );
   if (relevant.length === 0) return null;
 
+  const rootPrefix = root.endsWith("/") ? root : `${root}/`;
+  const durableTargets: string[] = [];
+  const memoryTargets: string[] = [];
+  for (const target of relevant) {
+    const relative = target === root ? "" : target.slice(rootPrefix.length);
+    if (isMemoryNote(relative)) memoryTargets.push(target);
+    else durableTargets.push(target);
+  }
+
   // An empty tool name keeps older Codex payloads working: they carry a
   // path but no tool_name, and their path is the write target.
   const writeIntent = WRITE_TOOLS.has(toolName) || !toolName;
+  if (durableTargets.length === 0) {
+    return writeIntent ? memoryWriteContext() : null;
+  }
   if (!writeIntent) return readContext(root);
-  const context = writeContext(root, relevant);
-  return relevant.some((target) => suffix(target) === ".md") ? withSchema(root, context) : context;
+  const context = writeContext(root, durableTargets);
+  const body = durableTargets.some((target) => suffix(target) === ".md")
+    ? withSchema(root, context)
+    : context;
+  return memoryTargets.length > 0 ? `${body}\n\n${memoryWriteContext()}` : body;
 }
 
 /** `context` after the vault's note schema, when the schema file can be read. */

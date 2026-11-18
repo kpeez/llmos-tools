@@ -62,7 +62,7 @@
           {
             "type": "command",
             "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js stop",
-            "timeout": 15
+            "timeout": 30
           }
         ]
       }

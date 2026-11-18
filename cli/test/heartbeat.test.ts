@@ -190,4 +190,28 @@ describe("llmos-doctor hook checks", () => {
       "FAIL hooks: the llmos@llmos-vault plugin is installed for neither",
     );
   });
+
+  test("checks hooks-agy when ~/.gemini/config/plugins/llmos is installed", () => {
+    const h = host({ claude: false, codex: false });
+    const plugin = join(h.env.HOME, ".gemini", "config", "plugins", "llmos");
+    mkdirSync(join(plugin, "dist"), { recursive: true });
+    writeFileSync(join(plugin, "dist", "hooks.js"), "agy bundle");
+
+    const missing = hookChecks(h.env, NOW);
+    expect(missing.failures).toBe(1);
+    expect(missing.lines.join("\n")).toContain("FAIL hooks-agy: no heartbeat");
+
+    beatFor(h, "agy", join(plugin, "dist", "hooks.js"));
+    const passing = hookChecks(h.env, NOW);
+    expect(passing.failures).toBe(0);
+    expect(passing.lines.join("\n")).toContain("PASS hooks-agy: hooks ran");
+
+    writeFileSync(
+      join(h.env.HOME, ".gemini", "config", "config.json"),
+      JSON.stringify({ plugins: { llmos: { enabled: false } } }),
+    );
+    const disabled = hookChecks(h.env, NOW);
+    expect(disabled.failures).toBe(1);
+    expect(disabled.lines.join("\n")).toContain("NOTE hooks-agy:");
+  });
 });

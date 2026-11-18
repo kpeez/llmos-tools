@@ -5,8 +5,9 @@
  */
 
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import { projectSlug } from "../../src/hooks/links.ts";
 import {
   GIT_ENV,
   git,
@@ -73,4 +74,76 @@ test("a link that fails does not stop the links after it", () => {
   expect(result.exitCode).toBe(0);
   expect(readlinkSync(join(main, "artifacts"))).toBe(join(tmp, "home", "artifacts", "my-repo"));
   expect(result.stdout).toContain(`Linking ${join(main, ".agents", "docs")} failed`);
+});
+
+test("normalizes slugs (.dotfiles -> dotfiles, llmOS -> llmos) and provisions autoMemoryDirectory", () => {
+  const tmp = temporaryFolder();
+  const root = makeVault(join(tmp, "vault"));
+  mkdirSync(join(root, "projects", "dotfiles"), { recursive: true });
+  mkdirSync(join(root, "projects", "llmos"), { recursive: true });
+  expect(projectSlug(join(tmp, ".dotfiles"), root)).toBe("dotfiles");
+  expect(projectSlug(join(tmp, "llmOS"), root)).toBe("llmos");
+
+  const dotfiles = join(tmp, ".dotfiles");
+  mkdirSync(dotfiles);
+  git(dotfiles, "init", "--quiet");
+  writeFile(join(dotfiles, ".claude", "settings.local.json"), '{"keep": true}\n');
+
+  const first = runHook("session-start", { cwd: dotfiles }, tmp, {
+    root,
+    cwd: dotfiles,
+    env: GIT_ENV,
+  });
+  expect(first.exitCode).toBe(0);
+  const memoryDir = join(root, "projects", "dotfiles", "memory");
+  expect(existsSync(memoryDir)).toBe(true);
+  expect(readlinkSync(join(dotfiles, ".agents", "docs"))).toBe(join(root, "projects", "dotfiles"));
+  const settings = readFileSync(join(dotfiles, ".claude", "settings.local.json"), "utf8");
+  expect(settings.endsWith("\n")).toBe(true);
+  expect(JSON.parse(settings)).toEqual({ keep: true, autoMemoryDirectory: memoryDir });
+  const excludeLines = readFileSync(join(dotfiles, ".git", "info", "exclude"), "utf8").split("\n");
+  expect(excludeLines.filter((line) => line === "/.claude/settings.local.json")).toHaveLength(1);
+});
+
+test("provisions memory and settings.local.json inside the llmOS repo while skipping .agents/docs", () => {
+  const tmp = temporaryFolder();
+  const repo = join(tmp, "llmOS");
+  const root = makeVault(join(repo, "llmOS"));
+  mkdirSync(join(root, "projects", "llmos"), { recursive: true });
+  git(repo, "init", "--quiet");
+
+  const result = runHook("session-start", { cwd: repo }, tmp, { root, cwd: repo, env: GIT_ENV });
+  expect(result.exitCode).toBe(0);
+  expect(existsSync(join(repo, ".agents", "docs"))).toBe(false);
+  expect(existsSync(join(root, "projects", "llmos", "memory"))).toBe(true);
+  expect(JSON.parse(readFileSync(join(repo, ".claude", "settings.local.json"), "utf8"))).toEqual({
+    autoMemoryDirectory: join(root, "projects", "llmos", "memory"),
+  });
+});
+
+test("skips provisioning settings.local.json when it is a symlink or invalid JSON", () => {
+  const tmp = temporaryFolder();
+  const root = makeVault(join(tmp, "vault"));
+  mkdirSync(join(root, "projects", "sym"), { recursive: true });
+  mkdirSync(join(root, "projects", "bad"), { recursive: true });
+
+  const symRepo = join(tmp, "sym");
+  mkdirSync(join(symRepo, ".claude"), { recursive: true });
+  git(symRepo, "init", "--quiet");
+  const outside = writeFile(join(tmp, "outside.json"), '{"x":1}\n');
+  symlinkSync(outside, join(symRepo, ".claude", "settings.local.json"));
+
+  const badRepo = join(tmp, "bad");
+  mkdirSync(badRepo);
+  git(badRepo, "init", "--quiet");
+  writeFile(join(badRepo, ".claude", "settings.local.json"), "{not json\n");
+
+  expect(
+    runHook("session-start", { cwd: symRepo }, tmp, { root, cwd: symRepo, env: GIT_ENV }).exitCode,
+  ).toBe(0);
+  expect(
+    runHook("session-start", { cwd: badRepo }, tmp, { root, cwd: badRepo, env: GIT_ENV }).exitCode,
+  ).toBe(0);
+  expect(readFileSync(outside, "utf8")).toBe('{"x":1}\n');
+  expect(readFileSync(join(badRepo, ".claude", "settings.local.json"), "utf8")).toBe("{not json\n");
 });

@@ -207,4 +207,40 @@ describe("raw mv and rm on vault notes", () => {
       expect(result.stderr).toBe("");
     }
   });
+
+  test("emits Antigravity deny/allow JSON on stdout with exit 0", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+
+    const denied = runHook(
+      "guard-bash",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "run_command", args: { CommandLine: `rm ${note}` } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(denied.exitCode).toBe(0);
+    expect(denied.stderr).toBe("");
+    expect(JSON.parse(denied.stdout)).toMatchObject({
+      decision: "deny",
+      reason: expect.stringContaining(note),
+    });
+
+    const allowed = runHook(
+      "guard-bash",
+      {
+        hookEventName: "PreToolUse",
+        conversationId: "conv-1",
+        toolCall: { name: "run_command", args: { CommandLine: "git status" } },
+      },
+      tmp,
+      { root: vault },
+    );
+    expect(allowed.exitCode).toBe(0);
+    expect(JSON.parse(allowed.stdout)).toEqual({ decision: "allow" });
+  });
 });

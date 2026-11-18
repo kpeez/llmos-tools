@@ -1,6 +1,7 @@
 /** False positives of `llmos-vault health`, on temporary vaults (never the real one). */
 
 import { describe, expect, test } from "bun:test";
+import { VaultModel } from "../src/vault.ts";
 import { cli, makeVault } from "./helpers.ts";
 
 interface Report {
@@ -283,5 +284,31 @@ describe("health: the templates folder is scaffolding in the llmos vault", () =>
       { referrer: "categories/templates/Project.md", target: "{{date:YYYY-MM-DD}}" },
       { referrer: "categories/templates/Project.md", target: "{{title}}.base" },
     ]);
+  });
+});
+
+describe("health: shared project memory notes", () => {
+  test("are never flagged as orphans, dead-ends, or unresolved-link referrers, and stay in VaultModel", async () => {
+    const files = {
+      "projects/demo/demo.md": `${FRONT}# Demo\n\n[[projects/demo/notes/linked]]\n`,
+      "projects/demo/notes/linked.md": `${FRONT}[[demo]]\n`,
+      "projects/demo/notes/only-in-memory.md": `${FRONT}# Only In Memory\n\n[[demo]]\n`,
+      "projects/demo/memory/MEMORY.md": "# Memory\n\n- [[demo]]\n- [[missing-slug]]\n",
+      "projects/demo/memory/topic.md":
+        "---\nname: Topic\ndescription: Note\nmetadata:\n  type: project\n---\n\nSee [[only-in-memory]] and [[unresolved-breadcrumb]].\n",
+    };
+    const root = makeVault(files);
+    const model = VaultModel.load(root);
+    expect(model.notes.map((n) => n.path)).toContain("projects/demo/memory/MEMORY.md");
+    expect(model.notes.map((n) => n.path)).toContain("projects/demo/memory/topic.md");
+
+    const report = await health(files);
+    expect(report.orphans).not.toContain("projects/demo/memory/MEMORY.md");
+    expect(report.orphans).not.toContain("projects/demo/memory/topic.md");
+    expect(report.dead_ends).not.toContain("projects/demo/memory/MEMORY.md");
+    expect(report.dead_ends).not.toContain("projects/demo/memory/topic.md");
+    expect(report.unresolved_links).toEqual([]);
+    // A link from a memory note does not exempt a durable note from orphan checks.
+    expect(report.orphans).toContain("projects/demo/notes/only-in-memory.md");
   });
 });

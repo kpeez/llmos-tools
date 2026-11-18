@@ -250,3 +250,52 @@ describe("authoring findings", () => {
     expect(elapsed).toBeLessThan(5_000);
   });
 });
+
+describe("shared project memory and Antigravity hooks", () => {
+  test("never stamps or checks memory notes, while still flagging qmd dirty", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const memContent =
+      "---\nname: Topic\ndescription: Kept intact\nmetadata:\n  node_type: memory\n  type: project\n---\n\nSee plain-ref.md and [[unresolved]].\n";
+    const topic = writeFile(join(vault, "projects", "testproj", "memory", "topic.md"), memContent);
+
+    const result = runHook(
+      "post-tool-use",
+      { session_id: "sess-mem", tool_name: "Write", tool_input: { file_path: topic } },
+      tmp,
+      { root: vault, env: { CLAUDECODE: "1" } },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(readFileSync(topic, "utf8")).toBe(memContent);
+    expect(existsSync(dirtyFlag(tmp, "sess-mem"))).toBe(true);
+  });
+
+  test("Antigravity post-tool-use stamps durable notes with gemini and emits {} on post-tool-use and stop", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), MESSY_NOTE);
+
+    const post = runHook(
+      "post-tool-use",
+      {
+        hookEventName: "PostToolUse",
+        conversationId: "conv-agy",
+        toolCall: { name: "write_file", args: { TargetFile: note } },
+      },
+      tmp,
+      { root: vault, env: { ANTIGRAVITY_CLI: "1" } },
+    );
+    expect(post.exitCode).toBe(0);
+    expect(JSON.parse(post.stdout)).toEqual({});
+    expect(readFileSync(note, "utf8")).toContain("authors:\n  - gemini\n");
+    expect(existsSync(dirtyFlag(tmp, "conv-agy"))).toBe(true);
+
+    const stopRes = runHook("stop", { hookEventName: "Stop", conversationId: "conv-agy" }, tmp, {
+      root: vault,
+      env: { ANTIGRAVITY_CLI: "1" },
+    });
+    expect(stopRes.exitCode).toBe(0);
+    expect(JSON.parse(stopRes.stdout)).toEqual({});
+  });
+});
