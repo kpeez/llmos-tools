@@ -30,13 +30,13 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { McpClient } from "../../../../tools/cli/test/mcp-client.ts";
+import { McpClient } from "../../../../cli/test/mcp-client.ts";
 
 const SKILL = resolve(import.meta.dir, "..");
 const REPO = resolve(SKILL, "../../..");
-const CLI = join(REPO, "tools", "cli");
+const CLI = join(REPO, "cli");
 const FIXTURES = join(CLI, "test", "fixtures");
-const BUNDLE = join(REPO, "tools", "dist", "hooks.js");
+const BUNDLE = join(REPO, "dist", "hooks.js");
 const EVIDENCE_ROOT = join(REPO, "artifacts", "verify-llmos");
 const BUN_FLAGS = ["--no-env-file", "--config=/dev/null"];
 

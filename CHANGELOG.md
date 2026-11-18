@@ -5,6 +5,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The tools now live in their own repository, `kpeez/llmos-tools`, with the
+  plugin at the repository root. The marketplace keeps the name `llmos-vault`;
+  re-add it from `kpeez/llmos-tools` to keep receiving updates. CI, the
+  marketplace catalogs, `bootstrap.sh`, and the verify skills use the new
+  layout.
 - The daily activity digest reads the GitHub owners it monitors from
   `github_owners` in `~/.config/llmos/config.json`, and fails when the list
   is missing or empty. The code no longer names them. Add the key on the

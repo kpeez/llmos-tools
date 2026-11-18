@@ -13,11 +13,11 @@
 ## How to get to it (user POV)
 
 - Claude Code starts the server from `tools/.mcp.json`. Codex uses `tools/.codex-mcp.json`.
-- By hand: `bun --no-env-file --config=/dev/null tools/cli/bin/llmos-vault.ts mcp`.
+- By hand: `bun --no-env-file --config=/dev/null cli/bin/llmos-vault.ts mcp`.
 
 ## Driving it with scripts/verify.ts
 
-Preconditions: launch and doctor passed. `drive read-search` ran first, so the qmd index exists. `drive writes` ran first, so `notes/link.md` exists. The client is `tools/cli/test/mcp-client.ts`, connected to the child's stdio. It identifies as `claude-code`.
+Preconditions: launch and doctor passed. `drive read-search` ran first, so the qmd index exists. `drive writes` ran first, so `notes/link.md` exists. The client is `cli/test/mcp-client.ts`, connected to the child's stdio. It identifies as `claude-code`.
 
 - **List tools.** `tools/list` names the tools above. No shell, move, or create tool.
 - **Read.** `tools/call read {"note":"notes/alpha.md"}`. Not an error. The text holds `gardening`.
@@ -34,4 +34,4 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 - `drive mcp` alone works only if the qmd index exists. Run `drive read-search` first or run all features.
 - The MCP `search` needs the `llmos` qmd collection. The server reads `INDEX_PATH` from its environment, so the child env must keep the isolation.
 - The server stamps notes itself. The PostToolUse hook does not see MCP calls.
-- The plugin starts the server through the launcher `tools/dist/mcp.js`. The harness starts `llmos-vault mcp` directly. The launcher is not driven.
+- The plugin starts the server through the launcher `dist/mcp.js`. The harness starts `llmos-vault mcp` directly. The launcher is not driven.

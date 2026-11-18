@@ -95,7 +95,7 @@ No prior knowledge of the vault, the library, or Obsidian is required.
 
 This table and `references/commands.md` are generated from the command
 registry -- never hand-edit either. After changing a command's help text or
-adding a command, run from `tools/cli/`:
+adding a command, run from `cli/`:
 
 ```sh
 bun bin/llmos-vault.ts docs

@@ -1,6 +1,6 @@
 ---
 name: verify-llmos
-description: Verify the llmOS tools by driving the real `llmos-vault` CLI, its MCP server (`llmos-vault mcp`, stdio), and the hook bundle (`tools/dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change under `tools/` to see it work, or to audit the feature map.
+description: Verify the llmOS tools by driving the real `llmos-vault` CLI, its MCP server (`llmos-vault mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change under `tools/` to see it work, or to audit the feature map.
 ---
 
 # Verify the llmOS tools
@@ -11,8 +11,8 @@ Every command runs against a scratch copy of a fixture vault, with qmd isolated.
 Run it from the repository root. One command does the whole cycle:
 
 ```bash
-just -f tools/cli/justfile verify-llmos          # all features
-just -f tools/cli/justfile verify-llmos hooks mcp   # some features
+just -f cli/justfile verify-llmos          # all features
+just -f cli/justfile verify-llmos hooks mcp   # some features
 ```
 
 The command is `bun .agents/skills/verify-llmos/scripts/verify.ts run`.
@@ -20,9 +20,9 @@ It exits 0 when every check passes.
 
 ## Surface
 
-- CLI: `tools/cli/bin/llmos-vault.ts`. This is the main surface.
+- CLI: `cli/bin/llmos-vault.ts`. This is the main surface.
 - MCP server: `llmos-vault mcp`, JSON-RPC on stdio.
-- Hooks: `bun tools/dist/hooks.js <event>`, with the hook JSON on stdin.
+- Hooks: `bun dist/hooks.js <event>`, with the hook JSON on stdin.
 
 ## Launch
 
@@ -33,11 +33,11 @@ bun scripts/verify.ts launch
 Launch makes two folders.
 
 - The evidence folder `artifacts/verify-llmos/<timestamp>/` in the repository. Git ignores it.
-- A scratch folder `/tmp/verify-llmos-XXXX/`. It holds a copy of `tools/cli/test/fixtures/vault`
+- A scratch folder `/tmp/verify-llmos-XXXX/`. It holds a copy of `cli/test/fixtures/vault`
   (`vault/`), a copy of `claims_vault/` (`claims/`), a fake `home/`, `tmp/`, and `bin/` (only `bun`).
 
 Launch then adds the scratch vault as the qmd collection `llmos`.
-Isolation follows `tools/cli/test/helpers.ts` `isolatedEnv`: `HOME`, `XDG_CACHE_HOME`,
+Isolation follows `cli/test/helpers.ts` `isolatedEnv`: `HOME`, `XDG_CACHE_HOME`,
 `XDG_CONFIG_HOME`, `INDEX_PATH`, and `QMD_CONFIG_DIR` all point into the scratch folder.
 `LLMOS_ROOT` points at the scratch vault. The child `PATH` has no `obsidian-cli`.
 Never point a run at `~/.cache/qmd`.
@@ -53,8 +53,8 @@ Ready means: launch printed `launched:`, and `doctor` prints `DOCTOR OK`.
 bun scripts/verify.ts doctor
 ```
 
-Doctor is read-only. It checks the Bun version (1.4.x), the fixtures, `tools/dist/hooks.js`,
-`tools/cli/node_modules`, that the scratch vault is not the real vault, that qmd is isolated,
+Doctor is read-only. It checks the Bun version (1.4.x), the fixtures, `dist/hooks.js`,
+`cli/node_modules`, that the scratch vault is not the real vault, that qmd is isolated,
 that `git status -- llmOS` has not changed since launch, and that `llmos-vault read` works.
 Run it first, and again after any failed drive. `drive` runs it before each feature.
 
@@ -82,7 +82,7 @@ Standards:
 - Drive the real command, server, or hook. Do not call internal functions.
 - Check the side effect on disk next to the output (the note file, the stamp, the raw folder).
 - Mock only the network. `source add` uses `scripts/source-offline.ts`, which replaces
-  `Context.fetch` (the network seam) with the recordings in `tools/cli/test/fixtures/web/`.
+  `Context.fetch` (the network seam) with the recordings in `cli/test/fixtures/web/`.
 - Do not fake an Obsidian command. Record its exit 3 and report it as `verified-unreachable`.
 
 ## Unreachable features
@@ -123,5 +123,5 @@ Evidence stays in `artifacts/verify-llmos/<timestamp>/`. Check that it is still 
 - `scripts/verify.ts`: `launch`, `doctor`, `drive [feature..]`, `cleanup`, `run [feature..]`.
 - `scripts/source-offline.ts <vault-root> <source>`: `source add` on recorded pages.
 
-Both are executable. Call them with `bun`. `verify.ts` reuses `tools/cli/test/mcp-client.ts`.
-After you change either script, run `cd tools/cli && bun run typecheck`.
+Both are executable. Call them with `bun`. `verify.ts` reuses `cli/test/mcp-client.ts`.
+After you change either script, run `cd cli && bun run typecheck`.

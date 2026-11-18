@@ -443,7 +443,7 @@ function agyInstall(env: Env): string | undefined {
 
 /**
  * Hermes Agent's install record: `~/.hermes/plugins/llmos`, a symbolic link to
- * `tools/hermes/`. The bundle is in the `tools/` folder above it.
+ * `hermes/`. The bundle is in the folder above it.
  */
 function hermesInstall(env: Env): string | undefined {
   const pluginDir = join(env.HOME || homedir(), ".hermes", "plugins", "llmos");

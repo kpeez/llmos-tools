@@ -11,7 +11,7 @@ import { isAntigravityPayload, type Payload } from "./common.ts";
  * The agent running this hook. The plugin root comes first: each agent
  * installs plugins under its own folder (`~/.claude/plugins`,
  * `~/.codex/plugins`, `~/.gemini/config/plugins`; the Hermes adapter in
- * `tools/hermes/` sets `~/.hermes/plugins/llmos`), and it cannot be inherited
+ * `hermes/` sets `~/.hermes/plugins/llmos`), and it cannot be inherited
  * by a nested agent the way environment markers can (a Codex started from a
  * Claude shell still has `CLAUDECODE`). Then the environment markers, then
  * the transcript path.

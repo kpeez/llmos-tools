@@ -12,7 +12,7 @@ installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
 `PATH`:
 
 ```sh
-bun <checkout>/tools/cli/scripts/install.ts
+bun <checkout>/cli/scripts/install.ts
 ```
 
 This copies `tools/` to `~/.local/share/llmos/<version>/`, installs the

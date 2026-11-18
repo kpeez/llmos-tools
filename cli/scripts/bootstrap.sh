@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Set up llmOS on this host from a checkout, in one command:
 #
-#   <checkout>/tools/cli/scripts/bootstrap.sh [VAULT]
+#   <checkout>/cli/scripts/bootstrap.sh [VAULT]
 #
 # 1. Installs the llmOS CLI (cli/scripts/install.ts).
 # 2. Points the CLI at VAULT, the vault folder at any path, unless a root is
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 tools="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-checkout="$(dirname "$tools")"
+checkout="$tools"
 vault="${1:-}"
 bin="$HOME/.local/bin"
 config="$HOME/.config/llmos/config.json"
