@@ -1,9 +1,8 @@
 # llmOS tools
 
-The `llmos` agent plugin and the `llmos-vault` CLI for the llmOS vault in
-`../llmOS/`. Agents use them to read, write, search, and check notes. The code
-is TypeScript, run by Bun
-([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md)).
+The `llmos` agent plugin and the `llmos-vault` CLI for an llmOS vault, an
+Obsidian vault at any path. Agents use them to read, write, search, and check
+notes. The code is TypeScript, run by Bun.
 
 ## Install
 

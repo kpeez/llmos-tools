@@ -1,8 +1,12 @@
 # Agent instructions
 
 `tools/` is the `llmos` agent plugin. Its `cli/` folder is the llmOS CLI,
-written in TypeScript and run by Bun
-([ADR 0012](../llmOS/projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md)).
+written in TypeScript and run by Bun (ADR 0012).
+
+The project documents, such as the ADRs and the glossary, live in the vault,
+not here. Reach them through `.agents/docs`, a link to the vault's
+`projects/llmos/` folder: `ln -s <vault root>/projects/llmos .agents/docs`.
+Git ignores the link. The ADRs are in `.agents/docs/adrs/`, by number.
 Run every command from `tools/cli/`; the paths below are relative to it. The
 marketplace catalogs live at the repository root and point at `tools/`.
 
@@ -56,7 +60,7 @@ covers and how to read a failure.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
-the real vault in `../../llmOS/`; point `LLMOS_ROOT` at a temporary vault for a
+the real vault (`$LLMOS_ROOT`); point `LLMOS_ROOT` at a temporary vault for a
 live probe.
 
 Before declaring a change complete, run the relevant `just` recipes. The full
@@ -81,7 +85,7 @@ project cannot load code or config into the server.
 
 To check the frontmatter invariants on the real vault (every note reads,
 `normalize` refuses no valid YAML, keeps every value, and is idempotent),
-copy `../../llmOS/` to a directory outside it and pass the copy: `just
+copy the vault to a directory outside it and pass the copy: `just
 invariants <copy>`. Write any report (`bun test/contract/invariants.ts
 --report FILE <copy>`) to `../../artifacts/`. Never point it at the live vault.
 

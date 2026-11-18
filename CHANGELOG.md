@@ -95,7 +95,7 @@ Newest first. Versions are the `version` field shared by
 
 ## 2.7.0 — 2026-10-26
 
-The vault has a new layout ([ADR 0013](../llmOS/projects/llmos/adrs/0013-flatten-vault-into-raw-knowledge-and-daily.md)).
+The vault has a new layout (ADR 0013).
 An older install reads and writes the old paths, so update the plugin and
 run `bun <llmos-plugin-root>/cli/scripts/install.ts` on every host before
 its next daily digest. Then run `llmos-vault reindex`.
@@ -264,7 +264,7 @@ its next daily digest. Then run `llmos-vault reindex`.
   signal and says so). A cluster whose notes already link one `knowledge/`
   note reports `covered_by` and ranks after the uncovered ones. It writes the
   JSON report to `<vault root>/../artifacts/discover/YYYY-MM-DD.json` and never
-  writes inside the vault (kpeez/llmos#55).
+  writes inside the vault.
 - `discover` is a manual job. Each run of the llmos vault sets
   `discovered: YYYY-MM-DD` on `categories/Knowledge.md` and sets `updated`
   there, in one atomic write. It adds the agent to `authors` only when it
@@ -311,10 +311,10 @@ its next daily digest. Then run `llmos-vault reindex`.
   prompt and a hub-prose prompt, in `references/`), checks privacy, and
   delivers the run as a draft pull request with fact counts by status and
   an estimated review time. A run over 30 minutes of review splits into
-  smaller pull requests (kpeez/llmos#54).
+  smaller pull requests.
 - The schema audit rejects a `categories` value that is not the exact plain
   name of a hub in `categories/`, such as `[[Paper]]` or
-  `[[categories/Papers|Papers]]` (kpeez/llmos#56).
+  `[[categories/Papers|Papers]]`.
 - The schema audit rejects the retired `repositories` property.
 - `file-inbox` no longer stamps `[[Archive]]` when filing into `archive/`;
   no such hub exists.
@@ -330,8 +330,8 @@ its next daily digest. Then run `llmos-vault reindex`.
   at least 6 words, and the source's `sha256_text` is recomputed. Any finding
   exits 1; flagged
   facts are reported without failing, and superseded facts are skipped. The
-  format is in `llmOS/agents/references/schema.md` and the conflict rule in
-  `llmOS/agents/references/ingest-contract.md` (kpeez/llmos#53).
+  format is now in `docs/compiled-facts.md` and the conflict rule in
+  `docs/ingest-contract.md`.
 - A command's last argument can now take several values (`<paths...>`).
 
 ## 2.3.1 — 2026-10-08
@@ -345,15 +345,15 @@ its next daily digest. Then run `llmos-vault reindex`.
   inbox. Requests go only to public http and https hosts, with at most five
   redirects, each hop checked; no body over 50 MB; figure images must be `image/*`.
 - New `ingest-source` skill, which sorts inbox items and runs `source add`.
-- `.gitattributes` stores `llmOS/sources/**` raw pages, PDFs, and assets in
-  Git LFS.
+- The vault's `.gitattributes` stores `sources/**` raw pages, PDFs, and
+  assets in Git LFS.
 - New dependencies: `defuddle` 0.19.4 (text extraction), with `linkedom`
   0.18.13 as its DOM and `turndown` 7.2.0 for Markdown.
 - `package.json` now carries the plugin version (it said 0.2.0).
 
 ## 2.3.0 — 2026-10-07
 
-- Retire the Python implementation (ADR 0012, kpeez/llmos#36): delete the
+- Retire the Python implementation (ADR 0012): delete the
   `llmos_vault` package, its pytest suite, the unwired Python hooks, the
   source-checkout shims (`scripts/audit_metadata.py`, `doctor.sh`,
   `vault_root.py`, `write_daily_activity.py`), `pyproject.toml`, and
@@ -499,8 +499,8 @@ run on Bun. Each host needs `bun` on the hook `PATH` and a CLI install through
 
 ## 1.2.0 — 2026-10-07
 
-- Move into the `kpeez/llmos` repository as `tools/`, beside the vault in
-  `llmOS/`; `kpeez/llmos-vault` is retired. Marketplace catalogs move to the
+- Move into the `kpeez/llmos` repository as `tools/`, beside the vault; the
+  former tools repository is retired. Marketplace catalogs move to the
   repository root and point at `./tools`; the marketplace keeps the
   `llmos-vault` name, so the plugin ID stays `llmos@llmos-vault`.
 - `llmos-doctor` targets Obsidian by the vault folder's name instead of a
