@@ -5,7 +5,7 @@ Read this index, then use the feature file as the recipe.
 
 ## Baseline preconditions
 
-- Run `bun scripts/verify.ts launch` first. It makes a scratch copy of `tools/cli/test/fixtures/vault`.
+- Run `bun scripts/verify.ts launch` first. It makes a scratch copy of `cli/test/fixtures/vault`.
 - The scratch vault holds the notes `alpha`, `beta`, `gamma`, `delta`, `epsilon`, `messy`, and `normalized` under `notes/`.
 - `LLMOS_ROOT` is the scratch vault. qmd lives in the scratch `home/`.
 - Run `bun scripts/verify.ts doctor` and require `DOCTOR OK`.
@@ -13,7 +13,7 @@ Read this index, then use the feature file as the recipe.
 
 ## Driving conventions
 
-- Run commands from `tools/cli/` with `bun bin/llmos-vault.ts <command>`. `scripts/verify.ts` does this for you.
+- Run commands from `cli/` with `bun bin/llmos-vault.ts <command>`. `scripts/verify.ts` does this for you.
 - Treat each command, flag, and exit code as literal.
 - Exit codes: 0 ok, 1 error or refusal, 2 usage, 3 Obsidian not running.
 - Run features in the order of this index. `writes` adds `notes/new.md` and `notes/link.md`, so the `mcp` feature depends on that.

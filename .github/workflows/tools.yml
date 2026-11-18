@@ -3,13 +3,11 @@ name: tools
 on:
   push:
     branches: [main]
-    paths: ["tools/**", ".claude-plugin/**", ".agents/plugins/**", ".github/workflows/tools.yml"]
   pull_request:
-    paths: ["tools/**", ".claude-plugin/**", ".agents/plugins/**", ".github/workflows/tools.yml"]
 
 defaults:
   run:
-    working-directory: tools/cli
+    working-directory: cli
 
 jobs:
   check:
@@ -18,12 +16,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: tools/cli/.tool-versions
+          bun-version-file: cli/.tool-versions
       - run: bun install --frozen-lockfile
       - name: Marketplace catalogs match the plugin manifest
         run: |
           bun scripts/gen-marketplaces.ts
-          git diff --exit-code ../../.claude-plugin/marketplace.json ../../.agents/plugins/marketplace.json
+          git diff --exit-code ../.claude-plugin/marketplace.json ../.agents/plugins/marketplace.json
       - run: bun run typecheck
       - run: bunx biome ci ..
       - name: Tests, including the contract snapshots

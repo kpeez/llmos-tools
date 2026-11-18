@@ -1,6 +1,6 @@
 ---
 name: verify-daily-digest
-description: Model-check with TLA+ that the daily digest never deletes a thought or a note that someone writes while the digest waits on the model. Use when a change touches processDay, atomicWrite, replaceBlock, or newNoteText in tools/cli/src/digest.ts, or how daily notes are written (tools/cli/src/daily.ts, tools/cli/src/write.ts), or when `just verify-daily-digest` fails.
+description: Model-check with TLA+ that the daily digest never deletes a thought or a note that someone writes while the digest waits on the model. Use when a change touches processDay, atomicWrite, replaceBlock, or newNoteText in cli/src/digest.ts, or how daily notes are written (cli/src/daily.ts, cli/src/write.ts), or when `just verify-daily-digest` fails.
 ---
 
 # Verify the daily digest's note write
@@ -15,7 +15,7 @@ the digest waited on the model.
 
 ## Run it
 
-From `tools/cli/`:
+From `cli/`:
 
 ```sh
 just verify-daily-digest
@@ -26,7 +26,7 @@ The recipe runs `scripts/check.ts`. It exits 0 only when all three hold:
 - `NoThoughtLost` holds on the model of the code (`Write = "fresh"`);
 - `NoThoughtLost` breaks on the stale-write mutant (`Write = "stale"`), so
   the check can still fail;
-- `tools/cli/src/digest.ts` still has each line in `GUARDS` in
+- `cli/src/digest.ts` still has each line in `GUARDS` in
   `scripts/check.ts`: the read before the model call, and the second read
   just before the write.
 
@@ -68,7 +68,7 @@ the model call). At that commit, the model describes the code.
 3. Read a failure with the `statechart` skill: run it on `DailyDigest.tla`
    with `DailyDigest.cfg`. It gives the shortest path to the broken rule in
    plain words. Replay each step of that path against the code, for example
-   as a test in `tools/cli/test/digest.test.ts` that writes to the note inside
+   as a test in `cli/test/digest.test.ts` that writes to the note inside
    the `summarize` stub.
    - A step that cannot happen in the code: the model is wrong. Fix the model.
    - Every step can happen: it is a bug in the code. Report it. Never weaken

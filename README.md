@@ -13,21 +13,21 @@ It installs the CLI and the plugin, points the CLI at the vault, and runs
 To install the plugin by hand, in Claude Code:
 
 ```text
-/plugin marketplace add kpeez/llmos
+/plugin marketplace add kpeez/llmos-tools
 /plugin install llmos@llmos-vault
 ```
 
 In Codex:
 
 ```text
-codex plugin marketplace add kpeez/llmos
+codex plugin marketplace add kpeez/llmos-tools
 codex plugin add llmos@llmos-vault
 ```
 
 In Antigravity (`agy`):
 
 ```sh
-agy plugin install https://github.com/kpeez/llmos/tree/main/tools
+agy plugin install https://github.com/kpeez/llmos-tools
 ```
 
 In Hermes Agent, link `hermes/` into each profile's `plugins/` folder and

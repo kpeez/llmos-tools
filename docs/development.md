@@ -1,12 +1,12 @@
 # Development
 
-This page is for people who change the code in `tools/`. Agent rules live in
+This page is for people who change the code in this repository. Agent rules live in
 [`AGENTS.md`](../AGENTS.md).
 
 ## Layout
 
 ```text
-tools/
+llmos-tools/
 ├── skills/
 │   ├── consolidate-knowledge/ # consolidates a note cluster into a hub plus paper and dataset notes
 │   ├── ingest-source/     # sorts inbox drops in raw/; captures sources with `source add`

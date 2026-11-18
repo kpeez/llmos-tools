@@ -27,7 +27,7 @@ Preconditions: launch and doctor passed. No network is used.
 ## Gotchas
 
 - A real run is `llmos-vault source add 1811.00743`. It requests `arxiv.org` and the figure hosts, and writes `raw/arxiv-1811.00743v2/` in the vault. Do it only on request and only on a scratch vault.
-- `source-offline.ts` replaces only `Context.fetch`. A page missing from `tools/cli/test/fixtures/web/` is a 404.
+- `source-offline.ts` replaces only `Context.fetch`. A page missing from `cli/test/fixtures/web/` is a 404.
 - The recorded figures are 48-pixel stand-ins.
 - A web page needs defuddle (installed). A PDF needs MinerU (`LLMOS_MINERU` or `mineru-kit`). `capture-pdf` is not driven: no MinerU here.
 - `source add` accepts only the vault `llmos`.

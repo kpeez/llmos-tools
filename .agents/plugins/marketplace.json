@@ -8,7 +8,7 @@
       "name": "llmos",
       "source": {
         "source": "local",
-        "path": "./tools"
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",

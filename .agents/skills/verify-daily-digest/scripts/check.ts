@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 
 const SKILL = dirname(import.meta.dir);
 const REPO = join(SKILL, "..", "..", "..");
-const DIGEST = join(REPO, "tools", "cli", "src", "digest.ts");
+const DIGEST = join(REPO, "cli", "src", "digest.ts");
 const TLC_TOOL =
   "http:tla2tools[url=https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar,checksum=sha256:936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88]@1.7.4";
 const JAVA_TOOL = "java@temurin-25";
@@ -87,5 +87,5 @@ if (!code.ok) console.log(`TLC output for the code:\n${code.out}\n`);
 
 console.log(`NoThoughtLost on the code: ${code.ok ? "holds" : "BREAKS"}`);
 console.log(`NoThoughtLost on the stale-write mutant: ${mutant ? "HOLDS (the check cannot fail)" : "breaks, as expected"}`);
-for (const line of missing) console.log(`guard missing from tools/cli/src/digest.ts: ${line}`);
+for (const line of missing) console.log(`guard missing from cli/src/digest.ts: ${line}`);
 process.exit(code.ok && !mutant && missing.length === 0 ? 0 : 1);

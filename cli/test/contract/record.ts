@@ -1,7 +1,7 @@
 /**
  * Record the contract snapshots again from the TypeScript output (see
  * `snapshot.ts`). Run it only for an intended contract change, from
- * `tools/cli/`: `just contract-record`, then review the diff.
+ * `cli/`: `just contract-record`, then review the diff.
  *
  * It keeps each `differs_from_python` annotation, and its reason in
  * `allowlist`, while the annotated result is unchanged; it drops (and

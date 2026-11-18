@@ -17,3 +17,5 @@ artifacts
 node_modules/
 # The link to the project documents in the vault (see AGENTS.md).
 /.agents/docs
+# The skills link that bootstrap.sh makes for Claude Code.
+/.claude/skills

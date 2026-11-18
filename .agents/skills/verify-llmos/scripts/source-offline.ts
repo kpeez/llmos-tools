@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Run `source add` against the recorded web pages in tools/cli/test/fixtures/web
+ * Run `source add` against the recorded web pages in cli/test/fixtures/web
  * instead of the network. The command code is the real one. Only `Context.fetch`
  * (the network seam) is replaced, so no request leaves the machine.
  *
@@ -10,11 +10,11 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
-import { defaultContext, runCli } from "../../../../tools/cli/src/cli.ts";
-import { COMMANDS } from "../../../../tools/cli/src/commands.ts";
-import type { Fetcher } from "../../../../tools/cli/src/sources.ts";
+import { defaultContext, runCli } from "../../../../cli/src/cli.ts";
+import { COMMANDS } from "../../../../cli/src/commands.ts";
+import type { Fetcher } from "../../../../cli/src/sources.ts";
 
-const RECORDED = resolve(import.meta.dir, "../../../../tools/cli/test/fixtures/web");
+const RECORDED = resolve(import.meta.dir, "../../../../cli/test/fixtures/web");
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".jpg": "image/jpeg",

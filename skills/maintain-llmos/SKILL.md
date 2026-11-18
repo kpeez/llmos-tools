@@ -33,7 +33,10 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
    it under `## Thoughts` in `daily/YYYY-MM-DD.md`. Write prose, in your own
    words. Never restate commits, issues, or PRs there. The `## Projects` block is
    machine-owned — the digest regenerates it wholesale, so never hand-write the
-   day's activity into it.
+   day's activity into it. When today's note does not exist, `daily append-thought`
+   creates it from the template through Obsidian, so with the app closed it fails
+   with `obsidian-cli is not on PATH`. Report the thought in the reply instead of
+   writing the daily note by hand.
 9. After each changed note, regardless of write tool, run
    `llmos-vault check <vault-relative-path> --vault llmos` to inspect body links,
    property links, unlinked note references, and Markdown that renders wrongly. Then verify the rendered note

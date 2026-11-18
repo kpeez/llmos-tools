@@ -29,4 +29,4 @@ Preconditions: launch and doctor passed. The harness uses the scratch copy of `c
 - This feature uses `claims_vault`, not `vault`. The harness swaps `LLMOS_ROOT` for these commands only.
 - A flagged fact is listed and does not fail. A superseded fact is skipped.
 - The lint is necessary, not sufficient. It cannot see swapped numbers or negation.
-- The harness checks the exit code and that a `code` exists. The exact codes are pinned by `tools/cli/test/claims-lint.test.ts`.
+- The harness checks the exit code and that a `code` exists. The exact codes are pinned by `cli/test/claims-lint.test.ts`.

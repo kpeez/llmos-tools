@@ -14,7 +14,7 @@ The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
 The host needs `bun` on `PATH`.
 
 On a new host with a checkout of the repository,
-`<checkout>/tools/cli/scripts/bootstrap.sh <vault root>` does the install, the vault root, the
+`<checkout>/cli/scripts/bootstrap.sh <vault root>` does the install, the vault root, the
 plugin install for each agent on `PATH`, and the first doctor run. Then
 continue at the workflow below.
 
@@ -207,7 +207,7 @@ the default profile (`~/.hermes`) and once in each profile under
   Hermes memory (`MEMORY.md`, `USER.md`) holds only facts about Hermes
   itself. Copy the vault paragraphs of the default profile's `SOUL.md`.
 
-The adapter (`tools/hermes/__init__.py`) runs `dist/hooks.js` for each
+The adapter (`hermes/__init__.py`) runs `dist/hooks.js` for each
 Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
 checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists. Once any profile
 links the plugin, it also checks each profile (`hermes-profile-<name>`) and names
@@ -225,18 +225,18 @@ Linux, and Claude activation says nothing about Codex.
   marketplace/install/update commands from `--help`; never modify an active
   plugin cache in place or delete an old version to force reloading.
 - For a local source checkout, both providers accept a local marketplace at
-  the repository root (not `tools/`):
+  the repository root:
   `codex plugin marketplace add <checkout>` followed by
   `codex plugin add llmos@llmos-vault`, or
   `claude plugin marketplace add <checkout>` followed by
   `claude plugin install llmos@llmos-vault`. Inspect existing registrations
   before replacing them. Changes to an existing installation may require the
   provider's update command and a fresh session. Claude Code copies a local
-  marketplace's plugin with its gitignored files, so a `tools/cli/node_modules`
-  or a pre-2.6.1 `tools/node_modules` in the checkout puts symbolic links in
+  marketplace's plugin with its gitignored files, so a `cli/node_modules`
+  or a pre-2.6.1 `node_modules` in the checkout puts symbolic links in
   the plugin cache, and Claude Desktop then does not copy the plugin to SSH
   hosts. On a host that Claude Desktop reaches over SSH, use the GitHub source
-  (`kpeez/llmos`), or remove those folders before the plugin update.
+  (`kpeez/llmos-tools`), or remove those folders before the plugin update.
 - Verify that `maintain-llmos`, `vault-cli`, and `setup-llmos` are available in
   the fresh agent session. Resolve the configured root, then verify that its
   `authoring.md` exists. Do not create a rival copy inside the code repository
