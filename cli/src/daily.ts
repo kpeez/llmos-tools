@@ -5,7 +5,7 @@
  * The `## Projects` section between the `llmos-activity` markers is
  * machine-owned: the activity digest writes it, and nothing else may write
  * inside it. The marker strings are defined here once and shared with the
- * digest. A plain vault such as second-vault has no daily-note contract.
+ * digest. A plain vault, any other `--vault`, has no daily-note contract.
  */
 
 import { existsSync, readdirSync, statSync } from "node:fs";

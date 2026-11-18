@@ -185,7 +185,7 @@ export interface Cluster {
   /**
    * Dangling targets and missing topics are counts, not labels: the report
    * lives outside the vault, and a link target can be a value that must stay
-   * in it (example-project `CONTEXT.md`). arXiv ids and DOIs are public.
+   * in it (a project's private identifiers). arXiv ids and DOIs are public.
    */
   signals: {
     shared_ids: { id: string; notes: string[] }[];

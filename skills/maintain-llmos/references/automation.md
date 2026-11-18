@@ -1,7 +1,7 @@
 ---
 status: active
 created: 2026-07-15
-updated: 2026-10-13
+updated: 2026-11-18
 ---
 
 # Scheduled and manual jobs
@@ -16,8 +16,9 @@ yesterday on each run, because an evening pass cannot see work that lands after
 it. The command is `tools/cli/src/digest.ts`, run by Bun.
 
 The digest monitors every project whose landing note has `status: active` and
-whose folder name matches a repository in `kpeez` or `linux-host-ucdavis` (vault
-ADR 0009). It writes only between the `llmos-activity` markers in
+whose folder name matches a repository of one of the GitHub owners in
+`github_owners` of `~/.config/llmos/config.json` (vault ADR 0009). The digest
+fails when that list is missing or empty. It writes only between the `llmos-activity` markers in
 `daily/YYYY-MM-DD.md`, creates a note only on a day with activity, and
 never touches `## Thoughts`. It refuses to write a note whose markers are not
 exactly one start and one end.
@@ -66,14 +67,20 @@ WantedBy=timers.target
 `%h/.local/bin/llmos-daily-activity` is the link that the CLI install creates
 to `cli/src/digest.ts` in the installed copy of `tools/`. The script starts with
 `#!/usr/bin/env bun`, so the unit's `PATH` must find the mise-managed `bun`
-through the mise shims. Do not put `~/.bun/bin` on it: on linux-host that folder
-holds an older standalone Bun that would run first.
+through the mise shims. Do not put `~/.bun/bin` on it when that folder
+holds an older standalone Bun: that Bun would run first.
 
 Enable it with `systemctl --user enable --now llmos-daily-activity.timer`. Read
 failures with `journalctl --user -u llmos-daily-activity`. The job needs `gh`
-authenticated with read access to both orgs, `opencode` authenticated with
+authenticated with read access to every configured owner, `opencode` authenticated with
 GitHub Copilot (`opencode auth list`), and the vault root in
-`~/.config/llmos/config.json` or `$LLMOS_ROOT`. When the model's summary
+`~/.config/llmos/config.json` or `$LLMOS_ROOT`, and `github_owners` in that
+config file, for example:
+
+```json
+{"vault_root": "/home/me/notes/vault", "github_owners": ["octocat", "octo-org"]}
+```
+ When the model's summary
 omits the link to a PR or issue, the digest calls the model again, up to three
 calls a day. A failed run exits non-zero, writes nothing for the failed
 day, and leaves the run record as it was. The journal line gives opencode's
@@ -84,11 +91,11 @@ request from an agent whose permissions are all denied, and the digest needs
 that agent so that PR text cannot reach a tool. Several free models may also
 keep prompts for training, and the prompts hold private-repository PR text.
 
-The digest writes notes on linux-host only, and Obsidian Git commits nothing on
+The digest writes notes on the timer host only, and Obsidian Git commits nothing on
 its own (every interval is 0). The timer therefore passes `--push`: after a
 successful run, the digest commits only the notes it wrote and the run
 record, with the message `daily activity: <dates>`. It then runs `git pull
---rebase --autostash` and `git push` in the linux-host checkout. Other edits in
+--rebase --autostash` and `git push` in the timer host's checkout. Other edits in
 that checkout stay uncommitted. A rebase conflict aborts the rebase and fails
 the run, and a failed push fails it too. The next night's run pushes again.
 The push uses the `gh` credential helper of the checkout's HTTPS remote, so
@@ -114,21 +121,21 @@ Only `discover` sets it.
 
 The record is a note edit, so it travels with the vault. The edit is committed
 and pushed like any note edit. After the git sync, `llmos-vault health` on any
-host reads it. A run on mac-host therefore counts on linux-host too.
+host reads it. A run on one host therefore counts on every other host too.
 
 `health` has an `overdue_jobs` section for the `llmos` vault. It lists
 `daily-activity` when `digested` on `categories/Reviews.md` is missing, not
 a valid date, more than 1 day after today, or more than 3 days before today
-(the nightly cadence plus 2 days of slack). On mac-host an entry can also mean
-that the nightly push from linux-host failed; run `health` on linux-host to tell the
-two apart. It lists `discover` when any of these is true:
+(the nightly cadence plus 2 days of slack). On another host an entry can also
+mean that the nightly push from the timer host failed; run `health` on the
+timer host to tell the two apart. It lists `discover` when any of these is true:
 
 - `categories/Knowledge.md` or its `discovered` property is missing.
 - The value is not a valid `YYYY-MM-DD` date.
 - The date is more than 1 day after today. A later date fails closed. The 1
   day covers a time-zone difference between hosts.
 - The date is more than 10 days before today. The weekly cadence allows 8
-  days. The other 2 days cover the git sync between mac-host and linux-host.
+  days. The other 2 days cover the git sync between hosts.
 
 Any entry makes `health` exit 1. A failed run sets nothing: the person who ran
 it sees the error.
@@ -148,4 +155,4 @@ failed run never leaves a half record.
 
 Use `--no-record` for a probe, such as a run on a copy of the vault: it then
 leaves `categories/Knowledge.md` as it is and skips those checks.
-`--vault second-vault` never writes the record.
+A run on another vault (`--vault NAME`) never writes the record.

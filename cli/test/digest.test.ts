@@ -20,6 +20,7 @@ import {
   DigestError,
   type Gh,
   type Grouped,
+  githubOwners,
   OPENCODE_AGENT,
   parseGhJson,
   processDay,
@@ -82,9 +83,10 @@ const COMMIT = {
   repository: { fullName: "kpeez/alpha" },
   url: "https://github.com/kpeez/alpha/commit/abc123",
 };
+const OWNERS = ["kpeez", "example-org"];
 const ORG_REPOS: Record<string, { nameWithOwner: string }[]> = {
   kpeez: [{ nameWithOwner: "kpeez/alpha" }, { nameWithOwner: "kpeez/archived" }],
-  "linux-host-ucdavis": [{ nameWithOwner: "linux-host-ucdavis/other" }],
+  "example-org": [{ nameWithOwner: "example-org/other" }],
 };
 
 const ghRepoList: Gh = (args) => {
@@ -100,9 +102,20 @@ const ghWithActivity: Gh = (args) => {
 const fakeOk = () => `### Alpha Project\nMerged [#7](${PR.url}).`;
 const notePath = (root: string) => join(root, "daily", "2026-07-16.md");
 
+describe("githubOwners", () => {
+  test("reads github_owners from the config file and fails loudly without it", () => {
+    const config = join(tempDir(), "config.json");
+    expect(() => githubOwners(config)).toThrow(/"github_owners"/);
+    write(config, `${JSON.stringify({ vault_root: "/v", github_owners: [] })}\n`);
+    expect(() => githubOwners(config)).toThrow(/"github_owners"/);
+    write(config, `${JSON.stringify({ vault_root: "/v", github_owners: ["octocat", "org"] })}\n`);
+    expect(githubOwners(config)).toEqual(["octocat", "org"]);
+  });
+});
+
 describe("projects", () => {
   test("a name in both orgs is a hard failure", () => {
-    const orgRepos = new Map([["alpha", ["kpeez/alpha", "linux-host-ucdavis/alpha"]]]);
+    const orgRepos = new Map([["alpha", ["kpeez/alpha", "example-org/alpha"]]]);
     expect(() => readProjects(makeVault(), orgRepos)).toThrow(/several repos/);
   });
 });
@@ -115,36 +128,40 @@ describe("processDay", () => {
       calls++;
       return fakeOk();
     };
-    processDay(DAY, root, { gh: ghWithActivity, summarize: counting });
+    processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: counting });
     const first = readFileSync(notePath(root));
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: counting })).toStartWith(
-      "unchanged",
-    );
+    expect(
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: counting }),
+    ).toStartWith("unchanged");
     expect(readFileSync(notePath(root))).toEqual(first);
     expect(calls).toBe(1);
   });
 
   test("a coverage change regenerates the block", () => {
     const root = makeVault();
-    processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk });
+    processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: fakeOk });
     write(
       join(root, "projects", "norepo", "norepo.md"),
       "---\nstatus: archived\n---\n\n# Norepo Project\n",
     );
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk })).toBe("updated");
+    expect(processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: fakeOk })).toBe(
+      "updated",
+    );
     expect(readFileSync(notePath(root), "utf8")).not.toContain("Norepo Project");
   });
 
   test("a thought written during the model call stays in the note", () => {
     const root = makeVault();
-    processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk });
+    processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: fakeOk });
     write(join(root, "projects", "norepo", "norepo.md"), "---\nstatus: archived\n---\n\n# N\n");
     const addsThought = () => {
       const note = readFileSync(notePath(root), "utf8");
       writeFileSync(notePath(root), note.replace("## Thoughts\n", "## Thoughts\n\nA thought.\n"));
       return fakeOk();
     };
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: addsThought })).toBe("updated");
+    expect(
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: addsThought }),
+    ).toBe("updated");
     const note = readFileSync(notePath(root), "utf8");
     expect(note).toContain("A thought.");
     expect(note).not.toContain("Norepo Project");
@@ -156,7 +173,9 @@ describe("processDay", () => {
       write(notePath(root), "# 2026-07-16\n\n## Thoughts\n\nA thought.\n");
       return fakeOk();
     };
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: createsNote })).toBe("updated");
+    expect(
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: createsNote }),
+    ).toBe("updated");
     const note = readFileSync(notePath(root), "utf8");
     expect(note).toContain("A thought.");
     expect(note).toContain(PR.url);
@@ -166,7 +185,9 @@ describe("processDay", () => {
     const root = makeVault();
     const answers = ["### Alpha Project\nBusy day.", fakeOk()];
     const flaky = () => answers.shift() as string;
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: flaky })).toBe("created");
+    expect(processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: flaky })).toBe(
+      "created",
+    );
     expect(answers).toEqual([]);
   });
 
@@ -177,9 +198,9 @@ describe("processDay", () => {
       calls++;
       return "### Alpha Project\nBusy day.";
     };
-    expect(() => processDay(DAY, root, { gh: ghWithActivity, summarize: incomplete })).toThrow(
-      "omitted references: kpeez/alpha#7",
-    );
+    expect(() =>
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: incomplete }),
+    ).toThrow("omitted references: kpeez/alpha#7");
     expect(calls).toBe(3);
     expect(readdirSync(join(root, "daily"))).toEqual([]);
   });
@@ -187,8 +208,8 @@ describe("processDay", () => {
   test("the completeness check needs each repository's link when two share a number", () => {
     const root = makeVault();
     write(join(root, "projects", "other", "other.md"), "---\nstatus: active\n---\n\n# Other\n");
-    const otherUrl = "https://github.com/linux-host-ucdavis/other/pull/7";
-    const otherPr = { ...PR, url: otherUrl, repository: { nameWithOwner: "linux-host-ucdavis/other" } };
+    const otherUrl = "https://github.com/example-org/other/pull/7";
+    const otherPr = { ...PR, url: otherUrl, repository: { nameWithOwner: "example-org/other" } };
     const gh: Gh = (args) => {
       if (args[0] === "repo") return ghRepoList(args);
       if (args[1] === "prs") return args.includes("--merged-at") ? [PR] : [otherPr];
@@ -198,15 +219,15 @@ describe("processDay", () => {
     for (const other of [
       "",
       "\n### Other\nOpened #7.",
-      "\n### Other\nOpened [#70](https://github.com/linux-host-ucdavis/other/pull/70).",
+      "\n### Other\nOpened [#70](https://github.com/example-org/other/pull/70).",
     ]) {
-      expect(() => processDay(DAY, root, { gh, summarize: () => alpha + other })).toThrow(
-        "omitted references: linux-host-ucdavis/other#7",
-      );
+      expect(() =>
+        processDay(DAY, root, { owners: OWNERS, gh, summarize: () => alpha + other }),
+      ).toThrow("omitted references: example-org/other#7");
     }
     expect(readdirSync(join(root, "daily"))).toEqual([]);
     const both = `${alpha}\n### Other\nOpened [#7](${otherUrl}).`;
-    expect(processDay(DAY, root, { gh, summarize: () => both })).toBe("created");
+    expect(processDay(DAY, root, { owners: OWNERS, gh, summarize: () => both })).toBe("created");
   });
 });
 
@@ -340,7 +361,9 @@ describe("block integrity", () => {
       join(root, "projects", "norepo", "norepo.md"),
       `---\nstatus: active\n---\n\n# Norepo ${MARKER_END}\n`,
     );
-    expect(processDay(DAY, root, { gh: ghWithActivity, summarize: () => hostile })).toBe("created");
+    expect(
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: () => hostile }),
+    ).toBe("created");
     const text = readFileSync(notePath(root), "utf8");
     expect(count(text, MARKER_START)).toBe(1);
     expect(count(text, MARKER_END)).toBe(1);
@@ -352,13 +375,15 @@ describe("block integrity", () => {
 
   test("a rewrite after a hostile summary changes only the block", () => {
     const root = makeVault();
-    processDay(DAY, root, { gh: ghWithActivity, summarize: () => hostile });
+    processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: () => hostile });
     const tail = "\n\nA thought written after the block.\n";
     writeFileSync(notePath(root), readFileSync(notePath(root), "utf8") + tail);
     const before = readFileSync(notePath(root), "utf8");
     const changed: Gh = (args) =>
       args[1] === "commits" ? [COMMIT, { ...COMMIT, sha: "def456" }] : ghWithActivity(args);
-    expect(processDay(DAY, root, { gh: changed, summarize: fakeOk })).toBe("updated");
+    expect(processDay(DAY, root, { owners: OWNERS, gh: changed, summarize: fakeOk })).toBe(
+      "updated",
+    );
     const after = readFileSync(notePath(root), "utf8");
     const outside = (text: string) => [
       text.slice(0, text.indexOf(MARKER_START)),
@@ -375,9 +400,9 @@ describe("block integrity", () => {
     const root = makeVault();
     const original = `# 2026-07-16\n\n## Projects\n\n${markers}\nKeep.\n`;
     write(notePath(root), original);
-    expect(() => processDay(DAY, root, { gh: ghWithActivity, summarize: fakeOk })).toThrow(
-      "refusing to write",
-    );
+    expect(() =>
+      processDay(DAY, root, { owners: OWNERS, gh: ghWithActivity, summarize: fakeOk }),
+    ).toThrow("refusing to write");
     expect(readFileSync(notePath(root), "utf8")).toBe(original);
   });
 });
@@ -428,9 +453,9 @@ describe("pushNotes", () => {
 
   test("commits only its paths, rebases on a moved remote, and pushes", () => {
     const { remote, host, other } = checkouts();
-    write(join(other, "llmOS", "notes", "mac-host.md"), "from mac-host\n");
+    write(join(other, "llmOS", "notes", "laptop.md"), "from the laptop\n");
     git(other, "add", ".");
-    git(other, "commit", "--quiet", "-m", "mac-host note");
+    git(other, "commit", "--quiet", "-m", "laptop note");
     git(other, "push", "--quiet");
 
     const vault = join(host, "llmOS");
@@ -439,7 +464,7 @@ describe("pushNotes", () => {
     pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
 
     expect(git(remote, "log", "--format=%s", "main")).toBe(
-      "daily activity: 2026-07-16\nkpm1 note\nseed",
+      "daily activity: 2026-07-16\nlaptop note\nseed",
     );
     expect(git(remote, "show", "--name-only", "--format=", "main")).toBe(
       "llmOS/daily/2026-07-16.md",

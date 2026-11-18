@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Set up llmOS on this host from a checkout, in one command:
 #
-#   <checkout>/tools/cli/scripts/bootstrap.sh
+#   <checkout>/tools/cli/scripts/bootstrap.sh [VAULT]
 #
 # 1. Installs the llmOS CLI (cli/scripts/install.ts).
-# 2. Points the CLI at <checkout>/llmOS, unless a root is already configured.
+# 2. Points the CLI at VAULT, the vault folder at any path, unless a root is
+#    already configured. The vault can be the root of its own Git repository.
 # 3. Installs the llmos plugin for each agent on PATH (claude, codex). It adds
 #    this checkout as the llmos-vault marketplace only when no marketplace of
 #    that name is registered, and installs the plugin only when it is missing.
@@ -19,7 +20,7 @@ set -euo pipefail
 
 tools="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 checkout="$(dirname "$tools")"
-vault="$checkout/llmOS"
+vault="${1:-}"
 bin="$HOME/.local/bin"
 config="$HOME/.config/llmos/config.json"
 plugin="llmos@llmos-vault"
@@ -45,11 +46,14 @@ bun "$tools/cli/scripts/install.ts"
 step "Set the vault root"
 if [ -n "${LLMOS_ROOT:-}" ]; then
   echo "LLMOS_ROOT is set ($LLMOS_ROOT) and wins over the config file; no change."
-elif [ -f "$config" ]; then
-  echo "$config already exists; no change:"
+elif [ -f "$config" ] && json_has '"vault_root" in data' <"$config"; then
+  echo "$config already sets vault_root; no change:"
   cat "$config"
-else
+elif [ -n "$vault" ]; then
   "$bin/llmos-vault" config set-root "$vault"
+else
+  echo "No vault root is configured. Run this again with the vault folder:" >&2
+  echo "  $0 /path/to/vault" >&2
 fi
 
 if command -v claude >/dev/null 2>&1; then
@@ -94,8 +98,8 @@ case ":$PATH:" in
   *) echo "- Add $bin to PATH." ;;
 esac
 cat <<EOF
-- Open the $vault folder in Obsidian as the vault 'llmOS', and turn on its
-  command line interface (Settings > General > Advanced).
+- Open the vault folder in Obsidian, and turn on its command line interface
+  (Settings > General > Advanced).
 - Codex: open Codex once and approve the llmOS hook.
 - Start one new session for each agent, end it, and run llmos-doctor again.
 - Fix each FAIL with its REPAIR line, or use the setup-llmos skill.

@@ -4,7 +4,7 @@
  * vault model.
  *
  * Schema violations are the llmOS profile's contract and are skipped for a
- * plain vault such as second-vault ("core" profile). The qmd index gaps compare the
+ * plain vault, any other `--vault` ("core" profile). The qmd index gaps compare the
  * vault's notes with the paths a qmd collection holds; the caller reads those
  * paths from the qmd store (`qmd.ts`), so this module stays synchronous and
  * never imports qmd.
@@ -58,7 +58,7 @@ export const DIGEST_NOTE = "categories/Reviews.md";
 export const DIGEST_PROPERTY = "digested";
 /**
  * How old the last digest run may be, in days: the nightly cadence (1) plus
- * 2 days of slack, for a failed nightly push from linux-host, where the timer runs.
+ * 2 days of slack, for a failed nightly push from the host that runs the timer.
  */
 export const DIGEST_MAX_AGE_DAYS = 3;
 

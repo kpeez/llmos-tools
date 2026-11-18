@@ -1,7 +1,7 @@
 /**
  * The llmOS profile's frontmatter contract checks, shared by the audit and
- * the schema-violations section of the health report. A plain vault such as
- * second-vault has no schema layer and never calls this module.
+ * the schema-violations section of the health report. A plain vault, any
+ * other `--vault`, has no schema layer and never calls this module.
  *
  * The rules are those of the retired Python schema module; a message
  * quotes a property value as JSON (Python wrote its `repr`). Nested values,

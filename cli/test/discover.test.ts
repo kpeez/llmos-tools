@@ -381,7 +381,7 @@ describe("health overdue_jobs", () => {
       "discovered",
       "2026-10-07",
       "--vault",
-      "second-vault",
+      "notebook",
     ]);
     expect(result.exitCode).toBe(0);
   });
@@ -406,7 +406,7 @@ describe("health overdue_jobs", () => {
   });
 
   test("a plain vault has no manual jobs", async () => {
-    const result = await cli(cleanVault(null), ["health", "--json", "--vault", "second-vault"]);
+    const result = await cli(cleanVault(null), ["health", "--json", "--vault", "notebook"]);
     expect(JSON.parse(result.stdout).overdue_jobs).toEqual([]);
   });
 });
@@ -536,7 +536,7 @@ describe("discover", () => {
     const env = isolatedEnv();
 
     expect((await reports(env, root, ["--no-record"])).result.exitCode).toBe(0);
-    expect((await reports(env, root, ["--vault", "second-vault"])).result.exitCode).toBe(0);
+    expect((await reports(env, root, ["--vault", "notebook"])).result.exitCode).toBe(0);
     const blocker = join(scratch("blocker"), "file");
     writeFiles(join(blocker, ".."), { file: "x" });
     const failed = await cli(root, ["discover", "--out", join(blocker, "sub")], { env });

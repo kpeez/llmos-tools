@@ -2,7 +2,7 @@
   "about": "Contract results of the TypeScript CLI on this vault, read on `today`; see test/contract/snapshot.ts. A key in differs_from_python is a result where the retired Python CLI gave something else, for the reasons of the named allowlist entries.",
   "today": "2026-10-07",
   "allowlist": {
-    "body-hard-line-break": "Python trims all trailing whitespace from body lines, which deletes Markdown hard line breaks (two or more spaces before a line ending) and changes how the note renders. TypeScript keeps a final run of two or more spaces on a body line that has content (kpeez/llmos#44). The texts must differ only in those runs.",
+    "body-hard-line-break": "Python trims all trailing whitespace from body lines, which deletes Markdown hard line breaks (two or more spaces before a line ending) and changes how the note renders. TypeScript keeps a final run of two or more spaces on a body line that has content. The texts must differ only in those runs.",
     "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd."
   },
   "differs_from_python": {

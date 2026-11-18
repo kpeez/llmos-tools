@@ -14,7 +14,7 @@
  * `VaultModel.load` reads every note first, so a note that is not valid
  * UTF-8 fails the run.
  *
- * Usage, from `tools/cli/` (never on the live vault: copy `../../llmOS/` to a
+ * Usage, from `tools/cli/` (never on the live vault: copy the vault to a
  * folder outside it first, and write the report to `../../artifacts/`):
  *   bun test/contract/invariants.ts [--report FILE] VAULT ...
  * It prints the refused notes with their reasons, which are expected for

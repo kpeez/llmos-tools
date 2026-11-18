@@ -63,13 +63,12 @@ import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.t
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
 import { DAILY_DIR, TEMPLATES_DIR } from "./layout.ts";
-import { VaultRootError, vaultRoot } from "./root.ts";
+import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
 import { readText } from "./vault.ts";
 import { recordRun } from "./write.ts";
 
 export const LOCAL_TZ = "America/Los_Angeles";
 export const MODEL = "github-copilot/claude-haiku-5.5";
-export const ORGS = ["kpeez", "linux-host-ucdavis"] as const;
 export const TRANSFORM_INSTRUCTIONS =
   "You are a deterministic text transformer inside a script. You receive JSON of one " +
   "day's GitHub activity grouped by project and emit only GitHub-flavored markdown. " +
@@ -307,10 +306,29 @@ export function runGh(args: string[]): unknown {
   return parseGhJson(decodeUtf8(result.stdout, "gh"));
 }
 
-/** Map lowercased repo name -> every `owner/name` with that name across `ORGS`. */
-export function listOrgRepos(gh: Gh = runGh): Map<string, string[]> {
+/**
+ * The GitHub users and organizations whose repositories the digest monitors:
+ * `github_owners` in the llmOS config file, a list of names.
+ */
+export function githubOwners(configPath: string = DEFAULT_CONFIG_PATH): string[] {
+  const owners = readConfig(configPath).github_owners;
+  if (
+    !Array.isArray(owners) ||
+    owners.length === 0 ||
+    !owners.every((owner) => typeof owner === "string" && owner !== "")
+  ) {
+    throw new DigestError(
+      `set "github_owners" in ${configPath} to the GitHub users and organizations ` +
+        `whose repositories the digest monitors, such as ["octocat"]`,
+    );
+  }
+  return owners;
+}
+
+/** Map lowercased repo name -> every `owner/name` with that name across `owners`. */
+export function listOrgRepos(owners: readonly string[], gh: Gh = runGh): Map<string, string[]> {
   const names = new Map<string, string[]>();
-  for (const org of ORGS) {
+  for (const org of owners) {
     const args = ["repo", "list", org, "--limit", "1000", "--json", "nameWithOwner"];
     for (const repo of items(gh(args), "repo list")) {
       const full = field(repo, "nameWithOwner");
@@ -343,7 +361,8 @@ function isDirectory(path: string): boolean {
 /**
  * Return [monitored, active but unseen] projects from the landing notes
  * `projects/<slug>/<slug>.md`, ordered by slug. A project is monitored when
- * a repository in `ORGS` has its folder name (vault ADR 0009).
+ * a repository of one of the configured owners has its folder name (vault
+ * ADR 0009).
  */
 export function readProjects(
   root: string,
@@ -771,6 +790,8 @@ function atomicWrite(path: string, content: string): void {
 }
 
 export interface ProcessOptions {
+  /** The GitHub owners whose repositories are monitored (`githubOwners`). */
+  owners: readonly string[];
   gh?: Gh;
   opencodeBin?: string;
   /** Replaces the model call (tests). */
@@ -778,9 +799,9 @@ export interface ProcessOptions {
 }
 
 /** Run the pipeline for one day and return its outcome. Throws and writes nothing on failure. */
-export function processDay(day: Day, root: string, options: ProcessOptions = {}): string {
+export function processDay(day: Day, root: string, options: ProcessOptions): string {
   const gh = options.gh ?? runGh;
-  const [monitored, unseen] = readProjects(root, listOrgRepos(gh));
+  const [monitored, unseen] = readProjects(root, listOrgRepos(options.owners, gh));
   const repos = monitored.flatMap((project) => project.repos);
   const grouped = groupByProject(fetchActivity(day, repos, gh), monitored);
   const notePath = join(root, DAILY_DIR, `${isoDate(day)}.md`);
@@ -810,7 +831,9 @@ export function processDay(day: Day, root: string, options: ProcessOptions = {})
 
 const USAGE = `usage: llmos-daily-activity [-h] [--root ROOT] [--date YYYY-MM-DD]
 
-Write the machine-owned ## Projects block of daily notes.
+Write the machine-owned ## Projects block of daily notes. The projects it
+monitors are those whose folder name matches a repository of one of the
+GitHub owners in "github_owners" of ~/.config/llmos/config.json.
 
 options:
   -h, --help         show this help message and exit
@@ -848,11 +871,12 @@ export function main(argv: string[]): number {
   }
   try {
     const root = values.root || vaultRoot();
+    const owners = githubOwners();
     const today = parseDay(localDate(Date.now())) as Day;
     const days = only === undefined ? [today - 1, today] : [only];
     const written: string[] = [];
     for (const day of days) {
-      const outcome = processDay(day, root);
+      const outcome = processDay(day, root, { owners });
       console.log(`${isoDate(day)}: ${outcome}`);
       if (outcome === "created" || outcome === "updated") {
         written.push(join(DAILY_DIR, `${isoDate(day)}.md`));

@@ -148,7 +148,7 @@ describe("health: the inbox", () => {
   test("is the inbox/ folder in the core profile", async () => {
     const report = await health({ "inbox/capture.md": old, "raw/capture.md": old }, [
       "--vault",
-      "second-vault",
+      "notebook",
     ]);
     expect(report.stale_inbox).toEqual(["inbox/capture.md"]);
   });
@@ -195,7 +195,7 @@ describe("health: orphans and categories", () => {
         "notes/filed.md": `${filed("Papers")}# Filed\n`,
         "inbox/Inbox.md": "# Inbox\n",
       },
-      ["--vault", "second-vault"],
+      ["--vault", "notebook"],
     );
     expect(report.orphans).toContain("notes/filed.md");
     expect(report.orphans).toContain("inbox/Inbox.md");
@@ -276,7 +276,7 @@ describe("health: the templates folder is scaffolding in the llmos vault", () =>
   test("the core profile reports a template's orphan, dead-end, and placeholder links", async () => {
     const report = await health(
       { "categories/templates/Meeting.md": meeting, "categories/templates/Project.md": project },
-      ["--vault", "second-vault"],
+      ["--vault", "notebook"],
     );
     expect(report.orphans).toContain("categories/templates/Meeting.md");
     expect(report.dead_ends).toContain("categories/templates/Meeting.md");

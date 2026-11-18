@@ -48,7 +48,7 @@ const FILES: Record<string, string> = {
     "active",
     `## Intro\n\n#  Alpha ${EM_DASH} ${U_UMLAUT}nicode ${GRIN}  \n\nText.\n`,
   ),
-  // Monitored through a case-insensitive repository match (linux-host-ucdavis/Beta).
+  // Monitored through a case-insensitive repository match (example-org/Beta).
   "projects/beta/beta.md": landing("active", "# Beta\n"),
   // Active without a repository: listed as not monitored, in Path order (a, a-b).
   "projects/a/a.md": landing("active", "# A\n"),
@@ -76,9 +76,10 @@ export function writeDigestEdgeVault(root: string): void {
   mkdirSync(join(root, ".obsidian"), { recursive: true });
 }
 
-const ORG_REPOS: Record<string, string[]> = {
+/** The repositories of each configured GitHub owner. */
+export const ORG_REPOS: Record<string, string[]> = {
   kpeez: ["kpeez/alpha", "kpeez/dotfiles"],
-  "linux-host-ucdavis": ["linux-host-ucdavis/Beta", "linux-host-ucdavis/other"],
+  "example-org": ["example-org/Beta", "example-org/other"],
 };
 
 type Item = Record<string, unknown>;
@@ -125,27 +126,27 @@ const DAYS: Record<string, Day> = {
     ],
     opened: [
       pr("kpeez/alpha", 12, "Add gate", "Opened and merged the same day."),
-      pr("linux-host-ucdavis/Beta", 3, "Beta work", `Body with ${c(0x430, 0x431)} and\nlines.`),
+      pr("example-org/Beta", 3, "Beta work", `Body with ${c(0x430, 0x431)} and\nlines.`),
     ],
     issues: [
       // 22:30 local on the 16th, already the 17th in UTC.
       issue("kpeez/alpha", 5, "2026-07-17T05:30:00Z", OPEN),
       issue("kpeez/alpha", 6, "2026-07-01T10:00:00Z", "2026-07-16T18:00:00Z"),
-      issue("linux-host-ucdavis/Beta", 8, "2026-07-01T10:00:00Z", OPEN),
+      issue("example-org/Beta", 8, "2026-07-01T10:00:00Z", OPEN),
       {
-        ...issue("linux-host-ucdavis/Beta", 9, "2026-07-16T12:00:00Z", OPEN),
+        ...issue("example-org/Beta", 9, "2026-07-16T12:00:00Z", OPEN),
         [c(0x43a)]: { b: 1, a: [] },
       },
     ],
     commits: [
       commit("kpeez/alpha", "abc123", "2026-07-16T10:00:00.000-07:00"),
-      commit("linux-host-ucdavis/Beta", "def456", "2026-07-16T11:00:00Z"),
+      commit("example-org/Beta", "def456", "2026-07-16T11:00:00Z"),
     ],
   },
   "2026-07-17": {
     ...empty(),
-    merged: [pr("linux-host-ucdavis/Beta", 4, "Beta fix", "")],
-    commits: [commit("linux-host-ucdavis/Beta", "aaa111", "2026-07-17T09:00:00Z")],
+    merged: [pr("example-org/Beta", 4, "Beta fix", "")],
+    commits: [commit("example-org/Beta", "aaa111", "2026-07-17T09:00:00Z")],
   },
   "2026-07-18": { ...empty(), commits: [commit("kpeez/alpha", "bbb222", "2026-07-18T09:00:00Z")] },
   "2026-07-19": empty(),
@@ -175,7 +176,7 @@ const DAYS: Record<string, Day> = {
     merged: [pr("kpeez/alpha", 40, "Merge same day", "Opened and merged.")],
     opened: [
       pr("kpeez/alpha", 40, "Merge same day", "Opened and merged."),
-      { ...pr("linux-host-ucdavis/Beta", 40, "Beta draft", "Still open."), state: "OPEN" },
+      { ...pr("example-org/Beta", 40, "Beta draft", "Still open."), state: "OPEN" },
     ],
   },
   "2026-07-20": { ...empty(), merged: [pr("kpeez/dotfiles", 1, "Rogue", "Not a project.")] },

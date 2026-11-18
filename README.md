@@ -6,8 +6,9 @@ notes. The code is TypeScript, run by Bun.
 
 ## Install
 
-On a new host, run `cli/scripts/bootstrap.sh` from a checkout (see the
-[repository README](../README.md)). It installs the CLI and the plugin.
+On a new host, run `cli/scripts/bootstrap.sh <vault root>` from a checkout.
+It installs the CLI and the plugin, points the CLI at the vault, and runs
+`llmos-doctor`. The vault can be at any path.
 
 To install the plugin by hand, in Claude Code:
 
@@ -39,7 +40,7 @@ To install the CLI by hand, see [CLI and scripts](docs/cli.md#install).
 
 ```sh
 llmos-vault --help
-llmos-vault read llmOS --vault llmos
+llmos-vault health --vault llmos
 ```
 
 Every command takes `--help`.

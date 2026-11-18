@@ -6,7 +6,7 @@
  * digest edge days (`digest.test.ts`).
  *
  * The snapshots were first recorded while the retired Python package was
- * still the reference (kpeez/llmos#36): the differential harness and the
+ * still the reference: the differential harness and the
  * digest parity check required the TypeScript output to equal the Python
  * output apart from the intended differences on their allowlists, and only
  * then wrote the TypeScript output. Where the two differed, the snapshot

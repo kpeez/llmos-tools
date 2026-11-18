@@ -26,8 +26,8 @@ test:
 contract-record:
     bun test/contract/record.ts
 
-# Check the frontmatter invariants on a vault. For the real vault, copy it
-# outside llmOS/ first and pass the copy; write any report to ../../artifacts/.
+# Check the frontmatter invariants on a vault. For the real vault, pass a copy
+# made outside it; write any report to ../../artifacts/.
 invariants +vaults:
     bun test/contract/invariants.ts {{vaults}}
 

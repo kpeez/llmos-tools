@@ -1,10 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, lstatSync, readFileSync, statSync, symlinkSync } from "node:fs";
-import { join } from "node:path";
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import { renderHelp } from "../src/cli.ts";
 import { COMMANDS, DEFAULT_REFERENCE_PATH, DEFAULT_SKILL_PATH } from "../src/commands.ts";
 import { renderReference, renderSkill } from "../src/docs.ts";
-import { cli, dailyNote, makeVault, read, recordedObsidian, TODAY } from "./helpers.ts";
+import {
+  cli,
+  dailyNote,
+  isolatedEnv,
+  makeVault,
+  read,
+  recordedObsidian,
+  TODAY,
+} from "./helpers.ts";
 
 const DAILY = `daily/${TODAY}.md`;
 const ALPHA =
@@ -57,7 +75,7 @@ describe("command line", () => {
       ["nope"],
       ["read"],
       ["subgraph", "x", "--depth", "two"],
-      ["read", "x", "--vault", "other"],
+      ["read", "x", "--vault", "../other"],
       ["read", "x", "--bogus"],
       ["daily", "nope"],
     ]) {
@@ -65,6 +83,23 @@ describe("command line", () => {
       expect(result.exitCode).toBe(2);
       expect(result.stderr).not.toBe("");
     }
+  });
+
+  test("config set-root writes the vault root and keeps the other config keys", async () => {
+    const root = makeVault();
+    const env = isolatedEnv();
+    const config = join(env.HOME as string, ".config", "llmos", "config.json");
+    mkdirSync(dirname(config), { recursive: true });
+    writeFileSync(
+      config,
+      `${JSON.stringify({ github_owners: ["octocat"], vault_root: "/old" })}\n`,
+    );
+    const result = await cli(root, ["config", "set-root", root], { env });
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(readFileSync(config, "utf8"))).toEqual({
+      github_owners: ["octocat"],
+      vault_root: realpathSync(root),
+    });
   });
 
   test("a value that starts with a dash is a value, not an option", async () => {
@@ -90,7 +125,7 @@ describe("command line", () => {
   });
 
   test("daily verbs refuse a vault without the llmOS daily contract", async () => {
-    const result = await cli(makeVault(), ["daily", "recent", "--vault", "second-vault"]);
+    const result = await cli(makeVault(), ["daily", "recent", "--vault", "notebook"]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("llmOS-profile feature");
   });

@@ -27,7 +27,7 @@ import {
   search,
   unembeddedCount,
 } from "./qmd.ts";
-import { validated } from "./root.ts";
+import { readConfig, validated } from "./root.ts";
 import { captureSource } from "./sources.ts";
 import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
 import {
@@ -53,7 +53,7 @@ export const DEFAULT_SKILL_PATH = join(TOOLS, "skills", "vault-cli", "SKILL.md")
 const DAILY_TEMPLATE = "daily-note";
 
 function vaultOption(help: string): Record<string, OptionSpec> {
-  return { vault: { type: "string", default: "llmos", choices: ["llmos", "second-vault"], help } };
+  return { vault: { type: "string", default: "llmos", metavar: "NAME", help } };
 }
 
 // Handlers are also called without the command line (the MCP server), so
@@ -71,11 +71,23 @@ function optionalStr(values: Values, name: string): string | undefined {
   return values[name] === undefined ? undefined : str(values, name);
 }
 
-/** The `--vault` name: llmos or second-vault. */
+/**
+ * The `--vault` name: "llmos" for the llmOS vault, else the folder name of
+ * another vault in Obsidian's registry (`resolveVaultRoot` refuses an
+ * unknown name). A path is never a vault name.
+ */
 function vaultName(values: Values): string {
   const vault = str(values, "vault");
-  if (vault !== "llmos" && vault !== "second-vault") {
-    throw new UsageError(`vault must be llmos or second-vault, got '${vault}'`);
+  if (
+    vault === "" ||
+    vault === "." ||
+    vault === ".." ||
+    /[/\\]/.test(vault) ||
+    CONTROL.test(vault)
+  ) {
+    throw new UsageError(
+      `vault must be llmos or a vault folder name, got ${JSON.stringify(vault)}`,
+    );
   }
   return vault;
 }
@@ -403,19 +415,19 @@ note links to and that has no valid category. In the llmos vault, a note has a
 valid category when its \`categories\` names a hub note in categories/ (the
 hub's Base lists the note), so such a note is never an orphan. In the llmos
 vault the inbox is every note in raw/ except a captured source's
-raw/<slug>/source.md; in the second-vault vault it is inbox/. A note under
+raw/<slug>/source.md; in another vault it is inbox/. A note under
 categories/templates/ is scaffolding in the llmos vault: it is never an orphan or a dead-end, its placeholder links (such as
 {{title}}) are not reported, and a link from it does not count as inbound. A
-link to a template still resolves. In the second-vault vault (--vault second-vault) only
+link to a template still resolves. In another vault (--vault NAME) only
 links count, and templates are checked like any note.
 Orphans, dead-ends, and the referrer of an unresolved link are vault-relative
 note paths with .md, because many notes share a file name.
 overdue_jobs lists the jobs whose run record is missing, not a valid past
 YYYY-MM-DD date, or too old: \`discover\` (the \`discovered\` date on
 categories/Knowledge.md, max 10 days) and \`daily-activity\`, the nightly
-digest on linux-host (the \`digested\` date on categories/Reviews.md, max 3 days).
-Run the job to clear it; for \`daily-activity\`, read its journal on linux-host
-first. qmd_unembedded
+digest on the host that runs its timer (the \`digested\` date on
+categories/Reviews.md, max 3 days). Run the job to clear it; for
+\`daily-activity\`, read its journal on that host first. qmd_unembedded
 counts the documents in the whole qmd index that still need embedding (the
 plugin's Stop hook updates only keyword search); it is informational and does
 not change the exit code. Run \`reindex\` to embed them.
@@ -985,7 +997,7 @@ const searchCommand: Command = {
     "Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline.",
   description: `Use when an agent needs notes about a topic and does not know their names.
 Searches the qmd index through the qmd SDK, the same index the \`qmd\`
-command uses. Three modes; times are for mac-host (an M-series Mac):
+command uses. Three modes; times are for an M-series Mac:
 - keyword (default): BM25 on the query's words. No model, tens of
   milliseconds. Best when you know words the note uses.
 - --semantic: vector similarity with the embedding model. About 0.8 s,
@@ -1014,8 +1026,8 @@ Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
     },
     limit: { type: "integer", default: 10, metavar: "N", help: "Maximum number of results." },
   },
-  exampleOutput: `[{"path": "projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md",
-  "title": "Port the tools to TypeScript on Bun", "score": 0.91, "line": 12,
+  exampleOutput: `[{"path": "knowledge/qmd index.md",
+  "title": "qmd index", "score": 0.91, "line": 12,
   "snippet": "..."}]`,
   example: 'llmos-vault search "qmd index" --limit 5',
   async run(values, context) {
@@ -1088,14 +1100,16 @@ const configSetRoot: Command = {
   description: `Use when setting up a host (setup-llmos) and the llmOS root is not
 configured. The path must exist and contain both \`.obsidian/\` and
 \`AGENTS.md\`; otherwise nothing is written and this exits 1. The root is
-stored as a real path in \`~/.config/llmos/config.json\`, which every
-llmOS command reads when \`$LLMOS_ROOT\` is not set.
+stored as a real path in \`vault_root\` of \`~/.config/llmos/config.json\`,
+which every llmOS command reads when \`$LLMOS_ROOT\` is not set. Other keys
+in the file, such as \`github_owners\`, are kept. The vault can be at any
+path, such as the root of its own Git repository.
 Do NOT use when \`$LLMOS_ROOT\` is set for the session -- it wins over the
 config file.`,
   arguments: [{ name: "path", help: "The llmOS vault folder." }],
   options: {},
-  exampleOutput: "wrote /home/me/.config/llmos/config.json -> /home/me/code/llmos/llmOS",
-  example: "llmos-vault config set-root ~/code/llmos/llmOS",
+  exampleOutput: "wrote /home/me/.config/llmos/config.json -> /home/me/notes/vault",
+  example: "llmos-vault config set-root ~/notes/vault",
   run(values, context) {
     const home = context.env.HOME || homedir();
     const given = str(values, "path");
@@ -1104,7 +1118,7 @@ config file.`,
     const root = validated(existsSync(absolute) ? realpathSync(absolute) : absolute);
     const config = join(home, ".config", "llmos", "config.json");
     mkdirSync(dirname(config), { recursive: true });
-    writeFileSync(config, `${JSON.stringify({ vault_root: root })}\n`);
+    writeFileSync(config, `${JSON.stringify({ ...readConfig(config), vault_root: root })}\n`);
     return { text: `wrote ${config} -> ${root}` };
   },
 };

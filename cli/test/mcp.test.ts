@@ -390,7 +390,7 @@ describe("hostile arguments are refused", () => {
   const SHAPES: [string, unknown][] = [
     ["read", {}],
     ["read", { note: 42 }],
-    ["read", { note: "alpha", vault: "second-vault" }],
+    ["read", { note: "alpha", vault: "notebook" }],
     ["read", { note: "al\npha" }],
     ["read", { note: "a".repeat(1025) }],
     ["read", null],

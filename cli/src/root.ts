@@ -4,8 +4,8 @@
  * The llmOS root comes from `$LLMOS_ROOT`, then the config file
  * (`vault_root`), and otherwise fails loudly. No branch derives the root from
  * this file's location or the working directory (ADR-0001). Obsidian's own
- * registry separately lists every vault it knows (llmOS and second-vault), for
- * `--vault second-vault` and for the Bash guard.
+ * registry separately lists every vault it knows, for `--vault NAME` (a
+ * vault other than llmOS, found by its folder name) and for the Bash guard.
  *
  * Every failure throws `VaultRootError`. Only a CLI entry point may turn it
  * into an exit code.
@@ -26,7 +26,7 @@ export const DEFAULT_REGISTRY_PATH = join(
 
 export const REPAIR_MESSAGE =
   "llmOS vault root is not configured. Run /setup-llmos, or set it manually:\n" +
-  "  export LLMOS_ROOT=/path/to/llmos/llmOS";
+  "  export LLMOS_ROOT=/path/to/vault";
 
 export class VaultRootError extends Error {
   override name = "VaultRootError";
@@ -65,19 +65,26 @@ export function validated(path: string): string {
   return path;
 }
 
+/**
+ * The llmOS config file as an object: `vault_root`, and the host settings
+ * such as `github_owners`. A missing file, or one that holds no object, is
+ * empty.
+ */
+export function readConfig(configPath: string = DEFAULT_CONFIG_PATH): Record<string, unknown> {
+  if (!existsSync(configPath)) return {};
+  const config: unknown = JSON.parse(readFileSync(configPath, "utf8"));
+  return config !== null && typeof config === "object" && !Array.isArray(config)
+    ? (config as Record<string, unknown>)
+    : {};
+}
+
 /** Resolve the llmOS vault root: `$LLMOS_ROOT`, then the config file, else throw. */
 export function vaultRoot(options: RootOptions = {}): string {
   const env = options.env ?? process.env;
   const fromEnv = env.LLMOS_ROOT;
   if (fromEnv) return validated(expandUser(fromEnv));
-  const configPath = options.configPath ?? DEFAULT_CONFIG_PATH;
-  if (existsSync(configPath)) {
-    const config: unknown = JSON.parse(readFileSync(configPath, "utf8"));
-    if (config !== null && typeof config === "object" && !Array.isArray(config)) {
-      const root = (config as Record<string, unknown>).vault_root;
-      if (root !== undefined) return validated(expandUser(String(root)));
-    }
-  }
+  const root = readConfig(options.configPath ?? DEFAULT_CONFIG_PATH).vault_root;
+  if (root !== undefined) return validated(expandUser(String(root)));
   throw new VaultRootError(REPAIR_MESSAGE);
 }
 

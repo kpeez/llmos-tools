@@ -5,6 +5,13 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The daily activity digest reads the GitHub owners it monitors from
+  `github_owners` in `~/.config/llmos/config.json`, and fails when the list
+  is missing or empty. The code no longer names them. Add the key on the
+  host that runs the digest timer before you update its install.
+- `--vault` takes the folder name of any vault in Obsidian's registry, not
+  one fixed second vault. `llmos` still means the llmOS vault.
+- `llmos-vault config set-root` keeps the other keys of the config file.
 - Hermes Agent runs the llmOS hooks. The adapter plugin in `hermes/` maps
   Hermes hooks to `dist/hooks.js`: session context on the first turn, the
   vault guard on `terminal`, read context and frontmatter stamps on the file
@@ -106,8 +113,8 @@ its next daily digest. Then run `llmos-vault reindex`.
   to `raw/<slug>/source`.
 - The inbox is every note in `raw/` except a capture's
   `raw/<slug>/source.md`. `health` lists those notes under `stale_inbox`.
-  The inbox hub note `inbox/Inbox.md` is gone. The second-vault vault keeps
-  `inbox/`.
+  The inbox hub note `inbox/Inbox.md` is gone. A plain vault
+  (another `--vault`) keeps `inbox/`.
 - `schema.md`, `authoring.md`, and `ingest-contract.md` are at the vault
   root, not in `agents/references/`. The hooks and the MCP server name the
   new paths.
@@ -177,7 +184,7 @@ its next daily digest. Then run `llmos-vault reindex`.
   in the future, or more than 3 days old. `set-property`, `remove-property`, and `create` refuse that
   property, as they refuse `discovered`.
 - `llmos-daily-activity --push` commits only the notes the run wrote and the
-  run record, rebases on the upstream, and pushes. The linux-host timer passes
+  run record, rebases on the upstream, and pushes. The digest timer passes
   it, so the digest reaches every host without a manual commit.
 - `tools/.tool-versions` pins Bun 1.4.3 for local builds and CI. `just hooks`
   fails when `bun` is another version, because the committed bundles must
@@ -242,14 +249,14 @@ its next daily digest. Then run `llmos-vault reindex`.
     name, so a name did not say which note it meant. This changes the JSON
     values and the text summary.
   - In the llmos vault, a note with a valid category and the inbox hub are not
-    orphans. The second-vault vault (`--vault second-vault`) counts backlinks only.
+    orphans. A plain vault (another `--vault`) counts backlinks only.
   - In the llmos vault, a note in the root `templates/` folder is no orphan and
     no dead-end. An unresolved link from it is skipped only when its target is a
     placeholder, a target with `{{` and `}}` (such as `{{title}}.base` or
     `{{date:YYYY-MM-DD}}`). A template that links a real missing note still
     reports it. A link from a template resolves its target, but does not count
     as an inbound link, so a note that only a template links to stays an orphan.
-    Folders named `templates` elsewhere are checked like any note. The second-vault
+    Folders named `templates` elsewhere are checked like any note. A plain
     vault reports templates as before.
   - The schema audit no longer skips `archive/specs/`, a folder the vault
     deleted. Notes under `archive/` are audited like any other note.
@@ -444,7 +451,7 @@ matcher.
 - `llmos-doctor` gains an `mcp-server` check that starts the server and
   lists its tools.
 - Changed: `llmos-vault search --semantic` is now vector search with the
-  embedding model (about 0.8 s on mac-host), not qmd's hybrid pipeline. The new
+  embedding model (about 0.8 s on an M-series Mac), not qmd's hybrid pipeline. The new
   `--hybrid` flag runs the full pipeline (query expansion, keyword and vector
   retrieval, reranking; 13 to 22 s per query with the models loaded). The
   MCP `search` tool takes `semantic` and `hybrid` the same way.
@@ -525,8 +532,8 @@ run on Bun. Each host needs `bun` on the hook `PATH` and a CLI install through
   rules, inbox filing no longer stamps `[[Specifications]]`, and
   `llmos-audit --fix`, which only stamped specs, is removed.
 - The daily activity digest derives each active project's repository from its
-  folder name across `kpeez` and `linux-host-ucdavis` instead of reading a
-  `repositories:` allowlist; a name found in both orgs is a hard failure.
+  folder name across the monitored GitHub owners instead of reading a
+  `repositories:` allowlist; a name found under two owners is a hard failure.
 - Replace the nightly closeout and weekly synthesis docs, which never ran, with
   the digest's systemd user timer.
 

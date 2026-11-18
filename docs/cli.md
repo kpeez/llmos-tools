@@ -4,9 +4,10 @@ This page is for people who run the llmOS CLI or its scripts.
 
 ## Install
 
-On a new host, `cli/scripts/bootstrap.sh` from a checkout installs the CLI, sets
-the vault root, installs the plugin for each agent on `PATH`, and runs
-`llmos-doctor` (see the [repository README](../../README.md)). The `setup-llmos` skill also
+On a new host, `cli/scripts/bootstrap.sh <vault root>` from a checkout installs
+the CLI, sets the vault root (any path, such as the root of the vault's own Git
+repository), installs the plugin for each agent on `PATH`, and runs
+`llmos-doctor`. The `setup-llmos` skill also
 installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
 `PATH`:
 

@@ -22,7 +22,7 @@ function file(name: string, value: unknown): string {
 
 const fromEnv = vault("env-vault");
 const fromConfig = vault("config-vault");
-const second-vault = vault("second-vault");
+const notebook = vault("notebook");
 const config = file("config.json", { vault_root: fromConfig });
 const missing = join(scratch, "missing.json");
 
@@ -49,13 +49,13 @@ describe("vaultRoot", () => {
 
 describe("resolveVaultRoot", () => {
   const registry = file("obsidian.json", {
-    vaults: { a: { path: fromConfig, ts: 1 }, b: { path: second-vault, ts: 2 } },
+    vaults: { a: { path: fromConfig, ts: 1 }, b: { path: notebook, ts: 2 } },
   });
 
   test("a vault name other than llmos is found in Obsidian's registry by folder name", () => {
     expect(
-      resolveVaultRoot("second-vault", { env: {}, configPath: config, registryPath: registry }),
-    ).toBe(second-vault);
+      resolveVaultRoot("notebook", { env: {}, configPath: config, registryPath: registry }),
+    ).toBe(notebook);
     expect(resolveVaultRoot("llmos", { env: {}, configPath: config, registryPath: missing })).toBe(
       fromConfig,
     );
@@ -63,6 +63,6 @@ describe("resolveVaultRoot", () => {
 
   test("an unknown name or a missing registry throws VaultRootError", () => {
     expect(() => resolveVaultRoot("nope", { registryPath: registry })).toThrow(VaultRootError);
-    expect(() => resolveVaultRoot("second-vault", { registryPath: missing })).toThrow(VaultRootError);
+    expect(() => resolveVaultRoot("notebook", { registryPath: missing })).toThrow(VaultRootError);
   });
 });

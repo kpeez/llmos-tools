@@ -172,7 +172,7 @@ export type SearchMode = "keyword" | "semantic" | "hybrid";
 
 /**
  * Search one collection in `mode`. The first model-backed call in a
- * process loads its models; on mac-host a semantic search then takes about
+ * process loads its models; on an M-series Mac a semantic search then takes about
  * 0.8 s, a hybrid one 13 to 22 s.
  */
 export async function search(

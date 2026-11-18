@@ -179,7 +179,7 @@ export function renderOverview(commands: readonly Command[], group?: string): st
   return [
     `Usage: ${PROGRAM} ${group ? `${group} ` : ""}<command> [arguments] [options]`,
     "",
-    "Headless verbs for the llmOS and second-vault vaults. Every command takes --help.",
+    "Headless verbs for the llmOS vault and other Obsidian vaults. Every command takes --help.",
     "",
     "Commands:",
     ...table(shown.map((c) => [c.name, c.summary])),

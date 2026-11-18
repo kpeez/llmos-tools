@@ -14,7 +14,7 @@ The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
 The host needs `bun` on `PATH`.
 
 On a new host with a checkout of the repository,
-`<checkout>/tools/cli/scripts/bootstrap.sh` does the install, the vault root, the
+`<checkout>/tools/cli/scripts/bootstrap.sh <vault root>` does the install, the vault root, the
 plugin install for each agent on `PATH`, and the first doctor run. Then
 continue at the workflow below.
 
@@ -65,8 +65,9 @@ because loading the embedding model takes seconds. Embedding for
 1. **Run the doctor.** Treat the result as healthy only when the command
    exits `0`; binary presence alone is insufficient.
 2. **If `vault-root` fails**, the machine has no `$LLMOS_ROOT` and no
-   `~/.config/llmos/config.json`. Ask the user for the absolute path to their
-   llmOS vault checkout, then write the config:
+   `vault_root` in `~/.config/llmos/config.json`. Ask the user for the
+   absolute path to their llmOS vault folder. It can be at any path, such as
+   the root of its own Git repository. Then write the config:
 
    ```sh
    llmos-vault config set-root "<path the user gave>"
@@ -75,7 +76,8 @@ because loading the embedding model takes seconds. Embedding for
    The command validates the path before writing anything — it must exist and
    contain both `.obsidian/` and `AGENTS.md`. It never writes a config
    pointing at a non-vault; on a rejected path it exits nonzero with the
-   reason and writes nothing, so re-ask the user and retry rather than
+   reason and writes nothing. It keeps the other keys of the config file.
+   Re-ask the user and retry rather than
    guessing or falling back to a nearby directory.
 3. **Rerun the doctor** to confirm `vault-root` now passes.
 4. **Review every remaining failure's `REPAIR` command** with the user.
@@ -86,8 +88,8 @@ because loading the embedding model takes seconds. Embedding for
 
 ## Platform notes
 
-The `obsidian-vault` check needs Obsidian already running with the `llmOS`
-vault open and its command line interface enabled (Settings → General →
+The `obsidian-vault` check needs Obsidian already running with the llmOS
+vault open (Obsidian names a vault by its folder name) and its command line interface enabled (Settings → General →
 Advanced → Command line interface).
 
 - **macOS** ships the `obsidian-cli` binary inside the app bundle; the repair

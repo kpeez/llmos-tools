@@ -119,9 +119,9 @@ describe("raw mv and rm on vault notes", () => {
 
   test("guards a vault known only from Obsidian's registry", () => {
     const tmp = temporaryFolder();
-    const second-vault = makeVault(join(tmp, "second-vault"));
-    writeRegistry(join(tmp, "home"), { "second-vault-id": second-vault });
-    const note = writeFile(join(second-vault, "note.md"), "# note\n");
+    const notebook = makeVault(join(tmp, "notebook"));
+    writeRegistry(join(tmp, "home"), { "notebook-id": notebook });
+    const note = writeFile(join(notebook, "note.md"), "# note\n");
 
     const result = guard(`rm ${note}`, tmp);
 

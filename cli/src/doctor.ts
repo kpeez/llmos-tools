@@ -37,7 +37,7 @@ const CLI = resolve(import.meta.dir, "..");
 export const OWN_QMD = join(CLI, "bin", "qmd.ts");
 
 const ROOT_REPAIR =
-  'Run /setup-llmos, or set it manually: export LLMOS_ROOT="/absolute/path/to/llmos/llmOS"';
+  'Run /setup-llmos, or set it manually: export LLMOS_ROOT="/absolute/path/to/vault"';
 const INSTALL_REPAIR = "Run /setup-llmos to install the llmOS CLI, which provides qmd";
 
 function isDirectory(path: string): boolean {

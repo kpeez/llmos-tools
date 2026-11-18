@@ -1,6 +1,6 @@
 ---
 name: vault-cli
-description: Route vault operations to the llmos MCP tools when the server is connected, else the llmos-vault CLI. Use when reading, listing, moving, linking, or filing notes, working with daily notes, checking vault health, or otherwise needing a deterministic headless verb against the llmOS or second-vault vault instead of hand-typed obsidian-cli calls.
+description: Route vault operations to the llmos MCP tools when the server is connected, else the llmos-vault CLI. Use when reading, listing, moving, linking, or filing notes, working with daily notes, checking vault health, or otherwise needing a deterministic headless verb against the llmOS vault or another Obsidian vault instead of hand-typed obsidian-cli calls.
 ---
 
 # Vault CLI
@@ -22,7 +22,7 @@ Use them before `Grep` and `Read` too, because they return less text:
 heading's text and with `properties_only` only the frontmatter; `list` with
 a `folder` returns the properties of every note there in one call.
 
-Use the CLI for everything else: the second-vault vault, `list` of the whole vault, `move`, `create`,
+Use the CLI for everything else: another vault (`--vault NAME`), `list` of the whole vault, `move`, `create`,
 `append`, `remove-property`, `daily get-or-create`, `daily recent`,
 `reindex`, and any session where the server is not connected. A `setup` tool
 in its place means the CLI is not installed; run `setup-llmos`.

@@ -362,16 +362,16 @@ describe("pre-tool-use", () => {
       tmp,
       { root: vault },
     );
-    const second-vault = runHook(
+    const notebook = runHook(
       "pre-tool-use",
-      { tool_name: "Bash", tool_input: { command: "llmos-vault read note --vault second-vault" } },
+      { tool_name: "Bash", tool_input: { command: "llmos-vault read note --vault notebook" } },
       tmp,
       { root: vault },
     );
 
     expect(additionalContext(llmos, "PreToolUse")).toContain("Obsidian vault note");
-    expect(second-vault.stdout).toBe("");
-    expect(second-vault.exitCode).toBe(0);
+    expect(notebook.stdout).toBe("");
+    expect(notebook.exitCode).toBe(0);
   });
 
   test("ignores compound shell commands", () => {

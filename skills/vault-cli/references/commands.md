@@ -34,7 +34,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 ## `append`
 
 ```text
-Usage: llmos-vault append <note> <content> [--vault llmos|second-vault]
+Usage: llmos-vault append <note> <content> [--vault NAME]
 
 Append content to the end of an existing note.
 
@@ -62,7 +62,7 @@ Example:
 ## `check`
 
 ```text
-Usage: llmos-vault check <note> [--vault llmos|second-vault]
+Usage: llmos-vault check <note> [--vault NAME]
 
 Review one note for unlinked references and Markdown that renders wrongly.
 
@@ -100,7 +100,7 @@ Example:
 ## `claims lint`
 
 ```text
-Usage: llmos-vault claims lint <paths...> [--vault llmos|second-vault] [--json]
+Usage: llmos-vault claims lint <paths...> [--vault NAME] [--json]
 
 Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote.
 
@@ -169,8 +169,10 @@ Validate a vault root and write it to the llmOS config file.
 Use when setting up a host (setup-llmos) and the llmOS root is not
 configured. The path must exist and contain both `.obsidian/` and
 `AGENTS.md`; otherwise nothing is written and this exits 1. The root is
-stored as a real path in `~/.config/llmos/config.json`, which every
-llmOS command reads when `$LLMOS_ROOT` is not set.
+stored as a real path in `vault_root` of `~/.config/llmos/config.json`,
+which every llmOS command reads when `$LLMOS_ROOT` is not set. Other keys
+in the file, such as `github_owners`, are kept. The vault can be at any
+path, such as the root of its own Git repository.
 Do NOT use when `$LLMOS_ROOT` is set for the session -- it wins over the
 config file.
 
@@ -178,16 +180,16 @@ Arguments:
   path  The llmOS vault folder.
 
 Example output:
-  wrote /home/me/.config/llmos/config.json -> /home/me/code/llmos/llmOS
+  wrote /home/me/.config/llmos/config.json -> /home/me/notes/vault
 
 Example:
-  llmos-vault config set-root ~/code/llmos/llmOS
+  llmos-vault config set-root ~/notes/vault
 ```
 
 ## `create`
 
 ```text
-Usage: llmos-vault create <name> [--vault llmos|second-vault] [--content TEXT] [--template NAME]
+Usage: llmos-vault create <name> [--vault NAME] [--content TEXT] [--template NAME]
 
 Create a new note; with --template, Obsidian creates it from a vault template.
 
@@ -218,7 +220,7 @@ Example:
 ## `daily append-thought`
 
 ```text
-Usage: llmos-vault daily append-thought <text> [--vault llmos|second-vault]
+Usage: llmos-vault daily append-thought <text> [--vault NAME]
 
 Append `text` under today's daily note's `## Thoughts` heading.
 
@@ -246,7 +248,7 @@ Example:
 ## `daily get-or-create`
 
 ```text
-Usage: llmos-vault daily get-or-create [--vault llmos|second-vault]
+Usage: llmos-vault daily get-or-create [--vault NAME]
 
 Print today's daily note as JSON, creating it from the daily template if it is missing.
 
@@ -270,7 +272,7 @@ Example:
 ## `daily recent`
 
 ```text
-Usage: llmos-vault daily recent [--n N] [--vault llmos|second-vault]
+Usage: llmos-vault daily recent [--n N] [--vault NAME]
 
 Print the last `n` daily notes' frontmatter and body as JSON, most recent first.
 
@@ -294,7 +296,7 @@ Example:
 ## `discover`
 
 ```text
-Usage: llmos-vault discover [--vault llmos|second-vault] [--top N] [--out DIR] [--qmd-collection NAME] [--no-record]
+Usage: llmos-vault discover [--vault NAME] [--top N] [--out DIR] [--qmd-collection NAME] [--no-record]
 
 Rank clusters of notes that restate the same works, as candidates to consolidate.
 
@@ -365,7 +367,7 @@ Example:
 ## `file-inbox`
 
 ```text
-Usage: llmos-vault file-inbox <note> <destination> [--vault llmos|second-vault]
+Usage: llmos-vault file-inbox <note> <destination> [--vault NAME]
 
 File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note.
 
@@ -397,7 +399,7 @@ Example:
 ## `health`
 
 ```text
-Usage: llmos-vault health [--vault llmos|second-vault] [--json] [--qmd-collection NAME] [--stale-after-days DAYS]
+Usage: llmos-vault health [--vault NAME] [--json] [--qmd-collection NAME] [--stale-after-days DAYS]
 
 Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps.
 
@@ -414,19 +416,19 @@ note links to and that has no valid category. In the llmos vault, a note has a
 valid category when its `categories` names a hub note in categories/ (the
 hub's Base lists the note), so such a note is never an orphan. In the llmos
 vault the inbox is every note in raw/ except a captured source's
-raw/<slug>/source.md; in the second-vault vault it is inbox/. A note under
+raw/<slug>/source.md; in another vault it is inbox/. A note under
 categories/templates/ is scaffolding in the llmos vault: it is never an orphan or a dead-end, its placeholder links (such as
 {{title}}) are not reported, and a link from it does not count as inbound. A
-link to a template still resolves. In the second-vault vault (--vault second-vault) only
+link to a template still resolves. In another vault (--vault NAME) only
 links count, and templates are checked like any note.
 Orphans, dead-ends, and the referrer of an unresolved link are vault-relative
 note paths with .md, because many notes share a file name.
 overdue_jobs lists the jobs whose run record is missing, not a valid past
 YYYY-MM-DD date, or too old: `discover` (the `discovered` date on
 categories/Knowledge.md, max 10 days) and `daily-activity`, the nightly
-digest on linux-host (the `digested` date on categories/Reviews.md, max 3 days).
-Run the job to clear it; for `daily-activity`, read its journal on linux-host
-first. qmd_unembedded
+digest on the host that runs its timer (the `digested` date on
+categories/Reviews.md, max 3 days). Run the job to clear it; for
+`daily-activity`, read its journal on that host first. qmd_unembedded
 counts the documents in the whole qmd index that still need embedding (the
 plugin's Stop hook updates only keyword search); it is informational and does
 not change the exit code. Run `reindex` to embed them.
@@ -454,7 +456,7 @@ Example:
 ## `list`
 
 ```text
-Usage: llmos-vault list [--vault llmos|second-vault] [--folder PATH] [--properties-only]
+Usage: llmos-vault list [--vault NAME] [--folder PATH] [--properties-only]
 
 Print every note in the vault with its frontmatter and body as JSON.
 
@@ -505,7 +507,7 @@ Example:
 ## `move`
 
 ```text
-Usage: llmos-vault move <note> <to> [--vault llmos|second-vault]
+Usage: llmos-vault move <note> <to> [--vault NAME]
 
 Move or rename a note via obsidian-cli, rewriting every backlink.
 
@@ -533,7 +535,7 @@ Example:
 ## `neighbors`
 
 ```text
-Usage: llmos-vault neighbors <note> [--vault llmos|second-vault]
+Usage: llmos-vault neighbors <note> [--vault NAME]
 
 Print one note's outgoing links, backlinks, and shared-topic siblings.
 
@@ -559,7 +561,7 @@ Example:
 ## `read`
 
 ```text
-Usage: llmos-vault read <note> [--vault llmos|second-vault] [--section HEADING] [--properties-only]
+Usage: llmos-vault read <note> [--vault NAME] [--section HEADING] [--properties-only]
 
 Print one note's frontmatter and body as JSON.
 
@@ -624,7 +626,7 @@ Example:
 ## `remove-property`
 
 ```text
-Usage: llmos-vault remove-property <note> <key> [--vault llmos|second-vault]
+Usage: llmos-vault remove-property <note> <key> [--vault NAME]
 
 Remove a property from a note.
 
@@ -661,7 +663,7 @@ Search a qmd collection for notes: keyword by default, --semantic for vector sea
 
 Use when an agent needs notes about a topic and does not know their names.
 Searches the qmd index through the qmd SDK, the same index the `qmd`
-command uses. Three modes; times are for mac-host (an M-series Mac):
+command uses. Three modes; times are for an M-series Mac:
 - keyword (default): BM25 on the query's words. No model, tens of
   milliseconds. Best when you know words the note uses.
 - --semantic: vector similarity with the embedding model. About 0.8 s,
@@ -686,8 +688,8 @@ Options:
   --limit       Maximum number of results. Default: 10.
 
 Example output:
-  [{"path": "projects/llmos/adrs/0012-port-tools-to-typescript-on-bun.md",
-    "title": "Port the tools to TypeScript on Bun", "score": 0.91, "line": 12,
+  [{"path": "knowledge/qmd index.md",
+    "title": "qmd index", "score": 0.91, "line": 12,
     "snippet": "..."}]
 
 Example:
@@ -697,7 +699,7 @@ Example:
 ## `set-property`
 
 ```text
-Usage: llmos-vault set-property <note> <key> <value> [--vault llmos|second-vault]
+Usage: llmos-vault set-property <note> <key> <value> [--vault NAME]
 
 Set a property on a note.
 
@@ -734,7 +736,7 @@ Example:
 ## `source add`
 
 ```text
-Usage: llmos-vault source add <source> [--vault llmos|second-vault] [--origin URL] [--licence TEXT]
+Usage: llmos-vault source add <source> [--vault NAME] [--origin URL] [--licence TEXT]
 
 Capture an arXiv paper, web page, or PDF into a frozen source folder: raw bytes, figures, converted text, and a manifest.
 
@@ -790,7 +792,7 @@ Example:
 ## `subgraph`
 
 ```text
-Usage: llmos-vault subgraph <note> [--vault llmos|second-vault] [--depth N]
+Usage: llmos-vault subgraph <note> [--vault NAME] [--depth N]
 
 Print the transitive neighborhood of a note out to `depth` hops as JSON.
 
