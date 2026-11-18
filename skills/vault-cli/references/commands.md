@@ -109,7 +109,7 @@ Use before opening a consolidation pull request, and whenever a note with
 (drafted, checked, verified, superseded, or `flagged: <reason>`), the fact
 text, one quoted passage, a final `— [[source#heading|label]]` line, and a
 `^fact-<slug>` block ID on its own line after a blank line. The format and
-the rules are in `schema.md` at the vault root (Compiled facts).
+the rules are in `docs/compiled-facts.md` in the llmOS plugin root.
 Per fact, it checks that the quote occurs in the linked heading's section of
 the source (case and punctuation as written; white space, Unicode forms,
 quote marks, ligatures, soft hyphens, LaTeX symbols, and Markdown markup are

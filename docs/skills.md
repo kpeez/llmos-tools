@@ -10,6 +10,11 @@ This page lists the plugin skills and the authoring rules they deliver.
 | `setup-llmos`           | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing           |
 | `vault-cli`             | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI      |
 
+The source and fact formats that `source add` writes and `claims lint`
+checks are in [Sources and compiled facts](compiled-facts.md), and the rules
+for writing facts are in the [ingest contract](ingest-contract.md). Both ship
+with the tools because the code enforces them.
+
 The authoring contract lives at the vault root in `authoring.md`. It guides
 meaningful wikilinks, heading and block references, aliases, embeds, Bases,
 callouts, and diagrams. The plugin delivers that contract when a tool targets

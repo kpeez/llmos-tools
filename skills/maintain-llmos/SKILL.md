@@ -5,7 +5,7 @@ description: Maintain the shared llmOS Obsidian vault. Use when an agent files o
 
 # Maintain llmOS
 
-Treat llmOS as the canonical shared store; keep reusable knowledge shared. Shared per-project working memory lives in `projects/<project>/memory/` (`MEMORY.md` index + topic files; ADR-0020) rather than provider-private home directories. The plugin hooks sync it between hosts through the vault's Git remote: session start pulls, and the Stop hook commits and pushes only memory files (`LLMOS_NO_GIT_SYNC=1` opts out). Durable knowledge belongs in the vault proper. The rule notes `schema.md`, `authoring.md`, and `ingest-contract.md` sit at the vault root. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
+Treat llmOS as the canonical shared store; keep reusable knowledge shared. Shared per-project working memory lives in `projects/<project>/memory/` (`MEMORY.md` index + topic files; ADR-0020) rather than provider-private home directories. The plugin hooks sync it between hosts through the vault's Git remote: session start pulls, and the Stop hook commits and pushes only memory files (`LLMOS_NO_GIT_SYNC=1` opts out). Durable knowledge belongs in the vault proper. The rule notes `schema.md`, `authoring.md`, and `ingest-contract.md` sit at the vault root. The rules that the tools enforce, the source and fact formats and the ingest contract, ship with the tools in `../../docs/compiled-facts.md` and `../../docs/ingest-contract.md`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
 
 ## Workflow
 

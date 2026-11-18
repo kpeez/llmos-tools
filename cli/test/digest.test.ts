@@ -429,15 +429,15 @@ describe("pushNotes", () => {
     if (result.exitCode !== 0) throw new Error(result.stderr.toString());
     return result.stdout.toString().trim();
   }
-  /** A bare remote and two clones of it, each with the vault at `llmOS/`. */
-  function checkouts(): { remote: string; host: string; other: string } {
+  /** A bare remote and two clones of it, each with the vault at `vault` ("" for the root). */
+  function checkouts(vault = "vault"): { remote: string; host: string; other: string } {
     const dir = tempDir();
     const remote = join(dir, "remote.git");
     git(dir, "init", "--quiet", "--bare", "--initial-branch=main", remote);
     const seed = join(dir, "seed");
     git(dir, "clone", "--quiet", remote, seed);
-    write(join(seed, "llmOS", "daily", "2026-07-15.md"), "old\n");
-    write(join(seed, "llmOS", "notes", "draft.md"), "draft\n");
+    write(join(seed, vault, "daily", "2026-07-15.md"), "old\n");
+    write(join(seed, vault, "notes", "draft.md"), "draft\n");
     git(seed, "add", ".");
     git(seed, "commit", "--quiet", "-m", "seed");
     git(seed, "push", "--quiet", "origin", "HEAD:main");
@@ -453,12 +453,12 @@ describe("pushNotes", () => {
 
   test("commits only its paths, rebases on a moved remote, and pushes", () => {
     const { remote, host, other } = checkouts();
-    write(join(other, "llmOS", "notes", "laptop.md"), "from the laptop\n");
+    write(join(other, "vault", "notes", "laptop.md"), "from the laptop\n");
     git(other, "add", ".");
     git(other, "commit", "--quiet", "-m", "laptop note");
     git(other, "push", "--quiet");
 
-    const vault = join(host, "llmOS");
+    const vault = join(host, "vault");
     write(join(vault, "daily", "2026-07-16.md"), "digest\n");
     write(join(vault, "notes", "draft.md"), "unsaved work\n");
     pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
@@ -467,9 +467,27 @@ describe("pushNotes", () => {
       "daily activity: 2026-07-16\nlaptop note\nseed",
     );
     expect(git(remote, "show", "--name-only", "--format=", "main")).toBe(
-      "llmOS/daily/2026-07-16.md",
+      "vault/daily/2026-07-16.md",
     );
     expect(readFileSync(join(vault, "notes", "draft.md"), "utf8")).toBe("unsaved work\n");
-    expect(git(host, "status", "--porcelain")).toBe("M llmOS/notes/draft.md");
+    expect(git(host, "status", "--porcelain")).toBe("M vault/notes/draft.md");
+  });
+
+  test("pushes a vault that is the root of its own repository", () => {
+    const { remote, host, other } = checkouts("");
+    write(join(other, "notes", "laptop.md"), "from the laptop\n");
+    git(other, "add", ".");
+    git(other, "commit", "--quiet", "-m", "laptop note");
+    git(other, "push", "--quiet");
+
+    write(join(host, "daily", "2026-07-16.md"), "digest\n");
+    write(join(host, "notes", "draft.md"), "unsaved work\n");
+    pushNotes(host, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
+
+    expect(git(remote, "log", "--format=%s", "main")).toBe(
+      "daily activity: 2026-07-16\nlaptop note\nseed",
+    );
+    expect(git(remote, "show", "--name-only", "--format=", "main")).toBe("daily/2026-07-16.md");
+    expect(git(host, "status", "--porcelain")).toBe("M notes/draft.md");
   });
 });

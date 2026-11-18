@@ -26,18 +26,23 @@ the name scan was not run. Do not guess names, and do not collect them from
 notes or sources by hand. Still read the member notes for staff and subject
 names (acknowledgements, methods) and tell the owner about any you find.
 
+Run it from `<vault>`, the worktree's vault root. Paths are relative to it,
+so the check works whether the vault is the repository root or a folder in
+it.
+
 ```sh
+cd <vault>
 git fetch origin main
 B=origin/main
-P=llmOS/projects/<project>                       # the owning project
+P=projects/<project>                             # the owning project
 SHAPES='<regex of the identifier shape(s) from the project notes>'
 ids()   { rg -oNI "$SHAPES" "$P" | sort -u; }     # a pipe: nothing on disk
 names() { <command that reads the owner's private name list from the vault>; }
-files() { git diff --name-only -z $B...HEAD -- . ':!llmOS/raw/*/*'; }
+files() { git diff --relative --name-only -z $B...HEAD -- . ':!raw/*/*'; }
 added() { git diff -U0 $B...HEAD -- "$@" | rg '^\+[^+]'; }   # added lines
 scan() {   # scan <list-function>: counts and paths only, never matched text
   [ "$("$1" | wc -l)" -gt 0 ] || { echo "EMPTY LIST: not a pass"; return 1; }
-  echo "added lines with hits: $(added . ':!llmOS/raw/*/*' | rg -F -w -f <("$1") | wc -l)"
+  echo "added lines with hits: $(added . ':!raw/*/*' | rg -F -w -f <("$1") | wc -l)"
   files | while IFS= read -r -d '' f; do
     added -- "$f" | rg -q -F -w -f <("$1") && echo "hit: $f"
   done
@@ -49,8 +54,8 @@ rg -F -w -f <(names) <pr-body-file> | wc -l     # the PR body: names, expect 0
 ```
 
 - Run it after you commit and before you push. The scan excludes the capture
-  folders `llmOS/raw/<slug>/`, which hold frozen copies of published pages. It
-  still scans the inbox drops directly in `llmOS/raw/`.
+  folders `raw/<slug>/`, which hold frozen copies of published pages. It
+  still scans the inbox drops directly in `raw/`.
 - Each count prints, `0` included. Report counts and paths only. An empty list
   is never a pass.
 - The scan covers added lines only. The file list is context: a member note
@@ -95,7 +100,7 @@ groups and extends the hub. The procedure is in `SKILL.md` ("Budget and split").
 
 ## Pull request
 
-Open a draft pull request on `kpeez/llmos` from `claude/consolidate-<slug>` with
+Open a draft pull request on the vault's repository from `claude/consolidate-<slug>` with
 `gh pr create --draft`. Never put an animal ID, subject name, or staff name in
 the title or body. The body holds:
 
@@ -115,7 +120,7 @@ the title or body. The body holds:
   stack lands, when the run is split.
 - **Estimated review time:** the total and its parts.
 - **Checks run:** `claims lint`, `llmos-audit`, `llmos-vault check`, the member
-  note and ADR checks, `just check` when `tools/` changed, and the privacy
+  note and ADR checks, `just check` when the tools changed, and the privacy
   check (counts only, and what the name list was built from).
 
 Mark the PR ready only when the owner decides. Only the owner sets `verified`.

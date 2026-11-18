@@ -6,7 +6,7 @@
  * captured source, and, after one blank line, a `^fact-<slug>` block ID. The
  * lint checks that the quote occurs in the linked heading's section of the
  * source text and that every number in the fact occurs in the quote. The
- * format and the rules are in `llmOS/schema.md` (Compiled facts). The lint is necessary, not sufficient: it cannot see swapped
+ * format and the rules are in `docs/compiled-facts.md` of the plugin root. The lint is necessary, not sufficient: it cannot see swapped
  * numbers, negation, or a real quote that does not support the fact.
  *
  * The lint returns a report and never prints or exits. A finding fails the

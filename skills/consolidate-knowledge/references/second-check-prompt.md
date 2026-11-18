@@ -4,7 +4,8 @@ The second check moves a fact from `drafted` to `checked`. It runs in a separate
 read-only reviewer subagent (for example the `Explore` agent type) that did not
 write the notes and has no memory of the drafting session. Run it once per
 note, in a loop; the subagents may run in parallel. Fill in the two paths. The
-vault root is the worktree's `llmOS/` folder, never the live vault.
+vault root is the worktree's vault root (`<vault>` in `SKILL.md`), never the
+live vault.
 
 The lint has already shown that each quote occurs in its source and that each
 number of the fact occurs in the quote. The reviewer checks what the lint
@@ -24,12 +25,13 @@ Read only the note under check and the captured sources that its facts link.
 Do not read the member project notes (projects/...) or any other note.
 
 Note to check: <vault-relative path of the note>
-Vault root: <absolute path of the worktree's llmOS/ folder>
+Vault root: <absolute path of the worktree's vault root>
 
 The note holds [!fact] callouts: a status title, a fact sentence, one quoted
 passage, and a source line that links a heading of a captured source in
 raw/<slug>/source.md. A [!conflict] callout holds a statement and two quote
-and source pairs. The format is in schema.md at the vault root.
+and source pairs. The format is in <absolute path of docs/compiled-facts.md
+in the llmOS plugin root>.
 
 For every [!fact] whose status is drafted:
 

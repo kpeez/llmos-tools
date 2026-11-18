@@ -36,7 +36,14 @@ ever ran on a schedule. After a vault change, run `llmos-vault health` yourself.
 
 ## Timer
 
-A systemd user timer runs `llmos-daily-activity` at 22:30 local time.
+llmOS ships the digest command, not its schedule. The host that runs the digest
+owns the schedule: run `llmos-daily-activity --push` once each evening with
+the scheduler of that host. `health` reports a missed run whatever the
+scheduler is (see "Run records and manual jobs").
+
+The units below are an example for a Linux host: a systemd user timer that runs
+the digest at 22:30 local time. On a Mac, a launchd agent with the same command
+and a `StartCalendarInterval` of 22:30 does the same job.
 
 `~/.config/systemd/user/llmos-daily-activity.service`:
 

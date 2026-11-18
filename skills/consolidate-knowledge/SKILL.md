@@ -10,13 +10,15 @@ and per dataset, under `knowledge/`. Every checkable fact quotes a captured
 source. The run ends in a draft pull request that one person can review in 30
 minutes. It runs inside the agent session; there is no separate orchestrator.
 
-The contract lives in the vault. Read it first:
+The contract ships with the tools. Read it first:
 
-- `schema.md` at the vault root: "Compiled facts" (the fact format,
-  statuses, and what the lint checks), "Categories and topics", and "Sources".
-- `ingest-contract.md` at the vault root: the fact rules and the conflict rule.
-- `authoring.md` at the vault root, the `ingest-source` skill, and the
-  owning project's `CONTEXT.md` (privacy rules).
+- [`../../docs/compiled-facts.md`](../../docs/compiled-facts.md): the source
+  manifest, the fact format and statuses, and what the lint checks.
+- [`../../docs/ingest-contract.md`](../../docs/ingest-contract.md): the fact
+  rules and the conflict rule.
+- `schema.md` at the vault root ("Categories and topics"), `authoring.md` at
+  the vault root, the `ingest-source` skill, and the owning project's
+  `CONTEXT.md` (privacy rules).
 
 ## Inputs
 
@@ -28,12 +30,16 @@ candidate clusters, uncovered ones first.
 
 ## Steps
 
-1. **Work in a worktree.** From up-to-date `main`, run
+1. **Work in a worktree of the vault's repository.** From up-to-date `main`,
+   in the main checkout, run
    `git worktree add .claude/worktrees/consolidate-<slug> -b claude/consolidate-<slug> main`.
-   Never switch the main checkout's branch: it is the live Obsidian vault. Set
-   `LLMOS_ROOT` to the worktree's `llmOS/` for every `llmos-vault` and
-   `llmos-audit` call, and do not use the `llmos` MCP tools: they target the
-   live vault.
+   Never switch the main checkout's branch: it is the live Obsidian vault.
+   Below, `<vault>` is the worktree's vault root: the worktree plus the
+   vault's folder in the repository (`git -C "$LLMOS_ROOT" rev-parse
+   --show-prefix`). When the vault is the repository root, `<vault>` is the
+   worktree itself. Every vault path below is relative to `<vault>`. Set
+   `LLMOS_ROOT` to `<vault>` for every `llmos-vault` and `llmos-audit` call,
+   and do not use the `llmos` MCP tools: they target the live vault.
 2. **Read member notes and sources, never older summaries.** Read the member
    notes only to learn which works, numbers, and disagreements they hold. Write
    each fact from the source text, never from a member note.
@@ -46,7 +52,7 @@ candidate clusters, uncovered ones first.
    and cite the DOI.
 4. **Settle known disagreements first.** List every number, name, or year on
    which the member notes disagree. Apply the conflict rule in
-   `ingest-contract.md` to each. Say in the hub how each was settled.
+   the ingest contract to each. Say in the hub how each was settled.
 5. **Write the notes.**
    - The hub is the topic note `knowledge/<topic>.md`: write its prose above
      the embedded Base. For a new cluster, check the `[[Topics]]` hub first,
@@ -74,7 +80,7 @@ candidate clusters, uncovered ones first.
      stamps only the live vault root, not a worktree.
 6. **Lint, then fix or flag each finding.** Run `llmos-vault claims lint` on
    every new and changed note (one run, many paths), `llmos-vault check <note>`
-   on each new note, and `llmos-audit --root <worktree>/llmOS` (it audits the
+   on each new note, and `llmos-audit --root <vault>` (it audits the
    whole vault). Fix a finding by correcting the fact or its quote. Flag only a
    fact whose source cannot be captured. Never edit a source folder. Also
    verify that every member note links the hub, and that
@@ -100,10 +106,10 @@ candidate clusters, uncovered ones first.
    Run the lint again after every change.
 8. **Check privacy** with `references/pull-request.md`. This gates every push,
    the first one included.
-9. **Commit, push, and open a draft PR** on `kpeez/llmos` with the body that
+9. **Commit, push, and open a draft PR** on the vault's repository with the body that
    `references/pull-request.md` defines. Push checkpoints as you go.
 
-If `tools/` changed, run `just check` from `tools/cli/` as well.
+If you changed the tools, run `just check` from their `cli/` folder as well.
 
 ## Budget and split
 

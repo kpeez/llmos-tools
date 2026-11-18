@@ -60,4 +60,8 @@ Every command takes `--help`.
 - [Hooks](docs/hooks.md)
 - [MCP server](docs/mcp.md)
 - [CLI and scripts](docs/cli.md)
+- [Sources and compiled facts](docs/compiled-facts.md): the formats that
+  `source add` writes and `claims lint` checks.
+- [Ingest contract](docs/ingest-contract.md): how an agent writes facts from
+  captured sources.
 - [Development](docs/development.md): layout, the TypeScript core, and tests.
