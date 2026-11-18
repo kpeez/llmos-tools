@@ -1,6 +1,5 @@
 /**
- * The post-tool-use hook normalizes vault notes, stamps `updated`, appends
- * the provider to `authors` once, flags the qmd collection dirty, and
+ * The post-tool-use hook normalizes vault notes, stamps `updated`, flags the qmd collection dirty, and
  * reports authoring findings. Notes it cannot rewrite safely stay byte for
  * byte. Ported from the retired Python test `test_stamp_format.py`.
  */
@@ -56,15 +55,15 @@ function setup(text: string, name = "note.md") {
 }
 
 describe("stamping", () => {
-  test("writes the canonical form with updated and the provider in authors", () => {
+  test("writes the canonical form with updated", () => {
     const { tmp, vault, note } = setup(MESSY_NOTE);
 
-    const result = stamp(note, tmp, vault, { CLAUDECODE: "1" });
+    const result = stamp(note, tmp, vault);
 
     expect(result.exitCode).toBe(0);
     // The same bytes the retired Python hook wrote for this note.
     expect(readFileSync(note, "utf8")).toBe(
-      "---\nauthors:\n  - claude\ncategories:\n" +
+      "---\ncategories:\n" +
         `  - "[[Knowledge]]"\ncreated: 2026-07-01\nupdated: ${todayIso()}\n---\n\n` +
         "# A note\n\nBody content, with a wikilink to [[Some Other Note]].\n",
     );
@@ -73,25 +72,23 @@ describe("stamping", () => {
     expect(result.stdout).toBe("");
   });
 
-  test("appends the provider once, so a second stamp changes nothing", () => {
+  test("a second stamp changes nothing", () => {
     const { tmp, vault, note } = setup(MESSY_NOTE);
 
-    stamp(note, tmp, vault, { CODEX_SANDBOX_NETWORK_DISABLED: "1" });
+    stamp(note, tmp, vault);
     const once = readFileSync(note, "utf8");
-    stamp(note, tmp, vault, { CODEX_SANDBOX_NETWORK_DISABLED: "1" });
+    stamp(note, tmp, vault);
 
     expect(readFileSync(note, "utf8")).toBe(once);
-    expect(once.match(/codex/g)).toHaveLength(1);
   });
 
-  test("leaves authors alone when no provider is detected, and keeps the file mode", () => {
+  test("keeps the file mode", () => {
     const { tmp, vault, note } = setup(MESSY_NOTE);
     chmodSync(note, 0o640);
 
     stamp(note, tmp, vault);
 
     const text = readFileSync(note, "utf8");
-    expect(text).not.toContain("authors");
     expect(text).toContain("created: 2026-07-01");
     expect(statSync(note).mode & 0o777).toBe(0o640);
   });
@@ -271,7 +268,7 @@ describe("shared project memory and Antigravity hooks", () => {
     expect(existsSync(dirtyFlag(tmp, "sess-mem"))).toBe(true);
   });
 
-  test("Antigravity post-tool-use stamps durable notes with gemini and emits {} on post-tool-use and stop", () => {
+  test("Antigravity post-tool-use stamps durable notes and emits {} on post-tool-use and stop", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));
     const note = writeFile(join(vault, "note.md"), MESSY_NOTE);
@@ -288,7 +285,7 @@ describe("shared project memory and Antigravity hooks", () => {
     );
     expect(post.exitCode).toBe(0);
     expect(JSON.parse(post.stdout)).toEqual({});
-    expect(readFileSync(note, "utf8")).toContain("authors:\n  - gemini\n");
+    expect(readFileSync(note, "utf8")).toContain(`updated: ${todayIso()}\n`);
     expect(existsSync(dirtyFlag(tmp, "conv-agy"))).toBe(true);
 
     const stopRes = runHook("stop", { hookEventName: "Stop", conversationId: "conv-agy" }, tmp, {

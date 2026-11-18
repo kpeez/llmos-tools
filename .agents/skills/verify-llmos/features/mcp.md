@@ -6,7 +6,7 @@
 
 - `list-tools` names the tools: `read`, `list`, `neighbors`, `subgraph`, `check`, `health`, `search`, `daily_append_thought`, `file_inbox`, `set_property`.
 - `read-tools` return note data and search results.
-- `write-tools` change a note and stamp `updated` and `authors`.
+- `write-tools` change a note and stamp `updated`.
 - `argument-checks` refuse an unknown argument, a path outside the vault, and a link out of the vault.
 - `file_inbox` and `daily_append_thought` need Obsidian here (the daily note is created through it). Verified-unreachable.
 
@@ -22,7 +22,7 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 - **List tools.** `tools/list` names the tools above. No shell, move, or create tool.
 - **Read.** `tools/call read {"note":"notes/alpha.md"}`. Not an error. The text holds `gardening`.
 - **Search.** `tools/call search {"query":"gardening"}`. Not an error. The text names `notes/beta.md`.
-- **Write.** `tools/call set_property {"note":"notes/beta.md","key":"status","value":"active"}`. `notes/beta.md` holds `status: active`, `authors`, and `updated`.
+- **Write.** `tools/call set_property {"note":"notes/beta.md","key":"status","value":"active"}`. `notes/beta.md` holds `status: active` and `updated`.
 - **Thought (verified-unreachable).** `tools/call daily_append_thought {"text":"..."}` is an error: no `obsidian-cli`. Today's daily note does not exist in the fixture, and Obsidian creates it from the template.
 - **Outside the vault.** `read {"note":"../../etc/passwd"}` is an error. `set_property` on `notes/link.md` is an error.
 - **Unknown argument.** `read {"note":"notes/alpha.md","shell":"id"}` is an error.
@@ -35,4 +35,3 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 - The MCP `search` needs the `llmos` qmd collection. The server reads `INDEX_PATH` from its environment, so the child env must keep the isolation.
 - The server stamps notes itself. The PostToolUse hook does not see MCP calls.
 - The plugin starts the server through the launcher `tools/dist/mcp.js`. The harness starts `llmos-vault mcp` directly. The launcher is not driven.
-- Claude Code and Codex do not send the same client name. The stamp provider comes from it.

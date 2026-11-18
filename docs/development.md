@@ -39,7 +39,7 @@ plugin hooks, and the MCP server.
   wikilinks, one blank line after `---`, no trailing whitespace except a
   Markdown hard line break (two or more spaces) on a body line, one final
   newline. Block scalars, comments, and nested maps survive; a block with YAML
-  errors is never rewritten; `created` is immutable and `authors` append-only.
+  errors is never rewritten; `created` is immutable.
   Every scalar reads as a string.
 - `vault.ts` loads every note once into one `VaultModel` with Obsidian's link
   resolution, and answers `read`, `list`, `neighbors`, `subgraph`, and the

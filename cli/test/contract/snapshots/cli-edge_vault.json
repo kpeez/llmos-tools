@@ -6728,10 +6728,6 @@
       },
       {
         "path": "fm/messy.md",
-        "message": "authors must be a canonical list"
-      },
-      {
-        "path": "fm/messy.md",
         "message": "property empty is empty"
       },
       {
@@ -6769,10 +6765,6 @@
       {
         "path": "projects/demo/notes/unowned.md",
         "message": "invalid status \"someday\""
-      },
-      {
-        "path": "projects/demo/notes/unowned.md",
-        "message": "authors must be a canonical list"
       },
       {
         "path": "projects/demo/notes/unowned.md",
@@ -6840,7 +6832,6 @@
       "fm/folded.md: topics contains non-wikilink \"gardening\"",
       "fm/item-after-flow.md: unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: A block sequence may not be used as an implicit map key at line 2, column 1:)",
       "fm/line-separator.md: unsupported frontmatter: frontmatter is not valid YAML (BLOCK_AS_IMPLICIT_KEY: Nested mappings are not allowed in compact mappings at line 1, column 4:)",
-      "fm/messy.md: authors must be a canonical list",
       "fm/messy.md: property empty is empty",
       "fm/messy.md: property none is empty",
       "fm/no-frontmatter.md: missing frontmatter",
@@ -6851,7 +6842,6 @@
       "notes/beta.md: topics contains non-wikilink \"b, c\"",
       "notes/gamma.md: topics must be a list",
       "projects/demo/notes/unowned.md: invalid status \"someday\"",
-      "projects/demo/notes/unowned.md: authors must be a canonical list",
       "projects/demo/notes/unowned.md: contains retired property type",
       "projects/demo/notes/unowned.md: property blank is empty",
       "projects/demo/notes/unowned.md: categories must be a list",

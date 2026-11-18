@@ -860,7 +860,7 @@ export function main(argv: string[]): number {
     }
     if (only === undefined) {
       try {
-        recordRun(root, DIGEST_NOTE, DIGEST_PROPERTY, isoDate(today), null);
+        recordRun(root, DIGEST_NOTE, DIGEST_PROPERTY, isoDate(today));
       } catch (error) {
         throw new DigestError(
           `cannot record the run on ${DIGEST_NOTE}: ${(error as Error).message}`,

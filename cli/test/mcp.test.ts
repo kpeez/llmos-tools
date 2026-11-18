@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import type { Context } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import { Frontmatter } from "../src/frontmatter.ts";
-import { INSTRUCTIONS, providerFor } from "../src/mcp.ts";
+import { INSTRUCTIONS } from "../src/mcp.ts";
 import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
@@ -199,7 +199,7 @@ describe("read tools", () => {
   });
 });
 
-describe("write tools stamp updated and authors", () => {
+describe("write tools stamp updated", () => {
   test("daily_append_thought creates today's note when missing and stamps it", async () => {
     const root = vault();
     const obsidian = recordedObsidian(root);
@@ -212,11 +212,11 @@ describe("write tools stamp updated and authors", () => {
     expect(read(root, DAILY)).toContain(
       '## Thoughts\n\nA lesson with `code`, "quotes", and $dollars.\nSecond line.\n',
     );
-    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY, authors: ["codex"] });
+    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY });
     expect(obsidian.calls).toHaveLength(1);
   });
 
-  test("set_property stamps the note with the client's provider", async () => {
+  test("set_property stamps the note", async () => {
     const root = vault();
     const { client, close } = await connect(contextFor(root), "claude-code");
     const result = await client.call("set_property", {
@@ -229,7 +229,6 @@ describe("write tools stamp updated and authors", () => {
     expect(properties(root, "notes/alpha.md")).toMatchObject({
       status: "active",
       updated: TODAY,
-      authors: ["claude"],
     });
   });
 
@@ -273,9 +272,8 @@ describe("write tools stamp updated and authors", () => {
     expect(properties(root, "knowledge/capture.md")).toMatchObject({
       categories: ["[[Knowledge]]"],
       updated: TODAY,
-      authors: ["codex"],
     });
-    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY, authors: ["codex"] });
+    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY });
     expect(read(root, DAILY)).toContain("Filed `capture` from inbox -> `knowledge/capture.md`.");
   });
 
@@ -291,14 +289,6 @@ describe("write tools stamp updated and authors", () => {
     expect(result.isError).toBe(true);
     expect(result.text).toContain("Obsidian");
     expect(read(root, "raw/capture.md")).toBe(CAPTURE);
-  });
-
-  test("the provider comes from the client name, else the environment", () => {
-    expect(providerFor("codex-mcp-client", {})).toBe("codex");
-    expect(providerFor("claude-code", {})).toBe("claude");
-    expect(providerFor("codex-mcp-client", { CLAUDECODE: "1" })).toBe("codex");
-    expect(providerFor("some-client", { CLAUDECODE: "1" })).toBe("claude");
-    expect(providerFor(undefined, {})).toBeNull();
   });
 });
 

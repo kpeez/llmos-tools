@@ -3,10 +3,10 @@
  * findings.
  *
  * For each Markdown note the tool wrote under the vault root, it writes the
- * canonical frontmatter with `updated` set to today and the invoking
- * provider appended to `authors` once, then flags the qmd collection dirty
- * for the stop hook. A note without a frontmatter block, with a block the
- * serializer refuses to rewrite, or with invalid UTF-8 is left unchanged.
+ * canonical frontmatter with `updated` set to today, then flags the qmd
+ * collection dirty for the stop hook. A note without a frontmatter block,
+ * with a block the serializer refuses to rewrite, or with invalid UTF-8 is
+ * left unchanged.
  * Findings are informational: they never block the write or change the
  * note.
  */
@@ -16,13 +16,11 @@ import { basename, join } from "node:path";
 import { checkNote } from "../authoring.ts";
 import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote } from "../layout.ts";
-import { detectProvider } from "../provider.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
   COLLECTION,
   firstTruthy,
   flagPath,
-  isAntigravityPayload,
   isFile,
   isUnder,
   localDate,
@@ -45,14 +43,12 @@ const MAX_LINE = 240;
  * `false` means it was left unchanged because it has no frontmatter block,
  * the serializer refused to rewrite it, or it is not valid UTF-8.
  */
-export function stampNote(path: string, provider: string | null, date = localDate()): boolean {
+export function stampNote(path: string, date = localDate()): boolean {
   let text: string;
   let stamped: string;
   try {
     text = readText(path);
-    const frontmatter = Frontmatter.parse(text).setScalar("updated", date);
-    if (provider) frontmatter.appendUnique("authors", provider);
-    stamped = frontmatter.toString();
+    stamped = Frontmatter.parse(text).setScalar("updated", date).toString();
   } catch {
     return false;
   }
@@ -211,10 +207,9 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  const provider = detectProvider(process.env) ?? (isAntigravityPayload(data) ? "gemini" : null);
   let stamped = false;
   for (const target of durableTargets) {
-    if (stampNote(target, provider)) stamped = true;
+    if (stampNote(target)) stamped = true;
   }
   if (stamped || memoryTargets.length > 0) {
     closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));

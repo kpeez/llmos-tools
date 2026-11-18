@@ -49,11 +49,11 @@ describe("normalize keeps YAML the Python parser refused", () => {
 
   test("nested maps keep their values and their source layout", () => {
     const input = note(
-      'source:\n  url: https://example.org\n  links: ["[[A]]", b]\nauthors: [claude]\n',
+      'source:\n  url: https://example.org\n  links: ["[[A]]", b]\ntopics: [claude]\n',
     );
     const output = normalize(input);
     expect(output).toBe(
-      '---\nauthors:\n  - claude\nsource:\n  url: https://example.org\n  links: ["[[A]]", b]\n---\n\n# Body\n',
+      '---\nsource:\n  url: https://example.org\n  links: ["[[A]]", b]\ntopics:\n  - claude\n---\n\n# Body\n',
     );
     expect(parse(output).properties.source).toEqual({
       url: "https://example.org",
@@ -109,19 +109,19 @@ describe("property changes", () => {
   test("stamping keeps comments and block scalars elsewhere in the block", () => {
     const fm = Frontmatter.parse(
       note(
-        "created: 2026-01-01\nmethod: |\n  kept\n# who\nauthors: [claude]\nupdated: 2026-01-02\n",
+        "created: 2026-01-01\nmethod: |\n  kept\n# who\ntopics: [claude]\nupdated: 2026-01-02\n",
       ),
     );
-    fm.setScalar("updated", "2026-10-07").appendUnique("authors", "codex");
+    fm.setScalar("updated", "2026-10-07").appendUnique("topics", "codex");
     expect(fm.toString()).toBe(
-      "---\n# who\nauthors:\n  - claude\n  - codex\ncreated: 2026-01-01\nmethod: |\n  kept\nupdated: 2026-10-07\n---\n\n# Body\n",
+      "---\ncreated: 2026-01-01\nmethod: |\n  kept\n# who\ntopics:\n  - claude\n  - codex\nupdated: 2026-10-07\n---\n\n# Body\n",
     );
   });
 
-  test("authors is append-only and created is immutable", () => {
-    const fm = Frontmatter.parse(note("authors: claude\ncreated: 2026-01-01\n"));
-    fm.appendUnique("authors", "claude").appendUnique("authors", "codex");
-    expect(fm.properties.authors).toEqual(["claude", "codex"]);
+  test("appendUnique adds a value once and created is immutable", () => {
+    const fm = Frontmatter.parse(note("topics: claude\ncreated: 2026-01-01\n"));
+    fm.appendUnique("topics", "claude").appendUnique("topics", "codex");
+    expect(fm.properties.topics).toEqual(["claude", "codex"]);
     expect(() => fm.setScalar("created", "2026-10-07")).toThrow(ImmutableProperty);
     expect(() => fm.delete("created")).toThrow(ImmutableProperty);
     expect(fm.properties.created).toBe("2026-01-01");
@@ -136,10 +136,10 @@ describe("property changes", () => {
     const removed = Frontmatter.parse(note("# header\na: x # why\nb: y\n"));
     removed.delete("a");
     expect(removed.toString()).toBe("---\n# header\n# why\nb: y\n---\n\n# Body\n");
-    const replaced = Frontmatter.parse(note("authors: claude # first\n"));
-    replaced.appendUnique("authors", "codex");
+    const replaced = Frontmatter.parse(note("topics: claude # first\n"));
+    replaced.appendUnique("topics", "codex");
     expect(replaced.toString()).toBe(
-      "---\n# first\nauthors:\n  - claude\n  - codex\n---\n\n# Body\n",
+      "---\n# first\ntopics:\n  - claude\n  - codex\n---\n\n# Body\n",
     );
   });
 

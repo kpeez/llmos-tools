@@ -29,7 +29,6 @@ export const STATUSES = new Set([
   "accepted",
   "superseded",
 ]);
-export const AUTHORS = new Set(["claude", "codex", "gemini", "human"]);
 export const LINK_FIELDS = ["categories", "project", "topics"] as const;
 const WIKILINK = /^"?\[\[[^\]]+\]\]"?$/;
 /** A plain wikilink with no path, heading, or alias: `[[Name]]`, capturing the name. */
@@ -131,16 +130,6 @@ function noteErrors(
   const status = properties.status;
   if (status !== undefined && (typeof status !== "string" || !STATUSES.has(status))) {
     errors.push(`${relative}: invalid status ${JSON.stringify(status)}`);
-  }
-
-  const authors = properties.authors;
-  if (authors !== undefined) {
-    if (
-      !Array.isArray(authors) ||
-      authors.some((value) => typeof value !== "string" || !AUTHORS.has(value))
-    ) {
-      errors.push(`${relative}: authors must be a canonical list`);
-    }
   }
 
   for (const forbidden of ["kind", "type", "related", "sources", "repositories"]) {

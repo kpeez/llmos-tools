@@ -105,8 +105,6 @@ describe("headless writes", () => {
     expect((await run(["set-property", "alpha", "status", "active"])).stdout).toBe(
       "Set: status = active\n",
     );
-    expect((await run(["set-property", "alpha", "authors", "claude"])).exitCode).toBe(0);
-    expect((await run(["set-property", "alpha", "authors", "claude"])).exitCode).toBe(0);
     expect((await run(["remove-property", "alpha", "status"])).stdout).toBe("Removed: status\n");
     expect((await run(["remove-property", "alpha", "status"])).stdout).toBe("Not set: status\n");
     expect((await run(["append", "notes/alpha.md", "One more thought."])).stdout).toBe(
@@ -115,7 +113,7 @@ describe("headless writes", () => {
 
     expect(obsidian.calls).toEqual([]);
     expect(read(root, "notes/alpha.md")).toBe(
-      "---\nauthors:\n  - human\n  - claude\ncreated: 2026-07-01\n---\n\n# Alpha\n\nBody.\nOne more thought.\n",
+      "---\nauthors:\n  - human\ncreated: 2026-07-01\n---\n\n# Alpha\n\nBody.\nOne more thought.\n",
     );
   });
 
@@ -257,19 +255,17 @@ describe("headless writes", () => {
 describe("file-inbox", () => {
   const capture = "---\ncreated: 2026-07-16\n---\n\n# Capture\n";
 
-  test("moves, stamps destination properties and authors, and records the filing", async () => {
+  test("moves, stamps destination properties, and records the filing", async () => {
     const root = makeVault({ "raw/capture-1.md": capture, [DAILY]: dailyNote(TODAY) });
     const obsidian = recordedObsidian(root);
-    const env = { CLAUDECODE: "1" };
-    const { isolatedEnv } = await import("./helpers.ts");
     const result = await cli(root, ["file-inbox", "capture-1", "knowledge/some-note"], {
       obsidian: obsidian.runner,
-      env: isolatedEnv(env),
     });
     expect(result.stdout).toBe("Filed: capture-1 -> knowledge/some-note.md\n");
     expect(obsidian.calls.map((call) => call[1])).toEqual(["move"]);
-    expect(read(root, "knowledge/some-note.md")).toBe(
-      '---\nauthors:\n  - claude\ncategories:\n  - "[[Knowledge]]"\ncreated: 2026-07-16\n---\n\n# Capture\n',
+    const filed = read(root, "knowledge/some-note.md");
+    expect(filed).toBe(
+      '---\ncategories:\n  - "[[Knowledge]]"\ncreated: 2026-07-16\n---\n\n# Capture\n',
     );
     expect(read(root, DAILY)).toContain(
       "Earlier thought.\n\nFiled `capture-1` from inbox -> `knowledge/some-note.md`.\n\n## Projects",
@@ -278,10 +274,9 @@ describe("file-inbox", () => {
     // A retry finds the note at its destination: no second move, no duplicates.
     const again = await cli(root, ["file-inbox", "capture-1", "knowledge/some-note"], {
       obsidian: recordedObsidian(root, true).runner,
-      env: isolatedEnv(env),
     });
     expect(again.exitCode).toBe(0);
-    expect(read(root, "knowledge/some-note.md")).toContain("authors:\n  - claude\ncategories");
+    expect(read(root, "knowledge/some-note.md")).toBe(filed);
   });
 
   test("keeps a note's own categories", async () => {

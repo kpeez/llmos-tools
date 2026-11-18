@@ -457,7 +457,7 @@ const hooks: Feature = (state) => {
     record(state, f, label, [process.execPath, ...BUN_FLAGS, BUNDLE, event], {
       stdin: JSON.stringify(payload),
       cwd: state.scratch,
-      // Claude Code sets CLAUDECODE; the stamp hook names the provider from it.
+      // Claude Code sets CLAUDECODE; the hook heartbeat names the agent from it.
       env: { ...childEnv(state), CLAUDECODE: "1" },
     });
   const alpha = join(state.vault, "notes", "alpha.md");
@@ -519,8 +519,8 @@ const hooks: Feature = (state) => {
   const stamped = readFileSync(alpha, "utf8");
   check(
     f,
-    "post-tool-use stamps updated and authors on the note",
-    post.code === 0 && /updated: \d{4}-\d\d-\d\d/.test(stamped) && stamped.includes("authors:"),
+    "post-tool-use stamps updated on the note",
+    post.code === 0 && /updated: \d{4}-\d\d-\d\d/.test(stamped),
   );
 };
 
@@ -582,11 +582,8 @@ const mcp: Feature = async (state) => {
     const beta = readFileSync(join(state.vault, "notes", "beta.md"), "utf8");
     check(
       f,
-      "set_property writes and stamps updated and authors",
-      !set.isError &&
-        beta.includes("status: active") &&
-        beta.includes("authors:") &&
-        /updated: \d{4}/.test(beta),
+      "set_property writes and stamps updated",
+      !set.isError && beta.includes("status: active") && /updated: \d{4}/.test(beta),
     );
     const thought = await call("daily_append_thought", { text: "Verified the thought tool." });
     check(

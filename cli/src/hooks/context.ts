@@ -198,7 +198,7 @@ const MCP_LINE =
   "with a folder for the properties of every note there; neighbors or subgraph for links; " +
   "set_property to change one property. All tools: " +
   `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
-  "(they stamp updated and authors themselves).";
+  "(they stamp updated themselves).";
 
 export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();

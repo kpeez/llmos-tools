@@ -3,6 +3,17 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.10.0 — 2026-11-18
+
+- Notes no longer get an `authors` property (ADR 0014). The PostToolUse hook,
+  the MCP write tools, `file-inbox`, `discover`, and the digest stamp only
+  `updated`. The schema audit no longer checks `authors`, and the Reviews and
+  Daily Reviews Bases no longer show it. Existing values stay until a script
+  removes them from the vault. An older plugin still adds the property, so
+  update every host before that cleanup.
+- `set-property <note> authors <value>` writes a plain value. The list
+  properties are `categories`, `project`, and `topics`.
+
 ## 2.9.1 — 2026-11-18
 
 - The Stop hook gives the qmd reindex 10 s of its 30 s budget, so a slow

@@ -17,7 +17,7 @@
  * `write.ts`. Only the llmOS vault and its `llmos` qmd collection are
  * served. There is no shell, move, create, or arbitrary-file tool.
  *
- * The write tools stamp `updated` and `authors` on each note they change,
+ * The write tools stamp `updated` on each note they change,
  * because the PostToolUse stamp hook reads only `Write`-style tool inputs.
  */
 
@@ -32,7 +32,6 @@ import type { Command, Context, Outcome, Values } from "./cli.ts";
 import { COMMANDS, searchMode } from "./commands.ts";
 import { DAILY_DIR } from "./layout.ts";
 import { SERVER_NAME } from "./mcp-names.ts";
-import { detectProvider } from "./provider.ts";
 import { openQmd, qmdLocation, search } from "./qmd.ts";
 import { VaultModel, walkVault } from "./vault.ts";
 import { realTarget, stampNote, WriteRefused } from "./write.ts";
@@ -79,10 +78,9 @@ function help(source: Command, name: string): string {
   return text;
 }
 
-/** What a tool call needs: the handler context, the client's provider name, and the warm qmd store. */
+/** What a tool call needs: the handler context and the warm qmd store. */
 interface CallState {
   context: Context;
-  provider(): string | null;
   store(): Promise<QMDStore>;
 }
 
@@ -124,9 +122,9 @@ function run(source: Command, values: Values, state: CallState): Promise<Outcome
   return source.run({ ...values, vault: VAULT }, state.context);
 }
 
-/** Stamp each changed note with today's date and the client's provider. */
+/** Stamp each changed note with today's date. */
 function stamp(state: CallState, root: string, paths: string[]): void {
-  for (const path of paths) stampNote(root, path, state.context.today(), state.provider());
+  for (const path of paths) stampNote(root, path, state.context.today());
 }
 
 const READ: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
@@ -337,7 +335,7 @@ function describe(tool: Tool): string {
 export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vault in $LLMOS_ROOT or ~/.config/llmos/config.json).
 Prefer them to the llmos-vault command line: arguments need no shell quoting, and the vault model and search models stay loaded.
 Read: read (one note; section for one heading, properties_only for the frontmatter), list (the properties of every note under a folder), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
-Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated and authors themselves.
+Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated themselves.
 Before creating or materially editing a note, follow the vault's AGENTS.md and authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 
 /**
@@ -370,19 +368,6 @@ class WarmVault {
     this.cached = { root, signature, model };
     return model;
   }
-}
-
-/**
- * The provider name to stamp into `authors`: from the client's MCP name
- * (Codex sends "codex-mcp-client"), else from the environment markers
- * (Claude Code sets `CLAUDECODE` for the MCP servers it starts).
- */
-export function providerFor(clientName: string | undefined, env: Context["env"]): string | null {
-  const name = (clientName ?? "").toLowerCase();
-  for (const provider of ["codex", "claude", "gemini"]) {
-    if (name.includes(provider)) return provider;
-  }
-  return detectProvider(env);
 }
 
 function message(error: unknown): string {
@@ -458,8 +443,6 @@ export function createServer(state: ServerState): McpServer {
   );
   const callState: CallState = {
     context: state.handlerContext(),
-    // Deprecated in the SDK, but it still answers for both protocol eras.
-    provider: () => providerFor(server.server.getClientVersion()?.name, state.context.env),
     store: () => state.openStore(),
   };
   for (const tool of tools()) {

@@ -42,7 +42,6 @@ import {
   RAW_DIR,
   SCHEMA_NOTE,
 } from "./layout.ts";
-import { detectProvider } from "./provider.ts";
 import { documentVectors, openQmd, qmdLocation } from "./qmd.ts";
 import { extractWikilinks, type Note, type VaultModel } from "./vault.ts";
 import { recordRun } from "./write.ts";
@@ -478,7 +477,7 @@ export interface DiscoverReport {
  * Throw unless the run can be recorded on `DISCOVER_NOTE`: a real note of the
  * vault (not a link) whose frontmatter takes the edit `recordRun` will make.
  */
-function checkRecordNote(model: VaultModel, today: string, provider: string | null): void {
+function checkRecordNote(model: VaultModel, today: string): void {
   const probe = " (use --no-record for a probe)";
   if (!model.notes.some((note) => note.path === DISCOVER_NOTE)) {
     throw new Error(
@@ -487,7 +486,7 @@ function checkRecordNote(model: VaultModel, today: string, provider: string | nu
   }
   try {
     model.read(DISCOVER_NOTE, { strict: true });
-    recordRun(model.root, DISCOVER_NOTE, DISCOVER_PROPERTY, today, provider, true);
+    recordRun(model.root, DISCOVER_NOTE, DISCOVER_PROPERTY, today, true);
   } catch (error) {
     throw new Error(
       `${DISCOVER_NOTE} cannot be rewritten, so discover cannot record its run there: ${(error as Error).message}${probe}`,
@@ -504,10 +503,9 @@ function checkRecordNote(model: VaultModel, today: string, provider: string | nu
 /**
  * Rank the clusters of `model`, write the report to
  * `<folder>/<today>.json`, and return it. With `record`, it then sets the
- * `discovered` date on `DISCOVER_NOTE` (the run record `health` reads), sets
- * `updated`, and adds the agent to `authors` when a harness is detected, in
- * one write (`recordRun`); the vault changes nowhere else. Throws before any
- * work when the folder is refused or, with `record`, when that edit would
+ * `discovered` date on `DISCOVER_NOTE` (the run record `health` reads) and
+ * `updated` in one write (`recordRun`); the vault changes nowhere else.
+ * Throws before any work when the folder is refused or, with `record`, when that edit would
  * fail: the note is missing, is (or lies behind) a symbolic link, or has
  * frontmatter that cannot be rewritten.
  */
@@ -524,8 +522,7 @@ export async function discover(
   },
 ): Promise<DiscoverReport> {
   const folder = reportFolder(model.root, options.out);
-  const provider = detectProvider(options.env);
-  if (options.record) checkRecordNote(model, options.today, provider);
+  if (options.record) checkRecordNote(model, options.today);
   const candidates = model.notes.map((note) => note.path).filter(isCandidate);
   const { pairs, notice } = await qmdSimilarity(options.env, options.collection, candidates);
   const report: DiscoverReport = {
@@ -540,7 +537,7 @@ export async function discover(
   rmSync(report.report_path, { force: true });
   writeFileSync(report.report_path, `${JSON.stringify(report, null, 2)}\n`, { flag: "wx" });
   if (options.record) {
-    recordRun(model.root, DISCOVER_NOTE, DISCOVER_PROPERTY, options.today, provider);
+    recordRun(model.root, DISCOVER_NOTE, DISCOVER_PROPERTY, options.today);
   }
   return report;
 }

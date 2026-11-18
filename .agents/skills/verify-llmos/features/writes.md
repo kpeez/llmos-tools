@@ -34,5 +34,5 @@ Preconditions: launch and doctor passed. `notes/new.md` does not exist.
 
 - The harness removes `obsidian-cli` from the child `PATH`. On a host with Obsidian the real app would act on its own registered vault, not the scratch copy. Never drive `move` there with the real `PATH`.
 - `set-property` writes the value as a string.
-- `authors` is append-only. Setting it adds a value.
+- The link properties `categories`, `project`, and `topics` are append-only. Setting one adds a value.
 - The `discovered` and `digested` keys are refused in the llmos vault. The fixture vault is not an llmOS-profile vault, so this is not driven.

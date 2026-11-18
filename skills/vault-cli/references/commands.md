@@ -17,7 +17,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `daily recent` | Print the last `n` daily notes' frontmatter and body as JSON, most recent first. |
 | `discover` | Rank clusters of notes that restate the same works, as candidates to consolidate. |
 | `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
-| `file-inbox` | File an inbox note: move it via obsidian-cli, stamp its destination properties and authors, and record it in today's daily note. |
+| `file-inbox` | File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note. |
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
@@ -311,8 +311,7 @@ It writes the JSON report to <vault root>/../artifacts/discover/YYYY-MM-DD.json,
 or to --out DIR, and prints it. It refuses to run when that artifacts folder
 is missing and --out is not given.
 For --vault llmos, after it writes the report, it sets `discovered` (today's
-date) on categories/Knowledge.md, and `updated` there, in one write. It adds
-the agent's name to `authors` only when it detects an agent harness.
+date) on categories/Knowledge.md, and `updated` there, in one write.
 `health` reads that date, so any host that syncs the vault sees the run.
 Before any work it runs the same edit without writing, and fails when that
 note is missing, is a symbolic link, or has frontmatter that the edit cannot
@@ -368,16 +367,15 @@ Example:
 ```text
 Usage: llmos-vault file-inbox <note> <destination> [--vault llmos|second-vault]
 
-File an inbox note: move it via obsidian-cli, stamp its destination properties and authors, and record it in today's daily note.
+File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note.
 
 Use when an inbox capture has a real home -- the sanctioned ritual so an
 agent never files a note half-way. The steps run in order, and a failed
 step stops the rest: move the note (needs the running Obsidian app; exits 3
 when it is not running), add the `categories`/`project` properties the
-destination implies, add the acting provider to `authors`, and append a
-line under `## Thoughts` in today's daily note. Safe to re-run: a note
-already at `destination` is not moved again, and existing properties are
-kept. Only the move needs Obsidian.
+destination implies, and append a line under `## Thoughts` in today's daily
+note. Safe to re-run: a note already at `destination` is not moved
+again, and existing properties are kept. Only the move needs Obsidian.
 Do NOT use when `destination`'s top-level folder is not `knowledge`,
 `projects`, or `raw` -- this exits with an error before any move is
 attempted.
@@ -489,8 +487,8 @@ Serve the llmOS vault tools to an agent over MCP on stdin and stdout.
 Use when an agent harness starts the llmOS MCP server -- the plugin's
 `.mcp.json` starts it in every session through `dist/mcp.js`. Read tools:
 read, neighbors, subgraph, check, health, search. Write tools:
-daily_append_thought, file_inbox, set_property; each stamps `updated` and
-`authors` on the notes it changes. It serves only the llmOS vault and its
+daily_append_thought, file_inbox, set_property; each stamps `updated` on
+the notes it changes. It serves only the llmOS vault and its
 `llmos` qmd collection, and refuses any note whose real path is outside the
 vault. One vault model stays loaded (read again when a note file changes),
 and so do the search models after the first semantic search. Runs until
@@ -709,10 +707,9 @@ written as a string, except for the list properties below. Writes the file
 directly (atomically), so it works
 with Obsidian closed. A note whose frontmatter cannot be read is left
 untouched (exit 1).
-`authors`, `categories`, `project`, and `topics` are lists and
-append-only: setting one adds `value` (one item, such as one wikilink) to
-the existing list instead of overwriting it. To replace a list, remove the
-property first.
+`categories`, `project`, and `topics` are lists and append-only: setting
+one adds `value` (one item, such as one wikilink) to the existing list
+instead of overwriting it. To replace a list, remove the property first.
 Do NOT use when rewriting `created` -- it is immutable and this call
 exits with an error. In the llmos vault, `discovered` on
 categories/Knowledge.md and `digested` on categories/Reviews.md are the

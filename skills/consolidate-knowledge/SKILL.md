@@ -70,7 +70,7 @@ candidate clusters, uncovered ones first.
      on). Do not write `first`, `only`, or `all` unless a fact says so.
    - Add `topics` and one body link to the hub on each member note; keep its
      `project`. Add only links to ADRs, never edits to their decision text.
-   - Stamp `authors` and `updated` by hand on every note you touch. The hook
+   - Stamp `updated` by hand on every note you touch. The hook
      stamps only the live vault root, not a worktree.
 6. **Lint, then fix or flag each finding.** Run `llmos-vault claims lint` on
    every new and changed note (one run, many paths), `llmos-vault check <note>`

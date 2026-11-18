@@ -191,11 +191,11 @@ function editBody(root: string, relative: string, edit: (body: string) => string
   atomicReplace(real, frontmatter.toString());
 }
 
-const LIST_PROPERTIES = new Set<string>(["authors", ...LINK_FIELDS]);
+const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
 
 /**
- * Set property `key` to `value`. The schema's list properties (`authors` and
- * the link fields) are append-only: the value is added to the list unless it
+ * Set property `key` to `value`. The schema's list properties (the link
+ * fields) are append-only: the value is added to the list unless it
  * is already there. `created` never changes.
  */
 export function setProperty(root: string, relative: string, key: string, value: string): void {
@@ -208,23 +208,21 @@ export function setProperty(root: string, relative: string, key: string, value: 
 
 /**
  * Record a run on a note in one edit and one atomic write: set `key` and
- * `updated` to `date`, and add `provider` (when not null) to `authors` once,
- * as `stampNote` does. With `dryRun` nothing is written: it throws exactly
- * when the real call would, so a caller can check before it does any work.
+ * `updated` to `date`, as `stampNote` does. With `dryRun` nothing is
+ * written: it throws exactly when the real call would, so a caller can check
+ * before it does any work.
  */
 export function recordRun(
   root: string,
   relative: string,
   key: string,
   date: string,
-  provider: string | null,
   dryRun = false,
 ): void {
   const real = realTarget(root, relative);
   const frontmatter = frontmatterOf(readText(real));
   frontmatter.setScalar(key, date);
   frontmatter.setScalar("updated", date);
-  if (provider !== null) frontmatter.appendUnique("authors", provider);
   const text = frontmatter.toString();
   if (!dryRun) atomicReplace(real, text);
 }
@@ -257,15 +255,10 @@ export function appendThought(root: string, relative: string, thought: string): 
 
 /**
  * Stamp a note as the PostToolUse hook stamps a `Write`: `updated` set to
- * `date` and `provider` added to `authors` once. A note without a
- * frontmatter block is left as it is. Returns whether it wrote.
+ * `date`. A note without a frontmatter block is left as it is. Returns
+ * whether it wrote.
  */
-export function stampNote(
-  root: string,
-  relative: string,
-  date: string,
-  provider: string | null,
-): boolean {
+export function stampNote(root: string, relative: string, date: string): boolean {
   const real = realTarget(root, relative);
   const text = readText(real);
   let frontmatter: Frontmatter;
@@ -276,7 +269,6 @@ export function stampNote(
     throw error;
   }
   frontmatter.setScalar("updated", date);
-  if (provider !== null) frontmatter.appendUnique("authors", provider);
   const stamped = frontmatter.toString();
   if (stamped === text) return false;
   atomicReplace(real, stamped);
@@ -284,15 +276,13 @@ export function stampNote(
 }
 
 /**
- * Add each property in `stamps` that the note does not have yet, and add
- * `provider` to `authors`. Writes only when something changes; returns
- * whether it wrote.
+ * Add each property in `stamps` that the note does not have yet. Writes only
+ * when something changes; returns whether it wrote.
  */
 export function stampProperties(
   root: string,
   relative: string,
   stamps: Record<string, string[]>,
-  provider: string | null,
 ): boolean {
   const real = realTarget(root, relative);
   const frontmatter = frontmatterOf(readText(real));
@@ -302,14 +292,6 @@ export function stampProperties(
     if (key in current) continue;
     for (const value of values) frontmatter.appendUnique(key, value);
     changed = true;
-  }
-  if (provider !== null) {
-    const authors = current.authors;
-    const present = Array.isArray(authors) ? authors.includes(provider) : authors === provider;
-    if (!present) {
-      frontmatter.appendUnique("authors", provider);
-      changed = true;
-    }
   }
   if (changed) atomicReplace(real, frontmatter.toString());
   return changed;

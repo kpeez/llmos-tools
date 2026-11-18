@@ -10,7 +10,7 @@ vault model and the qmd search models loaded between calls.
 | Tools | Kind |
 | --- | --- |
 | `read`, `list`, `neighbors`, `subgraph`, `check`, `health`, `search` | Read |
-| `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` and `authors` on the notes it changes |
+| `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` on the notes it changes |
 
 Each tool runs the handler of the matching `llmos-vault` command, and its
 description comes from that command's help. The server serves only the llmOS

@@ -517,14 +517,13 @@ describe("discover", () => {
   test("a run sets discovered on the Knowledge note, stamps it, and changes nothing else", async () => {
     const root = clusterVault();
     const before = snapshot(root);
-    const { result } = await reports(isolatedEnv({ CLAUDECODE: "1" }), root);
+    const { result } = await reports(isolatedEnv(), root);
 
     expect(result.exitCode).toBe(0);
     expect(changed(before, snapshot(root))).toEqual([KNOWLEDGE_NOTE]);
     const properties = VaultModel.load(root).resolveNote(KNOWLEDGE_NOTE).properties;
     expect(properties.discovered).toBe(TODAY);
     expect(properties.updated).toBe(TODAY);
-    expect(properties.authors).toEqual(["claude"]);
     expect(properties.created).toBe("2026-10-01");
     const health = await cli(root, ["health", "--json"]);
     const overdue = JSON.parse(health.stdout).overdue_jobs as { job: string }[];
@@ -548,7 +547,6 @@ describe("discover", () => {
 
   test.each([
     ["has unreadable frontmatter", { [KNOWLEDGE_NOTE]: "---\nz: &x one\na: *x\n---\n\n# K\n" }],
-    ["has an authors map", { [KNOWLEDGE_NOTE]: "---\nauthors:\n  a: b\n---\n\n# K\n" }],
     ["is a symbolic link", "link"],
   ] as const)("it fails before any work when the Knowledge note %s", async (_name, setup) => {
     const root = clusterVault(false);
@@ -560,7 +558,7 @@ describe("discover", () => {
       symlinkSync(join(root, "projects/hub-copy.md"), join(root, KNOWLEDGE_NOTE));
     }
     const before = snapshot(root);
-    const { result, out } = await reports(isolatedEnv({ CLAUDECODE: "1" }), root);
+    const { result, out } = await reports(isolatedEnv(), root);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toMatch(/Knowledge\.md/);
     expect(existsSync(out)).toBe(false);

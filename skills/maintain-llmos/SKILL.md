@@ -22,11 +22,11 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
 6. In body prose, label internal links with a readable title, concept, or phrase
    that fits the sentence. Keep `.md` extensions and vault paths out of visible
    text unless the literal filename or path is itself the subject.
-7. A configured and trusted PostToolUse hook stamps `authors` and `updated`
+7. A configured and trusted PostToolUse hook stamps `updated`
    after supported Write/Edit/apply_patch operations, and the MCP write tools
    stamp the notes they change themselves. Neither covers shell writes (the
    `llmos-vault` write verbs included) or an inactive hook; stamp those edits
-   manually. `authors` means "touched the file," not meaningful contribution.
+   manually. Do not add an `authors` property (ADR 0014).
 8. Record insight, not activity. GitHub already holds what happened, and the
    evening digest writes it into each daily note's `## Projects` block. When a
    day produces a lesson, an open question, or a decision with no ADR yet, write
@@ -50,6 +50,6 @@ Commit routine work straight to `main`. Cut a branch only when a diff is worth r
 
 ## Scripts
 
-`llmos-audit` is read-only. It does not stamp `authors`/`updated` — the PostToolUse hook owns those.
+`llmos-audit` is read-only. It does not stamp `updated`. The PostToolUse hook owns that property.
 
 The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer. `llmos-vault discover` is a manual job: run it when `health` lists it under `overdue_jobs`. When `health` lists `daily-activity`, the nightly digest has stopped: read its journal on linux-host before anything else (`references/automation.md`, "Run records and manual jobs").

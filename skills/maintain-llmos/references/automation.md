@@ -1,8 +1,5 @@
 ---
 status: active
-authors:
-  - codex
-  - claude
 created: 2026-07-15
 updated: 2026-10-13
 ---
@@ -105,14 +102,11 @@ therefore leaves a record in the vault.
 
 Each successful digest run without `--date` sets `digested: YYYY-MM-DD` (the
 Los Angeles day of the run) and `updated` on `categories/Reviews.md`. A
-`--date` run, which re-processes one day, sets nothing. The digest never adds
-to `authors`.
+`--date` run, which re-processes one day, sets nothing.
 
 Each run of `discover` sets
 the property `discovered: YYYY-MM-DD` (the local day of the run) on
-`categories/Knowledge.md`. It also sets `updated` there. It adds the agent's
-name to `authors` only when it detects an agent harness (Claude Code, Codex,
-or Gemini); a run from a plain shell leaves `authors` as it is. The three
+`categories/Knowledge.md`. It also sets `updated` there. The two
 changes are one atomic write. Obsidian need not run. In the `llmos` vault, `set-property` and
 `remove-property` refuse the `discovered` property of that note, also through
 a link to it, and `create` refuses new content for it that sets the property.
@@ -149,7 +143,7 @@ never writes inside the vault, except for the record above. It refuses to run
 when `artifacts/` is missing and `--out` is not given. It also refuses
 before any work when `categories/Knowledge.md` is missing, is a symbolic link,
 or has frontmatter that the edit cannot rewrite (for example an anchored
-`updated` or `authors`). The check runs the same edit without writing, so a
+`updated`). The check runs the same edit without writing, so a
 failed run never leaves a half record.
 
 Use `--no-record` for a probe, such as a run on a copy of the vault: it then
