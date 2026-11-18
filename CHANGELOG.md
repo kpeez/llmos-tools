@@ -5,6 +5,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.10.1 — 2026-11-18
+
 - The tools now live in their own repository, `kpeez/llmos-tools`, with the
   plugin at the repository root. The marketplace keeps the name `llmos-vault`;
   re-add it from `kpeez/llmos-tools` to keep receiving updates. CI, the
@@ -14,6 +16,14 @@ Newest first. Versions are the `version` field shared by
   `github_owners` in `~/.config/llmos/config.json`, and fails when the list
   is missing or empty. The code no longer names them. Add the key on the
   host that runs the digest timer before you update its install.
+- The rules that the code enforces ship with the tools: the source manifest,
+  the compiled-fact and conflict formats that `claims lint` reads
+  (`docs/compiled-facts.md`), and the ingest contract
+  (`docs/ingest-contract.md`). `consolidate-knowledge` uses paths from the
+  vault root, so it works when the vault is the root of its own repository.
+- `maintain-llmos` says what to do when `daily append-thought` cannot reach
+  Obsidian: report the thought in the reply instead of writing the note by
+  hand. The digest timer docs describe the schedule as owned by the host.
 - `--vault` takes the folder name of any vault in Obsidian's registry, not
   one fixed second vault. `llmos` still means the llmOS vault.
 - `llmos-vault config set-root` keeps the other keys of the config file.
