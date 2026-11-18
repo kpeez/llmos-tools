@@ -1,5 +1,5 @@
-# Caches and build output of the retired Python package, which older
-# checkouts may still hold.
+# Python caches of the Hermes adapter (hermes/), and build output of the
+# retired Python package, which older checkouts may still hold.
 .venv/
 __pycache__/
 *.py[cod]

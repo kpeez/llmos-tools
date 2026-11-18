@@ -5,10 +5,11 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { hookChecks } from "../src/doctor.ts";
 import { fileSha256, heartbeatPath, readHeartbeats, recordHeartbeat } from "../src/heartbeat.ts";
+import { hookAgent } from "../src/hooks/heartbeat.ts";
 import { scratch } from "./helpers.ts";
 
 const NOW = Date.parse("2026-10-08T12:00:00Z");
@@ -213,5 +214,33 @@ describe("llmos-doctor hook checks", () => {
     const disabled = hookChecks(h.env, NOW);
     expect(disabled.failures).toBe(1);
     expect(disabled.lines.join("\n")).toContain("NOTE hooks-agy:");
+  });
+
+  test("checks hooks-hermes against the bundle above the linked tools/hermes folder", () => {
+    const h = host({ claude: false, codex: false });
+    const tools = join(h.env.HOME, "llmos", "tools");
+    mkdirSync(join(tools, "hermes"), { recursive: true });
+    mkdirSync(join(tools, "dist"), { recursive: true });
+    writeFileSync(join(tools, "dist", "hooks.js"), "hermes bundle");
+    mkdirSync(join(h.env.HOME, ".hermes", "plugins"), { recursive: true });
+    symlinkSync(join(tools, "hermes"), join(h.env.HOME, ".hermes", "plugins", "llmos"));
+
+    const missing = hookChecks(h.env, NOW);
+    expect(missing.failures).toBe(1);
+    expect(missing.lines.join("\n")).toContain("FAIL hooks-hermes: no heartbeat");
+
+    beatFor(h, "hermes", join(tools, "dist", "hooks.js"));
+    const passing = hookChecks(h.env, NOW);
+    expect(passing.failures).toBe(0);
+    expect(passing.lines.join("\n")).toContain("PASS hooks-hermes: hooks ran");
+  });
+});
+
+describe("hookAgent", () => {
+  test("names the agent from the plugin root the Hermes adapter sets", () => {
+    expect(hookAgent({ PLUGIN_ROOT: "/Users/k/.hermes/plugins/llmos" }, {})).toBe("hermes");
+    expect(hookAgent({ CLAUDE_PLUGIN_ROOT: "/Users/k/.claude/plugins/cache/x" }, {})).toBe(
+      "claude",
+    );
   });
 });

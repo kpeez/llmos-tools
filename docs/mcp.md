@@ -44,5 +44,10 @@ CLI is missing or predates the server, it serves one tool, `setup`, that says
 to run `setup-llmos`, so a session never shows a failed server. `llmos-doctor`
 starts the same server and fails when it does not list every tool.
 
-Claude Code names the tools `mcp__plugin_llmos_llmos__<tool>` and Codex
-`mcp__llmos__<tool>`; the PreToolUse matcher covers both.
+Hermes Agent has no plugin manifest for the server: each Hermes profile lists
+`llmos-vault mcp` under `mcp_servers` in its `config.yaml` (setup-llmos).
+
+Claude Code names the tools `mcp__plugin_llmos_llmos__<tool>`, and Codex and
+Hermes Agent `mcp__llmos__<tool>`. The PreToolUse matcher in `hooks.json`
+covers both names. Hermes does not read `hooks.json`, so its MCP write tools
+get no hook context; the tools stamp `updated` themselves.

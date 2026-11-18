@@ -30,6 +30,10 @@ In Antigravity (`agy`):
 agy plugin install https://github.com/kpeez/llmos/tree/main/tools
 ```
 
+In Hermes Agent, link `hermes/` into each profile's `plugins/` folder and
+enable it; the `setup-llmos` skill lists every step (MCP server, skills,
+`SOUL.md`).
+
 To install the CLI by hand, see [CLI and scripts](docs/cli.md#install).
 
 ## Quick start

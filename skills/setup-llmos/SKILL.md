@@ -1,6 +1,6 @@
 ---
 name: setup-llmos
-description: Set up and verify llmOS access, agent-plugin activation, and hook coverage on a Mac or Linux host. Use when installing the llmOS integration for Codex or Claude, repairing missing vault guidance through project symlinks, or checking the vault root, Obsidian CLI, and qmd retrieval.
+description: Set up and verify llmOS access, agent-plugin activation, and hook coverage on a Mac or Linux host. Use when installing the llmOS integration for Codex, Claude, or Hermes Agent, repairing missing vault guidance through project symlinks, or checking the vault root, Obsidian CLI, and qmd retrieval.
 ---
 
 # Setup llmOS
@@ -180,6 +180,35 @@ Codex, `/mcp` lists `llmos`. Codex runs the read tools without a prompt and
 asks before each write tool (`daily_append_thought`, `file_inbox`,
 `set_property`); a user entry for that server in `config.toml` replaces those
 settings.
+
+## Hermes Agent
+
+Hermes Agent has no plugin marketplace for llmOS. Wire it by hand, once in
+the default profile (`~/.hermes`) and once in each profile under
+`~/.hermes/profiles/`; each profile has its own `config.yaml`, `SOUL.md`, and
+`plugins/` folder. Edit `config.yaml` as text and keep its comments.
+
+- MCP: add `llmos` under `mcp_servers` with `command:
+  ~/.local/bin/llmos-vault` (written out in full) and `args: [mcp]`. Hermes
+  names the tools `mcp__llmos__<tool>`, as Codex does. Check with
+  `hermes -p <profile> mcp list`.
+- Skills: add `<checkout>/tools/skills` to `skills.external_dirs`, and add
+  `obsidian` to `skills.disabled` (the bundled skill writes raw Markdown).
+  `hermes config get skills.disabled` warns that the key is unknown; the
+  skill loader reads it anyway. Check with `hermes -p <profile> skills list`.
+- Commands: add `llmos-vault *` to `command_allowlist`.
+- Hooks: link the adapter into the profile's `plugins/` folder and enable it:
+  `ln -s <checkout>/tools/hermes <profile-home>/plugins/llmos`, then
+  `hermes -p <profile> plugins enable llmos`. The gateway reloads plugins
+  at once. `hermes plugins doctor llmos` validates the plugin.
+- `SOUL.md`: say that the vault holds all project knowledge, and that
+  Hermes memory (`MEMORY.md`, `USER.md`) holds only facts about Hermes
+  itself. Copy the vault paragraphs of the default profile's `SOUL.md`.
+
+The adapter (`tools/hermes/__init__.py`) runs `dist/hooks.js` for each
+Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
+checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists. Start one new
+Hermes session (`hermes chat --oneshot -Q -q ok`) to record its heartbeat.
 
 ## Activate and verify each agent and host
 

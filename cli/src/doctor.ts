@@ -272,7 +272,7 @@ const WARN_AFTER_DAYS = 7;
 const DAY_MS = 86_400_000;
 
 interface Agent {
-  key: "claude" | "codex" | "agy";
+  key: "claude" | "codex" | "agy" | "hermes";
   name: string;
   /** The installed plugin folder; `undefined` when the plugin is not installed. */
   installPath: string | null | undefined;
@@ -353,6 +353,16 @@ function agyInstall(env: Env): string | undefined {
 }
 
 /**
+ * Hermes Agent's install record: `~/.hermes/plugins/llmos`, a symbolic link to
+ * `tools/hermes/`. The bundle is in the `tools/` folder above it.
+ */
+function hermesInstall(env: Env): string | undefined {
+  const pluginDir = join(env.HOME || homedir(), ".hermes", "plugins", "llmos");
+  if (!isDirectory(pluginDir)) return undefined;
+  return resolve(realOrSelf(pluginDir), "..");
+}
+
+/**
  * The hook heartbeat checks, one per agent: the hooks must have run (the
  * session-start hook records each run, `src/heartbeat.ts`) with the bundle
  * that is installed now. A missing or older heartbeat means the hooks cannot
@@ -396,6 +406,15 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
         "Start a fresh Antigravity session, then rerun llmos-doctor. If it still fails, verify " +
         "hooks.json is at the plugin root and bun is on PATH.",
       update: `agy plugin install ${PLUGIN_ID}`,
+    },
+    {
+      key: "hermes",
+      name: "Hermes Agent",
+      installPath: hermesInstall(env),
+      repair:
+        "Link and enable the plugin in every Hermes profile (hermes -p <profile> plugins enable " +
+        "llmos), start a new Hermes session, then rerun llmos-doctor (setup-llmos, Hermes Agent).",
+      update: "git pull the llmOS checkout that ~/.hermes/plugins/llmos links to",
     },
   ];
 

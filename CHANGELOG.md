@@ -3,6 +3,14 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## Unreleased
+
+- Hermes Agent runs the llmOS hooks. The adapter plugin in `hermes/` maps
+  Hermes hooks to `dist/hooks.js`: session context on the first turn, the
+  vault guard on `terminal`, read context and frontmatter stamps on the file
+  tools, and the Stop work at the end of each turn. `llmos-doctor` checks
+  `hooks-hermes`, and setup-llmos says how to wire each Hermes profile.
+
 ## 2.10.0 — 2026-11-18
 
 - Notes no longer get an `authors` property (ADR 0014). The PostToolUse hook,

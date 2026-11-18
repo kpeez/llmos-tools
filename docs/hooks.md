@@ -35,6 +35,35 @@ The two flags stop Bun from loading the session's project `.env` and
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds. Then commits changed shared project memory and pushes it |
 
+## Hermes Agent
+
+Hermes Agent does not read `hooks/hooks.json`. The adapter plugin in
+`hermes/` (Python, standard library only) runs the same `dist/hooks.js`
+for each Hermes hook, sends the payload the bundle reads for Claude Code
+(Hermes tool names mapped to `Bash`, `Read`, `Grep`, `Write`, `Edit`, or
+`apply_patch`), and sets `PLUGIN_ROOT=~/.hermes/plugins/llmos` so the
+heartbeat names `hermes`. Each Hermes profile links the folder into its own
+`plugins/` folder and enables it (setup-llmos, "Hermes Agent").
+
+| Hermes hook | Hook event | When |
+| --- | --- | --- |
+| `pre_llm_call` | `session-start` | First turn of a session only; the output is context for that turn |
+| `pre_tool_call` | `guard-bash` | `terminal` calls; exit 2 blocks the call |
+| `transform_tool_result` | `pre-tool-use` | `read_file` and `search_files` on a vault path; the context is appended to the result |
+| `transform_tool_result` | `post-tool-use` | `write_file` and `patch` on a vault path; stamps the note and appends the findings |
+| `on_session_end` | `stop` | End of every turn; runs in the background |
+
+Hermes has no channel for context before a tool runs, so a write gets no
+authoring contract first; the `maintain-llmos` skill carries it. A Hermes
+shell hook (`hooks:` in `config.yaml`) cannot replace a tool result, which
+is why the adapter is a plugin. Every adapter error returns no result: an
+error raised in `pre_tool_call` makes Hermes block the tool call.
+
+Relative paths resolve against the call's `workdir`, then the session cwd
+that Hermes records (`get_session_cwd`), then `TERMINAL_CWD`. As for
+Claude, the guard does not follow a `cd` inside a command, and it does not
+see `execute_code` or other tools that run code.
+
 The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a
 frontmatter block, with a block the serializer refuses, or with invalid UTF-8
