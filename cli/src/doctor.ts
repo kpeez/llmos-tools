@@ -25,6 +25,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter, join, resolve } from "node:path";
+import { parse as parseYaml } from "yaml";
 import { fileSha256, heartbeatPath, readHeartbeats } from "./heartbeat.ts";
 import { mcpCheck } from "./mcp-check.ts";
 import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
@@ -264,7 +265,95 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   lines.push(...hooks.lines);
   failures += hooks.failures;
 
+  const hermes = hermesProfileChecks(env);
+  lines.push(...hermes.lines);
+  failures += hermes.failures;
+
   return { lines, exitCode: failures > 0 ? 1 : 0 };
+}
+
+/** `~` and `${VAR}` expanded the way Hermes expands `skills.external_dirs`. */
+function expandHome(path: string, env: Env): string {
+  const home = env.HOME || homedir();
+  const expanded = path.replace(/\$\{(\w+)\}/g, (_, name: string) => env[name] ?? "");
+  return expanded === "~" || expanded.startsWith("~/") ? home + expanded.slice(1) : expanded;
+}
+
+/** The parts of a Hermes profile that `llmos` needs, by the name the doctor reports. */
+function hermesProfileGaps(home: string, env: Env): string[] {
+  let config: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = parseYaml(readFileSync(join(home, "config.yaml"), "utf8"), {
+      uniqueKeys: false,
+    });
+    if (parsed !== null && typeof parsed === "object") config = parsed as Record<string, unknown>;
+  } catch {
+    return ["a readable config.yaml"];
+  }
+  const section = (key: string): Record<string, unknown> => {
+    const value = config[key];
+    return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  };
+  const list = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  const gaps: string[] = [];
+  if (!("llmos" in section("mcp_servers"))) gaps.push("the llmos MCP server (mcp_servers.llmos)");
+  // As Hermes reads it: one string or a list; `~` and `${VAR}` expanded; relative to the profile.
+  const rawDirs = section("skills").external_dirs;
+  const skillDirs = (typeof rawDirs === "string" ? [rawDirs] : list(rawDirs)).map((dir) =>
+    resolve(home, expandHome(dir, env)),
+  );
+  if (!skillDirs.some((dir) => isFile(join(dir, "maintain-llmos", "SKILL.md")))) {
+    gaps.push("the llmOS skills (skills.external_dirs)");
+  }
+  if (!list(section("plugins").enabled).includes("llmos")) {
+    gaps.push("the enabled llmos plugin (plugins.enabled)");
+  }
+  if (!isFile(join(home, "plugins", "llmos", "__init__.py"))) {
+    gaps.push("the plugin link (plugins/llmos)");
+  }
+  let soul = "";
+  try {
+    soul = readFileSync(join(home, "SOUL.md"), "utf8");
+  } catch {}
+  if (!soul.includes("llmOS vault")) gaps.push("the vault rules in SOUL.md");
+  return gaps;
+}
+
+/**
+ * One check per Hermes Agent profile (`~/.hermes` and each folder in
+ * `~/.hermes/profiles/`), once any profile links the llmos plugin. Each
+ * profile has its own config, SOUL.md, and plugins folder, so a profile
+ * made later misses the wiring silently.
+ */
+export function hermesProfileChecks(env: Env): { lines: string[]; failures: number } {
+  const root = join(env.HOME || homedir(), ".hermes");
+  const profilesDir = join(root, "profiles");
+  const profiles: [string, string][] = [["default", root]];
+  if (isDirectory(profilesDir)) {
+    for (const name of readdirSync(profilesDir).sort()) {
+      const home = join(profilesDir, name);
+      if (isFile(join(home, "config.yaml"))) profiles.push([name, home]);
+    }
+  }
+  if (!profiles.some(([, home]) => existsSync(join(home, "plugins", "llmos")))) {
+    return { lines: [], failures: 0 };
+  }
+  const lines: string[] = [];
+  let failures = 0;
+  for (const [name, home] of profiles) {
+    const gaps = hermesProfileGaps(home, env);
+    if (gaps.length === 0) {
+      lines.push(`PASS hermes-profile-${name}: wired to llmOS`);
+      continue;
+    }
+    lines.push(
+      `FAIL hermes-profile-${name}: ${home} lacks ${gaps.join(", ")}`,
+      "REPAIR Wire the profile as setup-llmos says (Hermes Agent), then start a new Hermes session",
+    );
+    failures++;
+  }
+  return { lines, failures };
 }
 
 const PLUGIN_ID = "llmos@llmos-vault";

@@ -3,10 +3,12 @@ label: llmOS vault hooks
 description: >
   Runs the llmOS plugin hooks (dist/hooks.js) in Hermes Agent: vault context at session start,
   the guard against raw moves and deletes of vault notes, read context and frontmatter stamps on
-  file tools, and the reindex and shared-memory sync at the end of each turn.
+  file tools, the reindex and shared-memory sync at the end of each turn, and a reminder to commit and push
+  changed vault notes before the agent finishes.
 author: llmOS
 provides_hooks:
   - pre_llm_call
   - pre_tool_call
   - transform_tool_result
   - on_session_end
+  - pre_verify

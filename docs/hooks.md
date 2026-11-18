@@ -52,6 +52,7 @@ heartbeat names `hermes`. Each Hermes profile links the folder into its own
 | `transform_tool_result` | `pre-tool-use` | `read_file` and `search_files` on a vault path; the context is appended to the result |
 | `transform_tool_result` | `post-tool-use` | `write_file` and `patch` on a vault path; stamps the note and appends the findings |
 | `on_session_end` | `stop` | End of every turn; runs in the background |
+| `pre_verify` | none (git in the adapter) | After `write_file` or `patch` edits: sends the agent back, at most twice, while a vault note it changed that way this turn is uncommitted or not pushed. Shared project memory is left out, and a branch with no upstream skips the push check. Shell and MCP writes do not trigger it |
 
 Hermes has no channel for context before a tool runs, so a write gets no
 authoring contract first; the `maintain-llmos` skill carries it. A Hermes

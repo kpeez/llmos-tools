@@ -5,9 +5,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { hookChecks } from "../src/doctor.ts";
+import { hermesProfileChecks, hookChecks } from "../src/doctor.ts";
 import { fileSha256, heartbeatPath, readHeartbeats, recordHeartbeat } from "../src/heartbeat.ts";
 import { hookAgent } from "../src/hooks/heartbeat.ts";
 import { scratch } from "./helpers.ts";
@@ -242,5 +242,63 @@ describe("hookAgent", () => {
     expect(hookAgent({ CLAUDE_PLUGIN_ROOT: "/Users/k/.claude/plugins/cache/x" }, {})).toBe(
       "claude",
     );
+  });
+});
+
+describe("hermesProfileChecks", () => {
+  /** A Hermes profile home; `wired` adds every piece llmos needs. */
+  function profile(home: string, skills: string, wired: boolean): void {
+    mkdirSync(join(home, "plugins"), { recursive: true });
+    const config = wired
+      ? `mcp_servers:\n  llmos:\n    command: llmos-vault\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
+      : "mcp_servers:\n  atuin:\n    command: atuin\n";
+    writeFileSync(join(home, "config.yaml"), config);
+    writeFileSync(
+      join(home, "SOUL.md"),
+      wired ? "The llmOS vault is the source of truth." : "Be direct.",
+    );
+    if (wired) symlinkSync(join(skills, "..", "hermes"), join(home, "plugins", "llmos"));
+  }
+
+  test("checks every profile once any profile links the plugin", () => {
+    const home = scratch("hermes-profiles");
+    const tools = join(home, "llmos", "tools");
+    mkdirSync(join(tools, "skills", "maintain-llmos"), { recursive: true });
+    writeFileSync(join(tools, "skills", "maintain-llmos", "SKILL.md"), "skill");
+    mkdirSync(join(tools, "hermes"), { recursive: true });
+    writeFileSync(join(tools, "hermes", "__init__.py"), "");
+    const env = { HOME: home };
+
+    expect(hermesProfileChecks(env)).toEqual({ lines: [], failures: 0 });
+
+    profile(join(home, ".hermes"), join(tools, "skills"), true);
+    profile(join(home, ".hermes", "profiles", "coder"), join(tools, "skills"), true);
+    profile(join(home, ".hermes", "profiles", "later"), join(tools, "skills"), false);
+    const tilde = join(home, ".hermes", "profiles", "tilde");
+    profile(tilde, join(tools, "skills"), true);
+    const tildeConfig = join(tilde, "config.yaml");
+    writeFileSync(
+      tildeConfig,
+      readFileSync(tildeConfig, "utf8").replace(
+        /external_dirs:\n {4}- .*\n/,
+        "external_dirs: ~/llmos/tools/skills\n",
+      ),
+    );
+    const result = hermesProfileChecks(env);
+    expect(result.failures).toBe(1);
+    const text = result.lines.join("\n");
+    expect(text).toContain("PASS hermes-profile-default");
+    expect(text).toContain("PASS hermes-profile-coder");
+    expect(text).toContain("PASS hermes-profile-tilde");
+    expect(text).toContain("FAIL hermes-profile-later");
+    for (const gap of [
+      "mcp_servers.llmos",
+      "skills.external_dirs",
+      "plugins.enabled",
+      "plugins/llmos",
+      "SOUL.md",
+    ]) {
+      expect(text).toContain(gap);
+    }
   });
 });

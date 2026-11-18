@@ -10,6 +10,11 @@ Newest first. Versions are the `version` field shared by
   vault guard on `terminal`, read context and frontmatter stamps on the file
   tools, and the Stop work at the end of each turn. `llmos-doctor` checks
   `hooks-hermes`, and setup-llmos says how to wire each Hermes profile.
+- The Hermes adapter sends the agent back before it finishes while a vault
+  note it changed is not committed and pushed (`pre_verify`, at most twice).
+- `llmos-doctor` checks every Hermes profile (`hermes-profile-<name>`): the
+  MCP server, the llmOS skills, the enabled plugin and its link, and the vault
+  rules in `SOUL.md`.
 
 ## 2.10.0 — 2026-11-18
 

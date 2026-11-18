@@ -13,6 +13,8 @@ for Claude Code, runs `bun dist/hooks.js <event>`, and maps the output back:
   channel for context before a tool runs, so the authoring contract that
   Claude gets before a write is not sent; the `maintain-llmos` skill carries it.
 - `on_session_end` (the end of every turn) starts `stop` in the background.
+- `pre_verify`, after the agent edited files, sends it back to commit and push
+  the vault notes it changed this turn, at most twice.
 
 Every failure returns None: a raised error or a timeout in `pre_tool_call`
 would make Hermes block the tool call.
@@ -167,6 +169,69 @@ def _claude_tool(
     return name, {"path": args["path"]}
 
 
+def _git(repo: str, *args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "--literal-pathspecs",
+                "-c",
+                "core.quotePath=false",
+                "-C",
+                repo,
+                *args,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _unshared_notes(paths: list, task_id: Any = None) -> list[str]:
+    """Vault notes among `paths` that are uncommitted or committed but not pushed.
+
+    Shared project memory (`projects/*/memory/`) is left out: the hooks sync it.
+    A branch with no upstream skips the unpushed check.
+    """
+    root = _vault_root()
+    if root is None:
+        return []
+    top = _git(str(root), "rev-parse", "--show-toplevel")
+    if not top:
+        return []
+    top = top.strip()
+    notes: list[str] = []
+    for raw in paths:
+        if not _in_vault(raw, task_id):
+            continue
+        target = Path(raw).expanduser()
+        if not target.is_absolute():
+            target = Path(_cwd(task_id)) / target
+        parts = target.resolve().relative_to(root).parts
+        if len(parts) > 2 and parts[0] == "projects" and parts[2] == "memory":
+            continue
+        notes.append(os.path.relpath(target.resolve(), top))
+    if not notes:
+        return []
+    left: set[str] = set()
+    # NUL-separated names: git quotes non-ASCII names in line output.
+    for args in (
+        ("diff", "-z", "--name-only", "HEAD", "--"),
+        ("ls-files", "-z", "--others", "--exclude-standard", "--"),
+        ("log", "-z", "--name-only", "--format=", "@{upstream}..HEAD", "--"),
+    ):
+        out = _git(top, *args, *notes)
+        if out:
+            left.update(
+                name.strip("\n") for name in out.split("\0") if name.strip("\n")
+            )
+    return sorted(left & set(notes))
+
+
 def _fail_open(hook: Callable[..., Any]) -> Callable[..., Any]:
     """Return None on any error: an error raised in pre_tool_call blocks the tool call."""
 
@@ -243,8 +308,32 @@ def on_session_end(session_id=None, task_id=None, **_: Any):
     process.stdin.close()
 
 
+# Hermes allows three nudges per turn; two are enough to commit and push.
+MAX_COMMIT_NUDGES = 2
+
+
+@_fail_open
+def on_pre_verify(changed_paths=None, attempt=0, task_id=None, **_: Any):
+    """Keep the agent going while vault notes it changed this turn are not pushed."""
+    if attempt >= MAX_COMMIT_NUDGES or not isinstance(changed_paths, list):
+        return None
+    left = _unshared_notes(changed_paths, task_id)
+    if not left:
+        return None
+    return {
+        "action": "continue",
+        "message": (
+            "These llmOS vault notes you changed are not committed and pushed: "
+            + ", ".join(left)
+            + ". Commit only them, by path, and push to main, as your SOUL.md says. "
+            "If you cannot, tell the user which notes are left and why."
+        ),
+    }
+
+
 def register(ctx) -> None:
     ctx.register_hook("pre_llm_call", on_pre_llm_call)
     ctx.register_hook("pre_tool_call", on_pre_tool_call)
     ctx.register_hook("transform_tool_result", on_transform_tool_result)
+    ctx.register_hook("pre_verify", on_pre_verify)
     ctx.register_hook("on_session_end", on_session_end)

@@ -207,7 +207,9 @@ the default profile (`~/.hermes`) and once in each profile under
 
 The adapter (`tools/hermes/__init__.py`) runs `dist/hooks.js` for each
 Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
-checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists. Start one new
+checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists. Once any profile
+links the plugin, it also checks each profile (`hermes-profile-<name>`) and names
+the pieces a profile lacks, so a profile made later is not missed. Start one new
 Hermes session (`hermes chat --oneshot -Q -q ok`) to record its heartbeat.
 
 ## Activate and verify each agent and host
