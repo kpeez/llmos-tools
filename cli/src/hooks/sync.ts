@@ -16,10 +16,12 @@
  *   memory paths and commits ahead of `origin/main`. With no work it never
  *   touches the network. Otherwise it commits only the memory paths, fetches,
  *   fast-forwards (behind) or merges (ahead and behind; a conflict warns and
- *   changes nothing on disk), and pushes `HEAD:main`. A skip or failure is
- *   one stderr warning; the commit stays local and the next Stop retries it
- *   because the branch is ahead. It never pushes an unpushed commit that
- *   touches anything outside shared memory.
+ *   changes nothing on disk). It reads `HEAD` and `origin/main` once and
+ *   uses those commit IDs for every later step, checks that each unpushed
+ *   commit and the net change touch only shared memory, and pushes that
+ *   exact commit to `main`. A skip or failure is one stderr warning; the
+ *   commit stays local and the next Stop retries it because the branch is
+ *   ahead.
  *
  * One gate decides whether a checkout syncs (`LLMOS_NO_GIT_SYNC=1` opts out;
  * cloud sessions have their own path in `cloud.ts`; a vault without
@@ -106,7 +108,8 @@ function failure(result: GitResult): string {
   const lines = result.stderr
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean);
+    // `hint:` lines are git's advice, not the reason.
+    .filter((line) => line && !line.startsWith("hint:"));
   return lines.slice(0, 3).join(" ") || "git failed";
 }
 
@@ -354,13 +357,9 @@ function otherAheadPaths(gate: Syncing, env: Env, base: string, tip: string): st
 }
 
 /**
- * Merge a diverged branch without the work tree: `merge-tree` computes the
- * tree, `commit-tree` makes the commit, and a fast-forward moves `main`. A
- * conflict or a refusal changes nothing on disk. Returns the reason or `null`.
- */
-/**
- * Merge `origin` into `head` without the work tree, then fast-forward `main`
- * to the merge. Both inputs are fixed commit IDs, so a fetch or commit by
+ * Merge `origin` into `head` without the work tree (`merge-tree` computes the
+ * tree, `commit-tree` makes the commit), then fast-forward `main` to the
+ * merge. A conflict or a refusal changes nothing on disk. Both inputs are fixed commit IDs, so a fetch or commit by
  * another writer meanwhile makes the fast-forward or the push refuse instead
  * of producing a merge that drops that work.
  */

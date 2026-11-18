@@ -3,6 +3,14 @@
 Newest first. Versions are the `version` field shared by
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 
+## 2.9.1 — 2026-11-18
+
+- The Stop hook gives the qmd reindex 10 s of its 30 s budget, so a slow
+  reindex no longer crowds out the memory sync. A timed-out reindex keeps its
+  dirty flag for the next Stop and skips the `qmd update` fallback.
+- Sync warnings drop git's `hint:` lines, and the sync docs describe the fixed
+  commit IDs and the net-change check.
+
 ## 2.9.0 — 2026-11-17
 
 - Every host sees the same shared project memory (`projects/<project>/memory/`)
@@ -17,7 +25,7 @@ Newest first. Versions are the `version` field shared by
   work with local git commands only. When memory files changed, or commits are
   ahead of `origin/main`, it commits only the memory paths, fetches (5 s),
   fast-forwards or merges (5 s; a conflict warns and changes nothing on disk),
-  and pushes `HEAD:main` (5 s); with no work it never uses the network. A skip
+  and pushes the checked commit to `main` (5 s); with no work it never uses the network. A skip
   or failure warns on stderr, and the next Stop retries it. A lock file in the
   git common dir (`llmos-sync.lock`, owner token, stale after 60 s, atomic
   takeover) makes concurrent runs skip. Sync runs only for a local vault

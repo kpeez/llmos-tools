@@ -24,11 +24,26 @@ export function warn(message: string): void {
   process.stderr.write(`llmos qmd hook: ${message}\n`);
 }
 
+/**
+ * The reindex shares the 30 s Stop budget with the memory sync (`sync.ts`,
+ * up to about 15 s), so it gets 10 s. A timed-out reindex keeps the dirty
+ * flag, and the next Stop retries it.
+ */
+const REINDEX_TIMEOUT_MS = 10_000;
+const TIMED_OUT = "timed out";
+
 /** Run `command`, all its output on stderr; a description of the failure, or `null` on success. */
 function run(label: string, command: string[]): string | null {
   try {
-    const result = Bun.spawnSync({ cmd: command, stdin: "ignore", stdout: 2, stderr: "inherit" });
+    const result = Bun.spawnSync({
+      cmd: command,
+      stdin: "ignore",
+      stdout: 2,
+      stderr: "inherit",
+      timeout: REINDEX_TIMEOUT_MS,
+    });
     if (result.exitCode === 0) return null;
+    if (result.exitedDueToTimeout) return `${label} ${TIMED_OUT}`;
     return `${label} exited ${result.exitCode ?? result.signalCode}`;
   } catch (error) {
     return `${label} failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -47,6 +62,11 @@ export function stop(data: Payload): void {
       return;
     }
     failures.push(failure);
+    // A timeout is not a missing verb: qmd update would only spend the budget again.
+    if (failure.endsWith(TIMED_OUT)) {
+      warn(`${failure}; dirty flag retained for retry`);
+      return;
+    }
   }
   const failure = run("qmd update", ["qmd", "update", "-c", COLLECTION]);
   if (failure === null) {

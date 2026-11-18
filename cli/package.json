@@ -1,6 +1,6 @@
 {
   "name": "llmos-vault",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "private": true,
   "type": "module",
   "description": "TypeScript vault core and CLI for the llmOS tools",

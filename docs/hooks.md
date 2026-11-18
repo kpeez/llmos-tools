@@ -95,7 +95,7 @@ The session-start hook fetches (4-second limit), then, when `HEAD` is behind
 `origin/main` and not ahead, runs `git merge --ff-only origin/main` (4-second
 limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
 failure adds one line to the context: a failed fetch, a fast-forward that
-refuses (with the first line of git's reason), or a rebase, merge, or
+refuses (with git's reason, without its `hint:` lines), or a rebase, merge, or
 cherry-pick in progress. A diverged branch adds no line; Stop merges it. The
 Stop hook uses local git commands to find changed memory paths and commits
 ahead of `origin/main`. With neither, it never uses the network. Otherwise it
@@ -103,11 +103,13 @@ commits only the memory paths (other staged and unstaged edits stay) and
 fetches (5 seconds). When behind only, it fast-forwards. When ahead and behind,
 it merges the trees with `git merge-tree`, makes a merge commit with
 `git commit-tree`, and fast-forwards to it (5 seconds); a conflict names the
-conflicted paths and changes nothing on disk. Then it checks that every
-unpushed non-merge commit touches only memory, and pushes `HEAD:main`
+conflicted paths and changes nothing on disk. It reads `HEAD` and `origin/main` once and uses
+those commit IDs for every later step. Then it checks that each unpushed commit
+and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
-seconds.
+seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
+reindex keeps its dirty flag for the next Stop.
 
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is
