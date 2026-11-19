@@ -259,8 +259,9 @@ describe("hookAgent", () => {
 });
 
 describe("hermesProfileChecks", () => {
-  /** A Hermes profile home; `wired` adds every piece llmos needs. */
-  function profile(home: string, skills: string, wired: boolean): void {
+  /** A Hermes profile home; `wired` adds every piece llmos needs, linked into `tools`. */
+  function profile(home: string, tools: string, wired: boolean): void {
+    const skills = join(tools, "skills");
     mkdirSync(join(home, "plugins"), { recursive: true });
     const config = wired
       ? `mcp_servers:\n  llmos:\n    command: llmos-vault\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
@@ -270,31 +271,38 @@ describe("hermesProfileChecks", () => {
       join(home, "SOUL.md"),
       wired ? "The llmOS vault is the source of truth." : "Be direct.",
     );
-    if (wired) symlinkSync(join(skills, "..", "hermes"), join(home, "plugins", "llmos"));
+    if (wired) symlinkSync(join(tools, "hermes"), join(home, "plugins", "llmos"));
+  }
+
+  /** A fake llmos tree: the skills folder and the adapter. */
+  function tree(root: string): string {
+    mkdirSync(join(root, "skills", "maintain-llmos"), { recursive: true });
+    writeFileSync(join(root, "skills", "maintain-llmos", "SKILL.md"), "skill");
+    mkdirSync(join(root, "hermes"), { recursive: true });
+    writeFileSync(join(root, "hermes", "__init__.py"), "");
+    return root;
   }
 
   test("checks every profile once any profile links the plugin", () => {
     const home = scratch("hermes-profiles");
-    const tools = join(home, "llmos-tools");
-    mkdirSync(join(tools, "skills", "maintain-llmos"), { recursive: true });
-    writeFileSync(join(tools, "skills", "maintain-llmos", "SKILL.md"), "skill");
-    mkdirSync(join(tools, "hermes"), { recursive: true });
-    writeFileSync(join(tools, "hermes", "__init__.py"), "");
+    const installed = tree(join(home, ".local", "share", "llmos", "1.0.0"));
+    symlinkSync(installed, join(home, ".local", "share", "llmos", "current"));
+    const current = join(home, ".local", "share", "llmos", "current");
     const env = { HOME: home };
 
     expect(hermesProfileChecks(env)).toEqual({ lines: [], failures: 0 });
 
-    profile(join(home, ".hermes"), join(tools, "skills"), true);
-    profile(join(home, ".hermes", "profiles", "coder"), join(tools, "skills"), true);
-    profile(join(home, ".hermes", "profiles", "later"), join(tools, "skills"), false);
+    profile(join(home, ".hermes"), installed, true);
+    profile(join(home, ".hermes", "profiles", "coder"), current, true);
+    profile(join(home, ".hermes", "profiles", "later"), installed, false);
     const tilde = join(home, ".hermes", "profiles", "tilde");
-    profile(tilde, join(tools, "skills"), true);
+    profile(tilde, installed, true);
     const tildeConfig = join(tilde, "config.yaml");
     writeFileSync(
       tildeConfig,
       readFileSync(tildeConfig, "utf8").replace(
         /external_dirs:\n {4}- .*\n/,
-        "external_dirs: ~/llmos-tools/skills\n",
+        "external_dirs: ~/.local/share/llmos/current/skills\n",
       ),
     );
     const result = hermesProfileChecks(env);
@@ -313,6 +321,20 @@ describe("hermesProfileChecks", () => {
     ]) {
       expect(text).toContain(gap);
     }
+  });
+
+  test("fails a profile whose plugin link and skills folder are in a checkout", () => {
+    const home = scratch("hermes-checkout");
+    tree(join(home, ".local", "share", "llmos", "1.0.0"));
+    const checkout = tree(join(home, "code", "llmos-tools"));
+    profile(join(home, ".hermes"), checkout, true);
+
+    const result = hermesProfileChecks({ HOME: home });
+    expect(result.failures).toBe(1);
+    const text = result.lines.join("\n");
+    expect(text).toContain("FAIL hermes-profile-default");
+    expect(text).toContain("link it to ~/.local/share/llmos/current/hermes");
+    expect(text).toContain("set it to ~/.local/share/llmos/current/skills");
   });
 
   test("checks the profiles when the only plugin link points at a missing folder", () => {
