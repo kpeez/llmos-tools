@@ -397,6 +397,8 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
 }
 
 /** A command or plugin ID that 2.11.0 removed. `llmos-vault` is now only the vault repository. */
+/** A Codex hook-trust record of the old plugin ID. */
+const TRUST_RECORD = /^\s*\[hooks\.state\."llmos@llmos-vault:/;
 const REMOVED_NAME =
   /llmos-(?:vault|doctor|audit|daily-activity)(?![\w-])(?!\.(?:git|service|timer)\b)/g;
 
@@ -429,6 +431,7 @@ function agentConfigFiles(home: string): string[] {
 export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
   const home = env.HOME || homedir();
   const hits: string[] = [];
+  let trustRecords = 0;
   for (const file of agentConfigFiles(home)) {
     let text: string;
     try {
@@ -442,7 +445,9 @@ export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
         (match) =>
           line[match.index - 1] !== "/" || line.slice(match.index - 4, match.index) === "bin/",
       );
-      if (removed) hits.push(`${file}:${index + 1}: ${line.trim()}`);
+      if (!removed) return;
+      hits.push(`${file}:${index + 1}: ${line.trim()}`);
+      if (TRUST_RECORD.test(line)) trustRecords++;
     });
   }
   if (hits.length === 0) {
@@ -451,14 +456,21 @@ export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
       failures: 0,
     };
   }
-  return {
-    lines: [
-      `FAIL old-names: ${hits.length} line(s) name a command or plugin that 2.11.0 removed`,
-      ...hits,
-      "REPAIR In each line above, write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, llmos daily activity for llmos-daily-activity, and llmos@llmos-tools for llmos@llmos-vault; then restart the agent or service (setup-llmos)",
-    ],
-    failures: 1,
-  };
+  const lines = [
+    `FAIL old-names: ${hits.length} line(s) name a command or plugin that 2.11.0 removed`,
+    ...hits,
+  ];
+  if (hits.length > trustRecords) {
+    lines.push(
+      "REPAIR In each line above that is not a [hooks.state] header, write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, llmos daily activity for llmos-daily-activity, and llmos@llmos-tools for llmos@llmos-vault; then restart the agent or service (setup-llmos)",
+    );
+  }
+  if (trustRecords > 0) {
+    lines.push(
+      'REPAIR Delete each [hooks.state."llmos@llmos-vault:..."] table above (its header and its trusted_hash line), never rename it: a renamed record carries the old approval to the new plugin ID and skips Codex\'s hook review. Then approve the llmOS hooks again in an interactive Codex session (setup-llmos)',
+    );
+  }
+  return { lines, failures: 1 };
 }
 
 const PLUGIN_ID = "llmos@llmos-tools";

@@ -40,6 +40,30 @@ describe("old-names check", () => {
     expect(lines).toContain(`${join(home, ".codex/config.toml")}:1: [plugins."llmos@llmos-vault"]`);
   });
 
+  test("a Codex hook-trust record of the old plugin ID is deleted, not renamed", () => {
+    const { lines, failures } = check({
+      ".codex/config.toml":
+        '[hooks.state."llmos@llmos-vault:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:x"\n',
+    });
+    expect(failures).toBe(1);
+    const repairs = lines.filter((line) => line.startsWith("REPAIR"));
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]).toContain("Delete each [hooks.state");
+    expect(repairs[0]).toContain("approve the llmOS hooks again");
+    expect(repairs[0]).not.toContain("write llmos for llmos-vault");
+  });
+
+  test("a trust record and a renamable line give both repairs", () => {
+    const { lines } = check({
+      ".codex/config.toml":
+        '[plugins."llmos@llmos-vault"]\nenabled = true\n[hooks.state."llmos@llmos-vault:hooks/hooks.json:stop:0:0"]\n',
+    });
+    const repairs = lines.filter((line) => line.startsWith("REPAIR"));
+    expect(repairs).toHaveLength(2);
+    expect(repairs[0]).toContain("llmos@llmos-tools for llmos@llmos-vault");
+    expect(repairs[1]).toContain("Delete each [hooks.state");
+  });
+
   test("a Claude setting, a systemd unit, and a launchd agent that run an old command fail", () => {
     const { lines, failures } = check({
       ".claude/settings.json": '{"hooks": "llmos-audit --root x"}\n',
