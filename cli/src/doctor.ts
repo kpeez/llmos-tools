@@ -18,6 +18,7 @@ import {
   accessSync,
   constants,
   existsSync,
+  lstatSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -46,6 +47,16 @@ function isDirectory(path: string): boolean {
 
 function isFile(path: string): boolean {
   return existsSync(path) && statSync(path).isFile();
+}
+
+/** True also for a symbolic link whose target is gone, which `existsSync` reports as absent. */
+function pathEntryExists(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function realOrSelf(path: string): string {
@@ -336,7 +347,7 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
       if (isFile(join(home, "config.yaml"))) profiles.push([name, home]);
     }
   }
-  if (!profiles.some(([, home]) => existsSync(join(home, "plugins", "llmos")))) {
+  if (!profiles.some(([, home]) => pathEntryExists(join(home, "plugins", "llmos")))) {
     return { lines: [], failures: 0 };
   }
   const lines: string[] = [];
@@ -443,11 +454,13 @@ function agyInstall(env: Env): string | undefined {
 
 /**
  * Hermes Agent's install record: `~/.hermes/plugins/llmos`, a symbolic link to
- * `hermes/`. The bundle is in the folder above it.
+ * `hermes/`. The bundle is in the folder above it. `null` when the link
+ * points at a folder that is gone, such as a checkout that moved.
  */
-function hermesInstall(env: Env): string | undefined {
+function hermesInstall(env: Env): string | null | undefined {
   const pluginDir = join(env.HOME || homedir(), ".hermes", "plugins", "llmos");
-  if (!isDirectory(pluginDir)) return undefined;
+  if (!pathEntryExists(pluginDir)) return undefined;
+  if (!isDirectory(pluginDir)) return null;
   return resolve(realOrSelf(pluginDir), "..");
 }
 
@@ -503,7 +516,9 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
       repair:
         "Link and enable the plugin in every Hermes profile (hermes -p <profile> plugins enable " +
         "llmos), start a new Hermes session, then rerun llmos-doctor (setup-llmos, Hermes Agent).",
-      update: "git pull the llmOS checkout that ~/.hermes/plugins/llmos links to",
+      update:
+        "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the hermes/ folder " +
+        "of a current llmos-tools checkout: ln -sfn <checkout>/hermes ~/.hermes/plugins/llmos",
     },
   ];
 
