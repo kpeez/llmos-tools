@@ -183,7 +183,7 @@ its MCP servers and the CLI install. Without the install it offers only a
 session. In Claude Code, `/mcp` lists the server as `plugin:llmos:llmos`; in
 Codex, `/mcp` lists `llmos`. Codex runs the read tools without a prompt and
 asks before each write tool (`daily_append_thought`, `file_inbox`,
-`set_property`); a user entry for that server in `config.toml` replaces those
+`set_property`, `memory_save`, `memory_forget`); a user entry for that server in `config.toml` replaces those
 settings.
 
 ## Hermes Agent

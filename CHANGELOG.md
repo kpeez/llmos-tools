@@ -5,6 +5,14 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- New `llmos memory scope|save|search|forget` verbs and MCP tools
+  (`memory_save`, `memory_search`, `memory_forget`) read and write shared
+  project memory (`projects/<project>/memory/`, ADR-0020) in the format Claude
+  Code writes. A folder in a vault project's repository uses that project; any
+  other folder uses `personal`. A save fails when `MEMORY.md` would pass 200
+  lines. Codex approves `memory_search` and asks before the other two. The
+  session-start context names the memory tools.
+
 ## 2.11.0 — 2026-11-18
 
 - `install.ts` points `~/.local/share/llmos/current` at each new install, as its

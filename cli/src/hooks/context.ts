@@ -22,10 +22,12 @@ import {
 } from "../layout.ts";
 import {
   isMcpWriteTool,
+  MEMORY_TOOLS as MCP_MEMORY_TOOLS,
   READ_TOOLS as MCP_READ_TOOLS,
   WRITE_TOOLS as MCP_WRITE_TOOLS,
   SERVER_NAME,
 } from "../mcp-names.ts";
+import { readMemoryIndex } from "../memory.ts";
 import {
   firstTruthy,
   isDir,
@@ -74,8 +76,6 @@ const WRITE_TOOLS = new Set([
   "edit_file",
 ]);
 const MAX_AUTHORING_CONTEXT_CHARS = 8_000;
-const MAX_MEMORY_LINES = 200;
-const MAX_MEMORY_BYTES = 25_000;
 const SKILL_NAMES: Record<string, string> = {
   ".md": "obsidian-markdown",
   ".base": "obsidian-bases",
@@ -128,35 +128,6 @@ function projectMemoryDir(root: string, linked: [string, string] | null): string
   return joinPath(root, "projects", parts[1], MEMORY_DIR);
 }
 
-/** First `MAX_MEMORY_LINES` lines / `MAX_MEMORY_BYTES` UTF-8 bytes of `MEMORY.md`. */
-function readBoundedMemoryIndex(indexPath: string): string | null {
-  let raw: string;
-  try {
-    raw = readText(indexPath);
-  } catch (error) {
-    if (isOSError(error)) return null;
-    throw error;
-  }
-  const lines = raw.split("\n");
-  let truncated = lines.length > MAX_MEMORY_LINES;
-  let text = truncated ? lines.slice(0, MAX_MEMORY_LINES).join("\n") : raw;
-  if (Buffer.byteLength(text, "utf8") > MAX_MEMORY_BYTES) {
-    truncated = true;
-    let bytes = 0;
-    let out = "";
-    for (const ch of text) {
-      const size = Buffer.byteLength(ch, "utf8");
-      if (bytes + size > MAX_MEMORY_BYTES) break;
-      out += ch;
-      bytes += size;
-    }
-    text = out;
-  }
-  const trimmed = text.trimEnd();
-  if (!trimmed) return null;
-  return truncated ? `${trimmed}\n[MEMORY.md truncated]` : trimmed;
-}
-
 export function sessionContext(
   root: string,
   linked: [string, string] | null,
@@ -184,7 +155,7 @@ export function sessionContext(
     const autoMemoryReady = options.claudeAutoMemoryReady ?? false;
     const indexPath = joinPath(memoryDir, MEMORY_INDEX);
     if ((provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
-      const index = readBoundedMemoryIndex(indexPath);
+      const index = readMemoryIndex(indexPath);
       if (index !== null) sections.push(`Shared project memory (${indexPath}):\n${index}`);
     }
   }
@@ -198,7 +169,7 @@ const MCP_LINE =
   "with a folder for the properties of every note there; neighbors or subgraph for links; " +
   "set_property to change one property. All tools: " +
   `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
-  "(they stamp updated themselves).";
+  `(they stamp updated themselves); ${MCP_MEMORY_TOOLS.join(", ")} for shared project memory.`;
 
 export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();

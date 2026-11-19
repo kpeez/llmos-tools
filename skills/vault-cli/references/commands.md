@@ -24,6 +24,10 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
+| `memory forget` | Delete one shared memory: its topic note and its MEMORY.md index line. |
+| `memory save` | Save one shared memory: a topic note and its MEMORY.md index line. |
+| `memory scope` | Print which project's shared memory a session uses, and its index path. |
+| `memory search` | Search one project's shared memory notes; semantic by default. |
 | `move` | Move or rename a note via obsidian-cli, rewriting every backlink. |
 | `neighbors` | Print one note's outgoing links, backlinks, and shared-topic siblings. |
 | `read` | Print one note's frontmatter and body as JSON. |
@@ -579,6 +583,129 @@ Example output:
 
 Example:
   llmos mcp
+```
+
+## `memory forget`
+
+```text
+Usage: llmos memory forget <name> [--project NAME] [--workspace PATH] [--vault NAME]
+
+Delete one shared memory: its topic note and its MEMORY.md index line.
+
+Use when a memory is wrong or no longer true. Removes `<dir>/<name>.md`
+and its index line; fails when neither exists.
+Do NOT use to change a memory -- `memory save` with the same name replaces it.
+
+Arguments:
+  name  The memory's name (its file name without .md).
+
+Options:
+  --project    Vault project folder under projects/ whose memory to use. Wins over --workspace.
+  --workspace  Folder of the session: the vault project of its Git repository, else personal. Default: the current folder.
+  --vault      Must be "llmos". Default: llmos.
+
+Example output:
+  {"path": "projects/llmos-tools/memory/use-uv.md",
+    "index": "projects/llmos-tools/memory/MEMORY.md"}
+
+Example:
+  llmos memory forget use-uv --project llmos-tools
+```
+
+## `memory save`
+
+```text
+Usage: llmos memory save <name> <description> <body> [--type user|feedback|project|reference] [--title TEXT] [--project NAME] [--workspace PATH] [--vault NAME]
+
+Save one shared memory: a topic note and its MEMORY.md index line.
+
+Use when an agent learns a fact that another agent or a later session can
+use: a user preference, a correction, a project constraint, or a pointer to
+an outside resource. Writes `<dir>/<name>.md` with the frontmatter Claude
+Code writes (`name`, `description`, `metadata.node_type: memory`,
+`metadata.type`, `metadata.modified`) and adds or replaces its line in
+`MEMORY.md`. Saving a name again replaces that memory's body and keeps its
+other properties. Fails, and writes nothing, when the index would pass 200
+lines, because agents load only that many: merge or forget memories first.
+Do NOT use for durable knowledge notes -- those follow the vault's
+authoring.md.
+
+Arguments:
+  name         Lowercase slug of the memory and its file name, such as use-uv.
+  description  One line that says when the memory is relevant.
+  body         The fact; for feedback and project, add **Why:** and **How to apply:**.
+
+Options:
+  --type       user (who the user is), feedback (how to work), project (ongoing work), or reference (a pointer). Default: project.
+  --title      Link text of the index line. Default: the name with spaces.
+  --project    Vault project folder under projects/ whose memory to use. Wins over --workspace.
+  --workspace  Folder of the session: the vault project of its Git repository, else personal. Default: the current folder.
+  --vault      Must be "llmos". Default: llmos.
+
+Example output:
+  {"path": "projects/llmos-tools/memory/use-uv.md",
+    "index": "projects/llmos-tools/memory/MEMORY.md", "created": true}
+
+Example:
+  llmos memory save use-uv "Run Python through uv" "Use uv run, never bare python." --type feedback
+```
+
+## `memory scope`
+
+```text
+Usage: llmos memory scope [--project NAME] [--workspace PATH] [--vault NAME]
+
+Print which project's shared memory a session uses, and its index path.
+
+Use when an agent or plugin must know where shared project memory lives
+(ADR-0020) before it reads or writes it. A workspace inside a Git repository
+whose name matches a folder under `projects/` uses that project, by the
+session-start hook's rule; any other workspace uses `personal`.
+
+Options:
+  --project    Vault project folder under projects/ whose memory to use. Wins over --workspace.
+  --workspace  Folder of the session: the vault project of its Git repository, else personal. Default: the current folder.
+  --vault      Must be "llmos". Default: llmos.
+
+Example output:
+  {"project": "llmos-tools", "dir": "projects/llmos-tools/memory",
+    "index": "projects/llmos-tools/memory/MEMORY.md",
+    "index_path": "/Users/me/vault/projects/llmos-tools/memory/MEMORY.md"}
+
+Example:
+  llmos memory scope --workspace ~/code/llmos-tools
+```
+
+## `memory search`
+
+```text
+Usage: llmos memory search <query> [--keyword] [--limit N] [--project NAME] [--workspace PATH] [--vault NAME]
+
+Search one project's shared memory notes; semantic by default.
+
+Use when an agent needs the memories that match a task and the index lines
+do not settle it. Runs a qmd search on the llmOS collection and keeps the
+topic notes of the scope's memory folder (not its subfolders or the index).
+Semantic search loads the embedding model on the first call in a process;
+--keyword needs no model. A memory saved since the last `reindex` is not
+found yet.
+
+Arguments:
+  query  What to search for.
+
+Options:
+  --keyword    BM25 keyword search instead of vector search.
+  --limit      Maximum number of results. Default: 5.
+  --project    Vault project folder under projects/ whose memory to use. Wins over --workspace.
+  --workspace  Folder of the session: the vault project of its Git repository, else personal. Default: the current folder.
+  --vault      Must be "llmos". Default: llmos.
+
+Example output:
+  [{"path": "projects/llmos-tools/memory/use-uv.md",
+    "title": "use-uv", "score": 0.82, "line": 9, "snippet": "..."}]
+
+Example:
+  llmos memory search "python packaging" --project llmos-tools
 ```
 
 ## `move`

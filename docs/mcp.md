@@ -11,6 +11,16 @@ vault model and the qmd search models loaded between calls.
 | --- | --- |
 | `read`, `list`, `neighbors`, `subgraph`, `check`, `health`, `search` | Read |
 | `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` on the notes it changes |
+| `memory_save`, `memory_search`, `memory_forget` | Shared project memory (`projects/<project>/memory/`, ADR-0020) |
+
+The memory tools write the notes and `MEMORY.md` index lines that Claude Code
+writes through `autoMemoryDirectory`, so every agent shares one store. They
+take an optional `project`, a folder name under `projects/`, never a path.
+Without it, the scope is the project of the folder the server started in, or
+`personal` outside a vault project. `memory_save` fails when the index would
+pass 200 lines, because agents load only that many. `memory_search` keeps only
+the topic notes directly in the memory folder, so a subfolder such as
+Hermes's own `hermes/` store stays out of it.
 
 Each tool runs the handler of the matching `llmos` command, and its
 description comes from that command's help. The server serves only the llmOS

@@ -20,7 +20,7 @@ import type { Context } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import { Frontmatter } from "../src/frontmatter.ts";
 import { INSTRUCTIONS } from "../src/mcp.ts";
-import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
+import { MEMORY_TOOLS, READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
 import { VaultModel } from "../src/vault.ts";
@@ -77,11 +77,18 @@ describe("the tool list", () => {
     const { client, close } = await connect(contextFor(vault()));
     const tools = await client.tools();
     await close();
-    expect(tools.map((tool) => tool.name)).toEqual([...READ_TOOLS, ...WRITE_TOOLS]);
+    expect(tools.map((tool) => tool.name)).toEqual([
+      ...READ_TOOLS,
+      ...MEMORY_TOOLS,
+      ...WRITE_TOOLS,
+    ]);
     const commandOf: Record<string, string> = {
       daily_append_thought: "daily append-thought",
       file_inbox: "file-inbox",
       set_property: "set-property",
+      memory_save: "memory save",
+      memory_search: "memory search",
+      memory_forget: "memory forget",
     };
     for (const tool of tools) {
       const name = tool.name as string;
@@ -90,7 +97,8 @@ describe("the tool list", () => {
         `${command?.summary}\n\n${command?.description}`,
       );
       const hints = tool.annotations as Record<string, boolean>;
-      expect(hints.readOnlyHint).toBe((READ_TOOLS as readonly string[]).includes(name));
+      const readOnly = [...READ_TOOLS, "memory_search"] as readonly string[];
+      expect(hints.readOnlyHint).toBe(readOnly.includes(name));
       expect(hints.openWorldHint).toBe(false);
       expect((tool.inputSchema as { additionalProperties?: boolean }).additionalProperties).toBe(
         false,
@@ -425,6 +433,65 @@ describe("hostile arguments are refused", () => {
       expect(read(root, "notes/alpha.md")).toBe(NOTE);
       expect(read(root, DAILY)).toBe(dailyNote(TODAY));
       expect(read(root, "raw/capture.md")).toBe(CAPTURE);
+    });
+  }
+});
+
+describe("memory tools", () => {
+  test("save, search, and forget one memory in a named project", async () => {
+    const root = vault({ "projects/garden/garden.md": "# Garden\n" });
+    const env = isolatedEnv();
+    const { client, close } = await connect(contextFor(root, { env }));
+
+    const saved = await client.call("memory_save", {
+      name: "tank-heater",
+      description: "The zebrafish tank needs a heater",
+      body: "Set the zebrafish tank heater to 26 C.",
+      type: "project",
+      project: "garden",
+    });
+    expect(saved.isError).toBeFalsy();
+    expect(JSON.parse(saved.text)).toMatchObject({ path: "projects/garden/memory/tank-heater.md" });
+    expect(read(root, "projects/garden/memory/MEMORY.md")).toContain(
+      "- [Tank heater](tank-heater.md) — The zebrafish tank needs a heater",
+    );
+
+    const config = join(env.QMD_CONFIG_DIR as string, "index.yml");
+    mkdirSync(dirname(config), { recursive: true });
+    writeFileSync(config, `collections:\n  llmos:\n    path: ${root}\n    pattern: "**/*.md"\n`);
+    mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
+    const store = await openQmd(qmdLocation(env), true);
+    await store.update({ collections: ["llmos"] });
+    await store.close();
+    const found = await client.call("memory_search", {
+      query: "zebrafish",
+      keyword: true,
+      project: "garden",
+    });
+    expect(JSON.parse(found.text).map((hit: { path: string }) => hit.path)).toEqual([
+      "projects/garden/memory/tank-heater.md",
+    ]);
+
+    const forgot = await client.call("memory_forget", { name: "tank-heater", project: "garden" });
+    await close();
+    expect(forgot.isError).toBeFalsy();
+    expect(read(root, "projects/garden/memory/MEMORY.md")).not.toContain("tank-heater");
+  });
+
+  const HOSTILE: [string, Record<string, unknown>][] = [
+    ["memory_save", { name: "x", description: "d", body: "b", type: "project", project: ".." }],
+    ["memory_save", { name: "../x", description: "d", body: "b", type: "project" }],
+    ["memory_save", { name: "x", description: "d", body: "b", type: "project", path: "/tmp" }],
+    ["memory_search", { query: "q", project: "../.." }],
+    ["memory_forget", { name: "x", project: "notes/../.." }],
+  ];
+  for (const [tool, args] of HOSTILE) {
+    test(`${tool} refuses ${JSON.stringify(args)}`, async () => {
+      const root = vault();
+      const { client, close } = await connect(contextFor(root));
+      const result = await client.call(tool, args);
+      await close();
+      expect(result.isError).toBe(true);
     });
   }
 });

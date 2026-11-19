@@ -17,6 +17,7 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
+import type { MemoryScope } from "./memory.ts";
 
 export type Env = Record<string, string | undefined>;
 
@@ -206,6 +207,32 @@ export async function search(
   }
   const results = await store.searchLex(query, scope);
   return results.map((r) => hit(r.filepath, r.title, r.score, r.body ?? ""));
+}
+
+/**
+ * Search the memory notes of `scope`. qmd has no path filter, so this asks
+ * for more hits than `limit` and keeps the topic notes directly in the
+ * scope's folder: a subfolder (such as Hermes's own `hermes/` store) holds
+ * facts for one agent only.
+ */
+export async function searchMemory(
+  store: QMDStore,
+  scope: MemoryScope,
+  query: string,
+  options: { collection: string; limit: number; mode: SearchMode },
+): Promise<SearchHit[]> {
+  const hits = await search(store, query, {
+    ...options,
+    limit: Math.min(options.limit * 10, 200),
+  });
+  const prefix = `${scope.dir}/`.toLowerCase();
+  const index = scope.index.toLowerCase();
+  return hits
+    .filter((hit) => {
+      const path = hit.path.toLowerCase();
+      return path.startsWith(prefix) && !path.slice(prefix.length).includes("/") && path !== index;
+    })
+    .slice(0, options.limit);
 }
 
 /** Another process holds the embed lock. */

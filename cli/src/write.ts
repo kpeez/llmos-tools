@@ -164,6 +164,23 @@ export function createNote(root: string, relative: string, text: string): void {
   }
 }
 
+/** Write `text` to the note at `relative` atomically: replace it, or create it when missing. */
+export function writeNote(root: string, relative: string, text: string): void {
+  if (!present(insideVault(root, relative))) {
+    createNote(root, relative, text);
+    return;
+  }
+  atomicReplace(realTarget(root, relative), text);
+}
+
+/** Delete the note at `relative`; refused when it is missing or outside the vault. */
+export function deleteNote(root: string, relative: string): void {
+  if (!present(insideVault(root, relative))) {
+    throw new WriteRefused(`no file at ${relative}`);
+  }
+  unlinkSync(realTarget(root, relative));
+}
+
 /** The note's frontmatter, or an empty block when the note has none. */
 function frontmatterOf(text: string): Frontmatter {
   try {
