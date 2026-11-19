@@ -1,5 +1,5 @@
 /**
- * `llmos-vault mcp`: the llmOS vault tools as an MCP server on stdio, built
+ * `llmos mcp`: the llmOS vault tools as an MCP server on stdio, built
  * on the official TypeScript MCP SDK. The plugin's `.mcp.json` starts it
  * through the launcher `dist/mcp.js` (`src/mcp-launcher.ts`).
  *
@@ -66,7 +66,7 @@ function prose(max: number) {
 /** The registry command a tool runs. */
 function command(name: string): Command {
   const found = COMMANDS.find((entry) => entry.name === name);
-  if (found === undefined) throw new Error(`no llmos-vault command named '${name}'`);
+  if (found === undefined) throw new Error(`no llmos command named '${name}'`);
   return found;
 }
 
@@ -333,7 +333,7 @@ function describe(tool: Tool): string {
 }
 
 export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vault in $LLMOS_ROOT or ~/.config/llmos/config.json).
-Prefer them to the llmos-vault command line: arguments need no shell quoting, and the vault model and search models stay loaded.
+Prefer them to the llmos command line: arguments need no shell quoting, and the vault model and search models stay loaded.
 Read: read (one note; section for one heading, properties_only for the frontmatter), list (the properties of every note under a folder), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated themselves.
 Before creating or materially editing a note, follow the vault's AGENTS.md and authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;

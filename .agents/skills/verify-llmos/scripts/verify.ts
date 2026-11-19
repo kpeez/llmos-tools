@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Verification harness for the llmOS tools: the `llmos-vault` CLI, its MCP
+ * Verification harness for the llmOS tools: the `llmos` CLI, its MCP
  * server, and the hook bundle. Every drive runs against a scratch copy of a
  * fixture vault, with qmd isolated in a temporary home. It never touches the
  * real vault in `llmOS/`.
@@ -167,7 +167,7 @@ function check(feature: string, name: string, ok: boolean, detail = ""): void {
 const vault = (...argv: string[]): string[] => [
   process.execPath,
   ...BUN_FLAGS,
-  join(CLI, "bin", "llmos-vault.ts"),
+  join(CLI, "bin", "llmos.ts"),
   ...argv,
 ];
 
@@ -224,7 +224,7 @@ function doctor(state: State): boolean {
     env,
     encoding: "utf8",
   });
-  if (read.status !== 0) problems.push(`llmos-vault read exits ${read.status}: ${read.stderr}`);
+  if (read.status !== 0) problems.push(`llmos read exits ${read.status}: ${read.stderr}`);
   const hasObsidian = spawnSync("sh", ["-c", "command -v obsidian-cli"], { env }).status === 0;
   console.log(`obsidian-cli on the child PATH: ${hasObsidian ? "yes (unexpected)" : "no"}`);
   console.log(problems.length ? `DOCTOR FAIL: ${problems.join("; ")}` : "DOCTOR OK");
@@ -526,7 +526,7 @@ const hooks: Feature = (state) => {
 
 const mcp: Feature = async (state) => {
   const f = "mcp";
-  const argv = [process.execPath, ...BUN_FLAGS, join(CLI, "bin", "llmos-vault.ts"), "mcp"];
+  const argv = [process.execPath, ...BUN_FLAGS, join(CLI, "bin", "llmos.ts"), "mcp"];
   const child = Bun.spawn(argv, {
     cwd: CLI,
     env: childEnv(state),

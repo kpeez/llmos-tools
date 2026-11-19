@@ -1,10 +1,10 @@
 /**
- * The external contract results of the CLI on one vault: what `llmos-vault`
+ * The external contract results of the CLI on one vault: what `llmos`
  * prints for `list` (without its exit code, as the Python oracle recorded
  * it), and what it prints and its exit code for `daily recent --n 2`; for every
  * note `read`, `neighbors`, `subgraph` at depth 1 (and depth 2 where
  * `depth2` says so), and `check`; `read` by every note name; and `health
- * --json`. `normalize` and the schema audit (what `llmos-audit` reports) have
+ * --json`. `normalize` and the schema audit (what `llmos audit` reports) have
  * no CLI JSON form, so they come from their functions; a refusal is
  * `{error, message}`. CLI results come from `runCli` with the given vault
  * model. qmd reads as unavailable (no index), so its fields are the notice;

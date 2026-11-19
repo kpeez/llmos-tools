@@ -245,7 +245,7 @@ describe("write tools stamp updated", () => {
     const health = JSON.parse((await client.call("health", {})).text);
     await close();
     expect(refused.isError).toBe(true);
-    expect(refused.text).toContain("only `llmos-vault discover` sets it");
+    expect(refused.text).toContain("only `llmos discover` sets it");
     expect(other.isError).toBe(false);
     expect(properties(root, record).discovered).toBe("2026-09-01");
     expect(health.overdue_jobs).toContainEqual({

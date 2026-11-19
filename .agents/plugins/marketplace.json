@@ -1,7 +1,7 @@
 {
-  "name": "llmos-vault",
+  "name": "llmos-tools",
   "interface": {
-    "displayName": "llmos-vault"
+    "displayName": "llmos-tools"
   },
   "plugins": [
     {

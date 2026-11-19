@@ -199,7 +199,7 @@ describe("authoring findings", () => {
         "projects/testproj/source.md:8 [unlinked-note] -> projects/testproj/target: " +
         'Existing note reference "target.md": link to "projects/testproj/target" using the ' +
         "note title or a natural phrase, not the filename.\n" +
-        "Run `llmos-vault check <note>` for complete findings.",
+        "Run `llmos check <note>` for complete findings.",
     );
     expect(readFileSync(note, "utf8")).toContain("See target.md for the explanation.");
     expect(result.exitCode).toBe(0);

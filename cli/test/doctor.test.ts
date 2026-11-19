@@ -1,5 +1,5 @@
 /**
- * `llmos-doctor` as a process, with a stand-in obsidian-cli, this install's
+ * `llmos doctor` as a process, with a stand-in obsidian-cli, this install's
  * `qmd` (linked from `bin/qmd.ts`), and a temporary qmd index built through
  * the SDK. PATH holds only the stand-ins, Bun, and the system folders.
  */
@@ -59,24 +59,21 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
   if (options.sentinelIndexed === false) writeFiles(root, { "llmOS.md": SENTINEL });
   // The CLI installed: the link the plugin's MCP launcher follows.
   mkdirSync(join(env.HOME as string, ".local", "bin"), { recursive: true });
-  symlinkSync(
-    join(CLI, "bin", "llmos-vault.ts"),
-    join(env.HOME as string, ".local", "bin", "llmos-vault"),
-  );
+  symlinkSync(join(CLI, "bin", "llmos.ts"), join(env.HOME as string, ".local", "bin", "llmos"));
   // The plugin installed for Claude Code, and its hooks seen running.
   const plugin = join(
     env.HOME as string,
     ".claude",
     "plugins",
     "cache",
-    "llmos-vault",
+    "llmos-tools",
     "llmos",
     "1",
   );
   writeFiles(plugin, { "dist/hooks.js": "// hooks\n" });
   writeFiles(join(env.HOME as string, ".claude", "plugins"), {
     "installed_plugins.json": JSON.stringify({
-      plugins: { "llmos@llmos-vault": [{ installPath: plugin }] },
+      plugins: { "llmos@llmos-tools": [{ installPath: plugin }] },
     }),
   });
   recordHeartbeat(
@@ -93,7 +90,7 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
 }
 
 function doctor(env: Record<string, string>) {
-  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos-doctor.ts")], {
+  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos.ts"), "doctor"], {
     env,
     stdout: "pipe",
     stderr: "pipe",
@@ -107,7 +104,7 @@ function failed(result: ReturnType<typeof doctor>, check: string, repair: string
   expect(result.stdout).toContain(`REPAIR ${repair}`);
 }
 
-describe("llmos-doctor", () => {
+describe("llmos doctor", () => {
   test("a healthy setup passes every check", async () => {
     const { env } = await setup();
     const result = doctor(env);
@@ -132,14 +129,11 @@ describe("llmos-doctor", () => {
 
   test("an MCP server the launcher cannot start fails with the install repair", async () => {
     const { env } = await setup();
-    rmSync(join(env.HOME as string, ".local", "bin", "llmos-vault"));
+    rmSync(join(env.HOME as string, ".local", "bin", "llmos"));
     failed(doctor(env), "mcp-server", "Run /setup-llmos");
     const old = scratch("old-install");
-    writeFiles(old, { "bin/llmos-vault.ts": "process.exit(1);\n", "src/mcp.ts": "" });
-    symlinkSync(
-      join(old, "bin", "llmos-vault.ts"),
-      join(env.HOME as string, ".local", "bin", "llmos-vault"),
-    );
+    writeFiles(old, { "bin/llmos.ts": "process.exit(1);\n" });
+    symlinkSync(join(old, "bin", "llmos.ts"), join(env.HOME as string, ".local", "bin", "llmos"));
     const broken = doctor(env);
     failed(broken, "mcp-server", "Run /setup-llmos");
     expect(broken.stdout).toContain("exited before listing its tools");
@@ -207,12 +201,12 @@ describe("llmos-doctor", () => {
 
   test("an unindexed or stale sentinel fails with the reindex repair", async () => {
     const unindexed = await setup({ sentinelIndexed: false });
-    failed(doctor(unindexed.env), "qmd-index", "llmos-vault reindex");
+    failed(doctor(unindexed.env), "qmd-index", "llmos reindex");
 
     const stale = await setup();
     writeFiles(stale.root, { "llmOS.md": `${SENTINEL}\nEdited after indexing.\n` });
     const result = doctor(stale.env);
     expect(result.stdout).toContain("PASS qmd-index:");
-    failed(result, "qmd-retrieval", "llmos-vault reindex");
+    failed(result, "qmd-retrieval", "llmos reindex");
   });
 });

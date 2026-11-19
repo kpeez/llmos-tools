@@ -12,22 +12,22 @@ A user or agent creates a note, appends text, and sets or removes a property. Ev
 
 ## How to get to it (user POV)
 
-- CLI: `llmos-vault create|append|set-property|remove-property|move`.
+- CLI: `llmos create|append|set-property|remove-property|move`.
 - MCP: `set_property`, `daily_append_thought`, `file_inbox`. See [mcp.md](./mcp.md).
 
 ## Driving it with scripts/verify.ts
 
 Preconditions: launch and doctor passed. `notes/new.md` does not exist.
 
-- **Create.** `llmos-vault create notes/new --content hello`. Exit 0. `notes/new.md` holds `hello`.
+- **Create.** `llmos create notes/new --content hello`. Exit 0. `notes/new.md` holds `hello`.
 - **Create twice.** Same command again. Exit is not 0. The note is not overwritten.
-- **Create outside.** `llmos-vault create ../../escape --content x`. Exit 1: "is not a path inside the vault". No file appears beside the scratch vault.
-- **Set property.** `llmos-vault set-property notes/new status active`. Exit 0. The file holds `status: active`.
-- **Immutable key.** `llmos-vault set-property notes/alpha created 2000-01-01`. Exit is not 0. `created` stays `2026-07-01`.
-- **Append.** `llmos-vault append notes/new "tail line"`. Exit 0. The file ends with `tail line`.
-- **Remove property.** `llmos-vault remove-property notes/new status`. Exit 0. The key is gone.
+- **Create outside.** `llmos create ../../escape --content x`. Exit 1: "is not a path inside the vault". No file appears beside the scratch vault.
+- **Set property.** `llmos set-property notes/new status active`. Exit 0. The file holds `status: active`.
+- **Immutable key.** `llmos set-property notes/alpha created 2000-01-01`. Exit is not 0. `created` stays `2026-07-01`.
+- **Append.** `llmos append notes/new "tail line"`. Exit 0. The file ends with `tail line`.
+- **Remove property.** `llmos remove-property notes/new status`. Exit 0. The key is gone.
 - **Link out of the vault.** The harness links `notes/link.md` to a file outside the vault. `set-property notes/link status pwned` exits not 0. The outside file is unchanged.
-- **Obsidian verbs (verified-unreachable).** `llmos-vault move alpha notes/z.md` and `llmos-vault create notes/t --template project` exit 3: "obsidian-cli is not on PATH". Prerequisite: the Obsidian app running with its CLI on. A run on a host with Obsidian also checks that backlinks are rewritten.
+- **Obsidian verbs (verified-unreachable).** `llmos move alpha notes/z.md` and `llmos create notes/t --template project` exit 3: "obsidian-cli is not on PATH". Prerequisite: the Obsidian app running with its CLI on. A run on a host with Obsidian also checks that backlinks are rewritten.
 - Run: `bun scripts/verify.ts drive writes`. Evidence goes to `writes/`.
 
 ## Gotchas

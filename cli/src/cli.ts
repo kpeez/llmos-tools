@@ -1,5 +1,5 @@
 /**
- * The `llmos-vault` command line: a registry of commands and the one entry
+ * The `llmos` command line: a registry of commands and the one entry
  * point that turns their results and errors into output and exit codes.
  *
  * Each command declares its name, a one-line summary, its help text, its
@@ -92,6 +92,8 @@ export type Values = Record<string, string | string[] | number | boolean | undef
 export interface Outcome {
   json?: unknown;
   text?: string;
+  /** Printed on stderr, after the output. */
+  stderr?: string;
   exitCode?: number;
 }
 
@@ -113,7 +115,7 @@ export class UsageError extends Error {
   override name = "UsageError";
 }
 
-const PROGRAM = "llmos-vault";
+const PROGRAM = "llmos";
 
 function placeholder(arg: ArgumentSpec): string {
   return arg.variadic ? `<${arg.name}...>` : `<${arg.name}>`;
@@ -173,7 +175,7 @@ function indent(text: string): string {
     .join("\n");
 }
 
-/** The list of commands, as `llmos-vault --help` prints it. */
+/** The list of commands, as `llmos --help` prints it. */
 export function renderOverview(commands: readonly Command[], group?: string): string {
   const shown = group ? commands.filter((c) => c.name.startsWith(`${group} `)) : commands;
   return [
@@ -335,7 +337,7 @@ export async function runCli(
     let stdout = "";
     if (outcome.json !== undefined) stdout = `${JSON.stringify(outcome.json, null, 2)}\n`;
     else if (outcome.text !== undefined) stdout = `${outcome.text}\n`;
-    return { exitCode: outcome.exitCode ?? 0, stdout, stderr: "" };
+    return { exitCode: outcome.exitCode ?? 0, stdout, stderr: outcome.stderr ?? "" };
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     const detail = EXPECTED_ERRORS.has(error.name) ? error.message : (error.stack ?? String(error));

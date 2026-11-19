@@ -12,13 +12,13 @@ llmos-tools/
 │   ├── ingest-source/     # sorts inbox drops in raw/; captures sources with `source add`
 │   ├── maintain-llmos/    # vault conventions and maintenance workflows
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
-│   └── vault-cli/         # routing table for the llmos-vault CLI
+│   └── vault-cli/         # routing table for the llmos CLI
 ├── hooks/                 # hooks.json: session/tool lifecycle hooks (see below)
 ├── dist/                  # committed bundles: hooks.js and the MCP launcher mcp.js
 ├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex, mcp_config.json for agy)
 └── cli/                   # the CLI's Bun project: package.json, bun.lock, justfile
     ├── src/               # TypeScript core and the CLI's command registry
-    ├── bin/               # entry points: llmos-vault, llmos-doctor, llmos-audit, qmd
+    ├── bin/               # entry points: llmos, qmd
     ├── test/              # bun tests, contract snapshots, and fixture vaults
     └── scripts/           # install.ts (the CLI install), gen-marketplaces.ts, bootstrap.sh
 ```
@@ -48,17 +48,16 @@ plugin hooks, and the MCP server.
   `VaultRootError` instead of exiting.
 - `schema.ts`, `authoring.ts`, `health.ts`, `daily.ts`, and `inbox.ts` port the
   llmOS-profile reads and computations.
-- `cli.ts` and `commands.ts` are the `llmos-vault` command registry and entry
+- `cli.ts` and `commands.ts` are the `llmos` command registry and entry
   point; `write.ts` does the headless writes, `obsidian.ts` the two
   obsidian-cli writes (`move`, `create --template`), `qmd.ts` search and
-  reindex through the qmd SDK, and `doctor.ts` the `llmos-doctor` checks.
-- `digest.ts` is the `llmos-daily-activity` command (run it with
-  `bun src/digest.ts`). Its block hash and markers match the blocks already
-  in daily notes. A PR merged in one repository does not hide a PR with the
+  reindex through the qmd SDK, and `doctor.ts` the `llmos doctor` checks.
+- `digest.ts` is the `llmos daily activity` command. Its block hash and markers
+  match the blocks already in daily notes. A PR merged in one repository does not hide a PR with the
   same number opened in another.
 - `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` (see
   [hooks](hooks.md)).
-- `mcp.ts` is the `llmos-vault mcp` server, `mcp-launcher.ts` the launcher
+- `mcp.ts` is the `llmos mcp` server, `mcp-launcher.ts` the launcher
   bundled into `dist/mcp.js`, `mcp-check.ts` the doctor's server check, and
   `mcp-names.ts` the tool names the hooks share (see [MCP server](mcp.md)).
 

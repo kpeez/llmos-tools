@@ -198,7 +198,7 @@ export function networkFetcher(
       const response = await request(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(60_000),
-        headers: { "user-agent": "llmos-vault source add" },
+        headers: { "user-agent": "llmos source add" },
       });
       const location = response.headers.get("location");
       if (response.status >= 300 && response.status < 400 && location) {

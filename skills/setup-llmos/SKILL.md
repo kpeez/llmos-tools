@@ -8,8 +8,8 @@ description: Set up and verify llmOS access, agent-plugin activation, and hook c
 Use this workflow on macOS or Linux, the supported llmOS desktop environments.
 The doctor detects the OS and prints platform-specific repairs.
 
-The maintenance commands (`llmos-vault`, `llmos-doctor`, `llmos-audit`) and
-`qmd` come from the llmOS CLI, a TypeScript program run by Bun. Below,
+The `llmos` command (with the subcommands `doctor`, `audit`, and
+`daily activity`) and `qmd` come from the llmOS CLI, a TypeScript program run by Bun. Below,
 `<llmos-plugin-root>` means the directory two levels above this `SKILL.md`.
 The host needs `bun` on `PATH`.
 
@@ -25,9 +25,8 @@ bun "<llmos-plugin-root>/cli/scripts/install.ts"
 ```
 
 The script copies the plugin root to `~/.local/share/llmos/<version>/`, runs
-`bun install --frozen-lockfile --production` there, and links `llmos-vault`,
-`llmos-doctor`, `llmos-audit`, `llmos-daily-activity`, and `qmd` into
-`~/.local/bin/`. As its last step it points `~/.local/share/llmos/current` at
+`bun install --frozen-lockfile --production` there, and links `llmos` and
+`qmd` into `~/.local/bin/`. As its last step it points `~/.local/share/llmos/current` at
 that folder. It never changes the plugin folder or a plugin cache. It
 replaces a `~/.local/bin` entry or `current` only when that entry links to an
 earlier install; any other entry stops it before anything changes. `~/.local/bin`
@@ -41,7 +40,7 @@ the doctor finds another one (for example a global `mise` install of
 Run the doctor before changing anything else:
 
 ```sh
-llmos-doctor
+llmos doctor
 ```
 
 The doctor is read-only. It reports `PASS` or `FAIL` for each available
@@ -50,15 +49,18 @@ nonzero when setup is incomplete. It checks the vault root, Obsidian, that
 exactly one `qmd` is on `PATH` and it is this install's, and that the qmd
 index holds and returns the vault's `llmOS.md`. Its `mcp-server` check starts
 the MCP server the plugin's launcher would start (the install that
-`~/.local/bin/llmos-vault` links to) and passes only when it lists every
+`~/.local/bin/llmos` links to) and passes only when it lists every
 tool. For each agent with the plugin installed, it also checks that the
-agent's hooks have run (see "Verify the hooks" below).
+agent's hooks have run (see "Verify the hooks" below). Its `old-names` check
+reads the Claude, Codex, and Hermes configs and the `llmos-*` scheduler units.
+It fails with `<file>:<line>` on any line that still names a removed command
+or the old plugin ID, and it does not flag the vault repository name.
 
 The plugin's Stop hook keeps qmd's keyword index current after each turn
-that changed the vault (`llmos-vault reindex --no-embed`). It never embeds,
+that changed the vault (`llmos reindex --no-embed`). It never embeds,
 because loading the embedding model takes seconds. Embedding for
-`search --semantic` and `--hybrid` is done by running `llmos-vault reindex` by hand;
-`llmos-vault health` reports how many documents still need it
+`search --semantic` and `--hybrid` is done by running `llmos reindex` by hand;
+`llmos health` reports how many documents still need it
 (`qmd_unembedded`).
 
 ## Workflow
@@ -71,7 +73,7 @@ because loading the embedding model takes seconds. Embedding for
    the root of its own Git repository. Then write the config:
 
    ```sh
-   llmos-vault config set-root "<path the user gave>"
+   llmos config set-root "<path the user gave>"
    ```
 
    The command validates the path before writing anything — it must exist and
@@ -117,9 +119,9 @@ not prove the hooks can see it; the heartbeat check below does.
 Every time the session-start hook runs, it records a heartbeat in
 `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`, keyed by agent
 (`claude`, `codex`): the time, the Bun version, the SHA-256 of the hook
-bundle that ran, and the plugin root. `llmos-doctor` finds the installed
+bundle that ran, and the plugin root. `llmos doctor` finds the installed
 plugin for each agent (Claude's `~/.claude/plugins/installed_plugins.json`,
-Codex's `[plugins."llmos@llmos-vault"]` in `~/.codex/config.toml` and its
+Codex's `[plugins."llmos@llmos-tools"]` in `~/.codex/config.toml` and its
 plugin cache) and checks the heartbeat against it:
 
 - `PASS hooks-<agent>`: the installed hooks have run.
@@ -132,7 +134,7 @@ plugin cache) and checks the heartbeat against it:
 - `NOTE hooks-<agent>`: the plugin is not installed for that agent.
 
 So the verification is: start one fresh session per agent (in any folder),
-end it, then run `llmos-doctor`. It must pass for every agent with the plugin
+end it, then run `llmos doctor`. It must pass for every agent with the plugin
 installed. The probes in the next section are for troubleshooting a
 failure.
 
@@ -142,9 +144,9 @@ On Codex, installing the plugin is not enough to make its hooks run. Codex
 records each hook in `~/.codex/config.toml` under `[hooks.state]` with a
 `trusted_hash` before it will execute it, and **an untrusted hook is skipped
 silently** — no error, no warning. `codex plugin list` still reports
-`llmos@llmos-vault  installed, enabled`, and the session receives nothing.
+`llmos@llmos-tools  installed, enabled`, and the session receives nothing.
 
-Inspect `codex plugin list --marketplace llmos-vault --json` and the llmOS
+Inspect `codex plugin list --marketplace llmos-tools --json` and the llmOS
 entries under `hooks.state` in the current Codex configuration. Parse JSON
 and TOML with the host's structured-data tooling. A stale cache directory,
 plugin list entry, or nonempty trust record alone is insufficient: trust is
@@ -195,14 +197,14 @@ runs the installed copy at `~/.local/share/llmos/current/` (made by
 its uncommitted files.
 
 - MCP: add `llmos` under `mcp_servers` with `command:
-  ~/.local/bin/llmos-vault` (written out in full) and `args: [mcp]`. Hermes
+  ~/.local/bin/llmos` (written out in full) and `args: [mcp]`. Hermes
   names the tools `mcp__llmos__<tool>`, as Codex does. Check with
   `hermes -p <profile> mcp list`.
 - Skills: add `~/.local/share/llmos/current/skills` (written out in full) to
   `skills.external_dirs`, and add `obsidian` to `skills.disabled` (the bundled skill writes raw Markdown).
   `hermes config get skills.disabled` warns that the key is unknown; the
   skill loader reads it anyway. Check with `hermes -p <profile> skills list`.
-- Commands: add `llmos-vault *` to `command_allowlist`.
+- Commands: add `llmos *` to `command_allowlist`.
 - Hooks: link the adapter into the profile's `plugins/` folder and enable it:
   `ln -s ~/.local/share/llmos/current/hermes <profile-home>/plugins/llmos`
   (the path written out in full), then
@@ -240,9 +242,9 @@ Linux, and Claude activation says nothing about Codex.
 - For a local source checkout, both providers accept a local marketplace at
   the repository root:
   `codex plugin marketplace add <checkout>` followed by
-  `codex plugin add llmos@llmos-vault`, or
+  `codex plugin add llmos@llmos-tools`, or
   `claude plugin marketplace add <checkout>` followed by
-  `claude plugin install llmos@llmos-vault`. Inspect existing registrations
+  `claude plugin install llmos@llmos-tools`. Inspect existing registrations
   before replacing them. Changes to an existing installation may require the
   provider's update command and a fresh session. Claude Code copies a local
   marketplace's plugin with its gitignored files, so a `cli/node_modules`
@@ -260,7 +262,7 @@ Linux, and Claude activation says nothing about Codex.
   edit receives the authoring contract and post-write findings. Keep fixture
   output in the code repository's `artifacts/`, outside the real vault; use a
   temporary configured vault for the edit probe.
-- Run `llmos-vault check` for a representative changed note. Validate Base
+- Run `llmos check` for a representative changed note. Validate Base
   queries and rendering through the explicitly targeted Obsidian CLI when
   available. Report headless checks separately when the desktop app is closed.
 

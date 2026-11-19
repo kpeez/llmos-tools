@@ -15,6 +15,23 @@ Newest first. Versions are the `version` field shared by
   each Hermes profile then too. It used to report Hermes as not installed.
 - `setup-llmos` says to run `hermes gateway restart` after you repoint the
   Hermes plugin link.
+- The CLI is now one command, `llmos`. No alias is kept, so change every
+  caller: `llmos-vault <verb>` becomes `llmos <verb>`, `llmos-doctor` becomes
+  `llmos doctor`, `llmos-audit` becomes `llmos audit`, and
+  `llmos-daily-activity` becomes `llmos daily activity`. The old commands are
+  gone. `install.ts` links only `llmos` and `qmd`.
+- The marketplace is now `llmos-tools`, and the plugin ID is
+  `llmos@llmos-tools`. On each host, remove the `llmos-vault` marketplace and
+  its plugin, add `kpeez/llmos-tools`, and install `llmos@llmos-tools`. Approve
+  the Codex hooks again, because Codex records hook trust by plugin ID. Then
+  delete the old `~/.local/bin/llmos-*` links and rerun `install.ts`.
+- Update every agent config that names an old command: the Hermes MCP
+  `command` and `command_allowlist`, the Claude permissions, and the foxlab
+  systemd unit.
+- `llmos doctor` has a new `old-names` check. It fails on any such config
+  line and names the file and line. It ignores the vault repository name
+  `kpeez/llmos-vault` and the unit names `llmos-daily-activity.service` and
+  `llmos-daily-activity.timer`.
 
 ## 2.10.1 — 2026-11-18
 

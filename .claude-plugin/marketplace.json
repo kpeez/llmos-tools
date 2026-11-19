@@ -1,5 +1,5 @@
 {
-  "name": "llmos-vault",
+  "name": "llmos-tools",
   "description": "llmOS Obsidian vault plugin and deterministic maintenance tooling for AI coding agents",
   "owner": {
     "name": "kpeez",

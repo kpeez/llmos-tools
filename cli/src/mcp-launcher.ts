@@ -2,11 +2,10 @@
  * The plugin's MCP launcher, bundled into the committed `dist/mcp.js`; the
  * plugin's `.mcp.json` runs it in every Claude Code and Codex session.
  *
- * It runs the installed CLI's server (`llmos-vault mcp`): the
- * `~/.local/bin/llmos-vault` link that `cli/scripts/install.ts` makes, when the
- * install it points into has the server. That server runs as a child with
- * `GGML_METAL_NO_RESIDENCY=1`, which must be set before the qmd models'
- * native library loads (see `bin/llmos-vault.ts`).
+ * It runs the installed CLI's server (`llmos mcp`) through the
+ * `~/.local/bin/llmos` link that `cli/scripts/install.ts` makes. That server
+ * runs as a child with `GGML_METAL_NO_RESIDENCY=1`, which must be set before
+ * the qmd models' native library loads (see `bin/llmos.ts`).
  *
  * Nothing here depends on the session's working directory, which is the
  * project the session opened: the child runs in the install folder, with
@@ -19,7 +18,7 @@
  * setup-llmos, so a session shows that advice instead of a failed server.
  */
 
-import { existsSync, realpathSync } from "node:fs";
+import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { SERVER_NAME } from "./mcp-names.ts";
@@ -29,18 +28,14 @@ type Env = Record<string, string | undefined>;
 /** Bun flags that keep a working directory's `.env`, `bunfig.toml`, and package fetches out. */
 export const SAFE_BUN_FLAGS = ["--no-install", "--no-env-file", "--config=/dev/null"];
 
-/** The installed CLI entry point that has the MCP server, or why there is none. */
+/** The installed CLI entry point (`<install>/cli/bin/llmos.ts`), or why there is none. */
 export function installedServer(env: Env): { entry: string } | { reason: string } {
-  const link = join(env.HOME || homedir(), ".local", "bin", "llmos-vault");
+  const link = join(env.HOME || homedir(), ".local", "bin", "llmos");
   let entry: string;
   try {
     entry = realpathSync(link);
   } catch {
     return { reason: `the llmOS CLI is not installed (no ${link})` };
-  }
-  // `<install>/cli/bin/llmos-vault.ts` (`<install>/bin/` before 2.6.1); an install from before the server lacks src/mcp.ts.
-  if (!existsSync(join(dirname(dirname(entry)), "src", "mcp.ts"))) {
-    return { reason: `the installed llmOS CLI (${entry}) predates the MCP server` };
   }
   return { entry };
 }

@@ -33,7 +33,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
-| Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos-vault reindex --no-embed`, else `qmd update -c llmos`; never embeds. Then commits changed shared project memory and pushes it |
+| Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos reindex --no-embed`, else `qmd update -c llmos`; never embeds. Then commits changed shared project memory and pushes it |
 
 ## Hermes Agent
 
@@ -74,7 +74,7 @@ is left unchanged. The stamp and reindex hooks share a session-scoped dirty
 flag, so concurrent sessions never collide or leak a stale flag into each
 other. A hook failure never blocks the tool call, and the hooks never import
 qmd (it would cost about 48 ms per call). Embedding is left to a hand-run
-`llmos-vault reindex`; `llmos-vault health` counts the documents that still
+`llmos reindex`; `llmos health` counts the documents that still
 need it.
 
 In every session, local or cloud, the session-start hook links the agent
@@ -152,7 +152,7 @@ removes the lock only while it still holds that run's token. Set `LLMOS_NO_GIT_S
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`
-(time, Bun version, bundle SHA-256, plugin root), and `llmos-doctor` fails
+(time, Bun version, bundle SHA-256, plugin root), and `llmos doctor` fails
 for an agent whose installed hooks have not run. See the `setup-llmos`
 skill.
 

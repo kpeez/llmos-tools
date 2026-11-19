@@ -1,6 +1,5 @@
-#!/usr/bin/env bun
 /**
- * The daily activity digest (`llmos-daily-activity`): writes the
+ * The daily activity digest (`llmos daily activity`): writes the
  * machine-owned `## Projects` block of daily notes.
  *
  * Fetch with `gh` -> hash -> one `opencode run` call -> check that every PR
@@ -11,7 +10,7 @@
  * (Los Angeles time), or one `--date`. A failed day writes nothing, and the
  * first failure stops the run with a non-zero exit. A run without `--date`
  * that succeeds sets its run record (`DIGEST_PROPERTY` on `DIGEST_NOTE`),
- * so `llmos-vault health` reports the digest when it stops running. With
+ * so `llmos health` reports the digest when it stops running. With
  * `--push` it then commits the notes it wrote and pushes them (`pushNotes`).
  *
  * It replaced the retired Python digest and keeps its contract: the markers
@@ -58,7 +57,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { parseArgs } from "node:util";
 import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.ts";
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
@@ -829,55 +827,26 @@ export function processDay(day: Day, root: string, options: ProcessOptions): str
   return "created";
 }
 
-const USAGE = `usage: llmos-daily-activity [-h] [--root ROOT] [--date YYYY-MM-DD]
+export interface DigestRun {
+  /** One `<date>: <outcome>` line per processed day, also for the days before a failure. */
+  lines: string[];
+  /** What the run prints on stderr when it fails. */
+  error?: string;
+}
 
-Write the machine-owned ## Projects block of daily notes. The projects it
-monitors are those whose folder name matches a repository of one of the
-GitHub owners in "github_owners" of ~/.config/llmos/config.json.
-
-options:
-  -h, --help         show this help message and exit
-  --root ROOT        vault root (default: $LLMOS_ROOT, then the llmOS config file)
-  --date YYYY-MM-DD  process only this date (default: yesterday and today, Los Angeles time);
-                     a --date run does not set the run record on categories/Reviews.md
-  --push             commit the notes this run wrote, rebase on the upstream, and push
-`;
-
-/** The command-line entry point. Returns the exit code. */
-export function main(argv: string[]): number {
-  let values: { root?: string; date?: string; push?: boolean; help?: boolean };
+/** Run the digest for yesterday and today, or for `date`. Never throws and never prints. */
+export function runDigest(options: { root?: string; date?: Day; push?: boolean }): DigestRun {
+  const lines: string[] = [];
   try {
-    ({ values } = parseArgs({
-      args: argv,
-      options: {
-        root: { type: "string" },
-        date: { type: "string" },
-        push: { type: "boolean" },
-        help: { type: "boolean", short: "h" },
-      },
-    }));
-  } catch (error) {
-    process.stderr.write(`${USAGE}\nllmos-daily-activity: error: ${(error as Error).message}\n`);
-    return 2;
-  }
-  if (values.help) {
-    process.stdout.write(USAGE);
-    return 0;
-  }
-  const only = values.date === undefined ? undefined : parseDay(values.date);
-  if (only === null) {
-    process.stderr.write(`${USAGE}\nllmos-daily-activity: error: invalid --date ${values.date}\n`);
-    return 2;
-  }
-  try {
-    const root = values.root || vaultRoot();
+    const root = options.root || vaultRoot();
     const owners = githubOwners();
     const today = parseDay(localDate(Date.now())) as Day;
+    const only = options.date;
     const days = only === undefined ? [today - 1, today] : [only];
     const written: string[] = [];
     for (const day of days) {
       const outcome = processDay(day, root, { owners });
-      console.log(`${isoDate(day)}: ${outcome}`);
+      lines.push(`${isoDate(day)}: ${outcome}`);
       if (outcome === "created" || outcome === "updated") {
         written.push(join(DAILY_DIR, `${isoDate(day)}.md`));
       }
@@ -892,18 +861,17 @@ export function main(argv: string[]): number {
       }
       written.push(DIGEST_NOTE);
     }
-    if (values.push) {
+    if (options.push) {
       pushNotes(root, written, `daily activity: ${days.map(isoDate).join(", ")}`);
     }
-    return 0;
+    return { lines };
   } catch (error) {
     if (error instanceof DigestError || error instanceof VaultRootError) {
-      console.error(`llmos-daily-activity: ${error.message}`);
-    } else {
-      console.error(error);
+      return { lines, error: `llmos daily activity: ${error.message}` };
     }
-    return 1;
+    return {
+      lines,
+      error: error instanceof Error ? (error.stack ?? String(error)) : String(error),
+    };
   }
 }
-
-if (import.meta.main) process.exitCode = main(Bun.argv.slice(2));

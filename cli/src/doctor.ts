@@ -1,5 +1,5 @@
 /**
- * `llmos-doctor`: check the external prerequisites of the llmOS tools on
+ * `llmos doctor`: check the external prerequisites of the llmOS tools on
  * this host and print `PASS`/`FAIL` per check, with a `REPAIR` command after
  * each failure. Read-only. Exit 0 only when every check passes.
  *
@@ -254,13 +254,13 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   }
   if (collectionOk) {
     if (indexed) pass("qmd-index", "llmOS.md is indexed");
-    else fail("qmd-index", "llmOS.md is stale or unindexed", "llmos-vault reindex");
+    else fail("qmd-index", "llmOS.md is stale or unindexed", "llmos reindex");
     if (retrieved) pass("qmd-retrieval", "full llmOS.md matches the vault");
     else
       fail(
         "qmd-retrieval",
         "retrieved llmOS.md does not match the vault sentinel",
-        "llmos-vault reindex",
+        "llmos reindex",
       );
   } else {
     fail("qmd-index", "blocked by qmd-collection failure", collectionRepair);
@@ -279,6 +279,10 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   const hermes = hermesProfileChecks(env);
   lines.push(...hermes.lines);
   failures += hermes.failures;
+
+  const oldNames = oldNameChecks(env);
+  lines.push(...oldNames.lines);
+  failures += oldNames.failures;
 
   return { lines, exitCode: failures > 0 ? 1 : 0 };
 }
@@ -392,7 +396,93 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
   return { lines, failures };
 }
 
-const PLUGIN_ID = "llmos@llmos-vault";
+/** A Codex hook-trust record of the old plugin ID. */
+const TRUST_RECORD = /^\s*\[hooks\.state\."llmos@llmos-vault:/;
+/** A plugin or marketplace record: the plugin ID, a Codex marketplace table, or a Claude marketplace key. */
+const PLUGIN_RECORD = /llmos@llmos-vault|marketplaces\.llmos-vault|"llmos-vault"\s*:/;
+/** A command or plugin ID that 2.11.0 removed. `llmos-vault` is now only the vault repository. */
+const REMOVED_NAME =
+  /llmos-(?:vault|doctor|audit|daily-activity)(?![\w-])(?!\.(?:git|service|timer)\b)/g;
+
+/** Every file of the host that can name an `llmos` command or the plugin ID. */
+function agentConfigFiles(home: string, env: Env): string[] {
+  const files = [
+    join(env.CLAUDE_CONFIG_DIR || join(home, ".claude"), "settings.json"),
+    join(env.CODEX_HOME || join(home, ".codex"), "config.toml"),
+    join(home, ".hermes", "config.yaml"),
+  ];
+  const listed = (dir: string, wanted: (name: string) => boolean): string[] => {
+    try {
+      return readdirSync(dir)
+        .filter(wanted)
+        .sort()
+        .map((name) => join(dir, name));
+    } catch {
+      return [];
+    }
+  };
+  files.push(
+    ...listed(join(home, ".hermes", "profiles"), () => true).map((dir) => join(dir, "config.yaml")),
+    ...listed(join(home, ".config", "systemd", "user"), (name) => /^llmos-.*\.service$/.test(name)),
+    ...listed(join(home, "Library", "LaunchAgents"), (name) => /llmos.*\.plist$/.test(name)),
+  );
+  return files;
+}
+
+/** The lines of the agent configs and service units that still name a removed command or plugin ID. */
+export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
+  const home = env.HOME || homedir();
+  const hits: string[] = [];
+  let trustRecords = 0;
+  let pluginRecords = 0;
+  for (const file of agentConfigFiles(home, env)) {
+    let text: string;
+    try {
+      text = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    text.split("\n").forEach((line, index) => {
+      const removed = [...line.matchAll(REMOVED_NAME)].some(
+        // `kpeez/llmos-vault` and other folder names are the vault repository; `bin/` holds the old links.
+        (match) =>
+          line[match.index - 1] !== "/" || line.slice(match.index - 4, match.index) === "bin/",
+      );
+      if (!removed) return;
+      hits.push(`${file}:${index + 1}: ${line.trim()}`);
+      if (TRUST_RECORD.test(line)) trustRecords++;
+      else if (PLUGIN_RECORD.test(line)) pluginRecords++;
+    });
+  }
+  if (hits.length === 0) {
+    return {
+      lines: ["PASS old-names: no agent config or service unit names a removed command"],
+      failures: 0,
+    };
+  }
+  const lines = [
+    `FAIL old-names: ${hits.length} line(s) name a command or plugin that 2.11.0 removed`,
+    ...hits,
+  ];
+  if (hits.length > trustRecords + pluginRecords) {
+    lines.push(
+      "REPAIR In each command line above (not a plugin, marketplace, or [hooks.state] record), write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, and llmos daily activity for llmos-daily-activity; then restart the agent or service (setup-llmos)",
+    );
+  }
+  if (pluginRecords > 0) {
+    lines.push(
+      "REPAIR Remove the old plugin and marketplace with the agent's own commands, never by editing their records: claude plugin uninstall llmos@llmos-vault, claude plugin marketplace remove llmos-vault, codex plugin marketplace remove llmos-vault; then add kpeez/llmos-tools and install llmos@llmos-tools (setup-llmos)",
+    );
+  }
+  if (trustRecords > 0) {
+    lines.push(
+      'REPAIR Delete each [hooks.state."llmos@llmos-vault:..."] table above (its header and its trusted_hash line), never rename it: a renamed record carries the old approval to the new plugin ID and skips Codex\'s hook review. Then approve the llmOS hooks again in an interactive Codex session (setup-llmos)',
+    );
+  }
+  return { lines, failures: 1 };
+}
+
+const PLUGIN_ID = "llmos@llmos-tools";
 const WARN_AFTER_DAYS = 7;
 const DAY_MS = 86_400_000;
 
@@ -426,7 +516,7 @@ function versionKey(name: string): number[] {
 }
 
 /**
- * Codex's install record: the plugin's `[plugins."llmos@llmos-vault"]` table
+ * Codex's install record: the plugin's `[plugins."llmos@llmos-tools"]` table
  * in `config.toml` (not `enabled = false`), and its newest cached version.
  */
 function codexInstall(env: Env): string | null | undefined {
@@ -444,7 +534,7 @@ function codexInstall(env: Env): string | null | undefined {
     if (line.trim().startsWith("[")) break;
     if (/^\s*enabled\s*=\s*false\s*$/.test(line)) return undefined;
   }
-  const cache = join(codex, "plugins", "cache", "llmos-vault", "llmos");
+  const cache = join(codex, "plugins", "cache", "llmos-tools", "llmos");
   let versions: string[];
   try {
     versions = readdirSync(cache).filter((name) => isDirectory(join(cache, name)));
@@ -510,27 +600,27 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
       name: "Claude Code",
       installPath: claudeInstall(env),
       repair:
-        "Start a fresh Claude Code session, then rerun llmos-doctor. If it still fails, the " +
+        "Start a fresh Claude Code session, then rerun llmos doctor. If it still fails, the " +
         "hooks cannot find bun: put bun on the PATH Claude Code gives hooks (setup-llmos, " +
         '"Hooks need bun on the hook PATH").',
-      update: `claude plugin marketplace update llmos-vault && claude plugin update ${PLUGIN_ID}`,
+      update: `claude plugin marketplace update llmos-tools && claude plugin update ${PLUGIN_ID}`,
     },
     {
       key: "codex",
       name: "Codex",
       installPath: codexInstall(env),
       repair:
-        "Start a fresh Codex session, then rerun llmos-doctor. If it still fails, Codex " +
+        "Start a fresh Codex session, then rerun llmos doctor. If it still fails, Codex " +
         "skipped the hooks: open codex interactively and approve the llmOS hooks (an untrusted " +
         "hook is skipped silently), and put bun on Codex's login-shell PATH (setup-llmos).",
-      update: `codex plugin marketplace upgrade llmos-vault && codex plugin add ${PLUGIN_ID}`,
+      update: `codex plugin marketplace upgrade llmos-tools && codex plugin add ${PLUGIN_ID}`,
     },
     {
       key: "agy",
       name: "Antigravity",
       installPath: agyInstall(env),
       repair:
-        "Start a fresh Antigravity session, then rerun llmos-doctor. If it still fails, verify " +
+        "Start a fresh Antigravity session, then rerun llmos doctor. If it still fails, verify " +
         "hooks.json is at the plugin root and bun is on PATH.",
       update: `agy plugin install ${PLUGIN_ID}`,
     },
@@ -540,10 +630,11 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
       installPath: hermesInstall(env),
       repair:
         "Link and enable the plugin in every Hermes profile (hermes -p <profile> plugins enable " +
-        "llmos), start a new Hermes session, then rerun llmos-doctor (setup-llmos, Hermes Agent).",
+        "llmos), start a new Hermes session, then rerun llmos doctor (setup-llmos, Hermes Agent).",
       update:
-        "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the hermes/ folder " +
-        "of a current llmos-tools checkout: ln -sfn <checkout>/hermes ~/.hermes/plugins/llmos",
+        "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the installed " +
+        "plugin: ln -sfn ~/.local/share/llmos/current/hermes ~/.hermes/plugins/llmos. If " +
+        "~/.local/share/llmos/current is missing, rerun cli/scripts/install.ts first.",
     },
   ];
 

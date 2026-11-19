@@ -22,12 +22,12 @@ function declared(file: string): { argv: string[]; cwd?: string } {
   return { argv: [server.command, ...server.args], cwd: server.cwd };
 }
 
-/** A home folder whose `~/.local/bin/llmos-vault` links to `entry` (none when null). */
+/** A home folder whose `~/.local/bin/llmos` links to `entry` (none when null). */
 function home(entry: string | null, vault?: string): Record<string, string> {
   const env = isolatedEnv();
   if (entry !== null) {
     mkdirSync(join(env.HOME as string, ".local", "bin"), { recursive: true });
-    symlinkSync(entry, join(env.HOME as string, ".local", "bin", "llmos-vault"));
+    symlinkSync(entry, join(env.HOME as string, ".local", "bin", "llmos"));
   }
   if (vault !== undefined) {
     writeFiles(env.HOME as string, {
@@ -89,7 +89,7 @@ describe("the MCP launcher", () => {
   test("Claude Code's command runs the installed server, untouched by a hostile project", async () => {
     const vault = makeVault({ "notes/alpha.md": ALPHA });
     const project = hostileProject();
-    const env = { ...home(join(CLI, "bin", "llmos-vault.ts"), vault), CLAUDE_PLUGIN_ROOT: TOOLS };
+    const env = { ...home(join(CLI, "bin", "llmos.ts"), vault), CLAUDE_PLUGIN_ROOT: TOOLS };
     const { client, init, close } = await start(claudeArgv(), project, env);
     expect((init.serverInfo as { name: string }).name).toBe(SERVER_NAME);
     const names = (await client.tools()).map((tool) => tool.name);
@@ -106,11 +106,7 @@ describe("the MCP launcher", () => {
     expect(cwd).toBe(".");
     const vault = makeVault({ "notes/alpha.md": ALPHA });
     // Codex joins the relative cwd to the plugin root and passes no CLAUDE_PLUGIN_ROOT.
-    const { client, close } = await start(
-      argv,
-      TOOLS,
-      home(join(CLI, "bin", "llmos-vault.ts"), vault),
-    );
+    const { client, close } = await start(argv, TOOLS, home(join(CLI, "bin", "llmos.ts"), vault));
     expect((await client.call("read", { note: "alpha" })).text).toContain("REALVAULT");
     expect(await close()).toBe(0);
   });
@@ -126,18 +122,6 @@ describe("the MCP launcher", () => {
     expect(result.isError).toBe(false);
     expect(result.text).toContain("the llmOS CLI is not installed");
     expect(result.text).toContain("setup-llmos");
-    expect(await close()).toBe(0);
-  });
-
-  test("an installed CLI from before the server also gets the setup tool", async () => {
-    const old = scratch("install");
-    writeFiles(old, { "bin/llmos-vault.ts": "console.log('old');\n" });
-    const { client, close } = await start(claudeArgv(), scratch("project"), {
-      ...home(join(old, "bin", "llmos-vault.ts")),
-      CLAUDE_PLUGIN_ROOT: TOOLS,
-    });
-    const result = await client.call("setup", {});
-    expect(result.text).toContain("predates the MCP server");
     expect(await close()).toBe(0);
   });
 

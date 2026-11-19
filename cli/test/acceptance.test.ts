@@ -1,5 +1,5 @@
 /**
- * #34 acceptance through the real entry point (`bin/llmos-vault.ts`) as a
+ * #34 acceptance through the real entry point (`bin/llmos.ts`) as a
  * process: with Obsidian unreachable, the headless writes succeed and
  * `move` exits 3. "Unreachable" is shown two ways: no obsidian-cli on PATH,
  * and an obsidian-cli that answers the way it does with the app closed
@@ -46,7 +46,7 @@ function run(root: string, argv: string[], pathDirs: string[]) {
     TZ: process.env.TZ ?? "UTC",
     PATH: [...pathDirs, dirname(process.execPath), "/usr/bin", "/bin"].join(":"),
   });
-  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos-vault.ts"), ...argv], {
+  const result = Bun.spawnSync([process.execPath, join(CLI, "bin/llmos.ts"), ...argv], {
     env,
     stdout: "pipe",
     stderr: "pipe",

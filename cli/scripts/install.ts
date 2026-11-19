@@ -6,10 +6,9 @@
  *
  * Copies the plugin root (two folders above this script) to
  * `~/.local/share/llmos/<plugin version>/`, runs `bun install
- * --frozen-lockfile --production` in its `cli/` folder, and links `llmos-vault`,
- * `llmos-doctor`, `llmos-audit`, `llmos-daily-activity` (`src/digest.ts`), and
- * `qmd` into `~/.local/bin/`. The plugin
- * folder itself is only read, so a plugin cache is never modified.
+ * --frozen-lockfile --production` in its `cli/` folder, and links `llmos` and
+ * `qmd` into `~/.local/bin/`. The plugin folder itself is only read, so a
+ * plugin cache is never modified.
  *
  * The CLI's `package.json` and `bun.lock` live in `cli/`, not the plugin root:
  * Claude Code installs dependencies into a plugin cache whose root holds both,
@@ -39,9 +38,7 @@ import {
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-const COMMANDS = ["llmos-vault", "llmos-doctor", "llmos-audit", "llmos-daily-activity", "qmd"];
-/** Entry points outside `bin/<name>.ts`. */
-const ENTRY_POINTS: Record<string, string> = { "llmos-daily-activity": "src/digest.ts" };
+const COMMANDS = ["llmos", "qmd"];
 // Never copied: dependencies, and the caches of the retired Python package,
 // which older checkouts may still hold.
 const SKIPPED = new Set([
@@ -122,12 +119,11 @@ mkdirSync(binDir, { recursive: true });
 for (const name of COMMANDS) {
   const link = join(binDir, name);
   rmSync(link, { force: true });
-  symlinkSync(join(target, "cli", ENTRY_POINTS[name] ?? `bin/${name}.ts`), link);
+  symlinkSync(join(target, "cli", `bin/${name}.ts`), link);
 }
 
 for (const argv of [
-  [join(binDir, "llmos-vault"), "--help"],
-  [join(binDir, "llmos-daily-activity"), "--help"],
+  [join(binDir, "llmos"), "--help"],
   [join(binDir, "qmd"), "--version"],
 ]) {
   const result = Bun.spawnSync(argv, { stdout: "pipe", stderr: "pipe" });
@@ -144,4 +140,4 @@ renameSync(pending, current);
 console.log(`installed llmOS CLI ${version} in ${target}`);
 console.log(`linked ${COMMANDS.join(", ")} in ${binDir}`);
 console.log(`${current} now points at ${target}`);
-console.log("next: run llmos-doctor");
+console.log("next: run llmos doctor");

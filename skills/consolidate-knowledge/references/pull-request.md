@@ -107,7 +107,7 @@ the title or body. The body holds:
 - **Summary:** the cluster and the scope.
 - **New and changed notes:** the hub, each paper note, each dataset note, each
   captured source (slug and size), each changed member note.
-- **Facts by status:** the counts from `llmos-vault claims lint <notes> --json`
+- **Facts by status:** the counts from `llmos claims lint <notes> --json`
   (`by_status`, `fully_checked`) as a table, plus the open conflicts, counted
   from the conflict titles: `rg -c '^> \[!conflict\] open' <notes>`.
 - **Settled disagreements:** each disagreement among the member notes, and how
@@ -119,7 +119,7 @@ the title or body. The body holds:
 - **Forward links:** the links that stay unresolved until a later PR of the
   stack lands, when the run is split.
 - **Estimated review time:** the total and its parts.
-- **Checks run:** `claims lint`, `llmos-audit`, `llmos-vault check`, the member
+- **Checks run:** `claims lint`, `llmos audit`, `llmos check`, the member
   note and ADR checks, `just check` when the tools changed, and the privacy
   check (counts only, and what the name list was built from).
 

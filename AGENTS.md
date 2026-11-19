@@ -28,12 +28,12 @@ in `test/hooks/` pin the hook output channels. Change a snapshot only for an
 intended contract change: record it with `just contract-record` and review
 the diff in the pull request.
 
-The `llmos-vault` CLI is a command registry (`src/commands.ts`, run by
+The `llmos` CLI is a command registry (`src/commands.ts`, run by
 `src/cli.ts`; entry points in `bin/`). Its contract is the command names,
 flags, JSON output shapes, and exit codes (3: Obsidian not running), plus
 the canonical frontmatter form on disk. Handlers return results and never
 print or exit, so other front ends can call them. After changing a command's
-help, run `bun bin/llmos-vault.ts docs`; a test fails while the vault-cli
+help, run `bun bin/llmos.ts docs`; a test fails while the vault-cli
 reference is stale.
 
 `Context.fetch` is the network seam of `source add`: tests pass a fetcher
@@ -75,7 +75,7 @@ because a bundle built by another version differs from CI's. To move Bun,
 change that file and the `@types/bun` version in `package.json` together. Changing `../hooks/hooks.json` means
 every host must approve the Codex hooks again.
 
-The MCP server (`src/mcp.ts`, `llmos-vault mcp`) takes its arguments from a
+The MCP server (`src/mcp.ts`, `llmos mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside
 the real vault root through `write.ts`, and add no shell or arbitrary-file
 tool. Claude Code reads `../.mcp.json`, Codex `../.codex-mcp.json`, and

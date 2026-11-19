@@ -82,14 +82,14 @@ export interface RunRecord {
 export const RUN_RECORDS: readonly RunRecord[] = [
   {
     job: "discover",
-    command: "llmos-vault discover",
+    command: "llmos discover",
     note: DISCOVER_NOTE,
     property: DISCOVER_PROPERTY,
     maxAgeDays: DISCOVER_MAX_AGE_DAYS,
   },
   {
     job: "daily-activity",
-    command: "llmos-daily-activity",
+    command: "llmos daily activity",
     note: DIGEST_NOTE,
     property: DIGEST_PROPERTY,
     maxAgeDays: DIGEST_MAX_AGE_DAYS,
@@ -122,7 +122,7 @@ export interface QmdSection {
   /**
    * Documents in the whole qmd index (every collection) that still need
    * embedding; `null` when qmd is unavailable. Informational: the Stop hook
-   * updates only the keyword index, so this grows until `llmos-vault
+   * updates only the keyword index, so this grows until `llmos
    * reindex` runs. It does not make the report unclean.
    */
   qmd_unembedded: number | null;
@@ -270,7 +270,7 @@ export function summary(report: VaultHealth & QmdSection): string {
   ];
   if (report.qmd_unembedded) {
     lines.push(
-      `qmd unembedded: ${report.qmd_unembedded} documents need embedding (run llmos-vault reindex)`,
+      `qmd unembedded: ${report.qmd_unembedded} documents need embedding (run llmos reindex)`,
     );
   }
   if (report.qmd_notice) lines.push(`qmd notice: ${report.qmd_notice}`);
