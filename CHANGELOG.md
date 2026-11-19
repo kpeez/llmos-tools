@@ -5,6 +5,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.11.0 — 2026-11-18
+
 - `install.ts` points `~/.local/share/llmos/current` at each new install, as its
   last step. Hermes Agent links its plugin and skills through `current`, so it
   runs an installed copy, not a checkout, and `llmos-doctor` fails a Hermes
