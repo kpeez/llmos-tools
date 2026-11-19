@@ -280,6 +280,10 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   lines.push(...hermes.lines);
   failures += hermes.failures;
 
+  const oldNames = oldNameChecks(env);
+  lines.push(...oldNames.lines);
+  failures += oldNames.failures;
+
   return { lines, exitCode: failures > 0 ? 1 : 0 };
 }
 
@@ -390,6 +394,71 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
     failures++;
   }
   return { lines, failures };
+}
+
+/** A command or plugin ID that 2.11.0 removed. `llmos-vault` is now only the vault repository. */
+const REMOVED_NAME =
+  /llmos-(?:vault|doctor|audit|daily-activity)(?![\w-])(?!\.(?:git|service|timer)\b)/g;
+
+/** Every file of the host that can name an `llmos` command or the plugin ID. */
+function agentConfigFiles(home: string): string[] {
+  const files = [
+    join(home, ".claude", "settings.json"),
+    join(home, ".codex", "config.toml"),
+    join(home, ".hermes", "config.yaml"),
+  ];
+  const listed = (dir: string, wanted: (name: string) => boolean): string[] => {
+    try {
+      return readdirSync(dir)
+        .filter(wanted)
+        .sort()
+        .map((name) => join(dir, name));
+    } catch {
+      return [];
+    }
+  };
+  files.push(
+    ...listed(join(home, ".hermes", "profiles"), () => true).map((dir) => join(dir, "config.yaml")),
+    ...listed(join(home, ".config", "systemd", "user"), (name) => /^llmos-.*\.service$/.test(name)),
+    ...listed(join(home, "Library", "LaunchAgents"), (name) => /llmos.*\.plist$/.test(name)),
+  );
+  return files;
+}
+
+/** The lines of the agent configs and service units that still name a removed command or plugin ID. */
+export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
+  const home = env.HOME || homedir();
+  const hits: string[] = [];
+  for (const file of agentConfigFiles(home)) {
+    let text: string;
+    try {
+      text = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    text.split("\n").forEach((line, index) => {
+      const removed = [...line.matchAll(REMOVED_NAME)].some(
+        // `kpeez/llmos-vault` and other folder names are the vault repository; `bin/` holds the old links.
+        (match) =>
+          line[match.index - 1] !== "/" || line.slice(match.index - 4, match.index) === "bin/",
+      );
+      if (removed) hits.push(`${file}:${index + 1}: ${line.trim()}`);
+    });
+  }
+  if (hits.length === 0) {
+    return {
+      lines: ["PASS old-names: no agent config or service unit names a removed command"],
+      failures: 0,
+    };
+  }
+  return {
+    lines: [
+      `FAIL old-names: ${hits.length} line(s) name a command or plugin that 2.11.0 removed`,
+      ...hits,
+      "REPAIR In each line above, write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, llmos daily activity for llmos-daily-activity, and llmos@llmos-tools for llmos@llmos-vault; then restart the agent or service (setup-llmos)",
+    ],
+    failures: 1,
+  };
 }
 
 const PLUGIN_ID = "llmos@llmos-tools";
