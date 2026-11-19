@@ -290,6 +290,21 @@ function expandHome(path: string, env: Env): string {
   return expanded === "~" || expanded.startsWith("~/") ? home + expanded.slice(1) : expanded;
 }
 
+const INSTALLS = "~/.local/share/llmos";
+
+/**
+ * True when `path` resolves (through links) into the folder `install.ts` fills.
+ * A link into a checkout moves with the checkout's branch and uncommitted files.
+ */
+function insideInstalls(path: string, env: Env): boolean {
+  const root = join(env.HOME || homedir(), ".local", "share", "llmos");
+  try {
+    return realpathSync(path).startsWith(`${realpathSync(root)}/`);
+  } catch {
+    return false;
+  }
+}
+
 /** The parts of a Hermes profile that `llmos` needs, by the name the doctor reports. */
 function hermesProfileGaps(home: string, env: Env): string[] {
   let config: Record<string, unknown> = {};
@@ -314,14 +329,24 @@ function hermesProfileGaps(home: string, env: Env): string[] {
   const skillDirs = (typeof rawDirs === "string" ? [rawDirs] : list(rawDirs)).map((dir) =>
     resolve(home, expandHome(dir, env)),
   );
-  if (!skillDirs.some((dir) => isFile(join(dir, "maintain-llmos", "SKILL.md")))) {
+  const llmosSkills = skillDirs.filter((dir) => isFile(join(dir, "maintain-llmos", "SKILL.md")));
+  if (llmosSkills.length === 0) {
     gaps.push("the llmOS skills (skills.external_dirs)");
+  } else if (!llmosSkills.some((dir) => insideInstalls(dir, env))) {
+    gaps.push(
+      `skills.external_dirs inside ${INSTALLS} (set it to ${INSTALLS}/current/skills, not a checkout)`,
+    );
   }
   if (!list(section("plugins").enabled).includes("llmos")) {
     gaps.push("the enabled llmos plugin (plugins.enabled)");
   }
-  if (!isFile(join(home, "plugins", "llmos", "__init__.py"))) {
+  const plugin = join(home, "plugins", "llmos");
+  if (!isFile(join(plugin, "__init__.py"))) {
     gaps.push("the plugin link (plugins/llmos)");
+  } else if (!insideInstalls(plugin, env)) {
+    gaps.push(
+      `a plugins/llmos link inside ${INSTALLS} (link it to ${INSTALLS}/current/hermes, not a checkout)`,
+    );
   }
   let soul = "";
   try {

@@ -5,12 +5,16 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `install.ts` points `~/.local/share/llmos/current` at each new install, as its
+  last step. Hermes Agent links its plugin and skills through `current`, so it
+  runs an installed copy, not a checkout, and `llmos-doctor` fails a Hermes
+  profile that links outside `~/.local/share/llmos/`. `setup-llmos` and
+  `docs/hooks.md` name the `current/` paths.
 - `llmos-doctor` fails `hooks-hermes` when `~/.hermes/plugins/llmos` links to
   a folder that is gone, such as the vault's old `tools/hermes`, and checks
   each Hermes profile then too. It used to report Hermes as not installed.
-- `setup-llmos` names the Hermes paths of this repository (`<checkout>/hermes`,
-  `<checkout>/skills`), and says to run `hermes gateway restart` after you
-  repoint the plugin link.
+- `setup-llmos` says to run `hermes gateway restart` after you repoint the
+  Hermes plugin link.
 
 ## 2.10.1 — 2026-11-18
 

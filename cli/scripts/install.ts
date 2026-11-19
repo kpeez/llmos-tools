@@ -16,9 +16,13 @@
  * and the symbolic links in `node_modules/.bin/` then stop Claude Desktop from
  * copying the plugin to an SSH host.
  *
- * An existing `~/.local/bin` entry is replaced only when it is a link into
- * `~/.local/share/llmos/` (an earlier install). Any other entry stops the
- * install before anything changes.
+ * As its last step it points `~/.local/share/llmos/current` at the new version
+ * folder, so a failed install leaves `current` on the earlier version. Hermes
+ * Agent links its plugin and skills through `current`.
+ *
+ * An existing `~/.local/bin` entry or `current` is replaced only when it is a
+ * link into `~/.local/share/llmos/` (an earlier install). Any other entry
+ * stops the install before anything changes.
  */
 
 import {
@@ -59,6 +63,7 @@ const version = (
   }
 ).version;
 const target = join(dataRoot, version);
+const current = join(dataRoot, "current");
 
 function replaceable(link: string): boolean {
   let stat: ReturnType<typeof lstatSync>;
@@ -72,7 +77,9 @@ function replaceable(link: string): boolean {
   return points.startsWith(`${dataRoot}/`);
 }
 
-const conflicts = COMMANDS.map((name) => join(binDir, name)).filter((link) => !replaceable(link));
+const conflicts = [...COMMANDS.map((name) => join(binDir, name)), current].filter(
+  (link) => !replaceable(link),
+);
 if (conflicts.length > 0) {
   console.error(
     `refusing to replace ${conflicts.join(", ")}: not a link to an llmOS install. ` +
@@ -129,6 +136,12 @@ for (const argv of [
     process.exit(1);
   }
 }
+const pending = `${current}.new-${process.pid}`;
+rmSync(pending, { force: true });
+symlinkSync(target, pending);
+renameSync(pending, current);
+
 console.log(`installed llmOS CLI ${version} in ${target}`);
 console.log(`linked ${COMMANDS.join(", ")} in ${binDir}`);
+console.log(`${current} now points at ${target}`);
 console.log("next: run llmos-doctor");

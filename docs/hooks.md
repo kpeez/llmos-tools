@@ -42,8 +42,10 @@ Hermes Agent does not read `hooks/hooks.json`. The adapter plugin in
 for each Hermes hook, sends the payload the bundle reads for Claude Code
 (Hermes tool names mapped to `Bash`, `Read`, `Grep`, `Write`, `Edit`, or
 `apply_patch`), and sets `PLUGIN_ROOT=~/.hermes/plugins/llmos` so the
-heartbeat names `hermes`. Each Hermes profile links the folder into its own
-`plugins/` folder and enables it (setup-llmos, "Hermes Agent").
+heartbeat names `hermes`. Each Hermes profile links
+`~/.local/share/llmos/current/hermes` into its own `plugins/` folder and
+enables it (setup-llmos, "Hermes Agent"). `install.ts` moves `current` to each
+new install, so Hermes runs an installed copy, never a checkout.
 
 | Hermes hook | Hook event | When |
 | --- | --- | --- |

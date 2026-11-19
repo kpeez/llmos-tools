@@ -27,9 +27,10 @@ bun "<llmos-plugin-root>/cli/scripts/install.ts"
 The script copies the plugin root to `~/.local/share/llmos/<version>/`, runs
 `bun install --frozen-lockfile --production` there, and links `llmos-vault`,
 `llmos-doctor`, `llmos-audit`, `llmos-daily-activity`, and `qmd` into
-`~/.local/bin/`. It never changes the plugin folder or a plugin cache. It
-replaces a `~/.local/bin` entry only when that entry links to an earlier
-install; any other entry stops it before anything changes. `~/.local/bin`
+`~/.local/bin/`. As its last step it points `~/.local/share/llmos/current` at
+that folder. It never changes the plugin folder or a plugin cache. It
+replaces a `~/.local/bin` entry or `current` only when that entry links to an
+earlier install; any other entry stops it before anything changes. `~/.local/bin`
 must be on `PATH`.
 
 The `qmd` it links is the qmd version the CLI imports. Keep it the only
@@ -188,27 +189,30 @@ settings.
 Hermes Agent has no plugin marketplace for llmOS. Wire it by hand, once in
 the default profile (`~/.hermes`) and once in each profile under
 `~/.hermes/profiles/`; each profile has its own `config.yaml`, `SOUL.md`, and
-`plugins/` folder. Edit `config.yaml` as text and keep its comments. Below,
-`<checkout>` is a clone of this repository (`kpeez/llmos-tools`), not the
-vault.
+`plugins/` folder. Edit `config.yaml` as text and keep its comments. Hermes
+runs the installed copy at `~/.local/share/llmos/current/` (made by
+`install.ts`, above), never a checkout. A checkout changes with its branch and
+its uncommitted files.
 
 - MCP: add `llmos` under `mcp_servers` with `command:
   ~/.local/bin/llmos-vault` (written out in full) and `args: [mcp]`. Hermes
   names the tools `mcp__llmos__<tool>`, as Codex does. Check with
   `hermes -p <profile> mcp list`.
-- Skills: add `<checkout>/skills` to `skills.external_dirs`, and add
-  `obsidian` to `skills.disabled` (the bundled skill writes raw Markdown).
+- Skills: add `~/.local/share/llmos/current/skills` (written out in full) to
+  `skills.external_dirs`, and add `obsidian` to `skills.disabled` (the bundled skill writes raw Markdown).
   `hermes config get skills.disabled` warns that the key is unknown; the
   skill loader reads it anyway. Check with `hermes -p <profile> skills list`.
 - Commands: add `llmos-vault *` to `command_allowlist`.
 - Hooks: link the adapter into the profile's `plugins/` folder and enable it:
-  `ln -s <checkout>/hermes <profile-home>/plugins/llmos`, then
+  `ln -s ~/.local/share/llmos/current/hermes <profile-home>/plugins/llmos`
+  (the path written out in full), then
   `hermes -p <profile> plugins enable llmos`. `hermes plugins doctor llmos`
   validates the plugin. `hermes chat` runs its turns in the gateway, which
   keeps the plugins it loaded at startup. `plugins enable` does nothing for
   a plugin that is already enabled, so after you repoint a link, run
   `hermes gateway restart`. It refuses while a session or delegation is
-  running.
+  running. `install.ts` moves `current`, so an install updates Hermes after
+  a `hermes gateway restart`.
 - `SOUL.md`: say that the vault holds all project knowledge, and that
   Hermes memory (`MEMORY.md`, `USER.md`) holds only facts about Hermes
   itself. Copy the vault paragraphs of the default profile's `SOUL.md`.
@@ -218,7 +222,9 @@ Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
 checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists, and fails it
 when that link points at a folder that is gone. Once any profile
 links the plugin, it also checks each profile (`hermes-profile-<name>`) and names
-the pieces a profile lacks, so a profile made later is not missed. Start one new
+the pieces a profile lacks, so a profile made later is not missed. It fails a
+profile whose plugin link or skills folder resolves outside
+`~/.local/share/llmos/`, such as a checkout. Start one new
 Hermes session (`hermes chat --oneshot -Q -q ok`) to record its heartbeat.
 
 ## Activate and verify each agent and host
