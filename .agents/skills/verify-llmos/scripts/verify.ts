@@ -547,8 +547,8 @@ const mcp: Feature = async (state) => {
     log.push(`tools: ${names.join(", ")}`);
     check(
       f,
-      "tools/list names the read, search, and write tools",
-      ["read", "list", "search", "set_property", "daily_append_thought"].every((n) =>
+      "tools/list names the read, search, memory, and write tools",
+      ["read", "list", "search", "memory_save", "set_property", "daily_append_thought"].every((n) =>
         names.includes(n),
       ),
       names.join(","),
@@ -600,6 +600,35 @@ const mcp: Feature = async (state) => {
       value: "pwned",
     });
     check(f, "set_property refuses a note linked outside the vault", outside.isError);
+    const remembered = await call("memory_save", {
+      name: "tank-heater",
+      description: "The tank heater setting",
+      body: "Set the tank heater to 26 C.",
+      type: "project",
+      project: "verify",
+    });
+    check(
+      f,
+      "memory_save writes a memory note",
+      !remembered.isError &&
+        existsSync(join(state.vault, "projects", "verify", "memory", "tank-heater.md")),
+      remembered.text.slice(0, 120),
+    );
+    const forgotten = await call("memory_forget", { name: "tank-heater", project: "verify" });
+    check(
+      f,
+      "memory_forget deletes it",
+      !forgotten.isError &&
+        !existsSync(join(state.vault, "projects", "verify", "memory", "tank-heater.md")),
+    );
+    const memoryEscape = await call("memory_save", {
+      name: "x",
+      description: "d",
+      body: "b",
+      type: "project",
+      project: "..",
+    });
+    check(f, "memory_save refuses a project outside projects/", memoryEscape.isError);
     const extra = await call("read", { note: "notes/alpha.md", shell: "id" });
     check(f, "an unknown argument is refused", extra.isError);
     const inbox = await call("file_inbox", { note: "notes/alpha.md", destination: "notes/z.md" });
@@ -624,12 +653,82 @@ const mcp: Feature = async (state) => {
   }
 };
 
+const memory: Feature = (state) => {
+  const f = "memory";
+  mkdirSync(join(state.vault, "projects", "verify"), { recursive: true });
+  const dir = join(state.vault, "projects", "verify", "memory");
+  const scope = record(state, f, "scope", vault("memory", "scope", "--project", "verify"));
+  check(
+    f,
+    "memory scope names the project's index",
+    scope.code === 0 && JSON.parse(scope.out).index === "projects/verify/memory/MEMORY.md",
+    scope.err,
+  );
+  const saveArgs = (body: string) =>
+    vault("memory", "save", "garden-soil", "Soil for the garden beds", body, "--project", "verify");
+  const saved = record(state, f, "save", [...saveArgs("Use loam with compost."), "--type", "project"]);
+  const note = () => readFileSync(join(dir, "garden-soil.md"), "utf8");
+  const index = () => readFileSync(join(dir, "MEMORY.md"), "utf8");
+  check(
+    f,
+    "save writes the topic note and its index line",
+    saved.code === 0 &&
+      note().includes("node_type: memory") &&
+      index().includes("- [Garden soil](garden-soil.md) — Soil for the garden beds"),
+    saved.err,
+  );
+  const again = record(state, f, "save-again", saveArgs("Use sandy loam."));
+  check(
+    f,
+    "saving again replaces the body and keeps one index line",
+    again.code === 0 &&
+      note().includes("sandy loam") &&
+      index().split("garden-soil.md").length === 2,
+    again.err,
+  );
+  record(state, f, "reindex", vault("reindex", "--no-embed"));
+  const search = record(
+    state,
+    f,
+    "search-keyword",
+    vault("memory", "search", "loam", "--keyword", "--project", "verify"),
+  );
+  check(
+    f,
+    "memory search finds the memory and nothing outside the folder",
+    search.code === 0 &&
+      JSON.stringify((JSON.parse(search.out) as { path: string }[]).map((h) => h.path)) ===
+        JSON.stringify(["projects/verify/memory/garden-soil.md"]),
+    search.out.slice(0, 200),
+  );
+  const escape = record(
+    state,
+    f,
+    "save-escape",
+    vault("memory", "save", "x", "d", "b", "--project", ".."),
+  );
+  check(f, "a project outside projects/ is refused", escape.code === 1, `exit ${escape.code}`);
+  const forget = record(
+    state,
+    f,
+    "forget",
+    vault("memory", "forget", "garden-soil", "--project", "verify"),
+  );
+  check(
+    f,
+    "forget removes the note and its index line",
+    forget.code === 0 && !existsSync(join(dir, "garden-soil.md")) && !index().includes("garden-soil"),
+    forget.err,
+  );
+};
+
 const FEATURES: Record<string, Feature> = {
   "read-search": readSearch,
   writes,
   "claims-lint": claimsLint,
   "source-capture": sourceCapture,
   hooks,
+  memory,
   mcp,
 };
 

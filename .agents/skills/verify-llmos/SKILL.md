@@ -67,7 +67,7 @@ bun scripts/verify.ts drive hooks mcp    # chosen features
 
 Read `features/README.md`, then the file of the feature you need.
 Each feature file lists the exact commands and the end state that proves it works.
-Feature names: `read-search`, `writes`, `claims-lint`, `source-capture`, `hooks`, `mcp`.
+Feature names: `read-search`, `writes`, `claims-lint`, `source-capture`, `hooks`, `memory`, `mcp`.
 
 Use `--run <evidence folder>` to pick a run. The default is the latest run.
 
