@@ -31,8 +31,5 @@ jobs:
           bun run build:hooks
           bun run build:mcp
           git diff --exit-code ../dist/hooks.js ../dist/mcp.js
-      - name: Smoke the CLI entry points
-        run: |
-          for entry in bin/llmos-vault.ts bin/llmos-audit.ts bin/llmos-doctor.ts src/digest.ts; do
-            bun "$entry" --help >/dev/null
-          done
+      - name: Smoke the CLI entry point
+        run: bun bin/llmos.ts --help >/dev/null

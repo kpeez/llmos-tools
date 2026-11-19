@@ -13,7 +13,7 @@ import { join, relative, resolve } from "node:path";
 const PLUGIN_ROOT = resolve(import.meta.dir, "../..");
 const REPO_ROOT = PLUGIN_ROOT;
 const PLUGIN_SOURCE = "./";
-const MARKETPLACE_NAME = "llmos-vault";
+const MARKETPLACE_NAME = "llmos-tools";
 
 const manifest = JSON.parse(
   readFileSync(join(PLUGIN_ROOT, ".claude-plugin", "plugin.json"), "utf8"),
