@@ -5,11 +5,16 @@ import { join } from "node:path";
 import { oldNameChecks } from "../src/doctor.ts";
 import { scratch, writeFiles } from "./helpers.ts";
 
-function check(files: Record<string, string>): { home: string; lines: string[]; failures: number } {
+function check(
+  files: Record<string, string>,
+  extraEnv: (home: string) => Record<string, string> = () => ({}),
+): { home: string; lines: string[]; failures: number } {
   const home = scratch("old-names");
   writeFiles(home, files);
-  return { home, ...oldNameChecks({ HOME: home }) };
+  return { home, ...oldNameChecks({ HOME: home, ...extraEnv(home) }) };
 }
+
+const repairsOf = (lines: string[]): string[] => lines.filter((line) => line.startsWith("REPAIR"));
 
 describe("old-names check", () => {
   test("a Hermes config that runs the old binary fails and names the line", () => {
@@ -53,15 +58,63 @@ describe("old-names check", () => {
     expect(repairs[0]).not.toContain("write llmos for llmos-vault");
   });
 
-  test("a trust record and a renamable line give both repairs", () => {
+  test("a trust record and a plugin record give both repairs", () => {
     const { lines } = check({
       ".codex/config.toml":
         '[plugins."llmos@llmos-vault"]\nenabled = true\n[hooks.state."llmos@llmos-vault:hooks/hooks.json:stop:0:0"]\n',
     });
     const repairs = lines.filter((line) => line.startsWith("REPAIR"));
     expect(repairs).toHaveLength(2);
-    expect(repairs[0]).toContain("llmos@llmos-tools for llmos@llmos-vault");
+    expect(repairs[0]).toContain("claude plugin uninstall llmos@llmos-vault");
     expect(repairs[1]).toContain("Delete each [hooks.state");
+  });
+
+  test.each([
+    [
+      "a Codex marketplace table",
+      { ".codex/config.toml": '[marketplaces.llmos-vault]\nsource = "x"\n' },
+    ],
+    [
+      "a Claude marketplace key",
+      { ".claude/settings.json": '{\n  "llmos-vault": {\n    "source": "x"\n  }\n}\n' },
+    ],
+  ])("%s gets the plugin and marketplace repair, not a rename", (_name, files) => {
+    const { lines, failures } = check(files);
+    expect(failures).toBe(1);
+    const repairs = repairsOf(lines);
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]).toContain("claude plugin marketplace remove llmos-vault");
+    expect(repairs[0]).toContain("add kpeez/llmos-tools");
+    expect(repairs[0]).toContain("never by editing");
+    expect(lines.join("\n")).not.toContain("llmos for llmos-vault");
+  });
+
+  test("a Hermes command still gets the rename repair", () => {
+    const { lines } = check({ ".hermes/config.yaml": "command: /x/.local/bin/llmos-vault\n" });
+    const repairs = repairsOf(lines);
+    expect(repairs).toHaveLength(1);
+    expect(repairs[0]).toContain("write llmos for llmos-vault");
+    expect(repairs[0]).not.toContain("llmos@llmos-tools");
+  });
+
+  test("CODEX_HOME and CLAUDE_CONFIG_DIR move the files that are read", () => {
+    const { home, lines, failures } = check(
+      {
+        "elsewhere/codex/config.toml": '[plugins."llmos@llmos-vault"]\n',
+        "elsewhere/claude/settings.json": '{"hooks": "llmos-audit"}\n',
+        ".codex/config.toml": '[plugins."llmos@llmos-vault"]\n',
+      },
+      (h) => ({
+        CODEX_HOME: join(h, "elsewhere/codex"),
+        CLAUDE_CONFIG_DIR: join(h, "elsewhere/claude"),
+      }),
+    );
+    expect(failures).toBe(1);
+    const hits = lines.filter((line) => /:\d+: /.test(line));
+    expect(hits).toHaveLength(2);
+    expect(hits.join("\n")).toContain(join(home, "elsewhere/codex/config.toml"));
+    expect(hits.join("\n")).toContain(join(home, "elsewhere/claude/settings.json"));
+    expect(hits.join("\n")).not.toContain(join(home, ".codex"));
   });
 
   test("a Claude setting, a systemd unit, and a launchd agent that run an old command fail", () => {

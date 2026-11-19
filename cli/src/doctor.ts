@@ -396,17 +396,19 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
   return { lines, failures };
 }
 
-/** A command or plugin ID that 2.11.0 removed. `llmos-vault` is now only the vault repository. */
 /** A Codex hook-trust record of the old plugin ID. */
 const TRUST_RECORD = /^\s*\[hooks\.state\."llmos@llmos-vault:/;
+/** A plugin or marketplace record: the plugin ID, a Codex marketplace table, or a Claude marketplace key. */
+const PLUGIN_RECORD = /llmos@llmos-vault|marketplaces\.llmos-vault|"llmos-vault"\s*:/;
+/** A command or plugin ID that 2.11.0 removed. `llmos-vault` is now only the vault repository. */
 const REMOVED_NAME =
   /llmos-(?:vault|doctor|audit|daily-activity)(?![\w-])(?!\.(?:git|service|timer)\b)/g;
 
 /** Every file of the host that can name an `llmos` command or the plugin ID. */
-function agentConfigFiles(home: string): string[] {
+function agentConfigFiles(home: string, env: Env): string[] {
   const files = [
-    join(home, ".claude", "settings.json"),
-    join(home, ".codex", "config.toml"),
+    join(env.CLAUDE_CONFIG_DIR || join(home, ".claude"), "settings.json"),
+    join(env.CODEX_HOME || join(home, ".codex"), "config.toml"),
     join(home, ".hermes", "config.yaml"),
   ];
   const listed = (dir: string, wanted: (name: string) => boolean): string[] => {
@@ -432,7 +434,8 @@ export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
   const home = env.HOME || homedir();
   const hits: string[] = [];
   let trustRecords = 0;
-  for (const file of agentConfigFiles(home)) {
+  let pluginRecords = 0;
+  for (const file of agentConfigFiles(home, env)) {
     let text: string;
     try {
       text = readFileSync(file, "utf8");
@@ -448,6 +451,7 @@ export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
       if (!removed) return;
       hits.push(`${file}:${index + 1}: ${line.trim()}`);
       if (TRUST_RECORD.test(line)) trustRecords++;
+      else if (PLUGIN_RECORD.test(line)) pluginRecords++;
     });
   }
   if (hits.length === 0) {
@@ -460,9 +464,14 @@ export function oldNameChecks(env: Env): { lines: string[]; failures: number } {
     `FAIL old-names: ${hits.length} line(s) name a command or plugin that 2.11.0 removed`,
     ...hits,
   ];
-  if (hits.length > trustRecords) {
+  if (hits.length > trustRecords + pluginRecords) {
     lines.push(
-      "REPAIR In each line above that is not a [hooks.state] header, write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, llmos daily activity for llmos-daily-activity, and llmos@llmos-tools for llmos@llmos-vault; then restart the agent or service (setup-llmos)",
+      "REPAIR In each command line above (not a plugin, marketplace, or [hooks.state] record), write llmos for llmos-vault, llmos doctor for llmos-doctor, llmos audit for llmos-audit, and llmos daily activity for llmos-daily-activity; then restart the agent or service (setup-llmos)",
+    );
+  }
+  if (pluginRecords > 0) {
+    lines.push(
+      "REPAIR Remove the old plugin and marketplace with the agent's own commands, never by editing their records: claude plugin uninstall llmos@llmos-vault, claude plugin marketplace remove llmos-vault, codex plugin marketplace remove llmos-vault; then add kpeez/llmos-tools and install llmos@llmos-tools (setup-llmos)",
     );
   }
   if (trustRecords > 0) {
@@ -623,8 +632,9 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
         "Link and enable the plugin in every Hermes profile (hermes -p <profile> plugins enable " +
         "llmos), start a new Hermes session, then rerun llmos doctor (setup-llmos, Hermes Agent).",
       update:
-        "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the hermes/ folder " +
-        "of a current llmos-tools checkout: ln -sfn <checkout>/hermes ~/.hermes/plugins/llmos",
+        "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the installed " +
+        "plugin: ln -sfn ~/.local/share/llmos/current/hermes ~/.hermes/plugins/llmos. If " +
+        "~/.local/share/llmos/current is missing, rerun cli/scripts/install.ts first.",
     },
   ];
 
