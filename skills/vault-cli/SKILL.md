@@ -1,6 +1,6 @@
 ---
 name: vault-cli
-description: Route vault operations to the llmos MCP tools when the server is connected, else the llmos-vault CLI. Use when reading, listing, moving, linking, or filing notes, working with daily notes, checking vault health, or otherwise needing a deterministic headless verb against the llmOS vault or another Obsidian vault instead of hand-typed obsidian-cli calls.
+description: Route vault operations to the llmos MCP tools when the server is connected, else the llmos CLI. Use when reading, listing, moving, linking, or filing notes, working with daily notes, checking vault health, or otherwise needing a deterministic headless verb against the llmOS vault or another Obsidian vault instead of hand-typed obsidian-cli calls.
 ---
 
 # Vault CLI
@@ -29,10 +29,10 @@ in its place means the CLI is not installed; run `setup-llmos`.
 
 ## The CLI
 
-`llmos-vault` is a TypeScript CLI run by Bun. Its command registry
+`llmos` is a TypeScript CLI run by Bun. Its command registry
 (`cli/src/commands.ts`) is the single source of truth for every verb's
 parameters, behavior, and output shape. Discovery is two hops: this table
-tells you which verb to run, `llmos-vault <cmd> --help` tells you everything
+tells you which verb to run, `llmos <cmd> --help` tells you everything
 else.
 
 Reads and content or property writes work with Obsidian closed: writes are
@@ -41,9 +41,9 @@ atomic file writes in the canonical frontmatter form. Only `move` and
 running. `search` and `reindex` use qmd's index through its SDK.
 
 Keyword search stays current on its own: after each turn that changed the
-vault, the plugin's Stop hook runs `llmos-vault reindex --no-embed`. Vectors
+vault, the plugin's Stop hook runs `llmos reindex --no-embed`. Vectors
 for `search --semantic` and `--hybrid` do not: embedding loads a model and takes seconds,
-so no hook runs it. Run `llmos-vault reindex` by hand to embed. `llmos-vault
+so no hook runs it. Run `llmos reindex` by hand to embed. `llmos
 health` reports the count of documents that still need embedding as
 `qmd_unembedded`.
 
@@ -77,7 +77,7 @@ health` reports the count of documents that still need embedding as
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |
 <!-- END GENERATED VERB TABLE -->
 
-Run `llmos-vault <cmd> --help` for a verb's full parameters, output shape,
+Run `llmos <cmd> --help` for a verb's full parameters, output shape,
 and example invocations. The complete per-command docs (the same text
 `--help` renders) are also collected in `references/commands.md`.
 
@@ -87,7 +87,7 @@ Task: "what links to note X". Two hops:
 
 1. Scan the table above for a verb about links -- `neighbors` reads
    "outgoing links, backlinks, and shared-topic siblings".
-2. Run it: `llmos-vault neighbors X --vault llmos`.
+2. Run it: `llmos neighbors X --vault llmos`.
 
 No prior knowledge of the vault, the library, or Obsidian is required.
 
@@ -98,7 +98,7 @@ registry -- never hand-edit either. After changing a command's help text or
 adding a command, run from `cli/`:
 
 ```sh
-bun bin/llmos-vault.ts docs
+bun bin/llmos.ts docs
 ```
 
 `bun test` fails while either file is stale.

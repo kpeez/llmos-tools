@@ -8,7 +8,7 @@ This page lists the plugin skills and the authoring rules they deliver.
 | `ingest-source`         | Sorts inbox drops in `raw/` into sources, knowledge notes, and project material, and captures sources into frozen folders |
 | `maintain-llmos`        | Maintains the vault through its conventions: filing durable knowledge, project docs, reviews, link/property repair        |
 | `setup-llmos`           | Diagnoses whether a machine can use the vault (Obsidian CLI, `qmd`), and configures the vault root when missing           |
-| `vault-cli`             | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos-vault` CLI      |
+| `vault-cli`             | Routes deterministic vault operations — read, list, move, link, file, daily notes, health — to the `llmos` CLI      |
 
 The source and fact formats that `source add` writes and `claims lint`
 checks are in [Sources and compiled facts](compiled-facts.md), and the rules
@@ -22,7 +22,7 @@ vault content, including through a repository's `.agents/docs` or `.agent/docs`
 symlink. The generic Obsidian skills provide syntax help when installed; they
 do not replace the vault's own conventions.
 
-After editing a note, run `llmos-vault check <vault-relative-note.md>`.
+After editing a note, run `llmos check <vault-relative-note.md>`.
 It reports body links separately from frontmatter links and flags explicit
 references to existing notes that are not links. Findings need author review;
 the command never rewrites content or invents relationships. A clean check is

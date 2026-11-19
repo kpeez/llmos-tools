@@ -8,12 +8,12 @@ updated: 2026-11-18
 
 One scheduled job maintains llmOS: the evening daily activity digest. One
 manual job is `discover`. Both leave a run record in the vault, and
-`llmos-vault health` reports a job whose record is too old (see "Run records
+`llmos health` reports a job whose record is too old (see "Run records
 and manual jobs").
 The digest is a script, not an agent — fetch, hash, one model call, verify, write — so it cannot
 drift, half-finish, or decide to do something else. It processes both today and
 yesterday on each run, because an evening pass cannot see work that lands after
-it. The command is `cli/src/digest.ts`, run by Bun.
+it. The command is `llmos daily activity` (`cli/src/digest.ts`), run by Bun.
 
 The digest monitors every project whose landing note has `status: active` and
 whose folder name matches a repository of one of the GitHub owners in
@@ -32,12 +32,12 @@ for two repositories), and it writes `<!--` from that answer as `&lt;!--`, so no
 can appear inside the block.
 
 There is no nightly closeout and no weekly synthesis (vault ADR 0010). Neither
-ever ran on a schedule. After a vault change, run `llmos-vault health` yourself. `health` also reports `discover` or `daily-activity` when its run record is too old.
+ever ran on a schedule. After a vault change, run `llmos health` yourself. `health` also reports `discover` or `daily-activity` when its run record is too old.
 
 ## Timer
 
 llmOS ships the digest command, not its schedule. The host that runs the digest
-owns the schedule: run `llmos-daily-activity --push` once each evening with
+owns the schedule: run `llmos daily activity --push` once each evening with
 the scheduler of that host. `health` reports a missed run whatever the
 scheduler is (see "Run records and manual jobs").
 
@@ -54,7 +54,7 @@ Description=llmOS daily activity digest
 [Service]
 Type=oneshot
 Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/bin:/bin
-ExecStart=%h/.local/bin/llmos-daily-activity --push
+ExecStart=%h/.local/bin/llmos daily activity --push
 ```
 
 `~/.config/systemd/user/llmos-daily-activity.timer`:
@@ -71,8 +71,8 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-`%h/.local/bin/llmos-daily-activity` is the link that the CLI install creates
-to `cli/src/digest.ts` in the installed copy of the tools. The script starts with
+`%h/.local/bin/llmos` is the link that the CLI install creates
+to `cli/bin/llmos.ts` in the installed copy of the tools. The script starts with
 `#!/usr/bin/env bun`, so the unit's `PATH` must find the mise-managed `bun`
 through the mise shims. Do not put `~/.bun/bin` on it when that folder
 holds an older standalone Bun: that Bun would run first.
@@ -127,7 +127,7 @@ a link to it, and `create` refuses new content for it that sets the property.
 Only `discover` sets it.
 
 The record is a note edit, so it travels with the vault. The edit is committed
-and pushed like any note edit. After the git sync, `llmos-vault health` on any
+and pushed like any note edit. After the git sync, `llmos health` on any
 host reads it. A run on one host therefore counts on every other host too.
 
 `health` has an `overdue_jobs` section for the `llmos` vault. It lists
@@ -147,7 +147,7 @@ timer host to tell the two apart. It lists `discover` when any of these is true:
 Any entry makes `health` exit 1. A failed run sets nothing: the person who ran
 it sees the error.
 
-`discover` is a manual job. It is not on a timer. Run `llmos-vault discover`
+`discover` is a manual job. It is not on a timer. Run `llmos discover`
 when `health` reports it as overdue, and about once a week. It ranks clusters
 of notes that restate the same works, as candidates for
 `consolidate-knowledge`. It writes the JSON report to

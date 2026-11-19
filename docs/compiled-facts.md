@@ -1,12 +1,12 @@
 # Sources and compiled facts
 
-This is the specification of two formats that the llmOS CLI writes and checks: the folder that `llmos-vault source add` captures, and the `[!fact]` and `[!conflict]` callouts that `llmos-vault claims lint` reads. The code enforces these rules, so they ship with the code. A vault's own content conventions, such as its folders, categories, and topics, live in the vault's `schema.md`. [The ingest contract](ingest-contract.md) says how an agent writes facts from captured sources.
+This is the specification of two formats that the llmOS CLI writes and checks: the folder that `llmos source add` captures, and the `[!fact]` and `[!conflict]` callouts that `llmos claims lint` reads. The code enforces these rules, so they ship with the code. A vault's own content conventions, such as its folders, categories, and topics, live in the vault's `schema.md`. [The ingest contract](ingest-contract.md) says how an agent writes facts from captured sources.
 
 The examples link sources with Obsidian wikilinks, as a note in the vault does.
 
 ## Sources
 
-`llmos-vault source add` captures an arXiv paper, a web page, or a PDF into `raw/<slug>/`. A web page is converted by defuddle. When defuddle keeps less than a tenth of the visible words of a page of 500 words or more, it runs again on the page's article container, and the capture records that selector in `converter`; when no container holds the text, the capture keeps defuddle's text and prints a warning. A PDF (a file, a URL that serves one, or an arXiv paper without an HTML version) is converted by MinerU on this machine. An arXiv slug is `arxiv-<id>v<N>`; a web slug is the host and path in lowercase words plus eight hex digits of the source ID's hash; a PDF file's slug takes its words from `--origin`, else from the file name. Large files go to Git LFS (the vault's `.gitattributes`). Nobody edits a source folder after capture; a newer version is a new folder.
+`llmos source add` captures an arXiv paper, a web page, or a PDF into `raw/<slug>/`. A web page is converted by defuddle. When defuddle keeps less than a tenth of the visible words of a page of 500 words or more, it runs again on the page's article container, and the capture records that selector in `converter`; when no container holds the text, the capture keeps defuddle's text and prints a warning. A PDF (a file, a URL that serves one, or an arXiv paper without an HTML version) is converted by MinerU on this machine. An arXiv slug is `arxiv-<id>v<N>`; a web slug is the host and path in lowercase words plus eight hex digits of the source ID's hash; a PDF file's slug takes its words from `--origin`, else from the file name. Large files go to Git LFS (the vault's `.gitattributes`). Nobody edits a source folder after capture; a newer version is a new folder.
 
 - `raw.html` or `raw.pdf`: the page or PDF bytes as fetched or given.
 - `assets/`: for a PDF, the images MinerU cut out that the text or a figure shows. For a page, the images of its captioned figures, as fetched. Only responses of type `image/*` are kept; one that is not, or that fails, is skipped and named in the command output. Names are unique ignoring case. A figure is a top-level `<figure>` (no `<figure>` above it) with a `<figcaption>` that is its own direct child; a panel's caption is not its caption. On arXiv's LaTeXML pages it must also have class `ltx_figure` and not `ltx_lstlisting`, so tables, algorithms, and listings do not count. In a PDF, a figure is an image or chart block whose caption starts with a figure label (`Fig. 3`, `Figure S2`); its panels are the blocks before it on its page with no caption or only a panel letter, back to the previous figure there.
@@ -23,7 +23,7 @@ The examples link sources with Obsidian wikilinks, as a note in the vault does.
 
 ## Compiled facts
 
-A knowledge note states each checkable fact as a `[!fact]` callout that quotes its source. `llmos-vault claims lint <notes>` reads these callouts and checks them against the captured source text. The lint is read-only.
+A knowledge note states each checkable fact as a `[!fact]` callout that quotes its source. `llmos claims lint <notes>` reads these callouts and checks them against the captured source text. The lint is read-only.
 
 ```markdown
 > [!fact] checked
@@ -119,4 +119,4 @@ When two primary sources disagree, record both quotes in one `[!conflict]` callo
 ^conflict-c-tai-images
 ```
 
-The title is `open` or `resolved: <reason>`. The body is the statement, then two pairs of a quote and a source line. The two quotes must differ and must come from two different sources. The lint checks each quote against its own source section, as for a fact, and each number of the statement must occur in one of the two quotes. A resolved conflict keeps both quotes; the fact that settles it is a separate `[!fact]`. The second source of the example is the one that `llmos-vault source add 1804.08790` captures.
+The title is `open` or `resolved: <reason>`. The body is the statement, then two pairs of a quote and a source line. The two quotes must differ and must come from two different sources. The lint checks each quote against its own source section, as for a fact, and each number of the statement must occur in one of the two quotes. A resolved conflict keeps both quotes; the fact that settles it is a separate `[!fact]`. The second source of the example is the one that `llmos source add 1804.08790` captures.

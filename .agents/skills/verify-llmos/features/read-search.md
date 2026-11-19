@@ -13,7 +13,7 @@ A user or agent reads one note, lists notes, follows links, checks vault health,
 
 ## How to get to it (user POV)
 
-- CLI: `llmos-vault read|list|neighbors|health|reindex|search`.
+- CLI: `llmos read|list|neighbors|health|reindex|search`.
 - MCP: the tools `read`, `list`, `neighbors`, `health`, `search`.
 - Slash skill `llmos:vault-cli` routes to these verbs.
 
@@ -21,12 +21,12 @@ A user or agent reads one note, lists notes, follows links, checks vault health,
 
 Preconditions: launch and doctor passed. The qmd collection `llmos` exists in the scratch home.
 
-- **Read.** `llmos-vault read notes/alpha.md`. Exit 0. `properties.topics` is `["gardening"]`.
-- **List.** `llmos-vault list`. Exit 0. The output names `beta`.
-- **Neighbors.** `llmos-vault neighbors alpha`. Exit 0. The output names `beta`.
-- **Health.** `llmos-vault health`. Exit 0 or 1. The report runs. The fixture has an unresolved link `[[ghost]]`.
-- **Reindex.** `llmos-vault reindex --no-embed`. Exit 0. `update` counts the notes. `embed` and `cleanup` are `null`.
-- **Search.** `llmos-vault search gardening`. Exit 0. The paths `notes/alpha.md`, `notes/beta.md`, and `notes/gamma.md` are in the JSON array.
+- **Read.** `llmos read notes/alpha.md`. Exit 0. `properties.topics` is `["gardening"]`.
+- **List.** `llmos list`. Exit 0. The output names `beta`.
+- **Neighbors.** `llmos neighbors alpha`. Exit 0. The output names `beta`.
+- **Health.** `llmos health`. Exit 0 or 1. The report runs. The fixture has an unresolved link `[[ghost]]`.
+- **Reindex.** `llmos reindex --no-embed`. Exit 0. `update` counts the notes. `embed` and `cleanup` are `null`.
+- **Search.** `llmos search gardening`. Exit 0. The paths `notes/alpha.md`, `notes/beta.md`, and `notes/gamma.md` are in the JSON array.
 - Run: `bun scripts/verify.ts drive read-search`. Evidence goes to `read-search/`.
 
 ## Gotchas

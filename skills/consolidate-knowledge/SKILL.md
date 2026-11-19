@@ -25,7 +25,7 @@ The contract ships with the tools. Read it first:
 The cluster slug (such as `macaque-face-recognition`), the member notes that
 restate the cluster's works, and the scope: the papers and datasets this run
 covers. Keep the scope to what one review can hold. Other works stay as plain
-citations in the hub. To pick a cluster, run `llmos-vault discover`: it ranks
+citations in the hub. To pick a cluster, run `llmos discover`: it ranks
 candidate clusters, uncovered ones first.
 
 ## Steps
@@ -38,12 +38,12 @@ candidate clusters, uncovered ones first.
    vault's folder in the repository (`git -C "$LLMOS_ROOT" rev-parse
    --show-prefix`). When the vault is the repository root, `<vault>` is the
    worktree itself. Every vault path below is relative to `<vault>`. Set
-   `LLMOS_ROOT` to `<vault>` for every `llmos-vault` and `llmos-audit` call,
+   `LLMOS_ROOT` to `<vault>` for every `llmos` and `llmos audit` call,
    and do not use the `llmos` MCP tools: they target the live vault.
 2. **Read member notes and sources, never older summaries.** Read the member
    notes only to learn which works, numbers, and disagreements they hold. Write
    each fact from the source text, never from a member note.
-3. **Capture missing sources** with `llmos-vault source add`, in this order: the
+3. **Capture missing sources** with `llmos source add`, in this order: the
    arXiv ID; an open-access publisher or PMC HTML page; a project or repository
    page that states a dataset's size or terms. Follow `ingest-source`. Delete
    your own capture of a paywalled preview, an empty JavaScript page, or a
@@ -78,9 +78,9 @@ candidate clusters, uncovered ones first.
      `project`. Add only links to ADRs, never edits to their decision text.
    - Stamp `updated` by hand on every note you touch. The hook
      stamps only the live vault root, not a worktree.
-6. **Lint, then fix or flag each finding.** Run `llmos-vault claims lint` on
-   every new and changed note (one run, many paths), `llmos-vault check <note>`
-   on each new note, and `llmos-audit --root <vault>` (it audits the
+6. **Lint, then fix or flag each finding.** Run `llmos claims lint` on
+   every new and changed note (one run, many paths), `llmos check <note>`
+   on each new note, and `llmos audit --root <vault>` (it audits the
    whole vault). Fix a finding by correcting the fact or its quote. Flag only a
    fact whose source cannot be captured. Never edit a source folder. Also
    verify that every member note links the hub, and that

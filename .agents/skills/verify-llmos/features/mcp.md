@@ -1,6 +1,6 @@
 # MCP server
 
-`llmos-vault mcp` serves the vault tools to an agent over MCP on stdio (newline-delimited JSON-RPC). Arguments come from a model, so the server checks each one and keeps every path inside the vault.
+`llmos mcp` serves the vault tools to an agent over MCP on stdio (newline-delimited JSON-RPC). Arguments come from a model, so the server checks each one and keeps every path inside the vault.
 
 ## Sub-features
 
@@ -13,7 +13,7 @@
 ## How to get to it (user POV)
 
 - Claude Code starts the server from `tools/.mcp.json`. Codex uses `tools/.codex-mcp.json`.
-- By hand: `bun --no-env-file --config=/dev/null cli/bin/llmos-vault.ts mcp`.
+- By hand: `bun --no-env-file --config=/dev/null cli/bin/llmos.ts mcp`.
 
 ## Driving it with scripts/verify.ts
 
@@ -34,4 +34,4 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 - `drive mcp` alone works only if the qmd index exists. Run `drive read-search` first or run all features.
 - The MCP `search` needs the `llmos` qmd collection. The server reads `INDEX_PATH` from its environment, so the child env must keep the isolation.
 - The server stamps notes itself. The PostToolUse hook does not see MCP calls.
-- The plugin starts the server through the launcher `dist/mcp.js`. The harness starts `llmos-vault mcp` directly. The launcher is not driven.
+- The plugin starts the server through the launcher `dist/mcp.js`. The harness starts `llmos mcp` directly. The launcher is not driven.

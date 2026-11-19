@@ -1,6 +1,6 @@
 ---
 name: verify-llmos
-description: Verify the llmOS tools by driving the real `llmos-vault` CLI, its MCP server (`llmos-vault mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change under `tools/` to see it work, or to audit the feature map.
+description: Verify the llmOS tools by driving the real `llmos` CLI, its MCP server (`llmos mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change under `tools/` to see it work, or to audit the feature map.
 ---
 
 # Verify the llmOS tools
@@ -20,8 +20,8 @@ It exits 0 when every check passes.
 
 ## Surface
 
-- CLI: `cli/bin/llmos-vault.ts`. This is the main surface.
-- MCP server: `llmos-vault mcp`, JSON-RPC on stdio.
+- CLI: `cli/bin/llmos.ts`. This is the main surface.
+- MCP server: `llmos mcp`, JSON-RPC on stdio.
 - Hooks: `bun dist/hooks.js <event>`, with the hook JSON on stdin.
 
 ## Launch
@@ -55,7 +55,7 @@ bun scripts/verify.ts doctor
 
 Doctor is read-only. It checks the Bun version (1.4.x), the fixtures, `dist/hooks.js`,
 `cli/node_modules`, that the scratch vault is not the real vault, that qmd is isolated,
-that `git status -- llmOS` has not changed since launch, and that `llmos-vault read` works.
+that `git status -- llmOS` has not changed since launch, and that `llmos read` works.
 Run it first, and again after any failed drive. `drive` runs it before each feature.
 
 ## Drive
@@ -90,10 +90,10 @@ Standards:
 These need a running Obsidian app with its command line interface on. Without it they exit 3.
 This host has no Obsidian, so they are `verified-unreachable`. The harness records the exit 3.
 
-- `llmos-vault move`
-- `llmos-vault create --template`
-- `llmos-vault file-inbox` and the MCP tool `file_inbox`
-- `llmos-vault daily get-or-create`, and `daily append-thought` / MCP `daily_append_thought` when today's daily note is missing (Obsidian creates it from the template)
+- `llmos move`
+- `llmos create --template`
+- `llmos file-inbox` and the MCP tool `file_inbox`
+- `llmos daily get-or-create`, and `daily append-thought` / MCP `daily_append_thought` when today's daily note is missing (Obsidian creates it from the template)
 
 Also not driven in a proof run, because they download models: `search --semantic`,
 `search --hybrid`, and a full `reindex` (embedding). Keyword search and `reindex --no-embed` are driven.
@@ -103,7 +103,7 @@ Also not driven in a proof run, because they download models: `search --semantic
 `source add` fetches from the network. A proof run must not.
 `scripts/source-offline.ts <vault-root> <source>` runs the same command with the recorded pages.
 
-A real run is `llmos-vault source add <arXiv id or URL>`. It requests `arxiv.org` (or the URL's host)
+A real run is `llmos source add <arXiv id or URL>`. It requests `arxiv.org` (or the URL's host)
 and the figure images, and it writes `raw/<slug>/` in the vault.
 A PDF needs MinerU (`LLMOS_MINERU` or `mineru-kit` on `PATH`). Run a real capture only when
 the user asks, and only against a scratch vault.

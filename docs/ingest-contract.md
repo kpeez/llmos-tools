@@ -1,10 +1,10 @@
 # llmOS ingest contract
 
-This contract governs how an agent turns captured sources into compiled facts in knowledge notes. The fact and conflict formats are in [Sources and compiled facts](compiled-facts.md#compiled-facts). The `llmos-vault claims lint` verb checks them.
+This contract governs how an agent turns captured sources into compiled facts in knowledge notes. The fact and conflict formats are in [Sources and compiled facts](compiled-facts.md#compiled-facts). The `llmos claims lint` verb checks them.
 
 ## Facts
 
-- Write a fact only from the text of a captured source in `raw/`. Capture a missing source with `llmos-vault source add` first. Never write a fact from an older summary, from a member note, or from memory.
+- Write a fact only from the text of a captured source in `raw/`. Capture a missing source with `llmos source add` first. Never write a fact from an older summary, from a member note, or from memory.
 - Quote the source's own words (at least 6 words), and put the quote under the heading that holds it. Write the fact's numbers as digits, not words. Run `claims lint` on every note you change, and fix or flag each finding.
 - A fact whose source is paywalled or not captured stays `flagged: source not captured`.
 - The lint is necessary, not sufficient. It cannot see swapped numbers, negation, or a real quote that does not support the fact. The second pass and the human review check those.

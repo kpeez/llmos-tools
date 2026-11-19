@@ -9,11 +9,11 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
 
 ## Workflow
 
-1. Use the `llmos` MCP tools when the server is connected (`read`, `neighbors`, `search`, `daily_append_thought`, `set_property`, and the rest; see the `vault-cli` skill), and the installed `llmos-vault` and `llmos-audit` commands otherwise, for vault resolution and maintenance. Never derive the vault from the working directory or a file's location (ADR-0001).
+1. Use the `llmos` MCP tools when the server is connected (`read`, `neighbors`, `search`, `daily_append_thought`, `set_property`, and the rest; see the `vault-cli` skill), and the installed `llmos` and `llmos audit` commands otherwise, for vault resolution and maintenance. Never derive the vault from the working directory or a file's location (ADR-0001).
 2. Read `[[llmOS]]`, `AGENTS.md`, `schema.md`, and `authoring.md`, then the
    nearest area or canonical project note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
 3. Delegate broad vault exploration (multi-note reads, wide `qmd` sweeps) to a bounded subagent; keep synthesis and cross-cutting decisions with the primary agent.
-4. Use the MCP `search` tool or `llmos-vault search "<terms>"` (or `qmd search -c llmos`) for exact retrieval, and `semantic: true` or `--semantic` (vector search, about 1 s; `qmd vsearch -c llmos`) for retrieval by meaning. Use `hybrid: true` or `--hybrid` (query expansion and reranking, 13 to 22 s per query; `qmd query -c llmos`) only when both miss. Read full hits with the MCP `read` tool, `llmos-vault read`, or `qmd get` before using them.
+4. Use the MCP `search` tool or `llmos search "<terms>"` (or `qmd search -c llmos`) for exact retrieval, and `semantic: true` or `--semantic` (vector search, about 1 s; `qmd vsearch -c llmos`) for retrieval by meaning. Use `hybrid: true` or `--hybrid` (query expansion and reranking, 13 to 22 s per query; `qmd query -c llmos`) only when both miss. Read full hits with the MCP `read` tool, `llmos read`, or `qmd get` before using them.
 5. Classify linked `categories`, linked `topics`, and linked `project` (omitting
    empty properties), then file the result with the matching template using the
    schema and directory map at `$LLMOS_ROOT/schema.md`; use
@@ -25,7 +25,7 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
 7. A configured and trusted PostToolUse hook stamps `updated`
    after supported Write/Edit/apply_patch operations, and the MCP write tools
    stamp the notes they change themselves. Neither covers shell writes (the
-   `llmos-vault` write verbs included) or an inactive hook; stamp those edits
+   `llmos` write verbs included) or an inactive hook; stamp those edits
    manually. Do not add an `authors` property (ADR 0014).
 8. Record insight, not activity. GitHub already holds what happened, and the
    evening digest writes it into each daily note's `## Projects` block. When a
@@ -38,10 +38,10 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
    with `obsidian-cli is not on PATH`. Report the thought in the reply instead of
    writing the daily note by hand.
 9. After each changed note, regardless of write tool, run
-   `llmos-vault check <vault-relative-path> --vault llmos` to inspect body links,
+   `llmos check <vault-relative-path> --vault llmos` to inspect body links,
    property links, unlinked note references, and Markdown that renders wrongly. Then verify the rendered note
    and any changed Base views in Obsidian, confirm project backlinks, run
-   `llmos-audit`, check unresolved links, update qmd, and review Git status.
+   `llmos audit`, check unresolved links, update qmd, and review Git status.
 
 ## Promote recurring patterns
 
@@ -53,6 +53,6 @@ Commit routine work straight to `main`. Cut a branch only when a diff is worth r
 
 ## Scripts
 
-`llmos-audit` is read-only. It does not stamp `updated`. The PostToolUse hook owns that property.
+`llmos audit` is read-only. It does not stamp `updated`. The PostToolUse hook owns that property.
 
-The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer. `llmos-vault discover` is a manual job: run it when `health` lists it under `overdue_jobs`. When `health` lists `daily-activity`, the nightly digest has stopped: read its journal on the host that runs its timer before anything else (`references/automation.md`, "Run records and manual jobs").
+The only scheduled job is the daily activity digest; `references/automation.md` specifies it and its timer. There is no nightly or weekly reviewer. `llmos discover` is a manual job: run it when `health` lists it under `overdue_jobs`. When `health` lists `daily-activity`, the nightly digest has stopped: read its journal on the host that runs its timer before anything else (`references/automation.md`, "Run records and manual jobs").

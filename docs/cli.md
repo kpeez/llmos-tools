@@ -7,7 +7,7 @@ This page is for people who run the llmOS CLI or its scripts.
 On a new host, `cli/scripts/bootstrap.sh <vault root>` from a checkout installs
 the CLI, sets the vault root (any path, such as the root of the vault's own Git
 repository), installs the plugin for each agent on `PATH`, and runs
-`llmos-doctor`. The `setup-llmos` skill also
+`llmos doctor`. The `setup-llmos` skill also
 installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
 `PATH`:
 
@@ -16,32 +16,32 @@ bun <checkout>/cli/scripts/install.ts
 ```
 
 This copies `tools/` to `~/.local/share/llmos/<version>/`, installs the
-dependencies of its `cli/` folder there, and links `llmos-vault`, `llmos-doctor`, `llmos-audit`,
-`llmos-daily-activity` (`cli/src/digest.ts`), and `qmd` into `~/.local/bin/`. The
-`qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
+dependencies of its `cli/` folder there, and links `llmos` and `qmd` into
+`~/.local/bin/`. The `qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
 `cli/package.json`); keep it the only `qmd` on `PATH`.
 
-## `llmos-vault`
+## `llmos`
 
-Every `llmos-vault` command resolves the vault root, runs a handler that
+Every `llmos` command resolves the vault root, runs a handler that
 returns a result, and prints JSON, so agents get predictable, parseable
 output for reads, listings, moves, links, daily notes, inbox filing, graph
 neighbors, search, and vault health checks. The command registry
 (`cli/src/commands.ts`) is the one source of each command's help and of
 `skills/vault-cli/references/commands.md`, the routing table skills use to
-pick the right verb (`bun bin/llmos-vault.ts docs`, run from `cli/`, renders it).
+pick the right verb (`bun bin/llmos.ts docs`, run from `cli/`, renders it).
 
 Vault-root resolution lives in `cli/src/root.ts`, which the CLI, the digest, the
 hooks, and the MCP server share, so they agree on where the vault is.
 
-## Scripts
+## Subcommands and scripts
 
-- **`llmos-doctor`** — end-to-end health check: is the vault root valid, are
+- **`llmos doctor`** — end-to-end health check: is the vault root valid, are
   the CLI and `qmd` reachable, is the collection indexed, does the MCP server
   start and list its tools, and have the installed plugin hooks run for each
-  agent.
-- **`llmos-audit`** — audits frontmatter contracts across the vault; read-only.
-- **`llmos-daily-activity`** — writes the machine-owned `## Projects` block of
+  agent. Its `old-names` check fails on any agent or scheduler config that
+  still names a removed command or the old plugin ID.
+- **`llmos audit`** — audits frontmatter contracts across the vault; read-only.
+- **`llmos daily activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
   call → verify → write. It runs the model as an opencode agent with every
   tool denied.

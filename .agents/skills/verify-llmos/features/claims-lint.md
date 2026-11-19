@@ -11,14 +11,14 @@
 
 ## How to get to it (user POV)
 
-- CLI: `llmos-vault claims lint <note...> [--json]`. Read-only.
+- CLI: `llmos claims lint <note...> [--json]`. Read-only.
 - Skill `llmos:consolidate-knowledge` runs it before a pull request.
 
 ## Driving it with scripts/verify.ts
 
 Preconditions: launch and doctor passed. The harness uses the scratch copy of `claims_vault/` as `LLMOS_ROOT`.
 
-- **Clean note.** `llmos-vault claims lint knowledge/all-correct --json`. Exit 0. `findings` is empty.
+- **Clean note.** `llmos claims lint knowledge/all-correct --json`. Exit 0. `findings` is empty.
 - **Wrong number.** `... knowledge/wrong-number --json`. Exit 1. A finding has a `code`.
 - **Quote absent.** `... knowledge/quote-absent --json`. Exit 1.
 - **Wrong section.** `... knowledge/wrong-section --json`. Exit 1.
