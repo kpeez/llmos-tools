@@ -216,9 +216,9 @@ describe("llmos-doctor hook checks", () => {
     expect(disabled.lines.join("\n")).toContain("NOTE hooks-agy:");
   });
 
-  test("checks hooks-hermes against the bundle above the linked tools/hermes folder", () => {
+  test("checks hooks-hermes against the bundle above the linked hermes/ folder", () => {
     const h = host({ claude: false, codex: false });
-    const tools = join(h.env.HOME, "llmos", "tools");
+    const tools = join(h.env.HOME, "llmos-tools");
     mkdirSync(join(tools, "hermes"), { recursive: true });
     mkdirSync(join(tools, "dist"), { recursive: true });
     writeFileSync(join(tools, "dist", "hooks.js"), "hermes bundle");
@@ -233,6 +233,19 @@ describe("llmos-doctor hook checks", () => {
     const passing = hookChecks(h.env, NOW);
     expect(passing.failures).toBe(0);
     expect(passing.lines.join("\n")).toContain("PASS hooks-hermes: hooks ran");
+  });
+
+  test("fails hooks-hermes when the plugin link points at a missing folder", () => {
+    const h = host({ claude: false, codex: false });
+    mkdirSync(join(h.env.HOME, ".hermes", "plugins"), { recursive: true });
+    symlinkSync(
+      join(h.env.HOME, "moved", "hermes"),
+      join(h.env.HOME, ".hermes", "plugins", "llmos"),
+    );
+
+    const result = hookChecks(h.env, NOW);
+    expect(result.failures).toBe(1);
+    expect(result.lines.join("\n")).toContain("FAIL hooks-hermes:");
   });
 });
 
@@ -262,7 +275,7 @@ describe("hermesProfileChecks", () => {
 
   test("checks every profile once any profile links the plugin", () => {
     const home = scratch("hermes-profiles");
-    const tools = join(home, "llmos", "tools");
+    const tools = join(home, "llmos-tools");
     mkdirSync(join(tools, "skills", "maintain-llmos"), { recursive: true });
     writeFileSync(join(tools, "skills", "maintain-llmos", "SKILL.md"), "skill");
     mkdirSync(join(tools, "hermes"), { recursive: true });
@@ -281,7 +294,7 @@ describe("hermesProfileChecks", () => {
       tildeConfig,
       readFileSync(tildeConfig, "utf8").replace(
         /external_dirs:\n {4}- .*\n/,
-        "external_dirs: ~/llmos/tools/skills\n",
+        "external_dirs: ~/llmos-tools/skills\n",
       ),
     );
     const result = hermesProfileChecks(env);
@@ -300,5 +313,17 @@ describe("hermesProfileChecks", () => {
     ]) {
       expect(text).toContain(gap);
     }
+  });
+
+  test("checks the profiles when the only plugin link points at a missing folder", () => {
+    const home = scratch("hermes-dangling");
+    mkdirSync(join(home, ".hermes", "plugins"), { recursive: true });
+    writeFileSync(join(home, ".hermes", "config.yaml"), "mcp_servers: {}\n");
+    symlinkSync(join(home, "moved", "hermes"), join(home, ".hermes", "plugins", "llmos"));
+
+    const result = hermesProfileChecks({ HOME: home });
+    expect(result.failures).toBe(1);
+    expect(result.lines.join("\n")).toContain("FAIL hermes-profile-default");
+    expect(result.lines.join("\n")).toContain("plugins/llmos");
   });
 });
