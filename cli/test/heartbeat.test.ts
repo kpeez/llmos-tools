@@ -234,6 +234,19 @@ describe("llmos-doctor hook checks", () => {
     expect(passing.failures).toBe(0);
     expect(passing.lines.join("\n")).toContain("PASS hooks-hermes: hooks ran");
   });
+
+  test("fails hooks-hermes when the plugin link points at a missing folder", () => {
+    const h = host({ claude: false, codex: false });
+    mkdirSync(join(h.env.HOME, ".hermes", "plugins"), { recursive: true });
+    symlinkSync(
+      join(h.env.HOME, "moved", "hermes"),
+      join(h.env.HOME, ".hermes", "plugins", "llmos"),
+    );
+
+    const result = hookChecks(h.env, NOW);
+    expect(result.failures).toBe(1);
+    expect(result.lines.join("\n")).toContain("FAIL hooks-hermes:");
+  });
 });
 
 describe("hookAgent", () => {
@@ -300,5 +313,17 @@ describe("hermesProfileChecks", () => {
     ]) {
       expect(text).toContain(gap);
     }
+  });
+
+  test("checks the profiles when the only plugin link points at a missing folder", () => {
+    const home = scratch("hermes-dangling");
+    mkdirSync(join(home, ".hermes", "plugins"), { recursive: true });
+    writeFileSync(join(home, ".hermes", "config.yaml"), "mcp_servers: {}\n");
+    symlinkSync(join(home, "moved", "hermes"), join(home, ".hermes", "plugins", "llmos"));
+
+    const result = hermesProfileChecks({ HOME: home });
+    expect(result.failures).toBe(1);
+    expect(result.lines.join("\n")).toContain("FAIL hermes-profile-default");
+    expect(result.lines.join("\n")).toContain("plugins/llmos");
   });
 });
