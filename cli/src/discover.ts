@@ -1,5 +1,5 @@
 /**
- * `llmos-vault discover`: rank clusters of notes that restate the same works,
+ * `llmos discover`: rank clusters of notes that restate the same works,
  * as candidates for `consolidate-knowledge`.
  *
  * The algorithm, in short:

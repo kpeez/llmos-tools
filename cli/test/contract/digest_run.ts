@@ -85,12 +85,20 @@ function runDigest(
   logDir: string,
 ): DigestRun {
   mkdirSync(logDir, { recursive: true });
-  const result = Bun.spawnSync(["bun", join(CLI, "src/digest.ts"), "--root", root, "--date", day], {
-    cwd: CLI,
-    env: { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, DIGEST_LOG_DIR: logDir },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const result = Bun.spawnSync(
+    ["bun", join(CLI, "bin/llmos.ts"), "daily", "activity", "--root", root, "--date", day],
+    {
+      cwd: CLI,
+      env: {
+        ...process.env,
+        HOME: home,
+        PATH: `${bin}:${process.env.PATH}`,
+        DIGEST_LOG_DIR: logDir,
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
   return { exitCode: result.exitCode ?? -1, stdout: result.stdout.toString() };
 }
 

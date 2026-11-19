@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "llmos-vault",
+      "name": "llmos",
       "dependencies": {
         "@modelcontextprotocol/server": "2.0.0",
         "@tobilu/qmd": "2.8.3",

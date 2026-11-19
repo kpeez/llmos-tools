@@ -1,5 +1,5 @@
 /**
- * `llmos-doctor`'s MCP check: start the server the plugin launcher would
+ * `llmos doctor`'s MCP check: start the server the plugin launcher would
  * start on this host, and list its tools over the protocol. The launcher
  * falls back to a setup-guidance tool instead of failing, and a server that
  * fails at start shows only in the harness's MCP panel, so neither would
@@ -31,7 +31,7 @@ async function listTools(entry: string, env: Env, timeoutMs: number): Promise<st
     params: {
       protocolVersion: "2025-06-18",
       capabilities: {},
-      clientInfo: { name: "llmos-doctor", version: "1" },
+      clientInfo: { name: "llmos doctor", version: "1" },
     },
   });
   send({ method: "notifications/initialized" });

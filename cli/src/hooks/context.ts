@@ -193,7 +193,7 @@ export function sessionContext(
 
 const MCP_LINE =
   `When the ${SERVER_NAME} MCP server is connected, use its tools before Grep, Read, or the ` +
-  "llmos-vault CLI: search to find notes about a topic; read with section or " +
+  "llmos CLI: search to find notes about a topic; read with section or " +
   "properties_only when you need one heading or the frontmatter, not the whole note; list " +
   "with a folder for the properties of every note there; neighbors or subgraph for links; " +
   "set_property to change one property. All tools: " +
@@ -240,7 +240,7 @@ function simpleShellPaths(command: string, root: string): string[] {
 
   const executable = basename(tokens[0] as string);
   const args = tokens.slice(1);
-  if (executable === "llmos-vault") {
+  if (executable === "llmos") {
     if (args[0] === "daily") {
       if (args[1] !== "recent") return [];
     } else if (args.length === 0 || !VAULT_READ_COMMANDS.has(args[0] as string)) {
@@ -333,7 +333,7 @@ function readContext(root: string): string {
   const authoring = joinPath(root, AUTHORING_NOTE);
   return (
     "This is an Obsidian vault note. Preserve its frontmatter, wikilinks, " +
-    "embeds, and local context. Use `llmos-vault read`/`neighbors` or qmd " +
+    "embeds, and local context. Use `llmos read`/`neighbors` or qmd " +
     "for retrieval. Before editing, use `maintain-llmos`/`vault-cli` when " +
     `available and check ${authoring}.`
   );

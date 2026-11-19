@@ -7,11 +7,11 @@
 # 2. Points the CLI at VAULT, the vault folder at any path, unless a root is
 #    already configured. The vault can be the root of its own Git repository.
 # 3. Installs the llmos plugin for each agent on PATH (claude, codex). It adds
-#    this checkout as the llmos-vault marketplace only when no marketplace of
+#    this checkout as the llmos-tools marketplace only when no marketplace of
 #    that name is registered, and installs the plugin only when it is missing.
 # 4. Links .agents/skills into .claude/skills, so Claude Code finds the
 #    repository's own skills (such as verify-llmos).
-# 5. Runs llmos-doctor and exits with its status.
+# 5. Runs llmos doctor and exits with its status.
 #
 # Safe to run again. The steps that need a person are printed at the end; the
 # setup-llmos skill covers repair and verification.
@@ -23,7 +23,7 @@ checkout="$tools"
 vault="${1:-}"
 bin="$HOME/.local/bin"
 config="$HOME/.config/llmos/config.json"
-plugin="llmos@llmos-vault"
+plugin="llmos@llmos-tools"
 
 step() { printf '\n== %s\n' "$1"; }
 
@@ -50,7 +50,7 @@ elif [ -f "$config" ] && json_has '"vault_root" in data' <"$config"; then
   echo "$config already sets vault_root; no change:"
   cat "$config"
 elif [ -n "$vault" ]; then
-  "$bin/llmos-vault" config set-root "$vault"
+  "$bin/llmos" config set-root "$vault"
 else
   echo "No vault root is configured. Run this again with the vault folder:" >&2
   echo "  $0 /path/to/vault" >&2
@@ -58,8 +58,8 @@ fi
 
 if command -v claude >/dev/null 2>&1; then
   step "Install the plugin for Claude Code"
-  if claude plugin marketplace list --json | json_has 'data.some((m) => m.name === "llmos-vault")'; then
-    echo "marketplace llmos-vault is already registered; no change."
+  if claude plugin marketplace list --json | json_has 'data.some((m) => m.name === "llmos-tools")'; then
+    echo "marketplace llmos-tools is already registered; no change."
   else
     claude plugin marketplace add "$checkout"
   fi
@@ -72,12 +72,12 @@ fi
 
 if command -v codex >/dev/null 2>&1; then
   step "Install the plugin for Codex"
-  if codex plugin marketplace list --json | json_has 'data.marketplaces.some((m) => m.name === "llmos-vault")'; then
-    echo "marketplace llmos-vault is already registered; no change."
+  if codex plugin marketplace list --json | json_has 'data.marketplaces.some((m) => m.name === "llmos-tools")'; then
+    echo "marketplace llmos-tools is already registered; no change."
   else
     codex plugin marketplace add "$checkout"
   fi
-  if codex plugin list --marketplace llmos-vault --json |
+  if codex plugin list --marketplace llmos-tools --json |
     json_has "data.installed.some((p) => p.pluginId === \"$plugin\")"; then
     echo "$plugin is already installed; no change."
   else
@@ -90,7 +90,7 @@ step "Link the repository skills for Claude Code"
 
 step "Run the doctor"
 status=0
-"$bin/llmos-doctor" || status=$?
+"$bin/llmos" doctor || status=$?
 
 step "Do these steps by hand"
 case ":$PATH:" in
@@ -101,7 +101,7 @@ cat <<EOF
 - Open the vault folder in Obsidian, and turn on its command line interface
   (Settings > General > Advanced).
 - Codex: open Codex once and approve the llmOS hook.
-- Start one new session for each agent, end it, and run llmos-doctor again.
+- Start one new session for each agent, end it, and run llmos doctor again.
 - Fix each FAIL with its REPAIR line, or use the setup-llmos skill.
 EOF
 exit "$status"

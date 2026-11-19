@@ -34,7 +34,7 @@ from typing import Any
 
 LOG = logging.getLogger(__name__)
 
-# The plugin root the heartbeat records; `llmos-doctor` looks for the plugin here.
+# The plugin root the heartbeat records; `llmos doctor` looks for the plugin here.
 PLUGIN_ROOT = Path.home() / ".hermes" / "plugins" / "llmos"
 BUNDLE = Path(__file__).resolve().parent.parent / "dist" / "hooks.js"
 CONFIG = Path.home() / ".config" / "llmos" / "config.json"

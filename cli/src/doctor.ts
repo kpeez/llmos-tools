@@ -1,5 +1,5 @@
 /**
- * `llmos-doctor`: check the external prerequisites of the llmOS tools on
+ * `llmos doctor`: check the external prerequisites of the llmOS tools on
  * this host and print `PASS`/`FAIL` per check, with a `REPAIR` command after
  * each failure. Read-only. Exit 0 only when every check passes.
  *
@@ -254,13 +254,13 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   }
   if (collectionOk) {
     if (indexed) pass("qmd-index", "llmOS.md is indexed");
-    else fail("qmd-index", "llmOS.md is stale or unindexed", "llmos-vault reindex");
+    else fail("qmd-index", "llmOS.md is stale or unindexed", "llmos reindex");
     if (retrieved) pass("qmd-retrieval", "full llmOS.md matches the vault");
     else
       fail(
         "qmd-retrieval",
         "retrieved llmOS.md does not match the vault sentinel",
-        "llmos-vault reindex",
+        "llmos reindex",
       );
   } else {
     fail("qmd-index", "blocked by qmd-collection failure", collectionRepair);
@@ -392,7 +392,7 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
   return { lines, failures };
 }
 
-const PLUGIN_ID = "llmos@llmos-vault";
+const PLUGIN_ID = "llmos@llmos-tools";
 const WARN_AFTER_DAYS = 7;
 const DAY_MS = 86_400_000;
 
@@ -426,7 +426,7 @@ function versionKey(name: string): number[] {
 }
 
 /**
- * Codex's install record: the plugin's `[plugins."llmos@llmos-vault"]` table
+ * Codex's install record: the plugin's `[plugins."llmos@llmos-tools"]` table
  * in `config.toml` (not `enabled = false`), and its newest cached version.
  */
 function codexInstall(env: Env): string | null | undefined {
@@ -444,7 +444,7 @@ function codexInstall(env: Env): string | null | undefined {
     if (line.trim().startsWith("[")) break;
     if (/^\s*enabled\s*=\s*false\s*$/.test(line)) return undefined;
   }
-  const cache = join(codex, "plugins", "cache", "llmos-vault", "llmos");
+  const cache = join(codex, "plugins", "cache", "llmos-tools", "llmos");
   let versions: string[];
   try {
     versions = readdirSync(cache).filter((name) => isDirectory(join(cache, name)));
@@ -510,27 +510,27 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
       name: "Claude Code",
       installPath: claudeInstall(env),
       repair:
-        "Start a fresh Claude Code session, then rerun llmos-doctor. If it still fails, the " +
+        "Start a fresh Claude Code session, then rerun llmos doctor. If it still fails, the " +
         "hooks cannot find bun: put bun on the PATH Claude Code gives hooks (setup-llmos, " +
         '"Hooks need bun on the hook PATH").',
-      update: `claude plugin marketplace update llmos-vault && claude plugin update ${PLUGIN_ID}`,
+      update: `claude plugin marketplace update llmos-tools && claude plugin update ${PLUGIN_ID}`,
     },
     {
       key: "codex",
       name: "Codex",
       installPath: codexInstall(env),
       repair:
-        "Start a fresh Codex session, then rerun llmos-doctor. If it still fails, Codex " +
+        "Start a fresh Codex session, then rerun llmos doctor. If it still fails, Codex " +
         "skipped the hooks: open codex interactively and approve the llmOS hooks (an untrusted " +
         "hook is skipped silently), and put bun on Codex's login-shell PATH (setup-llmos).",
-      update: `codex plugin marketplace upgrade llmos-vault && codex plugin add ${PLUGIN_ID}`,
+      update: `codex plugin marketplace upgrade llmos-tools && codex plugin add ${PLUGIN_ID}`,
     },
     {
       key: "agy",
       name: "Antigravity",
       installPath: agyInstall(env),
       repair:
-        "Start a fresh Antigravity session, then rerun llmos-doctor. If it still fails, verify " +
+        "Start a fresh Antigravity session, then rerun llmos doctor. If it still fails, verify " +
         "hooks.json is at the plugin root and bun is on PATH.",
       update: `agy plugin install ${PLUGIN_ID}`,
     },
@@ -540,7 +540,7 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
       installPath: hermesInstall(env),
       repair:
         "Link and enable the plugin in every Hermes profile (hermes -p <profile> plugins enable " +
-        "llmos), start a new Hermes session, then rerun llmos-doctor (setup-llmos, Hermes Agent).",
+        "llmos), start a new Hermes session, then rerun llmos doctor (setup-llmos, Hermes Agent).",
       update:
         "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the hermes/ folder " +
         "of a current llmos-tools checkout: ln -sfn <checkout>/hermes ~/.hermes/plugins/llmos",

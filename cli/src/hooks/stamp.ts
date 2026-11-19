@@ -176,7 +176,7 @@ function authoringDiagnostics(root: string, paths: string[], listed: Listed[]): 
     "llmOS authoring check (informational; this checker did not block the " +
     "write or rewrite note content):\n" +
     lines.join("\n") +
-    "\nRun `llmos-vault check <note>` for complete findings."
+    "\nRun `llmos check <note>` for complete findings."
   );
 }
 

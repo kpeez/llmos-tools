@@ -49,13 +49,7 @@ function pluginRoot(version: string): string {
     '{"name":"fake","private":true,"dependencies":{"dep":"file:./dep"}}\n',
   );
   writeFileSync(join(root, "cli", "bun.lock"), LOCKFILE);
-  for (const entry of [
-    "bin/llmos-vault.ts",
-    "bin/llmos-doctor.ts",
-    "bin/llmos-audit.ts",
-    "bin/qmd.ts",
-    "src/digest.ts",
-  ]) {
+  for (const entry of ["bin/llmos.ts", "bin/qmd.ts"]) {
     writeFileSync(join(root, "cli", entry), STUB);
     chmodSync(join(root, "cli", entry), 0o755);
   }

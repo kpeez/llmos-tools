@@ -9,7 +9,7 @@
  *   (`src/hooks/cloud.ts`); in a local session it first pulls the vault's
  *   shared project memory (`src/hooks/sync.ts`). In every session it links the project's agent
  *   folders (`src/hooks/links.ts`). It then records a heartbeat for
- *   `llmos-doctor` (`src/heartbeat.ts`).
+ *   `llmos doctor` (`src/heartbeat.ts`).
  * - `pre-tool-use`, `post-tool-use`: `hookSpecificOutput.additionalContext`
  *   JSON on stdout.
  * - `guard-bash`: exit code 2 with the reason on stderr denies the call.
@@ -107,7 +107,7 @@ async function run(event: string | undefined): Promise<void> {
       } else if (context) {
         process.stdout.write(`${context}\n`);
       }
-      // After the output, and never able to change it: `llmos-doctor` reads
+      // After the output, and never able to change it: `llmos doctor` reads
       // this record to prove the hooks run for this agent.
       try {
         beat(data);

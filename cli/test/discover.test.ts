@@ -1,5 +1,5 @@
 /**
- * `llmos-vault discover` and the `overdue_jobs` section of `health` that
+ * `llmos discover` and the `overdue_jobs` section of `health` that
  * reads its record (the `discovered` property of `categories/Knowledge.md`),
  * on temporary vaults (never the real one).
  */
@@ -349,7 +349,7 @@ describe("health overdue_jobs", () => {
     const before = snapshot(root);
     const alias = await cli(root, ["set-property", "notes/alias.md", "discovered", "2026-10-07"]);
     expect(alias.exitCode).toBe(1);
-    expect(alias.stderr).toContain("only `llmos-vault discover` sets it");
+    expect(alias.stderr).toContain("only `llmos discover` sets it");
     expect(snapshot(root)).toEqual(before);
 
     const fresh = cleanVault(null);
@@ -395,12 +395,12 @@ describe("health overdue_jobs", () => {
     ]) {
       const result = await cli(root, argv);
       expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("only `llmos-vault discover` sets it");
+      expect(result.stderr).toContain("only `llmos discover` sets it");
     }
     expect(snapshot(root)).toEqual(before);
     const digest = await cli(root, ["set-property", REVIEWS_NOTE, "digested", TODAY]);
     expect(digest.exitCode).toBe(1);
-    expect(digest.stderr).toContain("only `llmos-daily-activity` sets it");
+    expect(digest.stderr).toContain("only `llmos daily activity` sets it");
     const other = await cli(root, ["set-property", KNOWLEDGE_NOTE, "status", "active"]);
     expect(other.exitCode).toBe(0);
   });

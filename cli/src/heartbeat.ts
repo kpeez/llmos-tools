@@ -3,7 +3,7 @@
  *
  * A hook that cannot start (no `bun` on the harness `PATH`) or that Codex
  * has not trusted fails without any message. So the session-start hook
- * records each successful run, and `llmos-doctor` checks the record.
+ * records each successful run, and `llmos doctor` checks the record.
  *
  * The record is per-host state, so it lives in the XDG state folder:
  * `$XDG_STATE_HOME/llmos/hooks.json`, else `~/.local/state/llmos/hooks.json`.

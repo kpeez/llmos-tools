@@ -1,5 +1,5 @@
 /**
- * The hook heartbeat: `llmos-doctor` passes, warns, and fails on it the way
+ * The hook heartbeat: `llmos doctor` passes, warns, and fails on it the way
  * setup-llmos describes, with every path (HOME, XDG_STATE_HOME, the agents'
  * install records) in a temporary folder.
  */
@@ -25,8 +25,8 @@ interface Host {
 function host(options: { claude?: boolean; codex?: boolean | "disabled" } = {}): Host {
   const home = scratch("heartbeat-home");
   const env = { HOME: home, XDG_STATE_HOME: join(home, "state") };
-  const claudeRoot = join(home, ".claude", "plugins", "cache", "llmos-vault", "llmos", "1.3.0");
-  const codexCache = join(home, ".codex", "plugins", "cache", "llmos-vault", "llmos");
+  const claudeRoot = join(home, ".claude", "plugins", "cache", "llmos-tools", "llmos", "1.3.0");
+  const codexCache = join(home, ".codex", "plugins", "cache", "llmos-tools", "llmos");
   for (const [root, text] of [
     [claudeRoot, "claude bundle"],
     [join(codexCache, "1.2.0"), "old codex bundle"],
@@ -40,7 +40,7 @@ function host(options: { claude?: boolean; codex?: boolean | "disabled" } = {}):
       join(home, ".claude", "plugins", "installed_plugins.json"),
       JSON.stringify({
         version: 2,
-        plugins: { "llmos@llmos-vault": [{ scope: "user", installPath: claudeRoot }] },
+        plugins: { "llmos@llmos-tools": [{ scope: "user", installPath: claudeRoot }] },
       }),
     );
   }
@@ -48,7 +48,7 @@ function host(options: { claude?: boolean; codex?: boolean | "disabled" } = {}):
     const enabled = options.codex === "disabled" ? "false" : "true";
     writeFileSync(
       join(home, ".codex", "config.toml"),
-      `[plugins."other@x"]\nenabled = true\n\n[plugins."llmos@llmos-vault"]\nenabled = ${enabled}\n\n[hooks.state."x"]\ntrusted_hash = "y"\n`,
+      `[plugins."other@x"]\nenabled = true\n\n[plugins."llmos@llmos-tools"]\nenabled = ${enabled}\n\n[hooks.state."x"]\ntrusted_hash = "y"\n`,
     );
   }
   return {
@@ -85,7 +85,7 @@ describe("heartbeat record", () => {
   });
 });
 
-describe("llmos-doctor hook checks", () => {
+describe("llmos doctor hook checks", () => {
   test("pass when each installed agent's hooks ran the installed bundle", () => {
     const h = host();
     beatFor(h, "claude", h.claudeBundle, DAY);
@@ -165,7 +165,7 @@ describe("llmos-doctor hook checks", () => {
     writeFileSync(
       join(h.env.HOME, ".claude", "plugins", "installed_plugins.json"),
       JSON.stringify({
-        plugins: { "llmos@llmos-vault": [{ installPath: join(h.env.HOME, "old-plugin") }] },
+        plugins: { "llmos@llmos-tools": [{ installPath: join(h.env.HOME, "old-plugin") }] },
       }),
     );
 
@@ -173,7 +173,7 @@ describe("llmos-doctor hook checks", () => {
 
     expect(failures).toBe(1);
     expect(lines.join("\n")).toContain("has no dist/hooks.js");
-    expect(lines.join("\n")).toContain("claude plugin update llmos@llmos-vault");
+    expect(lines.join("\n")).toContain("claude plugin update llmos@llmos-tools");
   });
 
   test("skip an agent without the plugin, and fail when neither has it", () => {
@@ -182,13 +182,13 @@ describe("llmos-doctor hook checks", () => {
     const one = hookChecks(claudeOnly.env, NOW);
     expect(one.failures).toBe(0);
     expect(one.lines.join("\n")).toContain(
-      "NOTE hooks-codex: the llmos@llmos-vault plugin is not installed",
+      "NOTE hooks-codex: the llmos@llmos-tools plugin is not installed",
     );
 
     const none = hookChecks(host({ claude: false, codex: false }).env, NOW);
     expect(none.failures).toBe(1);
     expect(none.lines.join("\n")).toContain(
-      "FAIL hooks: the llmos@llmos-vault plugin is installed for neither",
+      "FAIL hooks: the llmos@llmos-tools plugin is installed for neither",
     );
   });
 
@@ -264,7 +264,7 @@ describe("hermesProfileChecks", () => {
     const skills = join(tools, "skills");
     mkdirSync(join(home, "plugins"), { recursive: true });
     const config = wired
-      ? `mcp_servers:\n  llmos:\n    command: llmos-vault\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
+      ? `mcp_servers:\n  llmos:\n    command: llmos\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
       : "mcp_servers:\n  atuin:\n    command: atuin\n";
     writeFileSync(join(home, "config.yaml"), config);
     writeFileSync(

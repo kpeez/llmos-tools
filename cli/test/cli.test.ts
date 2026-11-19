@@ -30,7 +30,7 @@ const ALPHA =
 
 describe("docs", () => {
   test("the committed command reference and skill verb table match the registry", () => {
-    // Regenerate with `bun bin/llmos-vault.ts docs` when this fails.
+    // Regenerate with `bun bin/llmos.ts docs` when this fails.
     expect(readFileSync(DEFAULT_REFERENCE_PATH, "utf8")).toBe(renderReference(COMMANDS));
     const skill = readFileSync(DEFAULT_SKILL_PATH, "utf8");
     expect(renderSkill(skill, COMMANDS)).toBe(skill);

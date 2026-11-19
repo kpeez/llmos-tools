@@ -109,11 +109,11 @@ describe("session-start", () => {
       ".claude",
       "plugins",
       "cache",
-      "llmos-vault",
+      "llmos-tools",
       "llmos",
       "1",
     );
-    const codexRoot = join(tmp, "home", ".codex", "plugins", "cache", "llmos-vault", "llmos", "1");
+    const codexRoot = join(tmp, "home", ".codex", "plugins", "cache", "llmos-tools", "llmos", "1");
 
     const claude = runHook("session-start", { cwd: vault }, tmp, {
       root: vault,
@@ -300,7 +300,7 @@ describe("pre-tool-use", () => {
     const context = additionalContext(result, "PreToolUse");
     expect(context).toContain("Obsidian vault note");
     expect(context).toContain("authoring.md");
-    expect(context).toContain("llmos-vault read");
+    expect(context).toContain("llmos read");
     expect(context).toContain("qmd");
     expect(context).not.toContain(SCHEMA_SENTINEL);
     expect(result.exitCode).toBe(0);
@@ -349,7 +349,7 @@ describe("pre-tool-use", () => {
     expect(context).toContain("authoring.md");
   });
 
-  test("recognizes an llmos-vault read with --vault=llmos and ignores other vaults", () => {
+  test("recognizes an llmos read with --vault=llmos and ignores other vaults", () => {
     const tmp = temporaryFolder();
     const vault = contextVault(join(tmp, "vault"));
 
@@ -357,14 +357,14 @@ describe("pre-tool-use", () => {
       "pre-tool-use",
       {
         tool_name: "Bash",
-        tool_input: { command: "llmos-vault neighbors projects/testproj --vault=llmos" },
+        tool_input: { command: "llmos neighbors projects/testproj --vault=llmos" },
       },
       tmp,
       { root: vault },
     );
     const notebook = runHook(
       "pre-tool-use",
-      { tool_name: "Bash", tool_input: { command: "llmos-vault read note --vault notebook" } },
+      { tool_name: "Bash", tool_input: { command: "llmos read note --vault notebook" } },
       tmp,
       { root: vault },
     );

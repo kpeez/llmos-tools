@@ -1,4 +1,4 @@
-/** False positives of `llmos-vault health`, on temporary vaults (never the real one). */
+/** False positives of `llmos health`, on temporary vaults (never the real one). */
 
 import { describe, expect, test } from "bun:test";
 import { VaultModel } from "../src/vault.ts";

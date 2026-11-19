@@ -1,5 +1,5 @@
 /**
- * The `llmos-vault` commands. Each one keeps the command name and JSON
+ * The `llmos` commands. Each one keeps the command name and JSON
  * output shape of the retired Python CLI. Reads answer from one vault
  * model; writes are headless file writes (`write.ts`), except `move` and
  * `create --template`, which need the running Obsidian app.
@@ -265,7 +265,7 @@ the vault once instead of resolving names one at a time.`,
   },
   exampleOutput: `{"name": "alpha", "path": "/vault/notes/alpha.md",
  "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}`,
-  example: "llmos-vault read alpha --vault llmos --section Results",
+  example: "llmos read alpha --vault llmos --section Results",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     const note = model.resolveNote(str(values, "note"));
@@ -311,7 +311,7 @@ Do NOT use when you already know which note you want -- use \`read\`.`,
   },
   exampleOutput: `[{"name": "alpha", "path": "/vault/notes/alpha.md",
   "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}]`,
-  example: "llmos-vault list --vault llmos --folder projects/llmos --properties-only",
+  example: "llmos list --vault llmos --folder projects/llmos --properties-only",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     const prefix = folderPrefix(values);
@@ -344,7 +344,7 @@ those checks.`,
   exampleOutput: `{"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
  "findings": [{"code": "unlinked-note", "line": 7, "target": "notes/beta",
                "message": "Existing note reference \\"beta.md\\": link to \\"notes/beta\\" ..."}]}`,
-  example: "llmos-vault check projects/study/manuscript/README.md --vault llmos",
+  example: "llmos check projects/study/manuscript/README.md --vault llmos",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     const report = checkNote(model, model.resolveNote(str(values, "note")));
@@ -363,7 +363,7 @@ Do NOT use when you need more than one hop out -- use \`subgraph\`.`,
   options: vaultOption("Which registered vault to read from."),
   exampleOutput: `{"note": "alpha", "outgoing": ["beta"], "unresolved_outgoing": ["ghost"],
  "backlinks": ["delta"], "topic_siblings": ["beta", "gamma"]}`,
-  example: "llmos-vault neighbors alpha --vault llmos",
+  example: "llmos neighbors alpha --vault llmos",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     return { json: model.neighbors(str(values, "note")) };
@@ -391,7 +391,7 @@ cheaper and returns the same one-hop data without traversal.`,
   exampleOutput: `{"root": "alpha", "nodes": ["alpha", "beta", "delta", "gamma"],
  "unresolved": ["ghost"],
  "edges": [["alpha", "beta", "link"], ["delta", "alpha", "link"]]}`,
-  example: "llmos-vault subgraph alpha --vault llmos --depth 2",
+  example: "llmos subgraph alpha --vault llmos --depth 2",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     return { json: model.subgraph(str(values, "note"), count(values, "depth", 0)) };
@@ -456,7 +456,7 @@ cheaper and does not walk the whole vault.`,
  "overdue_jobs": [{"job": "discover", "last_success": null, "max_age_days": 10},
   {"job": "daily-activity", "last_success": "2026-10-03", "max_age_days": 3}], "qmd_gaps": [], "qmd_unembedded": 0,
  "qmd_notice": null}`,
-  example: "llmos-vault health --vault llmos --json",
+  example: "llmos health --vault llmos --json",
   async run(values, context) {
     const vault = vaultName(values);
     const collection = str(values, "qmd-collection");
@@ -530,7 +530,7 @@ Do NOT use when you only want to search -- use \`search\`.`,
    "notes": ["projects/a/notes.md", "projects/b/notes.md", "raw/c.md"], "covered_by": null,
    "signals": {"shared_ids": [{"id": "arxiv:2403.12345", "notes": ["raw/c.md", "projects/a/notes.md"]}],
                "shared_dangling": 0, "shared_topics": 0, "similar_pairs": 2}}]}`,
-  example: "llmos-vault discover --top 5",
+  example: "llmos discover --top 5",
   async run(values, context) {
     const vault = vaultName(values);
     const root = context.root(vault);
@@ -567,7 +567,7 @@ categories/Reviews.md): only its job sets it.`,
     template: { type: "string", metavar: "NAME", help: "Name of a vault template to apply." },
   },
   exampleOutput: "Created: projects/agent-toolbox.md",
-  example: "llmos-vault create projects/agent-toolbox --template project --vault llmos",
+  example: "llmos create projects/agent-toolbox --template project --vault llmos",
   run(values, context) {
     const vault = vaultName(values);
     const root = context.root(vault);
@@ -614,7 +614,7 @@ guard hook's message for why.`,
   ],
   options: vaultOption("Which registered vault the note lives in."),
   exampleOutput: "Moved: notes/alpha.md -> projects/demo/alpha.md",
-  example: "llmos-vault move alpha projects/demo/alpha.md --vault llmos",
+  example: "llmos move alpha projects/demo/alpha.md --vault llmos",
   run(values, context) {
     const root = context.root(vaultName(values));
     const note = context.model(root).resolveNote(str(values, "note"));
@@ -645,7 +645,7 @@ Do NOT use when changing frontmatter -- use \`set-property\`.`,
   ],
   options: vaultOption("Which registered vault the note lives in."),
   exampleOutput: "Appended to: notes/alpha.md",
-  example: 'llmos-vault append alpha "One more thought." --vault llmos',
+  example: 'llmos append alpha "One more thought." --vault llmos',
   run(values, context) {
     const root = context.root(vaultName(values));
     const note = context.model(root).resolveNote(str(values, "note"));
@@ -678,7 +678,7 @@ also through a link to those notes.`,
   ],
   options: vaultOption("Which registered vault the note lives in."),
   exampleOutput: "Set: status = active",
-  example: "llmos-vault set-property alpha status active --vault llmos",
+  example: "llmos set-property alpha status active --vault llmos",
   run(values, context) {
     const vault = vaultName(values);
     const root = context.root(vault);
@@ -709,7 +709,7 @@ also through a link to those notes.`,
   ],
   options: vaultOption("Which registered vault the note lives in."),
   exampleOutput: "Removed: status",
-  example: "llmos-vault remove-property alpha status --vault llmos",
+  example: "llmos remove-property alpha status --vault llmos",
   run(values, context) {
     const vault = vaultName(values);
     const root = context.root(vault);
@@ -744,7 +744,7 @@ attempted.`,
   ],
   options: vaultOption('Must be "llmos" -- inbox filing is an llmOS-profile feature.'),
   exampleOutput: "Filed: capture-1 -> knowledge/some-note.md",
-  example: "llmos-vault file-inbox capture-1 knowledge/some-note.md",
+  example: "llmos file-inbox capture-1 knowledge/some-note.md",
   run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     const name = str(values, "note");
@@ -824,8 +824,8 @@ edits a source folder afterwards. When MinerU is missing or fails, this exits
   },
   exampleOutput: `Captured: arxiv:1811.00743v2 -> raw/arxiv-1811.00743v2 (4 figures)
 Captured: sha256:9f2c...e1 -> raw/biorxiv-org-content-10-1101-2026-01-01-1-full-pdf-3c5d9a1e (4 figures)`,
-  example: `llmos-vault source add 1811.00743
-llmos-vault source add raw/paper.pdf --origin https://www.biorxiv.org/content/10.1101/2026.01.01.1.full.pdf --licence "CC BY 4.0"`,
+  example: `llmos source add 1811.00743
+llmos source add raw/paper.pdf --origin https://www.biorxiv.org/content/10.1101/2026.01.01.1.full.pdf --licence "CC BY 4.0"`,
   async run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     const result = await captureSource(root, str(values, "source"), context, {
@@ -900,7 +900,7 @@ Do NOT use to check a source's own text -- no agent edits a captured source.`,
    "code": "number-not-in-quote", "message": "\\"6280\\" in the fact does not occur in the quote"}],
  "flagged": [{"path": "knowledge/macaquefaces.md", "line": 12, "claim": null,
    "reason": "source not captured"}]}`,
-  example: "llmos-vault claims lint knowledge/macaquefaces.md --json",
+  example: "llmos claims lint knowledge/macaquefaces.md --json",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
     const given = values.paths;
@@ -927,7 +927,7 @@ Do NOT use when you want the last several days' notes -- use \`recent\`.`,
   options: vaultOption('Must be "llmos" -- daily helpers are an llmOS-profile feature.'),
   exampleOutput: `{"name": "2026-07-17", "path": "/vault/daily/2026-07-17.md",
  "properties": {"categories": ["[[Reviews]]"]}, "body": "# 2026-07-17\\n..."}`,
-  example: "llmos-vault daily get-or-create",
+  example: "llmos daily get-or-create",
   run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     return { json: fileJson(root, ensureDaily(root, context)) };
@@ -947,7 +947,7 @@ whether \`text\` contains marker syntax or the note has no marker.`,
   arguments: [{ name: "text", help: "Thought prose to append under `## Thoughts`." }],
   options: vaultOption('Must be "llmos" -- daily helpers are an llmOS-profile feature.'),
   exampleOutput: "Appended to: daily/2026-07-17.md",
-  example: 'llmos-vault daily append-thought "TIL obsidian-cli has no heading-targeted append."',
+  example: 'llmos daily append-thought "TIL obsidian-cli has no heading-targeted append."',
   run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     const text = str(values, "text");
@@ -977,11 +977,105 @@ Do NOT use when you need today's note created if it is absent -- use
   },
   exampleOutput: `[{"name": "2026-07-17", "path": "/vault/daily/2026-07-17.md",
   "properties": {"categories": ["[[Reviews]]"]}, "body": "# 2026-07-17\\n..."}]`,
-  example: "llmos-vault daily recent --n 7",
+  example: "llmos daily recent --n 7",
   run(values, context) {
     const model = context.model(llmosOnly(vaultName(values), context));
     const notes = readRecentDailies(model, count(values, "n", 0));
     return { json: notes.map((note) => noteJson(model, note)) };
+  },
+};
+
+const dailyActivity: Command = {
+  name: "daily activity",
+  summary: "Write the machine-owned `## Projects` block of daily notes from GitHub activity.",
+  description: `Use when the nightly job (or you, by hand) refreshes the \`## Projects\`
+block of yesterday's and today's daily notes. It fetches the activity of the
+repositories of the projects it monitors with \`gh\`, asks one model call for
+the summary, and writes between the \`llmos-activity\` markers. A failed day
+writes nothing, and the first failure stops the run with exit 1. The
+projects it monitors are those whose folder name matches a repository of one
+of the GitHub owners in \`github_owners\` of \`~/.config/llmos/config.json\`.
+Do NOT use when you want to add a thought to a note -- use
+\`daily append-thought\`; the block is machine-owned.`,
+  arguments: [],
+  options: {
+    root: {
+      type: "string",
+      metavar: "ROOT",
+      help: "Vault root. Default: $LLMOS_ROOT, then the llmOS config file.",
+    },
+    date: {
+      type: "string",
+      metavar: "YYYY-MM-DD",
+      help: "Process only this date (default: yesterday and today, Los Angeles time). A --date run does not set the run record on categories/Reviews.md.",
+    },
+    push: {
+      type: "boolean",
+      help: "Commit the notes this run wrote, rebase on the upstream, and push.",
+    },
+  },
+  exampleOutput: `2026-07-16: updated
+2026-07-17: unchanged (hash match, no model call)`,
+  example: "llmos daily activity --date 2026-07-16",
+  async run(values) {
+    const given = optionalStr(values, "date");
+    const date = given === undefined ? undefined : parseDay(given);
+    if (date === null) throw new UsageError(`invalid --date ${given}`);
+    // Imported here: the digest module is large and only this verb uses it.
+    const { runDigest } = await import("./digest.ts");
+    const run = runDigest({ root: optionalStr(values, "root"), date, push: values.push === true });
+    const text = run.lines.join("\n");
+    return run.error === undefined
+      ? { text }
+      : { ...(text ? { text } : {}), stderr: `${run.error}\n`, exitCode: 1 };
+  },
+};
+
+const doctorCommand: Command = {
+  name: "doctor",
+  summary: "Check this host's llmOS prerequisites (read-only).",
+  description: `Use when setting up a host, or when an agent cannot reach the vault: it
+checks the vault root, Obsidian, qmd, the MCP server, the plugin hooks, and
+the agent configs on this host. Prints PASS or FAIL per check and a REPAIR
+command after each failure; exits 0 only when all pass.
+Do NOT use when you want to change anything -- it never repairs.`,
+  arguments: [],
+  options: {},
+  exampleOutput: `PASS vault-root: /vault
+FAIL qmd-index: llmOS.md is stale or unindexed
+  REPAIR: llmos reindex`,
+  example: "llmos doctor",
+  async run(_values, context) {
+    const { doctor } = await import("./doctor.ts");
+    const { lines, exitCode } = await doctor(context.env);
+    return { text: lines.join("\n"), exitCode };
+  },
+};
+
+const auditCommand: Command = {
+  name: "audit",
+  summary: "Check every llmOS note against the property contract (read-only).",
+  description: `Use when checking the frontmatter of a whole vault against the llmOS
+property contract, such as before a release. Prints each violation and
+exits 1, or prints how many notes passed.
+Do NOT use when you want to check one note -- use \`check\`.`,
+  arguments: [],
+  options: {
+    root: {
+      type: "string",
+      metavar: "PATH",
+      help: "The vault to audit. Default: the configured llmOS root.",
+    },
+  },
+  exampleOutput: "metadata audit passed: 412 notes",
+  example: "llmos audit --root ~/notes/vault",
+  async run(values, context) {
+    const given = optionalStr(values, "root");
+    const root = given === undefined ? context.root("llmos") : realpathSync(resolve(given));
+    const { collectErrors } = await import("./schema.ts");
+    const { errors, checked } = collectErrors(context.model(root));
+    if (errors.length > 0) return { text: errors.join("\n"), exitCode: 1 };
+    return { text: `metadata audit passed: ${checked} notes` };
   },
 };
 
@@ -1029,7 +1123,7 @@ Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
   exampleOutput: `[{"path": "knowledge/qmd index.md",
   "title": "qmd index", "score": 0.91, "line": 12,
   "snippet": "..."}]`,
-  example: 'llmos-vault search "qmd index" --limit 5',
+  example: 'llmos search "qmd index" --limit 5',
   async run(values, context) {
     const query = str(values, "query");
     const options = {
@@ -1081,7 +1175,7 @@ Do NOT use when you only want to search -- use \`search\`.`,
   exampleOutput: `{"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},
  "embed": {"docsProcessed": 3, "chunksEmbedded": 9, "errors": 0, "durationMs": 2100},
  "cleanup": {"cacheCount": 4, "orphanedVectors": 120, "inactiveDocs": 1, "orphanedContent": 1}}`,
-  example: "llmos-vault reindex",
+  example: "llmos reindex",
   async run(values, context) {
     const location = qmdLocation(context.env);
     const store = await openQmd(location, true);
@@ -1109,7 +1203,7 @@ config file.`,
   arguments: [{ name: "path", help: "The llmOS vault folder." }],
   options: {},
   exampleOutput: "wrote /home/me/.config/llmos/config.json -> /home/me/notes/vault",
-  example: "llmos-vault config set-root ~/notes/vault",
+  example: "llmos config set-root ~/notes/vault",
   run(values, context) {
     const home = context.env.HOME || homedir();
     const given = str(values, "path");
@@ -1139,7 +1233,7 @@ Do NOT use when you want one answer in a shell -- run that verb instead.`,
   arguments: [],
   options: {},
   exampleOutput: "(MCP JSON-RPC messages on stdout until stdin closes)",
-  example: "llmos-vault mcp",
+  example: "llmos mcp",
   async run(_values, context) {
     // Imported here: the server module imports this registry.
     const { serve } = await import("./mcp.ts");
@@ -1170,7 +1264,7 @@ Do NOT use when you only want to read the help -- run \`<command> --help\`.`,
     },
   },
   exampleOutput: "wrote skills/vault-cli/references/commands.md",
-  example: "llmos-vault docs",
+  example: "llmos docs",
   run(values) {
     // Both files must be inside this tools folder, checked like a vault write.
     const inTools = (name: string, fallback: string): string =>
@@ -1185,7 +1279,7 @@ Do NOT use when you only want to read the help -- run \`<command> --help\`.`,
   },
 };
 
-/** Every `llmos-vault` command. */
+/** Every `llmos` command. */
 export const COMMANDS: readonly Command[] = [
   read,
   list,
@@ -1205,9 +1299,12 @@ export const COMMANDS: readonly Command[] = [
   dailyGetOrCreate,
   dailyAppendThought,
   dailyRecent,
+  dailyActivity,
   searchCommand,
   reindexCommand,
   mcp,
   configSetRoot,
+  doctorCommand,
+  auditCommand,
   docs,
 ];
