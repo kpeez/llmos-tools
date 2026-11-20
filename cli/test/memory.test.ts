@@ -54,6 +54,7 @@ describe("memory scope", () => {
       dir: "projects/my-repo/memory",
       index: "projects/my-repo/memory/MEMORY.md",
       index_path: join(root, "projects/my-repo/memory/MEMORY.md"),
+      index_text: null,
     });
   });
 

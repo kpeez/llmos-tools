@@ -264,7 +264,7 @@ describe("hermesProfileChecks", () => {
     const skills = join(tools, "skills");
     mkdirSync(join(home, "plugins"), { recursive: true });
     const config = wired
-      ? `mcp_servers:\n  llmos:\n    command: llmos\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
+      ? `mcp_servers:\n  llmos:\n    command: llmos\n    tools:\n      exclude: ["memory_*"]\nmemory:\n  provider: llmos\nskills:\n  external_dirs:\n    - ${skills}\nplugins:\n  enabled:\n    - llmos\n`
       : "mcp_servers:\n  atuin:\n    command: atuin\n";
     writeFileSync(join(home, "config.yaml"), config);
     writeFileSync(
@@ -314,6 +314,7 @@ describe("hermesProfileChecks", () => {
     expect(text).toContain("FAIL hermes-profile-later");
     for (const gap of [
       "mcp_servers.llmos",
+      "memory.provider: llmos",
       "skills.external_dirs",
       "plugins.enabled",
       "plugins/llmos",
@@ -321,6 +322,36 @@ describe("hermesProfileChecks", () => {
     ]) {
       expect(text).toContain(gap);
     }
+  });
+
+  test("fails a profile that shows Hermes the MCP server's memory tools", () => {
+    const home = scratch("hermes-memory-tools");
+    const installed = tree(join(home, ".local", "share", "llmos", "1.0.0"));
+    const config = join(home, ".hermes", "config.yaml");
+    profile(join(home, ".hermes"), installed, true);
+    const wired = readFileSync(config, "utf8");
+    const withTools = (tools: string) =>
+      wired.replace('    tools:\n      exclude: ["memory_*"]\n', tools);
+    const check = () => hermesProfileChecks({ HOME: home }).lines.join("\n");
+
+    for (const hidden of [
+      '    tools:\n      exclude: ["memory_save", "memory_search", "memory_forget"]\n',
+      '    tools:\n      include: ["read", "search"]\n',
+      '    tools:\n      include: ["read"]\n      exclude: []\n',
+    ]) {
+      writeFileSync(config, withTools(hidden));
+      expect(check()).toContain("PASS hermes-profile-default");
+    }
+    for (const shown of [
+      "",
+      '    tools:\n      exclude: ["memory_save"]\n',
+      '    tools:\n      include: ["read", "memory_*"]\n      exclude: ["memory_*"]\n',
+    ]) {
+      writeFileSync(config, withTools(shown));
+      expect(check()).toContain('mcp_servers.llmos.tools.exclude: ["memory_*"]');
+    }
+    writeFileSync(config, wired.replace("memory:\n  provider: llmos\n", ""));
+    expect(check()).toContain("memory.provider: llmos");
   });
 
   test("fails a profile whose plugin link and skills folder are in a checkout", () => {

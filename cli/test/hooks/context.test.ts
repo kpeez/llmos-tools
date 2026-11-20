@@ -178,6 +178,19 @@ describe("session-start", () => {
       env: { ...GIT_ENV, CODEX_SANDBOX_NETWORK_DISABLED: "1" },
     });
     expect(codex.stdout).toContain("- topic-a");
+
+    // Hermes with the llmos memory provider: the provider loads the index, so the hook omits it.
+    const hermes = runHook("session-start", { cwd: repo }, tmp, {
+      root: vault,
+      cwd: repo,
+      env: {
+        ...GIT_ENV,
+        PLUGIN_ROOT: join(tmp, ".hermes", "plugins", "llmos"),
+        LLMOS_MEMORY_INDEX_LOADED: "1",
+      },
+    });
+    expect(hermes.stdout).toContain("Shared project memory lives in");
+    expect(hermes.stdout).not.toContain("- topic-a");
   });
 
   test("truncates MEMORY.md at 200 lines or 25,000 bytes", () => {

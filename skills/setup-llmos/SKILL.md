@@ -198,7 +198,9 @@ its uncommitted files.
 
 - MCP: add `llmos` under `mcp_servers` with `command:
   ~/.local/bin/llmos` (written out in full) and `args: [mcp]`. Hermes
-  names the tools `mcp__llmos__<tool>`, as Codex does. Check with
+  names the tools `mcp__llmos__<tool>`, as Codex does. Under that server, add
+  `tools: {exclude: ["memory_*"]}`: the memory provider (below) serves the
+  memory tools, so the MCP copies would be a second set. Check with
   `hermes -p <profile> mcp list`.
 - Skills: add `~/.local/share/llmos/current/skills` (written out in full) to
   `skills.external_dirs`, and add `obsidian` to `skills.disabled` (the bundled skill writes raw Markdown).
@@ -215,9 +217,19 @@ its uncommitted files.
   `hermes gateway restart`. It refuses while a session or delegation is
   running. `install.ts` moves `current`, so an install updates Hermes after
   a `hermes gateway restart`.
-- `SOUL.md`: say that the vault holds all project knowledge, and that
-  Hermes memory (`MEMORY.md`, `USER.md`) holds only facts about Hermes
-  itself. Copy the vault paragraphs of the default profile's `SOUL.md`.
+- Memory: set `memory.provider: llmos` (`hermes -p <profile> config set
+  memory.provider llmos`). The adapter plugin registers the provider, so the
+  plugin link above is all it needs. It puts the shared project memory index
+  in the system prompt and gives Hermes `memory_save`, `memory_search`, and
+  `memory_forget`, which write the same notes as Claude Code. Hermes's
+  built-in memory stays on, in the profile's own `memories/` folder. Check
+  with `hermes -p <profile> memory status`: `Provider: llmos`, `available`.
+- `SOUL.md`: say that the vault holds all project knowledge. Its memory
+  section gives the test for a fact: if another agent could use it, save it
+  with `memory_save`; if only Hermes can act on it (a Hermes skill, gateway,
+  or cron behavior), use the built-in `memory` tool. Copy the vault
+  paragraphs of the default profile's `SOUL.md`, and keep the words
+  "llmOS vault": the doctor looks for them.
 
 The adapter (`hermes/__init__.py`) runs `dist/hooks.js` for each
 Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
@@ -226,7 +238,9 @@ when that link points at a folder that is gone. Once any profile
 links the plugin, it also checks each profile (`hermes-profile-<name>`) and names
 the pieces a profile lacks, so a profile made later is not missed. It fails a
 profile whose plugin link or skills folder resolves outside
-`~/.local/share/llmos/`, such as a checkout. Start one new
+`~/.local/share/llmos/`, such as a checkout, a profile without
+`memory.provider: llmos`, and a profile whose `llmos` MCP server still shows
+its memory tools. Start one new
 Hermes session (`hermes chat --oneshot -Q -q ok`) to record its heartbeat.
 
 ## Activate and verify each agent and host

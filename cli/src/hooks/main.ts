@@ -97,11 +97,12 @@ async function run(event: string | undefined): Promise<void> {
       const linked = root && project ? linkAgentDirs(project, root).join("\n") : null;
       // A cloud session's working folder holds several repositories, so the
       // vault context applies even when the cwd itself is not linked.
+      // Hermes's llmos memory provider puts the index in the system prompt itself.
+      const memoryIndexLoaded = process.env.LLMOS_MEMORY_INDEX_LOADED === "1";
+      const options = { claudeAutoMemoryReady, memoryIndexLoaded };
       const vault =
-        sessionStart(data, { claudeAutoMemoryReady }) ??
-        (cloud && root
-          ? sessionContext(root, null, { data, claudeAutoMemoryReady, cwd: project })
-          : null);
+        sessionStart(data, options) ??
+        (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
       const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
       if (antigravity) {
         const out = context ? { injectSteps: [{ systemMessage: { systemMessage: context } }] } : {};

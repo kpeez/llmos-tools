@@ -16,6 +16,10 @@ for Claude Code, runs `bun dist/hooks.js <event>`, and maps the output back:
 - `pre_verify`, after the agent edited files, sends it back to commit and push
   the vault notes it changed this turn, at most twice.
 
+`register` also registers the `llmos` memory provider (`memory_provider.py`).
+Hermes uses it only when the profile sets `memory.provider: llmos`; then the
+session-start context leaves out the memory index, which the provider loads.
+
 Every failure returns None: a raised error or a timeout in `pre_tool_call`
 would make Hermes block the tool call.
 """
@@ -130,7 +134,19 @@ def _env() -> dict[str, str]:
     return {**os.environ, "PLUGIN_ROOT": str(PLUGIN_ROOT)}
 
 
-def _run(event: str, payload: dict) -> subprocess.CompletedProcess | None:
+def _memory_provider_active() -> bool:
+    """Whether this profile selects the llmos memory provider, which loads the index itself."""
+    try:
+        from hermes_cli.config import load_config_readonly
+    except ImportError:
+        return False
+    memory = load_config_readonly().get("memory") or {}
+    return isinstance(memory, dict) and memory.get("provider") == "llmos"
+
+
+def _run(
+    event: str, payload: dict, extra_env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess | None:
     command = _command(event)
     if command is None:
         return None
@@ -141,7 +157,7 @@ def _run(event: str, payload: dict) -> subprocess.CompletedProcess | None:
             capture_output=True,
             text=True,
             timeout=TIMEOUT_SECONDS,
-            env=_env(),
+            env={**_env(), **(extra_env or {})},
             check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -250,7 +266,8 @@ def _fail_open(hook: Callable[..., Any]) -> Callable[..., Any]:
 def on_pre_llm_call(session_id=None, is_first_turn=False, task_id=None, **_: Any):
     if not is_first_turn:
         return None
-    result = _run("session-start", _payload(session_id, cwd=_cwd(task_id)))
+    loaded = {"LLMOS_MEMORY_INDEX_LOADED": "1"} if _memory_provider_active() else None
+    result = _run("session-start", _payload(session_id, cwd=_cwd(task_id)), loaded)
     text = result.stdout.strip() if result else ""
     return {"context": text} if text else None
 
@@ -337,3 +354,7 @@ def register(ctx) -> None:
     ctx.register_hook("transform_tool_result", on_transform_tool_result)
     ctx.register_hook("pre_verify", on_pre_verify)
     ctx.register_hook("on_session_end", on_session_end)
+    # Active only when the profile sets `memory.provider: llmos`; Hermes loads it then.
+    from .memory_provider import LlmosMemoryProvider
+
+    ctx.register_memory_provider(LlmosMemoryProvider())
