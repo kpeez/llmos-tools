@@ -10,10 +10,17 @@ the CLI share one implementation.
 Hermes's built-in `memory` tool stays on for facts only Hermes can act on.
 
 Recall: after each turn, `queue_prefetch` starts a background thread that
-takes the scope's notes sharing a word with the prompt and the notes that a
-semantic `llmos memory search` finds (through the llmOS service when it
-runs), merges them, and caches them for the session. `prefetch` hands that
-block to the next turn once.
+pools the scope's notes sharing a word with the prompt (top 5) and the top 5
+hits of a semantic `llmos memory search` with a score of at least 0.45
+(through the llmOS service when it runs). With `LLMOS_CLEF_URL` set, a Clef
+judge reads the pool and the provider keeps the notes it rates helpful with a
+probability of at least 0.3, at most 5. `LLMOS_CLEF_TIMEOUT` is the deadline
+for the whole Clef call in seconds (default 5), and `LLMOS_CLEF_MODEL` names
+the model in the request (default `clef-flash`). Without Clef, or when Clef fails, recall is
+semantic-only: the first 2 semantic hits with a score of at least 0.75. A memory
+saved a moment ago has no vector yet, so only Clef finds it until it is
+embedded. The block is cached for the session. `prefetch` hands it to the next
+turn once.
 
 The project comes from the session's folder, by Hermes's own order: the
 `cwd` that `initialize()` receives, else the profile's `TERMINAL_CWD`. A
@@ -26,14 +33,19 @@ gateway process can serve several profiles.
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import math
 import os
+import random
 import re
 import shutil
+import socket
 import subprocess
 import threading
+import time
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -56,9 +68,21 @@ QUERY_CHARS = 1000
 NOTE_CHARS = 2000
 CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 DESCRIPTION = re.compile(r"^description:[ \t]*(.+)$", re.MULTILINE)
-# EmbeddingGemma cosine scores: related memories scored 0.70 to 0.76, unrelated
-# ones 0.30 to 0.49. Without a floor every note in scope comes back.
-SEMANTIC_FLOOR = 0.6
+# The pool, the Clef judge, and the fallback below are the settings an offline
+# evaluation picked; keep them as it defined them.
+POOL_K = 5
+POOL_FLOOR = 0.45
+# The CLI fetches the global top min(10 * limit, 200) hits, then keeps the project's
+# first `limit`: 20 * 10 = 200 is the global fetch.
+SEMANTIC_LIMIT = 20
+CLEF_THRESHOLD = 0.3
+CLEF_TIMEOUT_DEFAULT = 5.0
+# A joint answer for ten notes is about 2 KB; a larger one is not a Clef answer.
+CLEF_ANSWER_BYTES = 1 << 20
+FALLBACK_K = 2
+FALLBACK_FLOOR = 0.75
+CLEF_NOTE_CHARS = 1500
+MESSAGE_CHARS = 4000
 TERM = re.compile(r"[a-z0-9][a-z0-9_-]{2,}")
 STOPWORDS = frozenset(
     "about all and any are can could did does for from had has have how into its not our "
@@ -219,19 +243,173 @@ def _keyword(query: str, notes: dict[str, tuple[str, str]]) -> list[dict[str, st
         for path, terms in found.items()
         if terms
     }
-    ranked = sorted(score, key=lambda path: -score[path])[:RECALL_LIMIT]
+    ranked = sorted(score, key=lambda path: -score[path])[:POOL_K]
     return [{"path": path} for path in ranked]
 
 
-def _merge(*rankings: list[Any], limit: int) -> list[str]:
-    """Paths by reciprocal rank fusion: word-match and cosine scores do not compare."""
-    scores: dict[str, float] = {}
-    for hits in rankings:
-        for rank, hit in enumerate(hits):
-            path = hit.get("path") if isinstance(hit, dict) else None
-            if isinstance(path, str):
-                scores[path] = scores.get(path, 0.0) + 1.0 / (60 + rank)
-    return sorted(scores, key=lambda path: -scores[path])[:limit]
+def _fallback_picks(hits: list[tuple[str, float]]) -> list[str]:
+    """Without Clef: the first FALLBACK_K semantic hits that score at least FALLBACK_FLOOR."""
+    return [path for path, score in hits[:FALLBACK_K] if score >= FALLBACK_FLOOR]
+
+
+# The Clef request below is the one the offline evaluation sent. Clef's scores depend on
+# every character of these templates: do not rephrase or reflow them.
+# The default SystemOne model; LLMOS_CLEF_MODEL names another one.
+MODEL = "clef-flash"
+STATE = """A developer is working in project "{project}". Before the agent answers the \
+developer's message, recall may add some of the project's saved memories to the agent's \
+context. Most memories are irrelevant to most messages. Judge only usefulness for this \
+message, not whether a memory is well written.
+
+DEVELOPER'S MESSAGE:
+<<<
+{text}
+>>>
+
+CANDIDATE MEMORIES:
+{memories}"""
+INSTRUCTIONS = (
+    "Would the agent handle THIS developer message better with memory [{label}] ({name}) "
+    "in its context?"
+)
+HELPFUL = (
+    "Yes: memory [{label}] is useful for this message. It changes what the agent should "
+    "do, say, or avoid, or it is useful background for this message."
+)
+NOISE = (
+    "No: memory [{label}] is not useful for this message. Adding it to the agent's "
+    "context would only be noise."
+)
+
+
+def _clef_note(text: str) -> str:
+    """A note as the judge sees it: its description, then its body, cut to CLEF_NOTE_CHARS."""
+    if text.startswith("---\n") and "\n---" in text[4:]:
+        front, body = text[4:].split("\n---", 1)
+        description = next(
+            (
+                line.split(":", 1)[1].strip()
+                for line in front.splitlines()
+                if line.strip().startswith("description:")
+            ),
+            "",
+        )
+        text = f"({description})\n{body.strip()}" if description else body.strip()
+    return text[:CLEF_NOTE_CHARS]
+
+
+def _clef_message(query: str) -> str:
+    """The developer's message in the judge's state: stripped, at most MESSAGE_CHARS."""
+    return query.strip()[:MESSAGE_CHARS]
+
+
+def _clef_order(pool: list[str], seed: str) -> list[str]:
+    """The pool in the judge's order: sorted, then shuffled with a generator seeded by `seed`."""
+    ordered = sorted(pool)
+    random.Random(seed).shuffle(ordered)
+    return ordered
+
+
+def _clef_request(
+    project: str,
+    message: str,
+    paths: list[str],
+    texts: dict[str, str],
+    model: str = MODEL,
+) -> dict:
+    """One SystemOne request whose fields m1..mN are the notes at `paths`, in order."""
+    labels = [f"m{i}" for i in range(1, len(paths) + 1)]
+    memories = "\n\n".join(
+        f"[{label}] {path.rsplit('/', 1)[1]}\n{_clef_note(texts[path])}"
+        for label, path in zip(labels, paths)
+    )
+    questions = {
+        label: {
+            "type": "choice",
+            "instructions": INSTRUCTIONS.format(
+                label=label, name=path.rsplit("/", 1)[1]
+            ),
+            "criteria": {
+                "helpful": HELPFUL.format(label=label),
+                "noise": NOISE.format(label=label),
+            },
+        }
+        for label, path in zip(labels, paths)
+    }
+    state = STATE.format(project=project, text=message, memories=memories)
+    return {"model": model, "state": state, "questions": questions}
+
+
+def _timeout_from(value: str | None) -> float:
+    try:
+        timeout = float(value) if value else CLEF_TIMEOUT_DEFAULT
+    except ValueError:
+        return CLEF_TIMEOUT_DEFAULT
+    return timeout if math.isfinite(timeout) and timeout > 0 else CLEF_TIMEOUT_DEFAULT
+
+
+def _post_json(url: str, body: bytes, timeout: float) -> Any:
+    """POST `body` to `url` and parse the JSON answer, all within `timeout` seconds.
+
+    The call runs on its own thread, so a slow DNS lookup or a server that sends
+    a byte at a time cannot hold recall past the deadline; at the deadline the
+    socket is shut down, which ends the call. Raises OSError (TimeoutError at
+    the deadline), ValueError, or http.client.HTTPException.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError(f"not an http or https URL: {url}")
+    connection_class = (
+        http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
+    )
+    connection = connection_class(parts.hostname, parts.port, timeout=timeout)
+    outcome: dict[str, Any] = {}
+
+    def call() -> None:
+        try:
+            connection.request(
+                "POST", parts.path or "/", body, {"Content-Type": "application/json"}
+            )
+            response = connection.getresponse()
+            if response.status != 200:
+                raise OSError(f"HTTP {response.status} {response.reason}")
+            data = response.read(CLEF_ANSWER_BYTES + 1)
+            if len(data) > CLEF_ANSWER_BYTES:
+                raise ValueError(f"answer is larger than {CLEF_ANSWER_BYTES} bytes")
+            outcome["answer"] = json.loads(data)
+        except Exception as error:  # noqa: BLE001 -- handed to the waiting thread
+            outcome["error"] = error
+        finally:
+            connection.close()
+
+    worker = threading.Thread(target=call, name="llmos-memory-clef", daemon=True)
+    started = time.monotonic()
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        sock = connection.sock
+        if sock is not None:
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        raise TimeoutError(f"no answer within {time.monotonic() - started:.1f} s")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["answer"]
+
+
+def _helpful(answer: Any, label: str) -> float:
+    """The probability of "helpful" for field `label`; ValueError when it is missing or bad."""
+    try:
+        value = answer["answers"][label]["probabilities"]["helpful"]
+    except (KeyError, TypeError):
+        raise ValueError(f"no helpful probability for {label}") from None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"helpful probability for {label} is not a number")
+    if not 0 <= value <= 1:
+        raise ValueError(f"helpful probability for {label} is outside [0, 1]")
+    return float(value)
 
 
 class LlmosMemoryProvider(MemoryProvider):
@@ -243,6 +421,11 @@ class LlmosMemoryProvider(MemoryProvider):
         self._recalled: dict[str, tuple[int, str, int]] = {}
         self._generation = 0
         self._last_count = 0
+        self._clef_url: str | None = None
+        self._clef_timeout = CLEF_TIMEOUT_DEFAULT
+        self._clef_model = MODEL
+        # True after a failed Clef call until the next success; under the lock.
+        self._clef_failing = False
 
     @property
     def name(self) -> str:
@@ -290,6 +473,10 @@ class LlmosMemoryProvider(MemoryProvider):
     def initialize(self, session_id: str, **kwargs: Any) -> None:
         # Subagents, cron runs, and flushes read memory but never write it.
         self._writes = kwargs.get("agent_context", "primary") == "primary"
+        url = os.environ.get("LLMOS_CLEF_URL", "").strip().rstrip("/")
+        self._clef_url = url or None
+        self._clef_timeout = _timeout_from(os.environ.get("LLMOS_CLEF_TIMEOUT"))
+        self._clef_model = os.environ.get("LLMOS_CLEF_MODEL", "").strip() or MODEL
         folder = _session_folder(kwargs)
         where = ["--workspace", folder] if folder else ["--project", "personal"]
         scope, error = self._llmos("memory", "scope", *where)
@@ -323,36 +510,87 @@ class LlmosMemoryProvider(MemoryProvider):
             args=(query, session_id, generation),
         ).start()
 
-    def _recall(self, query: str, session_id: str, generation: int) -> None:
+    def _clef_helpful(
+        self, project: str, message: str, paths: list[str], texts: dict[str, str]
+    ) -> dict[str, float]:
+        """Ask Clef how helpful each note is. Raises what `_post_json` raises,
+        RecursionError for a too deeply nested answer, or ValueError for a bad one."""
+        request = _clef_request(project, message, paths, texts, self._clef_model)
+        answer = _post_json(
+            f"{self._clef_url}/v1/systemone",
+            json.dumps(request).encode("utf-8"),
+            self._clef_timeout,
+        )
+        return {path: _helpful(answer, f"m{i}") for i, path in enumerate(paths, 1)}
+
+    def _recall(
+        self, query: str, session_id: str, generation: int, seed: str | None = None
+    ) -> None:
+        # `seed` orders the notes in the Clef request. Hermes never passes it, so the
+        # seed is the message in the request, as the evaluation seeded by its case;
+        # a replay of the evaluation passes the case id.
         scope = self._scope
         if scope is None:
             return
         # index_path is the vault root joined with the vault-relative index.
         root = Path(str(scope["index_path"])[: -len(str(scope["index"]))])
-        notes_by_path = {}
+        texts: dict[str, str] = {}
         # Sorted, so `_keyword` breaks score ties by path, not by the order the
         # file system lists the folder in.
         for note in sorted((root / str(scope["dir"])).glob("*.md")):
             if note.name != "MEMORY.md":
                 try:
-                    text = note.read_text(encoding="utf-8")
-                    notes_by_path[f"{scope['dir']}/{note.name}"] = _note(text)
+                    texts[f"{scope['dir']}/{note.name}"] = note.read_text(encoding="utf-8")
                 except OSError:
                     continue
+        notes_by_path = {path: _note(text) for path, text in texts.items()}
         text = _query(query)
+        keyword = [hit["path"] for hit in _keyword(text, notes_by_path)]
         hits, error = self._llmos(
             "memory", "search", "--project", str(scope["project"]),
-            "--limit", str(RECALL_LIMIT), "--", text,
+            "--limit", str(SEMANTIC_LIMIT), "--", text,
         )
         if error is not None:
             LOG.debug("llmos memory recall: %s", error)
         semantic = [
-            hit for hit in (hits if isinstance(hits, list) else [])
-            if isinstance(hit, dict) and isinstance(hit.get("score"), (int, float))
-            and hit["score"] >= SEMANTIC_FLOOR
+            (hit["path"], hit["score"])
+            for hit in (hits if isinstance(hits, list) else [])
+            if isinstance(hit, dict)
+            and isinstance(hit.get("path"), str)
+            and isinstance(hit.get("score"), (int, float))
+            and not isinstance(hit["score"], bool)
         ]
+        pool = sorted(
+            set(keyword)
+            | {path for path, score in semantic[:POOL_K] if score >= POOL_FLOOR}
+        )
+        pool = [path for path in pool if path in texts]
+        picks = _fallback_picks(semantic)
+        if self._clef_url and pool:
+            message = _clef_message(query)
+            order = _clef_order(pool, seed if seed is not None else message)
+            try:
+                helpful = self._clef_helpful(str(scope["project"]), message, order, texts)
+            except (OSError, ValueError, http.client.HTTPException, RecursionError) as failure:
+                with self._lock:
+                    first = not self._clef_failing
+                    self._clef_failing = True
+                LOG.log(
+                    logging.WARNING if first else logging.DEBUG,
+                    "llmos memory recall: Clef at %s failed, using semantic-only recall: %s",
+                    self._clef_url,
+                    failure,
+                )
+            else:
+                with self._lock:
+                    self._clef_failing = False
+                kept = sorted(
+                    (path for path in order if helpful[path] >= CLEF_THRESHOLD),
+                    key=lambda path: (-helpful[path], path),
+                )
+                picks = kept[:RECALL_LIMIT]
         notes = []
-        for path in _merge(_keyword(text, notes_by_path), semantic, limit=RECALL_LIMIT):
+        for path in picks:
             heading, body = notes_by_path.get(path, ("", ""))
             if body:
                 notes.append(f"### {path}{heading}\n{body}")

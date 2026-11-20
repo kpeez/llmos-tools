@@ -79,13 +79,25 @@ profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
 After each turn that is not a bare acknowledgement or slash command, the
-provider recalls memories for the next turn on a background thread. It takes
-the scope's topic notes that share a word with the prompt, and the notes that
-`llmos memory search` finds by meaning with a score of at least 0.6, through
-the llmOS service when it runs (`docs/service.md`). It merges the two lists by
-rank and gives the next turn the top five notes, once. The word match also
-finds a memory saved a moment ago, before it has a vector. The keyword search
-of qmd needs every word of a query, so it cannot match a whole prompt.
+provider recalls memories for the next turn on a background thread. It pools
+the top five scope topic notes that share a word with the prompt and the first
+five hits of `llmos memory search` (by meaning, through the llmOS service when
+it runs, `docs/service.md`) that score at least 0.45. The keyword search of qmd
+needs every word of a query, so the word match is the provider's own.
+
+With `LLMOS_CLEF_URL` set to the base URL of a SystemOne server that runs the
+Clef decision model, the provider posts the pool to `<URL>/v1/systemone` in
+one request and keeps the notes that Clef rates helpful with a probability of
+at least 0.3, best first, at most five. `LLMOS_CLEF_TIMEOUT` is the deadline
+for the whole call in seconds (default 5; a bad value uses the default).
+`LLMOS_CLEF_MODEL` names the model in the request (default `clef-flash`). The
+provider reads the three variables at start. When Clef is not set, or fails,
+recall is semantic-only: the first two semantic hits that score at least 0.75.
+The word match then adds nothing, so a memory saved a moment ago is not found
+until it is embedded, unless Clef is configured. A failed Clef call logs one
+line: a warning for the first failure since start or since the last success,
+then debug lines until Clef answers again. The next turn gets the recalled
+notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes
