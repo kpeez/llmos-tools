@@ -7,7 +7,7 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { indexVault, isolatedEnv, makeVault, read, scratch, TOOLS } from "./helpers.ts";
 
@@ -457,6 +457,52 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
     });
     expect(askedNames(judge.requests[0]?.body as JudgeBody).sort()).toEqual(ZEBRA);
     expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
+  });
+
+  test("a memory note linked to a file outside the vault is never read or sent", async () => {
+    const setupResult = await zebraSetup();
+    const outside = join(scratch("outside"), "secret.md");
+    // It shares the most words with the turn, so the word match would pool it first.
+    writeFileSync(outside, "What does the zebrafish rule say? It says secret-outside-text.\n");
+    symlinkSync(outside, join(setupResult.root, "projects/my-repo/memory/linked.md"));
+    const judge = stubJudge(Object.fromEntries([...ZEBRA, "linked"].map((n) => [`${n}.md`, 0.9])));
+    const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", TURN, "chat"],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(judge.requests).toHaveLength(1);
+    expect(JSON.stringify(judge.requests[0]?.body)).not.toContain("secret-outside-text");
+    expect(askedNames(judge.requests[0]?.body as JudgeBody).sort()).toEqual(ZEBRA);
+    // The notes inside the vault still recall.
+    expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(ZEBRA);
+    expect(out.recalls[0]?.block).not.toContain("secret-outside-text");
+  });
+
+  test("a memory folder linked outside the vault gets no recall, and one debug line says why", async () => {
+    const outside = scratch("outside-memory");
+    for (const name of ZEBRA) {
+      writeFileSync(join(outside, `${name}.md`), `The ${name} zebrafish rule, outside.\n`);
+    }
+    const root = makeVault({ "projects/my-repo/my-repo.md": "# my-repo\n" });
+    symlinkSync(outside, join(root, "projects/my-repo/memory"));
+    const setupResult = { ...setup(), root };
+    setupResult.env.LLMOS_ROOT = root;
+    await indexVault(root, setupResult.env, { llmos: "**/*.md" });
+    const judge = stubJudge(Object.fromEntries(ZEBRA.map((n) => [`${n}.md`, 0.9])));
+    const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", TURN, "chat"],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(judge.requests).toHaveLength(0);
+    expect(out.recalls[0]).toEqual({ block: "", count: null });
+    const refusals = out.logs.filter(([, message]) => message.includes("outside the vault"));
+    expect(refusals).toEqual([["DEBUG", expect.stringContaining("projects/my-repo/memory")]]);
   });
 
   test("an empty pool sends no judge request and recalls nothing", async () => {

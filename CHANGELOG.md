@@ -18,8 +18,9 @@ Newest first. Versions are the `version` field shared by
   Without the judge, or when it fails, recall is semantic-only (the first
   two hits that score at least 0.75), so a memory saved a moment ago is not
   found until it is embedded. Hermes shows the count in its recall line.
-  Recall skips a memory note that is not UTF-8. The provider now needs Hermes
-  v2026.9.14 or later.
+  Recall reads only regular files inside the vault: it skips a symbolic-link
+  or non-UTF-8 note, and a memory folder that resolves outside the vault gets
+  no recall. The provider now needs Hermes v2026.9.14 or later.
 
 - New llmOS service: one long-lived process per host that keeps the qmd search
   models loaded, so every agent session shares one warm model set. `llmos mcp`

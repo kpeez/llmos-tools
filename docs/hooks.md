@@ -103,8 +103,10 @@ the provider logs one warning at start that names the model.
 at start. When the judge is not set, or fails, recall is semantic-only: the
 first two semantic hits that score at least 0.75. The word match then adds
 nothing, so a memory saved a moment ago is not found until it is embedded,
-unless the judge is configured. Recall skips a memory note that it cannot
-read or that is not UTF-8. A failed judge call logs one line: a warning
+unless the judge is configured. Recall reads only regular files inside the
+vault: it skips a memory note that is a symbolic link, that it cannot read,
+or that is not UTF-8, and a memory folder that resolves outside the vault gets
+no recall. A failed judge call logs one line: a warning
 for the first failure since start or since the last success, then debug lines
 until the judge answers again. The next turn gets the recalled notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for

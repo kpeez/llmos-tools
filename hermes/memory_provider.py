@@ -217,6 +217,39 @@ def _query(text: str) -> str:
     return units.decode("utf-16-le", errors="ignore").strip()
 
 
+def _scope_notes(root: Path, folder: str) -> dict[str, str] | None:
+    """The topic notes of memory folder `folder` (vault-relative), by path.
+
+    As `realTarget` in cli/src/write.ts, nothing outside the real vault root is
+    read: a folder that resolves outside it gives `None`, and a note that is a
+    symbolic link, not a regular file, not UTF-8, or unreadable is skipped. A
+    missing folder has no notes.
+    """
+    try:
+        real_root = root.resolve(strict=True)
+        real_folder = (root / folder).resolve(strict=True)
+    except FileNotFoundError:
+        return {}
+    except (OSError, RuntimeError):
+        return None
+    if not real_folder.is_relative_to(real_root) or not real_folder.is_dir():
+        return None
+    texts: dict[str, str] = {}
+    # Sorted, so `_keyword` breaks score ties by path, not by the order the
+    # file system lists the folder in.
+    for note in sorted(real_folder.glob("*.md")):
+        if note.name == "MEMORY.md" or note.is_symlink() or not note.is_file():
+            continue
+        try:
+            if not note.resolve(strict=True).is_relative_to(real_root):
+                continue
+            texts[f"{folder}/{note.name}"] = note.read_text(encoding="utf-8")
+        except (OSError, RuntimeError, UnicodeDecodeError):
+            # One unreadable note must not end the recall of the rest.
+            continue
+    return texts
+
+
 def _note(text: str) -> tuple[str, str]:
     """(" — description" or "", the body without frontmatter, cut to NOTE_CHARS)."""
     heading, body = "", text.strip()
@@ -575,16 +608,12 @@ class LlmosMemoryProvider(MemoryProvider):
             return
         # index_path is the vault root joined with the vault-relative index.
         root = Path(str(scope["index_path"])[: -len(str(scope["index"]))])
-        texts: dict[str, str] = {}
-        # Sorted, so `_keyword` breaks score ties by path, not by the order the
-        # file system lists the folder in.
-        for note in sorted((root / str(scope["dir"])).glob("*.md")):
-            if note.name != "MEMORY.md":
-                try:
-                    texts[f"{scope['dir']}/{note.name}"] = note.read_text(encoding="utf-8")
-                except (OSError, UnicodeDecodeError):
-                    # One unreadable note must not end the recall of the rest.
-                    continue
+        texts = _scope_notes(root, str(scope["dir"]))
+        if texts is None:
+            LOG.debug(
+                "llmos memory recall: %s resolves outside the vault; no recall", scope["dir"]
+            )
+            return
         notes_by_path = {path: _note(text) for path, text in texts.items()}
         text = _query(query)
         keyword = [hit["path"] for hit in _keyword(text, notes_by_path)]
