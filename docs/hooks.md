@@ -79,8 +79,11 @@ profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
-`session-start`, so the index is not sent twice. Hermes's built-in `memory`
-tool stays on for facts only Hermes can act on.
+`session-start`, so the index is not sent twice. Each profile's `llmos` MCP
+server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes
+sees one set. Hermes's built-in `memory` tool stays on for facts only Hermes
+can act on. `llmos doctor` fails a profile without `memory.provider: llmos`
+or without that exclude.
 
 The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a

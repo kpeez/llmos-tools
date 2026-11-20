@@ -29,6 +29,7 @@ import { basename, delimiter, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { fileSha256, heartbeatPath, readHeartbeats } from "./heartbeat.ts";
 import { mcpCheck } from "./mcp-check.ts";
+import { MEMORY_TOOLS } from "./mcp-names.ts";
 import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -309,6 +310,38 @@ function insideInstalls(path: string, env: Env): boolean {
   }
 }
 
+/** A Hermes tool-filter entry: an exact name or an fnmatch glob (`*`, `?`). */
+function filterMatches(entry: string, name: string): boolean {
+  const pattern = entry
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${pattern}$`).test(name);
+}
+
+/**
+ * Whether Hermes registers none of the server's memory tools: the provider
+ * serves them, so the MCP copies would be a second set. As Hermes reads
+ * `tools`: `include` is a whitelist and wins; else `exclude` is a blacklist.
+ */
+function hidesMemoryTools(server: unknown): boolean {
+  const tools =
+    server !== null && typeof server === "object"
+      ? (server as Record<string, unknown>).tools
+      : undefined;
+  const filter =
+    tools !== null && typeof tools === "object" ? (tools as Record<string, unknown>) : {};
+  const names = (value: unknown): string[] | null =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : null;
+  const include = names(filter.include);
+  const exclude = names(filter.exclude) ?? [];
+  return MEMORY_TOOLS.every((tool) =>
+    include !== null
+      ? !include.some((entry) => filterMatches(entry, tool))
+      : exclude.some((entry) => filterMatches(entry, tool)),
+  );
+}
+
 /** The parts of a Hermes profile that `llmos` needs, by the name the doctor reports. */
 function hermesProfileGaps(home: string, env: Env): string[] {
   let config: Record<string, unknown> = {};
@@ -327,7 +360,16 @@ function hermesProfileGaps(home: string, env: Env): string[] {
   const list = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
   const gaps: string[] = [];
-  if (!("llmos" in section("mcp_servers"))) gaps.push("the llmos MCP server (mcp_servers.llmos)");
+  const servers = section("mcp_servers");
+  if (!("llmos" in servers)) gaps.push("the llmos MCP server (mcp_servers.llmos)");
+  else if (!hidesMemoryTools(servers.llmos)) {
+    gaps.push(
+      'the llmos MCP server without its memory tools (mcp_servers.llmos.tools.exclude: ["memory_*"])',
+    );
+  }
+  if (section("memory").provider !== "llmos") {
+    gaps.push("the llmos memory provider (memory.provider: llmos)");
+  }
   // As Hermes reads it: one string or a list; `~` and `${VAR}` expanded; relative to the profile.
   const rawDirs = section("skills").external_dirs;
   const skillDirs = (typeof rawDirs === "string" ? [rawDirs] : list(rawDirs)).map((dir) =>

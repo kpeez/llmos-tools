@@ -11,6 +11,9 @@ Newest first. Versions are the `version` field shared by
   which write the same notes as Claude Code. The project comes from the
   session's folder, else `personal`; subagent and cron sessions do not write.
   `llmos memory scope` now also prints `index_text`, the bounded index.
+  `llmos doctor` fails a Hermes profile without `memory.provider: llmos`, or
+  whose `llmos` MCP server still shows its memory tools; `setup-llmos` says
+  how to set both.
 
 - New `llmos memory scope|save|search|forget` verbs and MCP tools
   (`memory_save`, `memory_search`, `memory_forget`) read and write shared
