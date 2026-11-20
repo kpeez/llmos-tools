@@ -12,6 +12,9 @@ Newest first. Versions are the `version` field shared by
   other folder uses `personal`. A save fails when `MEMORY.md` would pass 200
   lines. Codex approves `memory_search` and asks before the other two. The
   session-start context names the memory tools.
+- A cloud session's start context now loads `personal` memory, not the
+  `llmos` project's, when the session is not in a vault project. A session
+  inside the vault still loads `llmos` memory.
 
 ## 2.11.0 — 2026-11-18
 

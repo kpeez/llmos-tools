@@ -117,6 +117,19 @@ describe("session-start in a cloud session", () => {
     expect(existsSync(join(fixture.project, ".agents", "docs"))).toBe(true);
   });
 
+  test("a session at the workspace root loads personal memory, not llmos memory", () => {
+    const fixture = cloudFixture();
+    writeFile(join(fixture.root, "projects", "llmos", "memory", "MEMORY.md"), "- llmos-fact\n");
+    writeFile(
+      join(fixture.root, "projects", "personal", "memory", "MEMORY.md"),
+      "- personal-fact\n",
+    );
+    const result = runCloud(fixture);
+    expect(result.stdout).toContain(join(fixture.root, "projects", "personal", "memory"));
+    expect(result.stdout).toContain("- personal-fact");
+    expect(result.stdout).not.toContain("- llmos-fact");
+  });
+
   test("names the linked project when the session starts inside it", () => {
     const fixture = cloudFixture();
     const result = runHook("session-start", { cwd: fixture.project }, fixture.tmp, {

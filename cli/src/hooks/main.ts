@@ -99,7 +99,9 @@ async function run(event: string | undefined): Promise<void> {
       // vault context applies even when the cwd itself is not linked.
       const vault =
         sessionStart(data, { claudeAutoMemoryReady }) ??
-        (cloud && root ? sessionContext(root, null, { data, claudeAutoMemoryReady }) : null);
+        (cloud && root
+          ? sessionContext(root, null, { data, claudeAutoMemoryReady, cwd: project })
+          : null);
       const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
       if (antigravity) {
         const out = context ? { injectSteps: [{ systemMessage: { systemMessage: context } }] } : {};

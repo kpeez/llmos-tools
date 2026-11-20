@@ -27,7 +27,7 @@ import {
   WRITE_TOOLS as MCP_WRITE_TOOLS,
   SERVER_NAME,
 } from "../mcp-names.ts";
-import { readMemoryIndex } from "../memory.ts";
+import { MemoryRefused, memoryScope, readMemoryIndex } from "../memory.ts";
 import {
   firstTruthy,
   isDir,
@@ -115,10 +115,29 @@ function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
 export interface SessionStartOptions {
   data?: Payload;
   claudeAutoMemoryReady?: boolean;
+  /** The session's folder; outside the vault and any linked project it picks the memory scope. */
+  cwd?: string | null;
 }
 
-function projectMemoryDir(root: string, linked: [string, string] | null): string | null {
-  if (linked === null) return joinPath(root, "projects", "llmos", MEMORY_DIR);
+/**
+ * The shared memory folder of a session: the linked project's, the llmos
+ * project's inside the vault (the vault checkout is `llmOS`), and otherwise
+ * the scope `memoryScope` gives the folder (`personal` outside a vault project).
+ */
+function projectMemoryDir(
+  root: string,
+  linked: [string, string] | null,
+  cwd: string | null,
+): string | null {
+  if (linked === null) {
+    if (cwd === null || isUnder(cwd, root)) return joinPath(root, "projects", "llmos", MEMORY_DIR);
+    try {
+      return joinPath(root, memoryScope(root, cwd).dir);
+    } catch (error) {
+      if (error instanceof MemoryRefused) return null;
+      throw error;
+    }
+  }
   const prefix = root.endsWith("/") ? root : `${root}/`;
   const target = linked[1];
   if (!target.startsWith(prefix)) return null;
@@ -145,7 +164,7 @@ export function sessionContext(
     `${joinPath(root, DAILY_DIR, `${localDate()}.md`)} -- prose only, and never a ` +
     "restatement of commits, issues, or PRs, which GitHub already records.";
   const sections = [`${access}${routes}`, daily, MCP_LINE];
-  const memoryDir = projectMemoryDir(root, linked);
+  const memoryDir = projectMemoryDir(root, linked, options.cwd ?? null);
   if (memoryDir !== null && isDir(memoryDir)) {
     sections.push(
       `Shared project memory lives in ${memoryDir} (${MEMORY_INDEX} index + <slug>.md topic files ` +
@@ -180,7 +199,7 @@ export function sessionStart(data: Payload, options: SessionStartOptions = {}): 
   const linked = inside ? null : linkedProjectDocs(cwd, root);
   if (!inside && linked === null) return null;
   const claudeAutoMemoryReady = options.claudeAutoMemoryReady ?? hasAutoMemoryDir(cwd, root);
-  return sessionContext(root, linked, { data, claudeAutoMemoryReady });
+  return sessionContext(root, linked, { data, claudeAutoMemoryReady, cwd });
 }
 
 function patchPaths(command: string): string[] {
