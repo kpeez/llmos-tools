@@ -819,7 +819,14 @@ const service: Feature = async (state) => {
     child.stdin.end();
     child.kill();
     await child.exited;
-    stop();
+    // The search with the service down starts a new service, detached, which
+    // binds a moment later: wait for it, so no service outlives the scratch folder.
+    for (let i = 0; i < 30; i++) {
+      stop();
+      await sleep(100);
+      if (i >= 20 && !status().running) break;
+    }
+    check(f, "no service is left running after the feature", !status().running);
     writeFileSync(join(state.run, f, "01-notes.txt"), log.join("\n").replaceAll(state.scratch, "$SCRATCH"));
   }
 };

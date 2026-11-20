@@ -18,7 +18,7 @@
 
 ## Driving it with scripts/verify.ts
 
-Preconditions: launch and doctor passed. `drive read-search` ran first, so the qmd index exists. The drive uses a short state folder in the scratch folder (`XDG_STATE_HOME`) and `LLMOS_SERVICE=on`.
+Preconditions: launch and doctor passed. `drive read-search` ran first, so the qmd index exists, and `drive memory` ran first, so `projects/verify/` exists for the memory step. The drive uses a short state folder in the scratch folder (`XDG_STATE_HOME`) and `LLMOS_SERVICE=on`.
 
 - **Status.** `service status`. `running` is false.
 - **First search.** MCP `search {"query":"gardening"}` names `notes/beta.md`; then `service status` shows a running service.
@@ -32,4 +32,4 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 ## Gotchas
 
 - Never in this drive: the warm models, semantic search, and the background embed. They need model files. Probe them in scratch with a model cache linked into an isolated `XDG_CACHE_HOME`.
-- The drive stops only the service it started, by the pid from `service status`.
+- The drive stops only the service it started, by the pid from `service status`. The search with the service down starts a new service a moment later, so the drive waits for it and stops it too: no service outlives the scratch folder.
