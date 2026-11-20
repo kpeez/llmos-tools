@@ -184,9 +184,14 @@ function memoryType(type: string): MemoryType {
   return type as MemoryType;
 }
 
+/**
+ * The text of vault-relative `relative`, or `null` when it is missing. A
+ * file whose real path is outside the vault is refused (`realTarget`), so a
+ * save or forget fails before it writes anything.
+ */
 function existing(root: string, relative: string): string | null {
-  const path = join(root, relative);
-  return existsSync(path) ? readText(path) : null;
+  if (!existsSync(join(root, relative))) return null;
+  return readText(realTarget(root, relative));
 }
 
 function defaultTitle(name: string): string {

@@ -54,6 +54,21 @@ describe("memory scope", () => {
     expect(scope.index_text).toBeNull();
   });
 
+  test("an index linked to a file inside the vault still loads", async () => {
+    const root = vault({
+      "projects/my-repo/notes/index-copy.md": "# Memory index\n\n- inside-index-text\n",
+    });
+    mkdirSync(join(root, "projects/my-repo/memory"));
+    symlinkSync(
+      join(root, "projects/my-repo/notes/index-copy.md"),
+      join(root, "projects/my-repo/memory/MEMORY.md"),
+    );
+    const scope = (await json(root, ["memory", "scope", "--project", "my-repo"])) as {
+      index_text: unknown;
+    };
+    expect(scope.index_text).toBe("# Memory index\n\n- inside-index-text");
+  });
+
   test("a repository named like a vault project uses that project's memory", async () => {
     const root = vault();
     const repo = gitRepo("my-repo");
@@ -183,6 +198,24 @@ describe("memory save", () => {
     const result = await cli(root, save("leak"));
     expect(result.exitCode).not.toBe(0);
     expect(existsSync(join(outside, "leak.md"))).toBe(false);
+  });
+
+  test("an index linked outside the vault refuses the save before anything is written", async () => {
+    const root = vault({ "projects/my-repo/memory/kept.md": "# kept\n" });
+    const outside = join(scratch("outside"), "MEMORY.md");
+    const text = "# Memory index\n\n- outside-index-text\n";
+    writeFiles(dirname(outside), { "MEMORY.md": text });
+    symlinkSync(outside, join(root, "projects/my-repo/memory/MEMORY.md"));
+
+    const saved = await cli(root, save("leak"));
+    expect(saved.exitCode).toBe(1);
+    expect(saved.stderr).toContain("outside the vault");
+    expect(existsSync(join(root, "projects/my-repo/memory/leak.md"))).toBe(false);
+    const forgot = await cli(root, ["memory", "forget", "kept", "--project", "my-repo"]);
+    expect(forgot.exitCode).toBe(1);
+    expect(forgot.stderr).toContain("outside the vault");
+    expect(existsSync(join(root, "projects/my-repo/memory/kept.md"))).toBe(true);
+    expect(read(dirname(outside), "MEMORY.md")).toBe(text);
   });
 });
 
