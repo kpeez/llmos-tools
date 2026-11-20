@@ -25,9 +25,9 @@ there, and Codex sends no roots). A folder outside every vault project uses
 `personal`; a worktree uses its main checkout's project. With no signal at
 all, the call fails instead of guessing: the server's own folder is its
 install, not the session's. `memory_save` fails when the index would
-pass 200 lines, because agents load only that many. `memory_search` keeps only
-the topic notes directly in the memory folder, so a subfolder such as
-Hermes's own `hermes/` store stays out of it.
+pass 200 lines or 25,000 bytes, because agents load only that much.
+`memory_search` keeps only the topic notes directly in the memory folder, so
+a subfolder such as Hermes's own `hermes/` store stays out of it.
 
 Each tool runs the handler of the matching `llmos` command, and its
 description comes from that command's help. The server serves only the llmOS

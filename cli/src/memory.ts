@@ -6,9 +6,12 @@
  * memory tools, and the Hermes memory provider all read and write this one
  * store.
  *
- * Every agent loads at most the first `MAX_INDEX_LINES` lines of the index,
- * so a save that would make the index longer fails instead of hiding the
- * newest lines. Writes go through `write.ts`, so they stay inside the vault.
+ * Every agent loads at most the first `MAX_INDEX_LINES` lines and
+ * `MAX_INDEX_BYTES` bytes of the index, so a save that would pass either
+ * limit fails instead of hiding the newest lines. Claude Code and hand edits
+ * write the index directly, so `readMemoryIndex` still cuts and marks an
+ * index past either limit. Writes go through `write.ts`, so they stay inside
+ * the vault.
  */
 
 import { existsSync, statSync } from "node:fs";
@@ -91,7 +94,8 @@ export function readMemoryIndex(path: string): string | null {
     if ((error as { code?: unknown }).code !== undefined) return null;
     throw error;
   }
-  const lines = raw.split("\n");
+  // A final newline ends the last line; it does not start one more.
+  const lines = (raw.endsWith("\n") ? raw.slice(0, -1) : raw).split("\n");
   let truncated = lines.length > MAX_INDEX_LINES;
   let text = truncated ? lines.slice(0, MAX_INDEX_LINES).join("\n") : raw;
   if (Buffer.byteLength(text, "utf8") > MAX_INDEX_BYTES) {
@@ -118,7 +122,8 @@ function linksTo(line: string, name: string): boolean {
 
 /**
  * `index` with the line for memory `name` replaced by `line`, or `line`
- * added at the end. Fails when the result is longer than `MAX_INDEX_LINES`.
+ * added at the end. Fails when the result has more than `MAX_INDEX_LINES`
+ * lines or `MAX_INDEX_BYTES` UTF-8 bytes, the limits `readMemoryIndex` cuts at.
  */
 export function upsertIndexLine(index: string, name: string, line: string): string {
   const lines = (index.trimEnd() || INDEX_HEADER.trimEnd()).split("\n");
@@ -134,7 +139,15 @@ export function upsertIndexLine(index: string, name: string, line: string): stri
         "that agents load; merge or forget memories first",
     );
   }
-  return `${lines.join("\n")}\n`;
+  const text = `${lines.join("\n")}\n`;
+  const bytes = Buffer.byteLength(text, "utf8");
+  if (bytes > MAX_INDEX_BYTES) {
+    throw new MemoryRefused(
+      `${MEMORY_INDEX} would have ${bytes} bytes, more than the ${MAX_INDEX_BYTES} ` +
+        "that agents load; merge or forget memories first",
+    );
+  }
+  return text;
 }
 
 /** `index` without the line for memory `name`. */

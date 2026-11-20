@@ -10,9 +10,9 @@ Newest first. Versions are the `version` field shared by
   project memory (`projects/<project>/memory/`, ADR-0020) in the format Claude
   Code writes. A folder in a vault project's repository uses that project; any
   other folder uses `personal`. A save fails when `MEMORY.md` would pass 200
-  lines. Codex approves `memory_search` and asks before the other two. The
-  session-start context names the memory tools and the project to pass
-  them. Without a `project` argument, the MCP tools take the session's folder
+  lines or 25,000 bytes. Codex approves `memory_search` and asks before the
+  other two. The session-start context names the memory tools and the project
+  to pass them. Without a `project` argument, the MCP tools take the session's folder
   from the client's first root, `CLAUDE_PROJECT_DIR`, or the launcher's
   starting folder, and fail when none names it, so a save never lands in
   `personal` by accident. The `llmos memory` CLI defaults to the current

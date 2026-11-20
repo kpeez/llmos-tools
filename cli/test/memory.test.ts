@@ -130,6 +130,26 @@ describe("memory save", () => {
     await json(root, save("m3"));
   });
 
+  test("a save that would pass the index byte limit fails and writes nothing", async () => {
+    // 103 lines, 10 bytes under the limit: the new line passes the bytes, not the lines.
+    const lines = Array.from({ length: 100 }, (_, i) => `- [M${i}](m${i}.md) — hook ${i}`);
+    let index = `# Memory index\n\n${lines.join("\n")}\n`;
+    const pad = "- [Pad](pad.md) — ";
+    const room = 24_990 - Buffer.byteLength(index + pad, "utf8") - 1;
+    index += `${pad}${"x".repeat(room)}\n`;
+    expect(Buffer.byteLength(index, "utf8")).toBe(24_990);
+    const root = vault({ "projects/my-repo/memory/MEMORY.md": index });
+
+    const result = await cli(root, save("one-too-big"));
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toBe(
+      "MEMORY.md would have 25051 bytes, more than the 25000 that agents load; merge or forget memories first\n",
+    );
+    expect(existsSync(join(root, "projects/my-repo/memory/one-too-big.md"))).toBe(false);
+    expect(read(root, "projects/my-repo/memory/MEMORY.md")).toBe(index);
+  });
+
   test("invalid names, types, and descriptions are refused", async () => {
     const root = vault();
     const bad = [
@@ -218,4 +238,12 @@ test("the session-start index reader still bounds what it reads", async () => {
   expect(long.split("\n")).toHaveLength(201);
   expect(long.endsWith("line 199\n[MEMORY.md truncated]")).toBe(true);
   expect(readMemoryIndex(join(root, "missing.md"))).toBeNull();
+});
+
+test("a full index with its final newline is read whole, without a truncation mark", async () => {
+  const { readMemoryIndex } = await import("../src/memory.ts");
+  const root = scratch("index");
+  const lines = Array.from({ length: 200 }, (_, i) => `line ${i}`);
+  writeFiles(root, { "full.md": `${lines.join("\n")}\n` });
+  expect(readMemoryIndex(join(root, "full.md"))).toBe(lines.join("\n"));
 });

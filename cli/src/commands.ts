@@ -19,6 +19,7 @@ import { destinationProperties } from "./inbox.ts";
 import { DAILY_DIR } from "./layout.ts";
 import {
   forgetMemory,
+  MAX_INDEX_BYTES,
   MAX_INDEX_LINES,
   MEMORY_TYPES,
   type MemoryInput,
@@ -1208,7 +1209,8 @@ Code writes (\`name\`, \`description\`, \`metadata.node_type: memory\`,
 \`metadata.type\`, \`metadata.modified\`) and adds or replaces its line in
 \`MEMORY.md\`. Saving a name again replaces that memory's body and keeps its
 other properties. Fails, and writes nothing, when the index would pass ${MAX_INDEX_LINES}
-lines, because agents load only that many: merge or forget memories first.
+lines or ${MAX_INDEX_BYTES} bytes, because agents load only that much: merge or
+forget memories first.
 Do NOT use for durable knowledge notes -- those follow the vault's
 authoring.md.`,
   arguments: [
