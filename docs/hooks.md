@@ -109,7 +109,8 @@ or that is not UTF-8. A memory folder that resolves outside the vault, or that
 it cannot resolve, gets no recall and one debug line; a folder it cannot list
 gives no notes. A failed judge call logs one line: a warning for the first
 failure since start or since the last success, then debug lines until the
-judge answers again. The next turn gets the recalled notes once.
+judge answers again. The next turn gets the recalled notes once, also when
+Hermes rebuilds the provider between turns, and never in another profile.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes

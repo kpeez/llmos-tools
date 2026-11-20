@@ -6,6 +6,10 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The Hermes `llmos` memory provider's recalled notes now reach the next turn
+  also when Hermes rebuilds the agent between turns, as it does after a turn
+  that a fallback model served. The provider keeps them by profile and
+  session, so two profiles in one gateway never share them.
 - The session-start hook repairs a dangling `.agents/docs` link. When the link
   points at a folder that is gone (for example after the vault moves), the hook
   replaces it with a link to the folder it would link now, when that folder
