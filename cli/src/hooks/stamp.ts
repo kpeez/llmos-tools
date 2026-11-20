@@ -14,7 +14,7 @@
 import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { checkNote } from "../authoring.ts";
-import { Frontmatter, parse, serialize } from "../frontmatter.ts";
+import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
@@ -61,23 +61,19 @@ export function stampNote(path: string, date = localDate()): boolean {
 /**
  * Give a shared memory topic note `metadata.node_type: memory`, as
  * `llmos memory save` and Claude Code write it, so no agent has to remember
- * the field. Other properties keep their values. `MEMORY.md`, a note that
- * already has the field, and a note the serializer refuses stay unchanged.
+ * the field. Other values keep their text, quoting, and comments. `MEMORY.md`,
+ * a note with any `metadata.node_type`, a note whose `metadata` is not a map,
+ * and a note the serializer refuses stay unchanged.
  */
 export function stampMemoryNote(path: string): void {
   if (basename(path) === MEMORY_INDEX) return;
   try {
     const text = readText(path);
-    const { properties, body } = parse(text);
-    const old = properties.metadata;
-    const metadata = old && typeof old === "object" && !Array.isArray(old) ? old : {};
-    if (metadata.node_type === "memory") return;
-    const { node_type: _, ...rest } = metadata;
-    const stamped = serialize(
-      { ...properties, metadata: { node_type: "memory", ...rest } },
-      `\n${body}\n`,
-    );
-    writeFileSync(path, stamped);
+    const frontmatter = Frontmatter.parse(text);
+    const metadata = frontmatter.properties.metadata;
+    if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
+    const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
+    if (stamped !== text) writeFileSync(path, stamped);
   } catch {}
 }
 
