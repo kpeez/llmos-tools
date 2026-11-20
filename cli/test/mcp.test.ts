@@ -478,6 +478,67 @@ describe("memory tools", () => {
     expect(read(root, "projects/garden/memory/MEMORY.md")).not.toContain("tank-heater");
   });
 
+  describe("without a project argument", () => {
+    const SAVE = { name: "fact", description: "A fact", body: "The fact.", type: "project" };
+    const projects = () =>
+      vault({ "projects/garden/g.md": "# g\n", "projects/personal/p.md": "# p\n" });
+    function repo(name: string): string {
+      const path = join(scratch("repo"), name);
+      mkdirSync(path, { recursive: true });
+      Bun.spawnSync({ cmd: ["git", "init", "--quiet", path] });
+      return path;
+    }
+    async function saveWith(
+      env: Record<string, string>,
+      roots: string[] | null,
+    ): Promise<{ root: string; isError: boolean; text: string }> {
+      const root = projects();
+      const context = contextFor(root, { env: { ...isolatedEnv(), ...env } });
+      const { client, close } = await connect(context, "claude-code", roots);
+      const result = await client.call("memory_save", SAVE);
+      await close();
+      return { root, ...result };
+    }
+    const saved = (root: string, project: string) =>
+      existsSync(join(root, "projects", project, "memory", "fact.md"));
+
+    test("fails when the client names no session folder, and writes nothing", async () => {
+      const { root, isError, text } = await saveWith({}, null);
+      expect(isError).toBe(true);
+      expect(text).toContain("pass project");
+      expect(saved(root, "personal")).toBe(false);
+    });
+
+    test("uses the client's first root, a worktree's main checkout included", async () => {
+      const main = repo("garden");
+      const worktree = join(dirname(main), "garden-wt");
+      Bun.spawnSync({ cmd: ["git", "-C", main, "commit", "--quiet", "--allow-empty", "-m", "x"] });
+      Bun.spawnSync({ cmd: ["git", "-C", main, "worktree", "add", "--quiet", worktree] });
+      const { root, isError } = await saveWith({ LLMOS_SESSION_CWD: repo("other") }, [
+        worktree,
+        scratch("extra"),
+      ]);
+      expect(isError).toBe(false);
+      expect(saved(root, "garden")).toBe(true);
+    });
+
+    test("uses CLAUDE_PROJECT_DIR, then the launcher's folder, when there are no roots", async () => {
+      const both = await saveWith(
+        { CLAUDE_PROJECT_DIR: repo("garden"), LLMOS_SESSION_CWD: scratch("plain") },
+        [],
+      );
+      expect(saved(both.root, "garden")).toBe(true);
+      const launcherOnly = await saveWith({ LLMOS_SESSION_CWD: repo("garden") }, null);
+      expect(saved(launcherOnly.root, "garden")).toBe(true);
+    });
+
+    test("a session folder outside any vault project uses personal memory", async () => {
+      const { root, isError } = await saveWith({ LLMOS_SESSION_CWD: scratch("plain") }, null);
+      expect(isError).toBe(false);
+      expect(saved(root, "personal")).toBe(true);
+    });
+  });
+
   const HOSTILE: [string, Record<string, unknown>][] = [
     ["memory_save", { name: "x", description: "d", body: "b", type: "project", project: ".." }],
     ["memory_save", { name: "../x", description: "d", body: "b", type: "project" }],

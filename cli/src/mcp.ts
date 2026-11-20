@@ -24,6 +24,7 @@
 import { existsSync, statSync } from "node:fs";
 import { relative } from "node:path";
 import type { Readable, Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { StdioServerTransport, serveStdio } from "@modelcontextprotocol/server/stdio";
 import type { QMDStore } from "@tobilu/qmd";
@@ -36,6 +37,7 @@ import {
   forgetMemory,
   MEMORY_TYPES,
   type MemoryInput,
+  MemoryRefused,
   type MemoryScope,
   memoryScope,
   projectScope,
@@ -73,11 +75,12 @@ function prose(max: number) {
 }
 
 const MEMORY_PROJECT =
-  "Vault project folder under projects/ whose memory to use. Default: the project of " +
-  "the session's workspace, else personal.";
+  "Vault project folder under projects/ whose memory to use; the session-start context " +
+  "names it. Default: the project of the session's folder, when the client names one.";
 const MEMORY_NOTE =
-  "In this server: project names the scope; without it the scope is the workspace the " +
-  "server was started in.";
+  "In this server: pass project. Without it, the scope comes from the session's folder " +
+  "(the client's first root, else the folder the agent started the server in), and the " +
+  "call fails when the client names none.";
 
 /** The registry command a tool runs. */
 function command(name: string): Command {
@@ -94,10 +97,12 @@ function help(source: Command, name: string): string {
   return text;
 }
 
-/** What a tool call needs: the handler context and the warm qmd store. */
+/** What a tool call needs: the handler context, the warm qmd store, and the client's roots. */
 interface CallState {
   context: Context;
   store(): Promise<QMDStore>;
+  /** The client's root folders, first is the session's; empty when it offers none. */
+  roots(): Promise<string[]>;
 }
 
 interface Tool {
@@ -146,13 +151,28 @@ function stamp(state: CallState, root: string, paths: string[]): void {
 const READ: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
 
 /**
- * The memory scope of a tool call: the named vault project, else the scope of
- * the folder the server runs in (the session's workspace). A tool takes a
- * project name, never a path, so a model cannot point it at another folder.
+ * The memory scope of a tool call. The named vault project wins. Without
+ * one, the session's folder picks it: the client's first root (Claude Code
+ * sends the project), then `CLAUDE_PROJECT_DIR`, then the folder the
+ * launcher started in (`LLMOS_SESSION_CWD`). The server's own folder is
+ * its install, never the session's, so with no signal the call fails
+ * rather than guess. A tool takes a project name, never a path.
  */
-function memoryScopeOf(root: string, project: unknown): MemoryScope {
+async function memoryScopeOf(
+  state: CallState,
+  root: string,
+  project: unknown,
+): Promise<MemoryScope> {
   if (typeof project === "string") return projectScope(root, project);
-  return memoryScope(root, process.cwd());
+  const env = state.context.env;
+  const folder =
+    (await state.roots())[0] ?? env.CLAUDE_PROJECT_DIR ?? env.LLMOS_SESSION_CWD ?? null;
+  if (!folder) {
+    throw new MemoryRefused(
+      "this client names no session folder; pass project (the session-start context names it)",
+    );
+  }
+  return memoryScope(root, folder);
 }
 
 function readTool(name: string, source: Command, extra: Partial<Tool> = {}): Tool {
@@ -305,7 +325,7 @@ function tools(): Tool[] {
         openWorldHint: false,
       },
       note: MEMORY_NOTE,
-      call(args, state) {
+      async call(args, state) {
         const root = rootOf(state);
         const input: MemoryInput = {
           name: args.name as string,
@@ -314,7 +334,7 @@ function tools(): Tool[] {
           type: args.type as MemoryInput["type"],
         };
         if (args.title !== undefined) input.title = args.title as string;
-        const scope = memoryScopeOf(root, args.project);
+        const scope = await memoryScopeOf(state, root, args.project);
         return { json: saveMemory(root, scope, input, new Date()) };
       },
     },
@@ -338,7 +358,7 @@ function tools(): Tool[] {
         const root = rootOf(state);
         const hits = await searchMemory(
           await state.store(),
-          memoryScopeOf(root, args.project),
+          await memoryScopeOf(state, root, args.project),
           args.query as string,
           {
             collection: COLLECTION,
@@ -363,9 +383,9 @@ function tools(): Tool[] {
         openWorldHint: false,
       },
       note: MEMORY_NOTE,
-      call(args, state) {
+      async call(args, state) {
         const root = rootOf(state);
-        const scope = memoryScopeOf(root, args.project);
+        const scope = await memoryScopeOf(state, root, args.project);
         return { json: forgetMemory(root, scope, args.name as string) };
       },
     },
@@ -547,6 +567,19 @@ async function invoke(
   }
 }
 
+/** The client's root folders, asked fresh each call (roots can change); empty when it offers none. */
+async function clientRoots(server: McpServer): Promise<string[]> {
+  if (!server.server.getClientCapabilities()?.roots) return [];
+  try {
+    const { roots } = await server.server.listRoots(undefined, { timeout: 2_000 });
+    return roots.flatMap((entry) =>
+      entry.uri.startsWith("file://") ? [fileURLToPath(entry.uri)] : [],
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** Build the MCP server and its tools over `state`. */
 export function createServer(state: ServerState): McpServer {
   const server = new McpServer(
@@ -556,6 +589,7 @@ export function createServer(state: ServerState): McpServer {
   const callState: CallState = {
     context: state.handlerContext(),
     store: () => state.openStore(),
+    roots: () => clientRoots(server),
   };
   for (const tool of tools()) {
     server.registerTool(

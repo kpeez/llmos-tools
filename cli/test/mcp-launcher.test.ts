@@ -73,6 +73,8 @@ async function start(argv: string[], cwd: string, env: Record<string, string>) {
   };
 }
 
+const MEMORY = { name: "fact", description: "A fact", body: "The fact.", type: "project" };
+
 /** The placeholder Claude Code substitutes in a plugin server's args. */
 // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal placeholder text.
 const PLUGIN_ROOT = "${CLAUDE_PLUGIN_ROOT}";
@@ -109,6 +111,30 @@ describe("the MCP launcher", () => {
     const { client, close } = await start(argv, TOOLS, home(join(CLI, "bin", "llmos.ts"), vault));
     expect((await client.call("read", { note: "alpha" })).text).toContain("REALVAULT");
     expect(await close()).toBe(0);
+  });
+
+  test("memory tools without a project use the folder Claude Code started the launcher in", async () => {
+    const vault = makeVault({ "projects/garden/g.md": "# g\n" });
+    const project = join(scratch("session"), "garden");
+    mkdirSync(project, { recursive: true });
+    Bun.spawnSync({ cmd: ["git", "init", "--quiet", project] });
+    const env = { ...home(join(CLI, "bin", "llmos.ts"), vault), CLAUDE_PLUGIN_ROOT: TOOLS };
+    const { client, close } = await start(claudeArgv(), project, env);
+    const saved = await client.call("memory_save", MEMORY);
+    expect(await close()).toBe(0);
+    expect(saved.isError).toBe(false);
+    expect(existsSync(join(vault, "projects", "garden", "memory", "fact.md"))).toBe(true);
+  });
+
+  test("memory tools without a project fail when Codex starts the launcher in the plugin folder", async () => {
+    const { argv } = declared(".codex-mcp.json");
+    const vault = makeVault({ "projects/personal/p.md": "# p\n" });
+    const { client, close } = await start(argv, TOOLS, home(join(CLI, "bin", "llmos.ts"), vault));
+    const saved = await client.call("memory_save", MEMORY);
+    expect(await close()).toBe(0);
+    expect(saved.isError).toBe(true);
+    expect(saved.text).toContain("pass project");
+    expect(existsSync(join(vault, "projects", "personal", "memory"))).toBe(false);
   });
 
   test("without an installed CLI, the only tool says to run setup-llmos", async () => {

@@ -10,6 +10,7 @@ import { serve } from "../src/mcp.ts";
 
 type Message = {
   id?: number;
+  method?: string;
   result?: Record<string, unknown>;
   error?: { code: number; message: string };
 };
@@ -27,6 +28,8 @@ export class McpClient {
   constructor(
     private readonly write: (line: string) => void,
     chunks: AsyncIterable<Uint8Array | string>,
+    /** Root folders to answer `roots/list` with; `null` offers no roots capability. */
+    private readonly roots: string[] | null = null,
   ) {
     void (async () => {
       const decoder = new TextDecoder();
@@ -35,7 +38,12 @@ export class McpClient {
         for (let at = this.buffer.indexOf("\n"); at >= 0; at = this.buffer.indexOf("\n")) {
           const message = JSON.parse(this.buffer.slice(0, at)) as Message;
           this.buffer = this.buffer.slice(at + 1);
-          if (message.id !== undefined) this.waiting.get(message.id)?.(message);
+          if (message.method === "roots/list" && message.id !== undefined) {
+            const roots = (this.roots ?? []).map((path) => ({ uri: Bun.pathToFileURL(path).href }));
+            this.write(
+              `${JSON.stringify({ jsonrpc: "2.0", id: message.id, result: { roots } })}\n`,
+            );
+          } else if (message.id !== undefined) this.waiting.get(message.id)?.(message);
         }
       }
     })();
@@ -52,7 +60,7 @@ export class McpClient {
   async initialize(clientName: string): Promise<Record<string, unknown>> {
     const reply = await this.request("initialize", {
       protocolVersion: "2025-06-18",
-      capabilities: {},
+      capabilities: this.roots === null ? {} : { roots: { listChanged: false } },
       clientInfo: { name: clientName, version: "0" },
     });
     this.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
@@ -77,11 +85,12 @@ export class McpClient {
 export async function connect(
   context: Context,
   clientName = "codex-mcp-client",
+  roots: string[] | null = null,
 ): Promise<{ client: McpClient; close: () => Promise<void> }> {
   const stdin = new PassThrough();
   const stdout = new PassThrough();
   const done = serve(context, { stdin, stdout });
-  const client = new McpClient((line) => stdin.write(line), stdout);
+  const client = new McpClient((line) => stdin.write(line), stdout, roots);
   await client.initialize(clientName);
   return {
     client,

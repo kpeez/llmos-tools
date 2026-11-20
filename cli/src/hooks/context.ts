@@ -11,7 +11,7 @@
  * is never read.
  */
 
-import { basename } from "node:path";
+import { basename, dirname } from "node:path";
 import {
   AUTHORING_NOTE,
   DAILY_DIR,
@@ -168,7 +168,8 @@ export function sessionContext(
   if (memoryDir !== null && isDir(memoryDir)) {
     sections.push(
       `Shared project memory lives in ${memoryDir} (${MEMORY_INDEX} index + <slug>.md topic files ` +
-        "with frontmatter name, description, and metadata.type).",
+        "with frontmatter name, description, and metadata.type). " +
+        `Pass project: "${basename(dirname(memoryDir))}" to the memory tools.`,
     );
     const provider = hookAgent(process.env, options.data ?? {});
     const autoMemoryReady = options.claudeAutoMemoryReady ?? false;

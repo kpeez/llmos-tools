@@ -157,6 +157,7 @@ describe("session-start", () => {
       env: { ...GIT_ENV, CLAUDECODE: "1" },
     });
     expect(firstClaude.stdout).toContain("Shared project memory lives in");
+    expect(firstClaude.stdout).toContain('Pass project: "my-repo" to the memory tools.');
     expect(firstClaude.stdout).toContain("# Index");
     expect(firstClaude.stdout).toContain("- topic-a");
     expect(firstClaude.stdout).not.toContain(MEMORY_SENTINEL);

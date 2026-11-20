@@ -16,8 +16,15 @@ vault model and the qmd search models loaded between calls.
 The memory tools write the notes and `MEMORY.md` index lines that Claude Code
 writes through `autoMemoryDirectory`, so every agent shares one store. They
 take an optional `project`, a folder name under `projects/`, never a path.
-Without it, the scope is the project of the folder the server started in, or
-`personal` outside a vault project. `memory_save` fails when the index would
+The session-start context names the session's project, so agents pass it.
+Without it, the session's folder picks the project: the client's first MCP
+root (Claude Code sends the project), then `CLAUDE_PROJECT_DIR`, then the
+folder the agent started the launcher in, which the launcher passes as
+`LLMOS_SESSION_CWD` unless that is its own plugin folder (Codex starts it
+there, and Codex sends no roots). A folder outside every vault project uses
+`personal`; a worktree uses its main checkout's project. With no signal at
+all, the call fails instead of guessing: the server's own folder is its
+install, not the session's. `memory_save` fails when the index would
 pass 200 lines, because agents load only that many. `memory_search` keeps only
 the topic notes directly in the memory folder, so a subfolder such as
 Hermes's own `hermes/` store stays out of it.
