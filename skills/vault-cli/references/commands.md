@@ -370,7 +370,7 @@ notes that they share, and mutual nearest neighbors from the vectors already in 
 Clusters of three notes or more are ranked: uncovered ones first, then those
 whose notes already link one note in knowledge/ (covered_by). Without a qmd
 index it skips the similarity signal and says so in qmd_notice.
-It writes the JSON report to <vault root>/../artifacts/discover/YYYY-MM-DD.json,
+It writes the JSON report to <vault root>/artifacts/discover/YYYY-MM-DD.json,
 or to --out DIR, and prints it. It refuses to run when that artifacts folder
 is missing and --out is not given.
 For --vault llmos, after it writes the report, it sets `discovered` (today's
@@ -385,7 +385,7 @@ Do NOT use when you only want to search -- use `search`.
 Options:
   --vault           Which registered vault to scan. Default: llmos.
   --top             Report at most this many clusters. Default: 10.
-  --out             Folder for the report file; must be outside the vault. Default: <vault root>/../artifacts/discover.
+  --out             Folder for the report file; must be outside the vault. Default: <vault root>/artifacts/discover.
   --qmd-collection  qmd collection whose stored vectors give the similarity signal. Default: llmos.
   --no-record       Do not set the discovered date on categories/Knowledge.md (a probe run).
 
