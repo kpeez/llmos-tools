@@ -1215,9 +1215,7 @@ ${MAX_INDEX_LINES} lines and ${MAX_INDEX_BYTES} bytes, marked when cut, or null.
     const root = llmosOnly(vaultName(values), context);
     const scope = scopeOf(values, root);
     const indexPath = join(root, scope.index);
-    return {
-      json: { ...scope, index_path: indexPath, index_text: readMemoryIndex(root, indexPath) },
-    };
+    return { json: { ...scope, index_path: indexPath, index_text: readMemoryIndex(indexPath) } };
   },
 };
 

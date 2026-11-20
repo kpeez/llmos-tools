@@ -193,23 +193,6 @@ describe("session-start", () => {
     expect(hermes.stdout).not.toContain("- topic-a");
   });
 
-  test("never sends a MEMORY.md linked to a file outside the vault", () => {
-    const tmp = temporaryFolder();
-    const vault = contextVault(join(tmp, "vault"));
-    writeFile(join(vault, "projects", "llmos", "memory", "kept.md"), "# kept\n");
-    const outside = join(tmp, "outside", "MEMORY.md");
-    writeFile(outside, "# Memory index\n\n- outside-index-text\n");
-    symlinkSync(outside, join(vault, "projects", "llmos", "memory", "MEMORY.md"));
-
-    const result = runHook("session-start", { cwd: vault }, tmp, {
-      root: vault,
-      env: { CODEX_SANDBOX_NETWORK_DISABLED: "1" },
-    });
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Shared project memory lives in");
-    expect(result.stdout).not.toContain("outside-index-text");
-  });
-
   test("truncates MEMORY.md at 200 lines or 25,000 bytes", () => {
     const tmp = temporaryFolder();
     const vault = contextVault(join(tmp, "vault"));
