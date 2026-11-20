@@ -221,9 +221,9 @@ def _scope_notes(root: Path, folder: str) -> dict[str, str] | None:
     """The topic notes of memory folder `folder` (vault-relative), by path.
 
     As `realTarget` in cli/src/write.ts, nothing outside the real vault root is
-    read: a folder that resolves outside it gives `None`, and a note that is a
-    symbolic link, not a regular file, not UTF-8, or unreadable is skipped. A
-    missing folder has no notes.
+    read: a folder that resolves outside it, or cannot be resolved, gives
+    `None`, and a note that is a symbolic link, not a regular file, not UTF-8,
+    or unreadable is skipped. A missing folder has no notes.
     """
     try:
         real_root = root.resolve(strict=True)
@@ -611,7 +611,7 @@ class LlmosMemoryProvider(MemoryProvider):
         texts = _scope_notes(root, str(scope["dir"]))
         if texts is None:
             LOG.debug(
-                "llmos memory recall: %s resolves outside the vault; no recall", scope["dir"]
+                "llmos memory recall: %s is outside the vault or unreadable; no recall", scope["dir"]
             )
             return
         notes_by_path = {path: _note(text) for path, text in texts.items()}
