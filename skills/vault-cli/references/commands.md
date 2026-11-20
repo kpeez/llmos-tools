@@ -663,7 +663,7 @@ Use when an agent or plugin must know where shared project memory lives
 whose name matches a folder under `projects/` uses that project, by the
 session-start hook's rule; any other workspace uses `personal`.
 `index_text` is the index as the session-start hook loads it: at most
-200 lines and 25,000 bytes, marked when cut, or null.
+200 lines and 25000 bytes, marked when cut, or null.
 
 Options:
   --project    Vault project folder under projects/ whose memory to use. Wins over --workspace.

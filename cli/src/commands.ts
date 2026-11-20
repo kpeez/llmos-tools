@@ -1188,7 +1188,7 @@ const memoryScopeCommand: Command = {
 whose name matches a folder under \`projects/\` uses that project, by the
 session-start hook's rule; any other workspace uses \`personal\`.
 \`index_text\` is the index as the session-start hook loads it: at most
-${MAX_INDEX_LINES} lines and 25,000 bytes, marked when cut, or null.`,
+${MAX_INDEX_LINES} lines and ${MAX_INDEX_BYTES} bytes, marked when cut, or null.`,
   arguments: [],
   options: { ...SCOPE_OPTIONS, ...vaultOption('Must be "llmos".') },
   exampleOutput: `{"project": "llmos-tools", "dir": "projects/llmos-tools/memory",
