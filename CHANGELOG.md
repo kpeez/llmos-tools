@@ -1,9 +1,12 @@
 # Changelog — llmOS tools
 
 Newest first. Versions are the `version` field shared by
-`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
+`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`,
+`.antigravity-plugin/plugin.json`, and `cli/package.json`.
 
 ## Unreleased
+
+## 2.12.0 — 2026-11-20
 
 - The tools no longer know architecture decision records. The `proposed`, `accepted`, and
   `superseded` note statuses are gone from the schema check, and the skills and
