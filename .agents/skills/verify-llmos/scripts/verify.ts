@@ -11,7 +11,7 @@
  *   bun scripts/verify.ts cleanup            remove scratch state, keep evidence
  *   bun scripts/verify.ts run [feature..]    launch, doctor, drive, cleanup
  *
- * Features: read-search, writes, claims-lint, source-capture, hooks, mcp.
+ * Features: read-search, writes, claims-lint, source-capture, hooks, memory, mcp, service.
  * Evidence goes to <repo>/artifacts/verify-llmos/<timestamp>/.
  */
 
@@ -25,6 +25,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -96,6 +97,8 @@ function childEnv(state: State): Record<string, string> {
     XDG_CONFIG_HOME: join(home, ".config"),
     INDEX_PATH: join(home, ".cache", "qmd", "index.sqlite"),
     QMD_CONFIG_DIR: join(home, ".config", "qmd"),
+    // No background service, except in the `service` feature.
+    LLMOS_SERVICE: "off",
   };
 }
 
@@ -722,6 +725,105 @@ const memory: Feature = (state) => {
   );
 };
 
+const service: Feature = async (state) => {
+  const f = "service";
+  // A short state folder: a Unix socket path has a length limit.
+  const stateDir = join(state.scratch, "st");
+  const env = { ...childEnv(state), LLMOS_SERVICE: "on", XDG_STATE_HOME: stateDir };
+  const llmos = (...argv: string[]) => record(state, f, argv.join("-"), vault(...argv), { env });
+  const status = () => JSON.parse(llmos("service", "status").out) as Record<string, any>;
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  const waitRunning = async () => {
+    for (let i = 0; i < 100; i++) {
+      if (status().running) return true;
+      await sleep(100);
+    }
+    return false;
+  };
+  const stop = () => {
+    const found = status();
+    if (found.running) process.kill(found.pid, "SIGTERM");
+  };
+  stop();
+  check(f, "service status says no service runs at first", status().running === false);
+
+  const child = Bun.spawn([process.execPath, ...BUN_FLAGS, join(CLI, "bin", "llmos.ts"), "mcp"], {
+    cwd: CLI,
+    env,
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const client = new McpClient((line) => {
+    child.stdin.write(line);
+    child.stdin.flush();
+  }, child.stdout);
+  const log: string[] = [];
+  const timeout = setTimeout(() => child.kill(), 90_000);
+  try {
+    await client.initialize("claude-code");
+    const first = await client.call("search", { query: "gardening" });
+    log.push(`first search: ${first.text.slice(0, 200)}`);
+    check(f, "the first search works while no service runs", !first.isError && first.text.includes("notes/beta.md"));
+    check(f, "that search started the service", await waitRunning());
+    const up = status();
+    const socket = join(stateDir, "llmos", "service.sock");
+    check(
+      f,
+      "the folder is mode 0700 and the socket mode 0600",
+      (statSync(join(stateDir, "llmos")).mode & 0o777) === 0o700 &&
+        (statSync(socket).mode & 0o777) === 0o600,
+    );
+    const second = await client.call("search", { query: "gardening" });
+    check(
+      f,
+      "the next search is answered by the service",
+      !second.isError && second.text.includes("notes/beta.md") && status().requests > up.requests,
+      `requests ${up.requests} -> ${status().requests}`,
+    );
+    const viaCli = llmos("search", "gardening");
+    check(f, "the search verb uses the running service", viaCli.code === 0 && status().requests > up.requests + 1);
+
+    const again = record(state, f, "serve-again", vault("service", "serve"), { env });
+    check(
+      f,
+      "a second service serve exits 0 and leaves the first running",
+      again.code === 0 && again.out.includes("already listens") && status().pid === up.pid,
+      again.out + again.err,
+    );
+
+    const saved = llmos("memory", "save", "pump-notes", "Notes on the pump", "The sump pump hums.", "--project", "verify", "--type", "project");
+    const found = llmos("memory", "search", "sump", "--keyword", "--project", "verify");
+    check(
+      f,
+      "a memory saved with the service up is found by keyword search at once",
+      saved.code === 0 && found.out.includes("projects/verify/memory/pump-notes.md"),
+      found.out.slice(0, 160),
+    );
+    llmos("memory", "forget", "pump-notes", "--project", "verify");
+
+    stop();
+    for (let i = 0; i < 50 && status().running; i++) await sleep(100);
+    check(f, "the service stops on SIGTERM and removes its socket", !status().running && !existsSync(socket));
+    const down = await client.call("search", { query: "gardening" });
+    check(
+      f,
+      "llmos mcp still searches with the service down",
+      !down.isError && down.text.includes("notes/beta.md"),
+      down.text.slice(0, 160),
+    );
+    const bad = await client.call("search", { query: "gardening", collection: "xbrain" });
+    check(f, "an unknown argument is still refused", bad.isError);
+  } finally {
+    clearTimeout(timeout);
+    child.stdin.end();
+    child.kill();
+    await child.exited;
+    stop();
+    writeFileSync(join(state.run, f, "01-notes.txt"), log.join("\n").replaceAll(state.scratch, "$SCRATCH"));
+  }
+};
+
 const FEATURES: Record<string, Feature> = {
   "read-search": readSearch,
   writes,
@@ -730,6 +832,7 @@ const FEATURES: Record<string, Feature> = {
   hooks,
   memory,
   mcp,
+  service,
 };
 
 async function drive(state: State, names: string[]): Promise<boolean> {

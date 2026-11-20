@@ -43,7 +43,9 @@ Isolation follows `cli/test/helpers.ts` `isolatedEnv`: `HOME`, `XDG_CACHE_HOME`,
 Never point a run at `~/.cache/qmd`.
 
 No server stays alive. Each drive starts its own process. The MCP drive starts
-one server and stops it at the end of the drive.
+one server and stops it at the end of the drive. The child environment sets
+`LLMOS_SERVICE=off`; the `service` drive turns it on, in its own state folder,
+and stops the service it started.
 
 Ready means: launch printed `launched:`, and `doctor` prints `DOCTOR OK`.
 
@@ -67,7 +69,7 @@ bun scripts/verify.ts drive hooks mcp    # chosen features
 
 Read `features/README.md`, then the file of the feature you need.
 Each feature file lists the exact commands and the end state that proves it works.
-Feature names: `read-search`, `writes`, `claims-lint`, `source-capture`, `hooks`, `memory`, `mcp`.
+Feature names: `read-search`, `writes`, `claims-lint`, `source-capture`, `hooks`, `memory`, `mcp`, `service`.
 
 Use `--run <evidence folder>` to pick a run. The default is the latest run.
 
@@ -96,7 +98,8 @@ This host has no Obsidian, so they are `verified-unreachable`. The harness recor
 - `llmos daily get-or-create`, and `daily append-thought` / MCP `daily_append_thought` when today's daily note is missing (Obsidian creates it from the template)
 
 Also not driven in a proof run, because they download models: `search --semantic`,
-`search --hybrid`, and a full `reindex` (embedding). Keyword search and `reindex --no-embed` are driven.
+`search --hybrid`, and a full `reindex` (embedding). So the `service` drive cannot show
+the warm models or the background embed; a scratch probe with real models does. Keyword search and `reindex --no-embed` are driven.
 
 ## Network commands
 
