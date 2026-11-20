@@ -20,7 +20,7 @@ Newest first. Versions are the `version` field shared by
   found until it is embedded. Hermes shows the count in its recall line.
   Recall reads only regular files inside the vault: it skips a symbolic-link
   or non-UTF-8 note, and a memory folder that resolves outside the vault gets
-  no recall. The provider now needs Hermes v2026.9.14 or later.
+  no recall. The provider now needs Hermes v2026.9.14 (0.21.3) or later.
 
 - New llmOS service: one long-lived process per host that keeps the qmd search
   models loaded, so every agent session shares one warm model set. `llmos mcp`

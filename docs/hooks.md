@@ -78,7 +78,7 @@ comes from the session's folder: the `cwd` that Hermes passes, then the
 profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
-The provider needs Hermes v2026.9.14 or later, the first release whose
+The provider needs Hermes v2026.9.14 (0.21.3) or later, the first release whose
 `agent.memory_provider` has `spawn_context_thread`, `RecallStatus`, and
 `is_trivial_prompt`. With an older Hermes the provider fails to load.
 After each turn that is not a bare acknowledgement or slash command, the

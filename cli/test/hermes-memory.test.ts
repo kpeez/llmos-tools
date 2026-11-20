@@ -443,11 +443,15 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
 
   test("a memory note that is not UTF-8 is skipped, and recall still runs", async () => {
     const setupResult = await zebraSetup();
+    // Decoded with replacement characters, it would be the top word match.
     writeFileSync(
       join(setupResult.root, "projects/my-repo/memory/broken.md"),
-      Buffer.from([0x7a, 0x65, 0x62, 0x72, 0x61, 0xff, 0xfe, 0x0a]),
+      Buffer.concat([
+        Buffer.from("What does the zebrafish rule say? broken-utf8-text "),
+        Buffer.from([0xff, 0xfe, 0x0a]),
+      ]),
     );
-    const judge = stubJudge({ "alpha.md": 0.9 });
+    const judge = stubJudge({ "alpha.md": 0.9, "broken.md": 0.9 });
     const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
       env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       recalls: [
@@ -455,6 +459,7 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
         ["prefetch", "chat"],
       ],
     });
+    expect(JSON.stringify(judge.requests[0]?.body)).not.toContain("broken-utf8-text");
     expect(askedNames(judge.requests[0]?.body as JudgeBody).sort()).toEqual(ZEBRA);
     expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
   });
