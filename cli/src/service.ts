@@ -250,7 +250,7 @@ class Service {
     this.location = qmdLocation(options.env);
   }
 
-  /** Whether a request or a background embed is still in flight. */
+  /** Whether a background embed runs or waits; requests are not counted. */
   get busy(): boolean {
     return this.embedding || this.pendingEmbeds.size > 0;
   }
