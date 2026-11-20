@@ -14,7 +14,7 @@
  * the vault.
  */
 
-import { existsSync, statSync } from "node:fs";
+import { lstatSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
@@ -185,13 +185,27 @@ function memoryType(type: string): MemoryType {
 }
 
 /**
- * The text of vault-relative `relative`, or `null` when it is missing. A
- * file whose real path is outside the vault is refused (`realTarget`), so a
- * save or forget fails before it writes anything.
+ * The text of vault-relative `relative`, or `null` when nothing is there. A
+ * file whose real path is outside the vault, or a link to a missing file, is
+ * refused (`realTarget`), so a save or forget fails before it writes anything.
  */
 function existing(root: string, relative: string): string | null {
-  if (!existsSync(join(root, relative))) return null;
-  return readText(realTarget(root, relative));
+  try {
+    lstatSync(join(root, relative));
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ENOENT") return null;
+    throw error;
+  }
+  let real: string;
+  try {
+    real = realTarget(root, relative);
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ENOENT") {
+      throw new WriteRefused(`'${relative}' is a link to a missing file`);
+    }
+    throw error;
+  }
+  return readText(real);
 }
 
 function defaultTitle(name: string): string {

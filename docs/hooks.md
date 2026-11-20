@@ -106,9 +106,10 @@ nothing, so a memory saved a moment ago is not found until it is embedded,
 unless the judge is configured. Recall reads only regular files inside the
 vault: it skips a memory note that is a symbolic link, that it cannot read,
 or that is not UTF-8. A memory folder that resolves outside the vault, or that
-it cannot resolve or read, gets no recall and one debug line. A failed judge
-call logs one line: a warning for the first failure since start or since the last success, then debug lines
-until the judge answers again. The next turn gets the recalled notes once.
+it cannot resolve, gets no recall and one debug line; a folder it cannot list
+gives no notes. A failed judge call logs one line: a warning for the first
+failure since start or since the last success, then debug lines until the
+judge answers again. The next turn gets the recalled notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes
@@ -178,12 +179,13 @@ limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
 failure adds one line to the context: a failed fetch, a fast-forward that
 refuses (with git's reason, without its `hint:` lines), or a rebase, merge, or
 cherry-pick in progress. A diverged branch adds no line; Stop merges it. The
-hook, like `llmos memory scope`, reads `MEMORY.md` only when it is a regular
-file whose real path is inside the vault, so an index linked to a file outside
-the vault is left out. The Stop hook uses local git commands to find changed
-memory paths and commits ahead of `origin/main`. With neither, it never uses the network. Otherwise it
-commits only the memory paths (other staged and unstaged edits stay) and
-fetches (5 seconds). When behind only, it fast-forwards. When ahead and behind,
+session-start hook, like `llmos memory scope`, reads `MEMORY.md` only when it
+is a regular file whose real path is inside the vault, so an index linked to a
+file outside the vault is left out. The Stop hook uses local git commands to
+find changed memory paths and commits ahead of `origin/main`. With neither, it
+never uses the network. Otherwise it commits only the memory paths (other
+staged and unstaged edits stay) and fetches (5 seconds). When behind only, it
+fast-forwards. When ahead and behind,
 it merges the trees with `git merge-tree`, makes a merge commit with
 `git commit-tree`, and fast-forwards to it (5 seconds); a conflict names the
 conflicted paths and changes nothing on disk. It reads `HEAD` and `origin/main` once and uses

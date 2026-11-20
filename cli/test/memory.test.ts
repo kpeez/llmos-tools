@@ -217,6 +217,19 @@ describe("memory save", () => {
     expect(existsSync(join(root, "projects/my-repo/memory/kept.md"))).toBe(true);
     expect(read(dirname(outside), "MEMORY.md")).toBe(text);
   });
+
+  test("an index linked to a missing file refuses the save before anything is written", async () => {
+    const root = vault({ "projects/my-repo/memory/kept.md": "# kept\n" });
+    symlinkSync(
+      join(root, "projects/my-repo/memory/gone.md"),
+      join(root, "projects/my-repo/memory/MEMORY.md"),
+    );
+
+    const saved = await cli(root, save("orphan"));
+    expect(saved.exitCode).toBe(1);
+    expect(saved.stderr).toBe("'projects/my-repo/memory/MEMORY.md' is a link to a missing file\n");
+    expect(existsSync(join(root, "projects/my-repo/memory/orphan.md"))).toBe(false);
+  });
 });
 
 describe("memory forget", () => {
