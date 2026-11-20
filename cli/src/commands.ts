@@ -1199,7 +1199,7 @@ const memoryScopeCommand: Command = {
   name: "memory scope",
   summary: "Print which project's shared memory a session uses, and its index path.",
   description: `Use when an agent or plugin must know where shared project memory lives
-(ADR-0020) before it reads or writes it. A workspace inside a Git repository
+before it reads or writes it. A workspace inside a Git repository
 whose name matches a folder under \`projects/\` uses that project, by the
 session-start hook's rule; any other workspace uses \`personal\`.
 \`index_text\` is the index as the session-start hook loads it: at most

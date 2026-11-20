@@ -1,5 +1,5 @@
 /**
- * The llmOS vault's folder layout (ADR 0013). Paths are vault-relative.
+ * The llmOS vault's folder layout. Paths are vault-relative.
  * `raw/` holds captured sources, each a `raw/<slug>/source.md` beside its
  * page and assets, and the inbox: every other note in `raw/`.
  */
@@ -24,7 +24,7 @@ export function isInboxDrop(path: string): boolean {
   return path.startsWith(`${RAW_DIR}/`) && !CAPTURE_NOTE.test(path);
 }
 
-/** Whether a vault-relative path is a shared project memory note (ADR-0020). */
+/** Whether a vault-relative path is a shared project memory note. */
 export function isMemoryNote(path: string): boolean {
   return MEMORY_NOTE.test(path);
 }

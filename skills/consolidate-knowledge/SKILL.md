@@ -1,6 +1,6 @@
 ---
 name: consolidate-knowledge
-description: Consolidate one cluster of related llmOS notes into a topic hub, paper notes, and dataset notes whose facts quote captured sources, then deliver the run as a draft pull request. Use when scattered project notes restate the same papers or datasets with different numbers, or when asked to consolidate a topic. Never rewrites decision text in ADRs.
+description: Consolidate one cluster of related llmOS notes into a topic hub, paper notes, and dataset notes whose facts quote captured sources, then deliver the run as a draft pull request. Use when scattered project notes restate the same papers or datasets with different numbers, or when asked to consolidate a topic.
 ---
 
 # Consolidate knowledge
@@ -75,7 +75,7 @@ candidate clusters, uncovered ones first.
      unsupported, uncaptured, or computed by you (naming the facts it rests
      on). Do not write `first`, `only`, or `all` unless a fact says so.
    - Add `topics` and one body link to the hub on each member note; keep its
-     `project`. Add only links to ADRs, never edits to their decision text.
+     `project`.
    - Stamp `updated` by hand on every note you touch. The hook
      stamps only the live vault root, not a worktree.
 6. **Lint, then fix or flag each finding.** Run `llmos claims lint` on
@@ -83,8 +83,7 @@ candidate clusters, uncovered ones first.
    on each new note, and `llmos audit --root <vault>` (it audits the
    whole vault). Fix a finding by correcting the fact or its quote. Flag only a
    fact whose source cannot be captured. Never edit a source folder. Also
-   verify that every member note links the hub, and that
-   `git diff origin/main...HEAD -- '*/adrs/*'` shows added lines only.
+   verify that every member note links the hub.
 7. **Run the second check.** The author never checks its own facts. Use
    read-only reviewer subagents (for example the `Explore` agent type) that did
    not write the notes, with the prompts in `references/`:

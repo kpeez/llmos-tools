@@ -17,7 +17,7 @@ it. The command is `llmos daily activity` (`cli/src/digest.ts`), run by Bun.
 
 The digest monitors every project whose landing note has `status: active` and
 whose folder name matches a repository of one of the GitHub owners in
-`github_owners` of `~/.config/llmos/config.json` (vault ADR 0009). The digest
+`github_owners` of `~/.config/llmos/config.json`. The digest
 fails when that list is missing or empty. It writes only between the `llmos-activity` markers in
 `daily/YYYY-MM-DD.md`, creates a note only on a day with activity, and
 never touches `## Thoughts`. It refuses to write a note whose markers are not
@@ -31,7 +31,7 @@ and issue by its GitHub URL (repository and number, so one `#N` cannot stand
 for two repositories), and it writes `<!--` from that answer as `&lt;!--`, so no marker
 can appear inside the block.
 
-There is no nightly closeout and no weekly synthesis (vault ADR 0010). Neither
+There is no nightly closeout and no weekly synthesis. Neither
 ever ran on a schedule. After a vault change, run `llmos health` yourself. `health` also reports `discover` or `daily-activity` when its run record is too old.
 
 ## Timer

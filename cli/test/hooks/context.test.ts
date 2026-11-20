@@ -1,6 +1,6 @@
 /**
  * The session-start and pre-tool-use hooks gate on paths, not on intent,
- * and never read provider memory (ADR-0003). Ported from
+ * and never read provider memory. Ported from
  * the retired Python test `test_hook_gating.py`.
  */
 

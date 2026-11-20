@@ -7,7 +7,7 @@
  * PreToolUse resolves explicit paths through symlinks before it adds the
  * authoring guidance. Shell coverage is limited to simple, standalone read
  * commands; it is not a shell parser. Shared project memory lives in
- * `projects/<project>/memory/` (ADR-0020); legacy `agents/<provider>/MEMORY.md`
+ * `projects/<project>/memory/`; legacy `agents/<provider>/MEMORY.md`
  * is never read.
  */
 

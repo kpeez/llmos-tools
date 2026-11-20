@@ -3,7 +3,7 @@
  *
  * The llmOS root comes from `$LLMOS_ROOT`, then the config file
  * (`vault_root`), and otherwise fails loudly. No branch derives the root from
- * this file's location or the working directory (ADR-0001). Obsidian's own
+ * this file's location or the working directory. Obsidian's own
  * registry separately lists every vault it knows, for `--vault NAME` (a
  * vault other than llmOS, found by its folder name) and for the Bash guard.
  *

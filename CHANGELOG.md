@@ -5,13 +5,16 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The tools no longer know architecture decision records. The `proposed`, `accepted`, and
+  `superseded` note statuses are gone from the schema check, and the skills and
+  docs no longer mention ADRs or an `adrs/` folder. Decisions live in pull
+  requests, commits, code, and each project's `CONTEXT.md`.
 - The session-start hook repairs a dangling `.agents/docs` link. When the link
   points at a folder that is gone (for example after the vault moves) and
   `<root>/projects/<repo>` exists, the hook replaces it with a link to that
   folder and names the repair in the context. A worktree no longer inherits
   a main-checkout docs target that is gone. A dangling `.agents/scratch` or
   `artifacts` link is still left alone, because its disk may be unmounted.
-
 - The session-start hook and `llmos memory scope` read `MEMORY.md` only when it
   is a regular file whose real path is inside the vault, as vault writes
   already require. An index linked to a file outside the vault is left out of
