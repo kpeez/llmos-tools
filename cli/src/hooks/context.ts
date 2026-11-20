@@ -117,6 +117,8 @@ export interface SessionStartOptions {
   claudeAutoMemoryReady?: boolean;
   /** The session's folder; outside the vault and any linked project it picks the memory scope. */
   cwd?: string | null;
+  /** An agent's memory provider already puts the index in its prompt (Hermes's llmos provider). */
+  memoryIndexLoaded?: boolean;
 }
 
 /**
@@ -174,7 +176,8 @@ export function sessionContext(
     const provider = hookAgent(process.env, options.data ?? {});
     const autoMemoryReady = options.claudeAutoMemoryReady ?? false;
     const indexPath = joinPath(memoryDir, MEMORY_INDEX);
-    if ((provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
+    const loaded = options.memoryIndexLoaded ?? false;
+    if (!loaded && (provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
       const index = readMemoryIndex(indexPath);
       if (index !== null) sections.push(`Shared project memory (${indexPath}):\n${index}`);
     }
@@ -200,7 +203,7 @@ export function sessionStart(data: Payload, options: SessionStartOptions = {}): 
   const linked = inside ? null : linkedProjectDocs(cwd, root);
   if (!inside && linked === null) return null;
   const claudeAutoMemoryReady = options.claudeAutoMemoryReady ?? hasAutoMemoryDir(cwd, root);
-  return sessionContext(root, linked, { data, claudeAutoMemoryReady, cwd });
+  return sessionContext(root, linked, { ...options, data, claudeAutoMemoryReady, cwd });
 }
 
 function patchPaths(command: string): string[] {

@@ -67,6 +67,21 @@ that Hermes records (`get_session_cwd`), then `TERMINAL_CWD`. As for
 Claude, the guard does not follow a `cd` inside a command, and it does not
 see `execute_code` or other tools that run code.
 
+The same plugin registers a Hermes memory provider, `llmos`
+(`hermes/memory_provider.py`). Hermes uses it only in a profile whose
+`config.yaml` sets `memory.provider: llmos`. It puts the shared project
+memory index (`projects/<project>/memory/MEMORY.md`, with the session-start
+hook's bounds) and a note on which memory takes which fact in the system
+prompt, and it gives Hermes `memory_save`, `memory_search`, and
+`memory_forget`, which run `llmos memory` from the same install. The project
+comes from the session's folder: the `cwd` that Hermes passes, then the
+profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
+`agent_workspace` is a fixed label, not a folder, so the provider does not
+read it. Subagent, cron, and flush sessions read memory but never write it.
+With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
+`session-start`, so the index is not sent twice. Hermes's built-in `memory`
+tool stays on for facts only Hermes can act on.
+
 The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a
 frontmatter block, with a block the serializer refuses, or with invalid UTF-8

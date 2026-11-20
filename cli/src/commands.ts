@@ -27,6 +27,7 @@ import {
   type MemoryType,
   memoryScope,
   projectScope,
+  readMemoryIndex,
   saveMemory,
 } from "./memory.ts";
 import { runObsidian } from "./obsidian.ts";
@@ -1185,17 +1186,21 @@ const memoryScopeCommand: Command = {
   description: `Use when an agent or plugin must know where shared project memory lives
 (ADR-0020) before it reads or writes it. A workspace inside a Git repository
 whose name matches a folder under \`projects/\` uses that project, by the
-session-start hook's rule; any other workspace uses \`personal\`.`,
+session-start hook's rule; any other workspace uses \`personal\`.
+\`index_text\` is the index as the session-start hook loads it: at most
+${MAX_INDEX_LINES} lines and 25,000 bytes, marked when cut, or null.`,
   arguments: [],
   options: { ...SCOPE_OPTIONS, ...vaultOption('Must be "llmos".') },
   exampleOutput: `{"project": "llmos-tools", "dir": "projects/llmos-tools/memory",
   "index": "projects/llmos-tools/memory/MEMORY.md",
-  "index_path": "/Users/me/vault/projects/llmos-tools/memory/MEMORY.md"}`,
+  "index_path": "/Users/me/vault/projects/llmos-tools/memory/MEMORY.md",
+  "index_text": "# Memory index\\n\\n- [Use uv](use-uv.md) — ..."}`,
   example: "llmos memory scope --workspace ~/code/llmos-tools",
   run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     const scope = scopeOf(values, root);
-    return { json: { ...scope, index_path: join(root, scope.index) } };
+    const indexPath = join(root, scope.index);
+    return { json: { ...scope, index_path: indexPath, index_text: readMemoryIndex(indexPath) } };
   },
 };
 
