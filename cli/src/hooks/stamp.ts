@@ -14,8 +14,8 @@
 import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { checkNote } from "../authoring.ts";
-import { Frontmatter } from "../frontmatter.ts";
-import { isMemoryNote } from "../layout.ts";
+import { Frontmatter, parse, serialize } from "../frontmatter.ts";
+import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
   COLLECTION,
@@ -56,6 +56,29 @@ export function stampNote(path: string, date = localDate()): boolean {
   // birth time (Obsidian's created time), extended attributes, and hard links.
   if (stamped !== text) writeFileSync(path, stamped);
   return true;
+}
+
+/**
+ * Give a shared memory topic note `metadata.node_type: memory`, as
+ * `llmos memory save` and Claude Code write it, so no agent has to remember
+ * the field. Other properties keep their values. `MEMORY.md`, a note that
+ * already has the field, and a note the serializer refuses stay unchanged.
+ */
+export function stampMemoryNote(path: string): void {
+  if (basename(path) === MEMORY_INDEX) return;
+  try {
+    const text = readText(path);
+    const { properties, body } = parse(text);
+    const old = properties.metadata;
+    const metadata = old && typeof old === "object" && !Array.isArray(old) ? old : {};
+    if (metadata.node_type === "memory") return;
+    const { node_type: _, ...rest } = metadata;
+    const stamped = serialize(
+      { ...properties, metadata: { node_type: "memory", ...rest } },
+      `\n${body}\n`,
+    );
+    writeFileSync(path, stamped);
+  } catch {}
 }
 
 interface Listed {
@@ -211,6 +234,7 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   for (const target of durableTargets) {
     if (stampNote(target)) stamped = true;
   }
+  for (const target of memoryTargets) stampMemoryNote(target);
   if (stamped || memoryTargets.length > 0) {
     closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
   }

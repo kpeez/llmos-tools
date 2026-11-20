@@ -6,6 +6,12 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The post-tool-use hook gives a shared memory topic note
+  `metadata.node_type: memory` when the note lacks it, as `llmos memory save`
+  and Claude Code write it. The pre-tool-use memory hint no longer asks
+  agents for that field, so Claude Code agents stop re-adding a field that
+  is already there.
+
 ## 2.12.1 — 2026-11-20
 
 - The Hermes `llmos` memory provider's recalled notes now reach the next turn
