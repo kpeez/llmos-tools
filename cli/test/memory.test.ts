@@ -5,7 +5,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { cli, indexVault, isolatedEnv, makeVault, read, scratch, writeFiles } from "./helpers.ts";
 
 const PROJECTS = {
@@ -43,6 +43,32 @@ const save = (name: string, ...rest: string[]) => [
 ];
 
 describe("memory scope", () => {
+  test("an index linked to a file outside the vault is never read", async () => {
+    const root = vault({ "projects/my-repo/memory/kept.md": "# kept\n" });
+    const outside = join(scratch("outside"), "MEMORY.md");
+    writeFiles(dirname(outside), { "MEMORY.md": "# Memory index\n\n- outside-index-text\n" });
+    symlinkSync(outside, join(root, "projects/my-repo/memory/MEMORY.md"));
+    const scope = (await json(root, ["memory", "scope", "--project", "my-repo"])) as {
+      index_text: unknown;
+    };
+    expect(scope.index_text).toBeNull();
+  });
+
+  test("an index linked to a file inside the vault still loads", async () => {
+    const root = vault({
+      "projects/my-repo/notes/index-copy.md": "# Memory index\n\n- inside-index-text\n",
+    });
+    mkdirSync(join(root, "projects/my-repo/memory"));
+    symlinkSync(
+      join(root, "projects/my-repo/notes/index-copy.md"),
+      join(root, "projects/my-repo/memory/MEMORY.md"),
+    );
+    const scope = (await json(root, ["memory", "scope", "--project", "my-repo"])) as {
+      index_text: unknown;
+    };
+    expect(scope.index_text).toBe("# Memory index\n\n- inside-index-text");
+  });
+
   test("a repository named like a vault project uses that project's memory", async () => {
     const root = vault();
     const repo = gitRepo("my-repo");
@@ -173,6 +199,37 @@ describe("memory save", () => {
     expect(result.exitCode).not.toBe(0);
     expect(existsSync(join(outside, "leak.md"))).toBe(false);
   });
+
+  test("an index linked outside the vault refuses the save before anything is written", async () => {
+    const root = vault({ "projects/my-repo/memory/kept.md": "# kept\n" });
+    const outside = join(scratch("outside"), "MEMORY.md");
+    const text = "# Memory index\n\n- outside-index-text\n";
+    writeFiles(dirname(outside), { "MEMORY.md": text });
+    symlinkSync(outside, join(root, "projects/my-repo/memory/MEMORY.md"));
+
+    const saved = await cli(root, save("leak"));
+    expect(saved.exitCode).toBe(1);
+    expect(saved.stderr).toContain("outside the vault");
+    expect(existsSync(join(root, "projects/my-repo/memory/leak.md"))).toBe(false);
+    const forgot = await cli(root, ["memory", "forget", "kept", "--project", "my-repo"]);
+    expect(forgot.exitCode).toBe(1);
+    expect(forgot.stderr).toContain("outside the vault");
+    expect(existsSync(join(root, "projects/my-repo/memory/kept.md"))).toBe(true);
+    expect(read(dirname(outside), "MEMORY.md")).toBe(text);
+  });
+
+  test("an index linked to a missing file refuses the save before anything is written", async () => {
+    const root = vault({ "projects/my-repo/memory/kept.md": "# kept\n" });
+    symlinkSync(
+      join(root, "projects/my-repo/memory/gone.md"),
+      join(root, "projects/my-repo/memory/MEMORY.md"),
+    );
+
+    const saved = await cli(root, save("orphan"));
+    expect(saved.exitCode).toBe(1);
+    expect(saved.stderr).toBe("'projects/my-repo/memory/MEMORY.md' is a link to a missing file\n");
+    expect(existsSync(join(root, "projects/my-repo/memory/orphan.md"))).toBe(false);
+  });
 });
 
 describe("memory forget", () => {
@@ -229,11 +286,11 @@ test("the session-start index reader still bounds what it reads", async () => {
     "short.md": "# Memory index\n\n- [A](a.md) — a\n\n",
     "long.md": Array.from({ length: 250 }, (_, i) => `line ${i}`).join("\n"),
   });
-  expect(readMemoryIndex(join(root, "short.md"))).toBe("# Memory index\n\n- [A](a.md) — a");
-  const long = readMemoryIndex(join(root, "long.md")) ?? "";
+  expect(readMemoryIndex(root, join(root, "short.md"))).toBe("# Memory index\n\n- [A](a.md) — a");
+  const long = readMemoryIndex(root, join(root, "long.md")) ?? "";
   expect(long.split("\n")).toHaveLength(201);
   expect(long.endsWith("line 199\n[MEMORY.md truncated]")).toBe(true);
-  expect(readMemoryIndex(join(root, "missing.md"))).toBeNull();
+  expect(readMemoryIndex(root, join(root, "missing.md"))).toBeNull();
 });
 
 test("a full index with its final newline is read whole, without a truncation mark", async () => {
@@ -241,5 +298,5 @@ test("a full index with its final newline is read whole, without a truncation ma
   const root = scratch("index");
   const lines = Array.from({ length: 200 }, (_, i) => `line ${i}`);
   writeFiles(root, { "full.md": `${lines.join("\n")}\n` });
-  expect(readMemoryIndex(join(root, "full.md"))).toBe(lines.join("\n"));
+  expect(readMemoryIndex(root, join(root, "full.md"))).toBe(lines.join("\n"));
 });
