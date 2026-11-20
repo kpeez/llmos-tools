@@ -6,6 +6,15 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The session-start hook repairs a dangling `.agents/docs` link. When the link
+  points at a folder that is gone (for example after the vault moves), the hook
+  replaces it with a link to the folder it would link now, when that folder
+  exists: in a worktree, the main checkout's target when that target exists,
+  else `<root>/projects/<repo>`. The context names the repair. A worktree no
+  longer inherits a main-checkout docs target that is gone. A dangling
+  `.agents/scratch` or `artifacts` link is still left alone, because its disk
+  may be unmounted.
+
 ## 2.12.0 — 2026-11-20
 
 - The tools no longer know architecture decision records. The `proposed`, `accepted`, and

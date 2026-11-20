@@ -8,23 +8,38 @@
  * checkout already has that path as a symlink, the worktree reuses its target,
  * so a custom target carries into each worktree.
  *
- * It never replaces or changes a path that exists, and it keeps each link it
- * makes out of Git through the `info/exclude` file that all worktrees share,
+ * It never replaces or changes a path that exists, with one exception: a
+ * dangling `.agents/docs` link (`repairDangling`) is replaced when its new
+ * target folder exists, because a moved vault leaves it broken for good. A
+ * dangling scratch or artifacts link stays, since its disk may be unmounted.
+ * It keeps each link it makes out of Git through the `info/exclude` file that all worktrees share,
  * not the repository's `.gitignore`. A second run changes nothing.
  */
 
 import {
   appendFileSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   readlinkSync,
+  renameSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { MEMORY_DIR } from "../layout.ts";
 import { type Checkout, checkoutAt, projectSlug } from "../project.ts";
-import { expandUser, isDict, isFile, isSymlink, isUnder, joinPath, readText } from "./common.ts";
+import {
+  expandUser,
+  isDict,
+  isDir,
+  isFile,
+  isSymlink,
+  isUnder,
+  joinPath,
+  readText,
+} from "./common.ts";
 
 interface Repository extends Checkout {
   root: string;
@@ -39,6 +54,12 @@ interface LinkSpec {
   target: (repository: Repository) => string | null;
   /** Create the target folder when it is missing. */
   makeTarget: boolean;
+  /**
+   * Replace a dangling link with one to the target the hook would link now,
+   * when that folder exists. Only for a target that never sits on a disk that
+   * may be unmounted.
+   */
+  repairDangling: boolean;
 }
 
 const CLAUDE_SETTINGS_REL = ".claude/settings.local.json";
@@ -50,16 +71,19 @@ const LINKS: LinkSpec[] = [
     target: ({ main, root, slug }) =>
       isUnder(root, main) ? null : joinPath(root, "projects", slug),
     makeTarget: false,
+    repairDangling: true,
   },
   {
     path: ".agents/scratch",
     target: ({ main }) => joinPath(expandUser("~"), "agent-scratch", basename(main)),
     makeTarget: true,
+    repairDangling: false,
   },
   {
     path: "artifacts",
     target: ({ main }) => joinPath(expandUser("~"), "artifacts", basename(main)),
     makeTarget: true,
+    repairDangling: false,
   },
 ];
 
@@ -186,14 +210,38 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** The note for a link made, or `null` when it exists or has no target. */
+/** The note for a link made or repaired, or `null` when it exists or has no target. */
 function makeLink(repository: Repository, spec: LinkSpec, link: string): string | null {
-  if (exists(link)) return null;
-  const target = mainTarget(repository, spec.path) ?? spec.target(repository);
+  const dangling = spec.repairDangling && isSymlink(link) && !existsSync(link);
+  if (!dangling && exists(link)) return null;
+  const inherited = mainTarget(repository, spec.path);
+  const usable = inherited !== null && !(spec.repairDangling && !existsSync(inherited));
+  const target = (usable ? inherited : null) ?? spec.target(repository);
   if (target === null) return null;
+  if (dangling) return repairLink(repository, spec, link, target);
   if (spec.makeTarget) mkdirSync(target, { recursive: true });
   mkdirSync(dirname(link), { recursive: true });
   symlinkSync(target, link, "dir");
   exclude(repository, spec.path);
   return `${link} links to ${target}.`;
+}
+
+/** Point the dangling `link` at `target` when that folder exists; else leave it. */
+function repairLink(
+  repository: Repository,
+  spec: LinkSpec,
+  link: string,
+  target: string,
+): string | null {
+  if (!isDir(target)) return null;
+  const temporary = `${link}.repair-${process.pid}`;
+  try {
+    symlinkSync(target, temporary, "dir");
+    renameSync(temporary, link);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
+  exclude(repository, spec.path);
+  return `${link} was broken; it now links to ${target}.`;
 }

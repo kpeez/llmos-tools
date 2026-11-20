@@ -5,7 +5,16 @@
  */
 
 import { afterEach, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { projectSlug } from "../../src/project.ts";
 import {
@@ -58,6 +67,114 @@ test("a worktree gets links named from the main checkout, once", () => {
   const second = session();
   expect(second.stdout).not.toContain("links to");
   expect(readFileSync(join(main, ".git", "info", "exclude"), "utf8").split("\n")).toEqual(excluded);
+});
+
+/** A vault project `my-repo` and a main checkout of it, ready for a session. */
+function projectCheckout(tmp: string, vaultProject: boolean) {
+  const root = makeVault(join(tmp, "vault"));
+  if (vaultProject) mkdirSync(join(root, "projects", "my-repo"), { recursive: true });
+  else mkdirSync(join(root, "projects"), { recursive: true });
+  const main = join(tmp, "my-repo");
+  mkdirSync(main);
+  git(main, "init", "--quiet");
+  writeFile(join(main, "README.md"), "# my-repo\n");
+  git(main, "add", ".");
+  git(main, "commit", "--quiet", "-m", "init");
+  return { root, main };
+}
+
+const session = (tmp: string, root: string, cwd: string) =>
+  runHook("session-start", { cwd }, tmp, { root, cwd, env: GIT_ENV });
+
+test("a dangling .agents/docs link is repaired when the vault project folder exists", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  const old = join(tmp, "old-vault", "projects", "my-repo");
+  mkdirSync(join(main, ".agents"));
+  symlinkSync(old, join(main, ".agents", "docs"));
+
+  const result = session(tmp, root, main);
+
+  const target = join(root, "projects", "my-repo");
+  expect(readlinkSync(join(main, ".agents", "docs"))).toBe(target);
+  expect(result.stdout).toContain(
+    `${join(main, ".agents", "docs")} was broken; it now links to ${target}.`,
+  );
+  expect(result.stdout).not.toContain(old);
+  expect(readdirSync(join(main, ".agents")).sort()).toEqual(["docs", "scratch"]);
+  expect(session(tmp, root, main).stdout).not.toContain("broken");
+});
+
+test("a dangling docs link stays when the computed target is not a directory", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  const target = join(root, "projects", "my-repo");
+  rmSync(target, { recursive: true });
+  writeFile(target, "a file, not a folder\n");
+  const old = join(tmp, "old-vault", "projects", "my-repo");
+  mkdirSync(join(main, ".agents"));
+  symlinkSync(old, join(main, ".agents", "docs"));
+
+  session(tmp, root, main);
+
+  expect(readlinkSync(join(main, ".agents", "docs"))).toBe(old);
+});
+
+test("dangling scratch and artifacts links are never redirected", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  const unmounted = join(tmp, "unmounted-disk");
+  mkdirSync(join(main, ".agents"));
+  symlinkSync(join(unmounted, "scratch"), join(main, ".agents", "scratch"));
+  symlinkSync(join(unmounted, "artifacts"), join(main, "artifacts"));
+
+  const result = session(tmp, root, main);
+
+  expect(readlinkSync(join(main, ".agents", "scratch"))).toBe(join(unmounted, "scratch"));
+  expect(readlinkSync(join(main, "artifacts"))).toBe(join(unmounted, "artifacts"));
+  expect(result.stdout).not.toContain("broken");
+});
+
+test("a docs link that resolves to another folder is left alone", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  const other = join(tmp, "other-folder");
+  mkdirSync(other);
+  mkdirSync(join(main, ".agents"));
+  symlinkSync(other, join(main, ".agents", "docs"));
+
+  session(tmp, root, main);
+
+  expect(readlinkSync(join(main, ".agents", "docs"))).toBe(other);
+});
+
+test("a real .agents/docs folder is left alone", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  writeFile(join(main, ".agents", "docs", "note.md"), "mine\n");
+
+  session(tmp, root, main);
+
+  expect(lstatSync(join(main, ".agents", "docs")).isDirectory()).toBe(true);
+  expect(readFileSync(join(main, ".agents", "docs", "note.md"), "utf8")).toBe("mine\n");
+});
+
+test("a worktree does not inherit a dangling docs target from the main checkout", () => {
+  const tmp = temporaryFolder();
+  const { root, main } = projectCheckout(tmp, true);
+  mkdirSync(join(main, ".agents"));
+  symlinkSync(join(tmp, "old-vault", "projects", "my-repo"), join(main, ".agents", "docs"));
+  const worktree = join(tmp, "my-repo-wt-feature");
+  git(main, "worktree", "add", "--quiet", worktree, "-b", "feature");
+
+  session(tmp, root, worktree);
+
+  const target = join(root, "projects", "my-repo");
+  expect(readlinkSync(join(worktree, ".agents", "docs"))).toBe(target);
+  // The main checkout is repaired by its own session, not by the worktree's.
+  expect(readlinkSync(join(main, ".agents", "docs"))).toBe(
+    join(tmp, "old-vault", "projects", "my-repo"),
+  );
 });
 
 test("a link that fails does not stop the links after it", () => {
