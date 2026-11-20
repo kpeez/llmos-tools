@@ -5,6 +5,10 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The session-start hook and `llmos memory scope` read `MEMORY.md` only when it
+  is a regular file whose real path is inside the vault, as vault writes
+  already require. An index linked to a file outside the vault is left out of
+  the session context and `index_text`.
 - The Hermes `llmos` memory provider now recalls shared memories. After each
   turn it pools, on a background thread, the scope's memories that share a
   word with the prompt and the top semantic hits (through the llmOS service

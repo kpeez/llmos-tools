@@ -174,8 +174,10 @@ refuses, rather than overwrites, a file that an incoming change overlaps.
 
 The session-start hook fetches (4-second limit), then, when `HEAD` is behind
 `origin/main` and not ahead, runs `git merge --ff-only origin/main` (4-second
-limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
-failure adds one line to the context: a failed fetch, a fast-forward that
+limit) before it builds the context, so the injected `MEMORY.md` is fresh. The
+hook, like `llmos memory scope`, reads `MEMORY.md` only when it is a regular
+file whose real path is inside the vault, so an index linked to a file outside
+the vault is left out. Each failure adds one line to the context: a failed fetch, a fast-forward that
 refuses (with git's reason, without its `hint:` lines), or a rebase, merge, or
 cherry-pick in progress. A diverged branch adds no line; Stop merges it. The
 Stop hook uses local git commands to find changed memory paths and commits

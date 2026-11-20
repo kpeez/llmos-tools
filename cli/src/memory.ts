@@ -15,12 +15,12 @@
  */
 
 import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
-import { deleteNote, WriteRefused, writeNote } from "./write.ts";
+import { deleteNote, realTarget, WriteRefused, writeNote } from "./write.ts";
 
 export const MAX_INDEX_LINES = 200;
 export const MAX_INDEX_BYTES = 25_000;
@@ -82,15 +82,19 @@ export function memoryScope(root: string, workspace: string | null): MemoryScope
 
 /**
  * The first `MAX_INDEX_LINES` lines and `MAX_INDEX_BYTES` UTF-8 bytes of the
- * index at absolute path `path`, marked when cut; `null` when it is missing
- * or empty.
+ * index at absolute path `path` in the vault at `root`, marked when cut;
+ * `null` when it is missing, empty, not a regular file, or resolves outside
+ * the vault (`realTarget`), so a linked index never brings in an outside file.
  */
-export function readMemoryIndex(path: string): string | null {
+export function readMemoryIndex(root: string, path: string): string | null {
   let raw: string;
   try {
-    raw = readText(path);
+    const real = realTarget(root, relative(root, path));
+    if (!statSync(real).isFile()) return null;
+    raw = readText(real);
   } catch (error) {
-    // A missing or unreadable index is no index; the session still starts.
+    // A missing, unreadable, or outside index is no index; the session still starts.
+    if (error instanceof WriteRefused) return null;
     if ((error as { code?: unknown }).code !== undefined) return null;
     throw error;
   }
