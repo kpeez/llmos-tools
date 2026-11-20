@@ -1,7 +1,7 @@
 {
   "name": "llmos",
   "description": "Vault-root resolution and automation for the shared llmOS Obsidian vault used across agent sessions",
-  "version": "2.11.0",
+  "version": "2.11.1",
   "author": { "name": "kpeez", "email": "25070796+kpeez@users.noreply.github.com" },
   "homepage": "https://github.com/kpeez/llmos-tools",
   "repository": "https://github.com/kpeez/llmos-tools",

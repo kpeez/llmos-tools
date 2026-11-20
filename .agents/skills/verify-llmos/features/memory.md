@@ -1,6 +1,6 @@
 # Shared memory
 
-`llmos memory` reads and writes shared project memory (ADR-0020): `projects/<project>/memory/` holds a `MEMORY.md` index of one-line links and one topic note per memory. Claude Code, the MCP memory tools, and the Hermes memory provider use the same store.
+`llmos memory` reads and writes shared project memory: `projects/<project>/memory/` holds a `MEMORY.md` index of one-line links and one topic note per memory. Claude Code, the MCP memory tools, and the Hermes memory provider use the same store.
 
 ## Sub-features
 

@@ -16,7 +16,6 @@ import type { PropertyValue } from "./frontmatter.ts";
 import { DAILY_DIR, isMemoryNote, TEMPLATES_DIR } from "./layout.ts";
 import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
 
-// ADRs use proposed/accepted/superseded; other notes use the rest.
 export const STATUSES = new Set([
   "draft",
   "backlog",
@@ -25,9 +24,6 @@ export const STATUSES = new Set([
   "review",
   "done",
   "archived",
-  "proposed",
-  "accepted",
-  "superseded",
 ]);
 export const LINK_FIELDS = ["categories", "project", "topics"] as const;
 const WIKILINK = /^"?\[\[[^\]]+\]\]"?$/;

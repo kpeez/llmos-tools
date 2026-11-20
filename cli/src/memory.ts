@@ -1,5 +1,5 @@
 /**
- * Shared project memory (ADR-0020): `projects/<project>/memory/` holds a
+ * Shared project memory: `projects/<project>/memory/` holds a
  * `MEMORY.md` index of one-line links and one `<name>.md` topic note per
  * memory, in the format Claude Code writes through `autoMemoryDirectory`.
  * Claude Code, the session-start hook, the `llmos memory` verbs, the MCP

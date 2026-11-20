@@ -359,8 +359,7 @@ function isDirectory(path: string): boolean {
 /**
  * Return [monitored, active but unseen] projects from the landing notes
  * `projects/<slug>/<slug>.md`, ordered by slug. A project is monitored when
- * a repository of one of the configured owners has its folder name (vault
- * ADR 0009).
+ * a repository of one of the configured owners has its folder name.
  */
 export function readProjects(
   root: string,

@@ -13,7 +13,7 @@ service, which keeps the search models loaded for every session on the host
 | --- | --- |
 | `read`, `list`, `neighbors`, `subgraph`, `check`, `health`, `search` | Read |
 | `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` on the notes it changes |
-| `memory_save`, `memory_search`, `memory_forget` | Shared project memory (`projects/<project>/memory/`, ADR-0020) |
+| `memory_save`, `memory_search`, `memory_forget` | Shared project memory (`projects/<project>/memory/`) |
 
 The memory tools write the notes and `MEMORY.md` index lines that Claude Code
 writes through `autoMemoryDirectory`, so every agent shares one store. They

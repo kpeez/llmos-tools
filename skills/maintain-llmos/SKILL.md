@@ -5,11 +5,11 @@ description: Maintain the shared llmOS Obsidian vault. Use when an agent files o
 
 # Maintain llmOS
 
-Treat llmOS as the canonical shared store; keep reusable knowledge shared. Shared per-project working memory lives in `projects/<project>/memory/` (`MEMORY.md` index + topic files; ADR-0020) rather than provider-private home directories. The plugin hooks sync it between hosts through the vault's Git remote: session start pulls, and the Stop hook commits and pushes only memory files (`LLMOS_NO_GIT_SYNC=1` opts out). Durable knowledge belongs in the vault proper. The rule notes `schema.md`, `authoring.md`, and `ingest-contract.md` sit at the vault root. The rules that the tools enforce, the source and fact formats and the ingest contract, ship with the tools in `../../docs/compiled-facts.md` and `../../docs/ingest-contract.md`. Project ADRs live under `projects/<project>/adrs/`. The vault holds no specs.
+Treat llmOS as the canonical shared store; keep reusable knowledge shared. Shared per-project working memory lives in `projects/<project>/memory/` (`MEMORY.md` index + topic files) rather than provider-private home directories. The plugin hooks sync it between hosts through the vault's Git remote: session start pulls, and the Stop hook commits and pushes only memory files (`LLMOS_NO_GIT_SYNC=1` opts out). Durable knowledge belongs in the vault proper. The rule notes `schema.md`, `authoring.md`, and `ingest-contract.md` sit at the vault root. The rules that the tools enforce, the source and fact formats and the ingest contract, ship with the tools in `../../docs/compiled-facts.md` and `../../docs/ingest-contract.md`. The vault holds no specs.
 
 ## Workflow
 
-1. Use the `llmos` MCP tools when the server is connected (`read`, `neighbors`, `search`, `daily_append_thought`, `set_property`, and the rest; see the `vault-cli` skill), and the installed `llmos` and `llmos audit` commands otherwise, for vault resolution and maintenance. Never derive the vault from the working directory or a file's location (ADR-0001).
+1. Use the `llmos` MCP tools when the server is connected (`read`, `neighbors`, `search`, `daily_append_thought`, `set_property`, and the rest; see the `vault-cli` skill), and the installed `llmos` and `llmos audit` commands otherwise, for vault resolution and maintenance. Never derive the vault from the working directory or a file's location.
 2. Read `[[llmOS]]`, `AGENTS.md`, `schema.md`, and `authoring.md`, then the
    nearest area or canonical project note/landing page with `obsidian-cli vault="llmOS" read path="..."`.
 3. Delegate broad vault exploration (multi-note reads, wide `qmd` sweeps) to a bounded subagent; keep synthesis and cross-cutting decisions with the primary agent.
@@ -26,10 +26,10 @@ Treat llmOS as the canonical shared store; keep reusable knowledge shared. Share
    after supported Write/Edit/apply_patch operations, and the MCP write tools
    stamp the notes they change themselves. Neither covers shell writes (the
    `llmos` write verbs included) or an inactive hook; stamp those edits
-   manually. Do not add an `authors` property (ADR 0014).
+   manually. Do not add an `authors` property.
 8. Record insight, not activity. GitHub already holds what happened, and the
    evening digest writes it into each daily note's `## Projects` block. When a
-   day produces a lesson, an open question, or a decision with no ADR yet, write
+   day produces a lesson, an open question, or a decision, write
    it under `## Thoughts` in `daily/YYYY-MM-DD.md`. Write prose, in your own
    words. Never restate commits, issues, or PRs there. The `## Projects` block is
    machine-owned — the digest regenerates it wholesale, so never hand-write the
@@ -49,7 +49,7 @@ When a workflow or hard-won lesson will recur across projects or providers, crea
 
 ## Git
 
-Commit routine work straight to `main`. Cut a branch only when a diff is worth reading before it lands — a multi-session migration, or a change worth a pull request — and name it `<agent>/<slug>`, with no date. There is no daily branch and no squash-merge closeout; see the vault's ADR 0008.
+Commit routine work straight to `main`. Cut a branch only when a diff is worth reading before it lands — a multi-session migration, or a change worth a pull request — and name it `<agent>/<slug>`, with no date. There is no daily branch and no squash-merge closeout.
 
 ## Scripts
 
