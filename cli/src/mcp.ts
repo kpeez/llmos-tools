@@ -439,7 +439,7 @@ function tools(): Tool[] {
           if (error instanceof WriteRefused) throw error;
         }
         const outcome = await run(fileInbox, { note, destination }, state);
-        stamp(state, root, [target, `${DAILY_DIR}/${state.context.today()}.md`]);
+        stamp(state, root, [target]);
         return outcome;
       },
     },

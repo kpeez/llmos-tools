@@ -9,7 +9,7 @@
 - `read-tools` return note data and search results.
 - `write-tools` change a note and stamp `updated`.
 - `argument-checks` refuse an unknown argument, a path outside the vault, and a link out of the vault.
-- `file_inbox` and `daily_append_thought` need Obsidian here (the daily note is created through it). Verified-unreachable.
+- `file_inbox` (the move) and `daily_append_thought` (the daily note is created through it) need Obsidian here. Verified-unreachable.
 
 ## How to get to it (user POV)
 

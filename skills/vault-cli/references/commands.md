@@ -20,7 +20,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `discover` | Rank clusters of notes that restate the same works, as candidates to consolidate. |
 | `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
 | `doctor` | Check this host's llmOS prerequisites (read-only). |
-| `file-inbox` | File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note. |
+| `file-inbox` | File an inbox note: move it via obsidian-cli and stamp its destination properties. |
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
@@ -452,14 +452,13 @@ Example:
 ```text
 Usage: llmos file-inbox <note> <destination> [--vault NAME]
 
-File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note.
+File an inbox note: move it via obsidian-cli and stamp its destination properties.
 
 Use when an inbox capture has a real home -- the sanctioned ritual so an
 agent never files a note half-way. The steps run in order, and a failed
 step stops the rest: move the note (needs the running Obsidian app; exits 3
-when it is not running), add the `categories`/`project` properties the
-destination implies, and append a line under `## Thoughts` in today's daily
-note. Safe to re-run: a note already at `destination` is not moved
+when it is not running), then add the `categories`/`project` properties the
+destination implies. Safe to re-run: a note already at `destination` is not moved
 again, and existing properties are kept. Only the move needs Obsidian.
 Do NOT use when `destination`'s top-level folder is not `knowledge`,
 `projects`, or `raw` -- this exits with an error before any move is

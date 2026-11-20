@@ -740,14 +740,12 @@ also through a link to those notes.`,
 
 const fileInbox: Command = {
   name: "file-inbox",
-  summary:
-    "File an inbox note: move it via obsidian-cli, stamp its destination properties, and record it in today's daily note.",
+  summary: "File an inbox note: move it via obsidian-cli and stamp its destination properties.",
   description: `Use when an inbox capture has a real home -- the sanctioned ritual so an
 agent never files a note half-way. The steps run in order, and a failed
 step stops the rest: move the note (needs the running Obsidian app; exits 3
-when it is not running), add the \`categories\`/\`project\` properties the
-destination implies, and append a line under \`## Thoughts\` in today's daily
-note. Safe to re-run: a note already at \`destination\` is not moved
+when it is not running), then add the \`categories\`/\`project\` properties the
+destination implies. Safe to re-run: a note already at \`destination\` is not moved
 again, and existing properties are kept. Only the move needs Obsidian.
 Do NOT use when \`destination\`'s top-level folder is not \`knowledge\`,
 \`projects\`, or \`raw\` -- this exits with an error before any move is
@@ -779,8 +777,6 @@ attempted.`,
       runObsidian(root, "move", note.path, { to: relative }, context.obsidian);
     }
     stampProperties(root, relative, stamps);
-    const daily = ensureDaily(root, context);
-    appendThought(root, daily, `Filed \`${name}\` from inbox -> \`${relative}\`.`);
     return { text: `Filed: ${name} -> ${relative}` };
   },
 };

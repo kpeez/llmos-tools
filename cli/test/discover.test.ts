@@ -496,7 +496,9 @@ describe("discover", () => {
       const result = await cli(root, ["discover", "--no-record"], { env: isolatedEnv() });
 
       expect(result.exitCode).toBe(2);
-      expect(result.stderr).toContain(`no artifacts folder at ${join(realpathSync(root), "artifacts")}`);
+      expect(result.stderr).toContain(
+        `no artifacts folder at ${join(realpathSync(root), "artifacts")}`,
+      );
       expect(existsSync(join(root, "..", "artifacts"))).toBe(false);
     });
 
@@ -511,7 +513,6 @@ describe("discover", () => {
       expect(existsSync(join(root, "artifacts", "discover"))).toBe(false);
     });
   });
-
 
   test("it refuses an --out inside the vault", async () => {
     const root = clusterVault();
