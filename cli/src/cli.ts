@@ -281,6 +281,7 @@ const EXPECTED_ERRORS = new Set([
   "ObsidianNotRunning",
   "ObsidianCliError",
   "WriteRefused",
+  "MemoryRefused",
   "SourceRefused",
   "QmdCollectionMissing",
   "EmbedLockBusy",
