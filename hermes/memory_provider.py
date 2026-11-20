@@ -50,7 +50,8 @@ CLI = Path(__file__).resolve().parent.parent / "cli" / "bin" / "llmos.ts"
 TIMEOUT_SECONDS = 60
 MEMORY_TYPES = ["user", "feedback", "project", "reference"]
 RECALL_LIMIT = 5
-# The service takes a query of at most 1000 characters without control characters.
+# The service takes a query of at most 1000 characters (JavaScript string length, so
+# UTF-16 code units) without control characters.
 QUERY_CHARS = 1000
 NOTE_CHARS = 2000
 CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
@@ -181,6 +182,13 @@ def _session_folder(kwargs: dict[str, Any]) -> str | None:
         except TerminalPolicyUnavailable:
             terminal = ""
     return terminal if terminal and os.path.isabs(terminal) else None
+
+
+def _query(text: str) -> str:
+    """The prompt as a service query: no control characters, at most QUERY_CHARS UTF-16 units."""
+    query = CONTROL.sub(" ", text).strip()
+    units = query.encode("utf-16-le")[: 2 * QUERY_CHARS]
+    return units.decode("utf-16-le", errors="ignore").strip()
 
 
 def _note(text: str) -> tuple[str, str]:
@@ -329,7 +337,7 @@ class LlmosMemoryProvider(MemoryProvider):
                     notes_by_path[f"{scope['dir']}/{note.name}"] = _note(text)
                 except OSError:
                     continue
-        text = CONTROL.sub(" ", query).strip()[:QUERY_CHARS]
+        text = _query(query)
         hits, error = self._llmos(
             "memory", "search", "--project", str(scope["project"]),
             "--limit", str(RECALL_LIMIT), "--", text,

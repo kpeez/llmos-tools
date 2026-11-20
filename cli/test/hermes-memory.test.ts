@@ -36,6 +36,7 @@ for step in request.get("recalls", []):
         status = provider.recall_status()
         out["recalls"].append({"block": block, "count": status.count if status else None})
 out["merged"] = module._merge(*request.get("merge", []), limit=5)
+out["query"] = module._query(request.get("query", ""))
 print(json.dumps(out))
 `;
 
@@ -69,6 +70,7 @@ interface Run {
   calls: Record<string, unknown>[];
   recalls: { block: string; count: number | null }[];
   merged: string[];
+  query: string;
 }
 
 function python(): string | null {
@@ -96,7 +98,7 @@ function run(
   setupResult: ReturnType<typeof setup>,
   init: Record<string, unknown>,
   calls: [string, Record<string, unknown>][] = [],
-  more: { recalls?: string[][]; merge?: { path: string }[][] } = {},
+  more: { recalls?: string[][]; merge?: { path: string }[][]; query?: string } = {},
 ): Run {
   const result = Bun.spawnSync({
     cmd: [
@@ -237,5 +239,12 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
       ],
     });
     expect(out.merged).toEqual(["both.md", "keyword-only.md", "semantic-only.md"]);
+  });
+
+  test("a recall query fits the service's limit of 1000 JavaScript characters", () => {
+    // An emoji is two JavaScript (UTF-16) characters but one Python character.
+    const out = run(setup(), {}, [], { query: `${"\u{1F600}".repeat(900)}\nend` });
+    expect(out.query.length).toBe(1000);
+    expect(out.query).not.toContain("\n");
   });
 });
