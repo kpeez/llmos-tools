@@ -78,6 +78,9 @@ comes from the session's folder: the `cwd` that Hermes passes, then the
 profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
+The provider needs Hermes v2026.9.14 or later, the first release whose
+`agent.memory_provider` has `spawn_context_thread`, `RecallStatus`, and
+`is_trivial_prompt`. With an older Hermes the provider fails to load.
 After each turn that is not a bare acknowledgement or slash command, the
 provider recalls memories for the next turn on a background thread. It pools
 the top five scope topic notes that share a word with the prompt and the first
@@ -100,7 +103,8 @@ the provider logs one warning at start that names the model.
 at start. When the judge is not set, or fails, recall is semantic-only: the
 first two semantic hits that score at least 0.75. The word match then adds
 nothing, so a memory saved a moment ago is not found until it is embedded,
-unless the judge is configured. A failed judge call logs one line: a warning
+unless the judge is configured. Recall skips a memory note that it cannot
+read or that is not UTF-8. A failed judge call logs one line: a warning
 for the first failure since start or since the last success, then debug lines
 until the judge answers again. The next turn gets the recalled notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
