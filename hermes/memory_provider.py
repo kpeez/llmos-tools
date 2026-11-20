@@ -330,7 +330,9 @@ class LlmosMemoryProvider(MemoryProvider):
         # index_path is the vault root joined with the vault-relative index.
         root = Path(str(scope["index_path"])[: -len(str(scope["index"]))])
         notes_by_path = {}
-        for note in (root / str(scope["dir"])).glob("*.md"):
+        # Sorted, so `_keyword` breaks score ties by path, not by the order the
+        # file system lists the folder in.
+        for note in sorted((root / str(scope["dir"])).glob("*.md")):
             if note.name != "MEMORY.md":
                 try:
                     text = note.read_text(encoding="utf-8")
