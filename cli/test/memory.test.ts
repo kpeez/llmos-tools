@@ -4,10 +4,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { openQmd, qmdLocation } from "../src/qmd.ts";
-import { cli, isolatedEnv, makeVault, read, scratch, writeFiles } from "./helpers.ts";
+import { existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
+import { cli, indexVault, isolatedEnv, makeVault, read, scratch, writeFiles } from "./helpers.ts";
 
 const PROJECTS = {
   "projects/my-repo/my-repo.md": "# my-repo\n",
@@ -195,35 +194,31 @@ describe("memory forget", () => {
 });
 
 describe("memory search", () => {
-  test("keeps only the scope's own topic notes", async () => {
+  test("keeps only the scope's own topic notes, in the memory collection and in the llmos fallback", async () => {
     const note = (text: string) =>
       `---\nname: x\ndescription: x\nmetadata:\n  node_type: memory\n  type: project\n---\n\n${text}\n`;
     const root = vault({
       "projects/my-repo/memory/MEMORY.md": "# Memory index\n\n- zebrafish heater index line\n",
       "projects/my-repo/memory/tank.md": note("The zebrafish tank needs a heater."),
-      "projects/my-repo/memory/hermes/MEMORY.md": "zebrafish heater, Hermes only\n",
+      "projects/my-repo/memory/sub/MEMORY.md": "zebrafish heater, in a subfolder\n",
       "projects/my-repo/notes.md": "# Notes\n\nzebrafish heater outside memory\n",
       "projects/personal/memory/tank.md": note("Another zebrafish heater."),
     });
-    const env = isolatedEnv();
-    const config = join(env.QMD_CONFIG_DIR as string, "index.yml");
-    mkdirSync(dirname(config), { recursive: true });
-    writeFileSync(config, `collections:\n  llmos:\n    path: ${root}\n    pattern: "**/*.md"\n`);
-    mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
-    const store = await openQmd(qmdLocation(env), true);
-    try {
-      await store.update({ collections: ["llmos"] });
-    } finally {
-      await store.close();
+    // The fallback searches `llmos` and filters; the `memory` collection needs no filter.
+    const configs: Record<string, string>[] = [
+      { llmos: "**/*.md" },
+      { llmos: "**/*.md", memory: "projects/*/memory/*.md" },
+    ];
+    for (const collections of configs) {
+      const env = isolatedEnv();
+      await indexVault(root, env, collections);
+      const hits = (await json(
+        root,
+        ["memory", "search", "zebrafish heater", "--keyword", "--project", "my-repo"],
+        env,
+      )) as { path: string }[];
+      expect(hits.map((hit) => hit.path)).toEqual(["projects/my-repo/memory/tank.md"]);
     }
-
-    const hits = (await json(
-      root,
-      ["memory", "search", "zebrafish heater", "--keyword", "--project", "my-repo"],
-      env,
-    )) as { path: string }[];
-
-    expect(hits.map((hit) => hit.path)).toEqual(["projects/my-repo/memory/tank.md"]);
   });
 });
 

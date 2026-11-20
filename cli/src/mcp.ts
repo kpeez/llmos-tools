@@ -7,8 +7,12 @@
  * its description and parameter help come from that command, so help text
  * has one source. The server keeps one vault model, loaded again only when
  * a note's file changes on disk (other sessions and tools edit the vault
- * too), and one qmd store, so the models of a semantic search stay loaded
- * between calls.
+ * too). Its qmd work (`search`, `memory_search`) goes to the llmOS service
+ * (`service.ts`), which keeps the search models loaded for every session on
+ * the host; this server starts the service when it finds none. With the
+ * service down, the server uses its own qmd store, as it did before the
+ * service existed, and the models of a semantic search stay loaded between
+ * calls.
  *
  * Tool arguments come from a model and may be hostile. Each handler checks
  * its arguments against the tool's schema again, every note argument must
@@ -43,7 +47,8 @@ import {
   projectScope,
   saveMemory,
 } from "./memory.ts";
-import { openQmd, qmdLocation, search, searchMemory } from "./qmd.ts";
+import { openQmd, qmdLocation, type Searcher, searchMemoryNotes, storeSearcher } from "./qmd.ts";
+import { afterMemoryWrite, viaService } from "./service-client.ts";
 import { VaultModel, walkVault } from "./vault.ts";
 import { realTarget, stampNote, WriteRefused } from "./write.ts";
 
@@ -101,6 +106,11 @@ function help(source: Command, name: string): string {
 interface CallState {
   context: Context;
   store(): Promise<QMDStore>;
+  /**
+   * The searcher of a qmd tool: the llmOS service when it runs (started when
+   * it does not), else this server's own warm store.
+   */
+  searcher(): Searcher;
   /** The client's root folders, first is the session's; empty when it offers none. */
   roots(): Promise<string[]>;
 }
@@ -294,12 +304,15 @@ function tools(): Tool[] {
       annotations: READ,
       note:
         "In this server: semantic: true selects vector search and hybrid: true the full " +
-        "pipeline (it wins when both are set). The search runs on the llmOS collection, and " +
-        "the models stay loaded between calls; qmd unloads them after 5 minutes idle.",
+        "pipeline (it wins when both are set). The search runs on the llmOS collection. The " +
+        "llmOS service keeps the models loaded for every session on this host, and the first " +
+        "search starts it when it is down; that search loads the models in this server, " +
+        "which qmd unloads after 5 minutes idle.",
       // The handler opens and closes its own store, which would load the
-      // models again on every call that uses them; the warm store keeps them.
+      // models again on every call that uses them; the service, or the
+      // warm store when the service is down, keeps them.
       async call(args, state) {
-        const hits = await search(await state.store(), args.query as string, {
+        const hits = await state.searcher()(args.query as string, {
           collection: COLLECTION,
           limit: (args.limit as number | undefined) ?? 10,
           mode: searchMode(args as Values),
@@ -335,7 +348,9 @@ function tools(): Tool[] {
         };
         if (args.title !== undefined) input.title = args.title as string;
         const scope = await memoryScopeOf(state, root, args.project);
-        return { json: saveMemory(root, scope, input, new Date()) };
+        const saved = saveMemory(root, scope, input, new Date());
+        await afterMemoryWrite(state.context.env);
+        return { json: saved };
       },
     },
     {
@@ -353,15 +368,14 @@ function tools(): Tool[] {
         project: line(100).optional().describe(MEMORY_PROJECT),
       }),
       annotations: READ,
-      note: `${MEMORY_NOTE} The models stay loaded between calls, as in search.`,
+      note: `${MEMORY_NOTE} The models stay loaded between calls (the llmOS service), as in search.`,
       async call(args, state) {
         const root = rootOf(state);
-        const hits = await searchMemory(
-          await state.store(),
+        const hits = await searchMemoryNotes(
+          state.searcher(),
           await memoryScopeOf(state, root, args.project),
           args.query as string,
           {
-            collection: COLLECTION,
             limit: (args.limit as number | undefined) ?? 5,
             mode: args.keyword === true ? "keyword" : "semantic",
           },
@@ -386,7 +400,9 @@ function tools(): Tool[] {
       async call(args, state) {
         const root = rootOf(state);
         const scope = await memoryScopeOf(state, root, args.project);
-        return { json: forgetMemory(root, scope, args.name as string) };
+        const forgotten = forgetMemory(root, scope, args.name as string);
+        await afterMemoryWrite(state.context.env);
+        return { json: forgotten };
       },
     },
     {
@@ -589,6 +605,12 @@ export function createServer(state: ServerState): McpServer {
   const callState: CallState = {
     context: state.handlerContext(),
     store: () => state.openStore(),
+    searcher: () =>
+      viaService(
+        state.context.env,
+        async (query, options) => storeSearcher(await state.openStore())(query, options),
+        { start: true },
+      ),
     roots: () => clientRoots(server),
   };
   for (const tool of tools()) {

@@ -209,30 +209,93 @@ export async function search(
   return results.map((r) => hit(r.filepath, r.title, r.score, r.body ?? ""));
 }
 
+/** Runs one search; `search` over a store, or the warm service's answer. */
+export type Searcher = (
+  query: string,
+  options: { collection: string; limit: number; mode: SearchMode },
+) => Promise<SearchHit[]>;
+
+/** The searcher of an open store. */
+export function storeSearcher(store: QMDStore): Searcher {
+  return (query, options) => search(store, query, options);
+}
+
+/**
+ * The qmd collection of the memory notes: the vault root with the pattern
+ * `MEMORY_PATTERN`, which takes only the top-level notes of each project's
+ * memory folder. It sits beside `llmos` in one index, and qmd stores a
+ * vector by content hash, so a note in both collections has one vector.
+ */
+export const MEMORY_COLLECTION = "memory";
+
+/** The pattern of `MEMORY_COLLECTION`. */
+export const MEMORY_PATTERN = "projects/*/memory/*.md";
+
 /**
  * Search the memory notes of `scope`. qmd has no path filter, so this asks
- * for more hits than `limit` and keeps the topic notes directly in the
- * scope's folder: a subfolder (such as Hermes's own `hermes/` store) holds
- * facts for one agent only.
+ * for more hits than `limit` and keeps the notes of the scope's folder, never
+ * its index. In the `memory` collection that is all the filtering there is.
+ * Any other collection (the `llmos` fallback, while the `memory` collection
+ * is missing) also holds the subfolders of the memory folder, which are not
+ * shared memory, so this keeps only the topic notes directly in the folder.
  */
 export async function searchMemory(
-  store: QMDStore,
+  searcher: Searcher,
   scope: MemoryScope,
   query: string,
   options: { collection: string; limit: number; mode: SearchMode },
 ): Promise<SearchHit[]> {
-  const hits = await search(store, query, {
+  const hits = await searcher(query, {
     ...options,
     limit: Math.min(options.limit * 10, 200),
   });
   const prefix = `${scope.dir}/`.toLowerCase();
   const index = scope.index.toLowerCase();
+  const topLevelOnly = options.collection !== MEMORY_COLLECTION;
   return hits
     .filter((hit) => {
       const path = hit.path.toLowerCase();
-      return path.startsWith(prefix) && !path.slice(prefix.length).includes("/") && path !== index;
+      if (!path.startsWith(prefix) || path === index) return false;
+      return !topLevelOnly || !path.slice(prefix.length).includes("/");
     })
     .slice(0, options.limit);
+}
+
+/**
+ * Search memory in the `memory` collection, else in `llmos` while the
+ * `memory` collection is missing.
+ */
+export async function searchMemoryNotes(
+  searcher: Searcher,
+  scope: MemoryScope,
+  query: string,
+  options: { limit: number; mode: SearchMode },
+): Promise<SearchHit[]> {
+  try {
+    return await searchMemory(searcher, scope, query, {
+      ...options,
+      collection: MEMORY_COLLECTION,
+    });
+  } catch (error) {
+    if (!(error instanceof QmdCollectionMissing)) throw error;
+    return searchMemory(searcher, scope, query, { ...options, collection: "llmos" });
+  }
+}
+
+/**
+ * Active documents of `collection` that have no stored vector at all. A
+ * coarser count than `unembeddedCount`: a document with only some of its
+ * chunks embedded counts as embedded. 0 without the collection.
+ */
+export function unembeddedIn(store: QMDStore, collection: string): number {
+  const row = store.internal.db
+    .prepare(
+      `SELECT COUNT(DISTINCT d.hash) AS count FROM documents d
+       WHERE d.collection = ? AND d.active = 1
+         AND NOT EXISTS (SELECT 1 FROM content_vectors cv WHERE cv.hash = d.hash)`,
+    )
+    .get(collection) as { count: number };
+  return row.count;
 }
 
 /** Another process holds the embed lock. */
@@ -254,7 +317,7 @@ function processAlive(pid: number): boolean {
  * `work` runs, so two embeds never race on the vector table. A lock whose
  * process is gone is taken over.
  */
-async function withEmbedLock<T>(dbPath: string, work: () => Promise<T>): Promise<T> {
+export async function withEmbedLock<T>(dbPath: string, work: () => Promise<T>): Promise<T> {
   const lock = join(dirname(dbPath), ".qmd-embed.lock");
   for (let attempt = 0; ; attempt++) {
     try {

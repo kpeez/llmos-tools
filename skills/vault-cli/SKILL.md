@@ -80,6 +80,8 @@ health` reports the count of documents that still need embedding as
 | `reindex` | Update, embed, and clean up the qmd index for a collection. |
 | `remove-property` | Remove a property from a note. |
 | `search` | Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline. |
+| `service serve` | Run the llmOS service: one warm qmd model set for every agent session on this host. |
+| `service status` | Say whether the llmOS service runs, and what it holds. |
 | `set-property` | Set a property on a note. |
 | `source add` | Capture an arXiv paper, web page, or PDF into a frozen source folder: raw bytes, figures, converted text, and a manifest. |
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |

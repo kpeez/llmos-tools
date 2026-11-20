@@ -33,11 +33,16 @@ export interface Heartbeat {
 
 export type Heartbeats = Record<string, Heartbeat>;
 
-/** Where the heartbeat lives for this environment. */
-export function heartbeatPath(env: Env): string {
+/** The llmOS state folder of this environment: `$XDG_STATE_HOME/llmos`, else `~/.local/state/llmos`. */
+export function stateDir(env: Env): string {
   const state = env.XDG_STATE_HOME;
   const base = state && isAbsolute(state) ? state : join(env.HOME || homedir(), ".local", "state");
-  return join(base, "llmos", "hooks.json");
+  return join(base, "llmos");
+}
+
+/** Where the heartbeat lives for this environment. */
+export function heartbeatPath(env: Env): string {
+  return join(stateDir(env), "hooks.json");
 }
 
 function isHeartbeat(value: unknown): value is Heartbeat {
