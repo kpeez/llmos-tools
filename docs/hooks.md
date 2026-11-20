@@ -78,6 +78,37 @@ comes from the session's folder: the `cwd` that Hermes passes, then the
 profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
+The provider needs Hermes v2026.9.14 (0.21.3) or later, the first release whose
+`agent.memory_provider` has `spawn_context_thread`, `RecallStatus`, and
+`is_trivial_prompt`. With an older Hermes the provider fails to load.
+After each turn that is not a bare acknowledgement or slash command, the
+provider recalls memories for the next turn on a background thread. It pools
+the top five scope topic notes that share a word with the prompt and the first
+five hits of `llmos memory search` (by meaning, through the llmOS service when
+it runs, `docs/service.md`) that score at least 0.45. The keyword search of qmd
+needs every word of a query, so the word match is the provider's own.
+
+With `LLMOS_RECALL_JUDGE_URL` set to the base URL of a SystemOne server that
+runs a decision model, the provider posts the pool to `<URL>/v1/systemone` in
+one request and keeps the notes that the model rates helpful with a probability
+of at least its threshold, best first, at most five. `LLMOS_RECALL_JUDGE_MODEL`
+names the model in the request (default `d1-2B`). The threshold follows the
+model: 0.5 for `d1-2B`, 0.3 for `clef-flash`. An offline evaluation picked each
+value. `LLMOS_RECALL_JUDGE_THRESHOLD`, a number from 0 to 1, overrides it; the
+provider ignores an invalid value and logs one warning. A model with no
+threshold and no override never calls the judge: recall is semantic-only, and
+the provider logs one warning at start that names the model.
+`LLMOS_RECALL_JUDGE_TIMEOUT` is the deadline for the whole call in seconds
+(default 5; a bad value uses the default). The provider reads the four variables
+at start. When the judge is not set, or fails, recall is semantic-only: the
+first two semantic hits that score at least 0.75. The word match then adds
+nothing, so a memory saved a moment ago is not found until it is embedded,
+unless the judge is configured. Recall reads only regular files inside the
+vault: it skips a memory note that is a symbolic link, that it cannot read,
+or that is not UTF-8, and a memory folder that resolves outside the vault gets
+no recall. A failed judge call logs one line: a warning
+for the first failure since start or since the last success, then debug lines
+until the judge answers again. The next turn gets the recalled notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes

@@ -30,3 +30,4 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 
 - Semantic search (the default) needs the embedding model, which the scratch run does not download. The drive uses `--keyword`.
 - A save updates the keyword index of the qmd collection at once, so `--keyword` finds it. Semantic search finds it after the service embeds it, or after `reindex`.
+- The drive does not run the Hermes provider. `cli/test/hermes-memory.test.ts` drives it with a stub of Hermes, including recall with a stub recall-judge server; its semantic half finds nothing there because the test index has no vectors. To see semantic recall, probe in scratch with real models, as `features/service.md` says.
