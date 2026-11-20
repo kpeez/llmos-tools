@@ -11,7 +11,7 @@
  * is never read.
  */
 
-import { basename } from "node:path";
+import { basename, dirname } from "node:path";
 import {
   AUTHORING_NOTE,
   DAILY_DIR,
@@ -22,10 +22,12 @@ import {
 } from "../layout.ts";
 import {
   isMcpWriteTool,
+  MEMORY_TOOLS as MCP_MEMORY_TOOLS,
   READ_TOOLS as MCP_READ_TOOLS,
   WRITE_TOOLS as MCP_WRITE_TOOLS,
   SERVER_NAME,
 } from "../mcp-names.ts";
+import { MemoryRefused, memoryScope, readMemoryIndex } from "../memory.ts";
 import {
   firstTruthy,
   isDir,
@@ -74,8 +76,6 @@ const WRITE_TOOLS = new Set([
   "edit_file",
 ]);
 const MAX_AUTHORING_CONTEXT_CHARS = 8_000;
-const MAX_MEMORY_LINES = 200;
-const MAX_MEMORY_BYTES = 25_000;
 const SKILL_NAMES: Record<string, string> = {
   ".md": "obsidian-markdown",
   ".base": "obsidian-bases",
@@ -115,10 +115,29 @@ function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
 export interface SessionStartOptions {
   data?: Payload;
   claudeAutoMemoryReady?: boolean;
+  /** The session's folder; outside the vault and any linked project it picks the memory scope. */
+  cwd?: string | null;
 }
 
-function projectMemoryDir(root: string, linked: [string, string] | null): string | null {
-  if (linked === null) return joinPath(root, "projects", "llmos", MEMORY_DIR);
+/**
+ * The shared memory folder of a session: the linked project's, the llmos
+ * project's inside the vault (the vault checkout is `llmOS`), and otherwise
+ * the scope `memoryScope` gives the folder (`personal` outside a vault project).
+ */
+function projectMemoryDir(
+  root: string,
+  linked: [string, string] | null,
+  cwd: string | null,
+): string | null {
+  if (linked === null) {
+    if (cwd === null || isUnder(cwd, root)) return joinPath(root, "projects", "llmos", MEMORY_DIR);
+    try {
+      return joinPath(root, memoryScope(root, cwd).dir);
+    } catch (error) {
+      if (error instanceof MemoryRefused) return null;
+      throw error;
+    }
+  }
   const prefix = root.endsWith("/") ? root : `${root}/`;
   const target = linked[1];
   if (!target.startsWith(prefix)) return null;
@@ -126,35 +145,6 @@ function projectMemoryDir(root: string, linked: [string, string] | null): string
   const parts = rel.split("/");
   if (parts[0] !== "projects" || !parts[1]) return null;
   return joinPath(root, "projects", parts[1], MEMORY_DIR);
-}
-
-/** First `MAX_MEMORY_LINES` lines / `MAX_MEMORY_BYTES` UTF-8 bytes of `MEMORY.md`. */
-function readBoundedMemoryIndex(indexPath: string): string | null {
-  let raw: string;
-  try {
-    raw = readText(indexPath);
-  } catch (error) {
-    if (isOSError(error)) return null;
-    throw error;
-  }
-  const lines = raw.split("\n");
-  let truncated = lines.length > MAX_MEMORY_LINES;
-  let text = truncated ? lines.slice(0, MAX_MEMORY_LINES).join("\n") : raw;
-  if (Buffer.byteLength(text, "utf8") > MAX_MEMORY_BYTES) {
-    truncated = true;
-    let bytes = 0;
-    let out = "";
-    for (const ch of text) {
-      const size = Buffer.byteLength(ch, "utf8");
-      if (bytes + size > MAX_MEMORY_BYTES) break;
-      out += ch;
-      bytes += size;
-    }
-    text = out;
-  }
-  const trimmed = text.trimEnd();
-  if (!trimmed) return null;
-  return truncated ? `${trimmed}\n[MEMORY.md truncated]` : trimmed;
 }
 
 export function sessionContext(
@@ -174,17 +164,18 @@ export function sessionContext(
     `${joinPath(root, DAILY_DIR, `${localDate()}.md`)} -- prose only, and never a ` +
     "restatement of commits, issues, or PRs, which GitHub already records.";
   const sections = [`${access}${routes}`, daily, MCP_LINE];
-  const memoryDir = projectMemoryDir(root, linked);
+  const memoryDir = projectMemoryDir(root, linked, options.cwd ?? null);
   if (memoryDir !== null && isDir(memoryDir)) {
     sections.push(
       `Shared project memory lives in ${memoryDir} (${MEMORY_INDEX} index + <slug>.md topic files ` +
-        "with frontmatter name, description, and metadata.type).",
+        "with frontmatter name, description, and metadata.type). " +
+        `Pass project: "${basename(dirname(memoryDir))}" to the memory tools.`,
     );
     const provider = hookAgent(process.env, options.data ?? {});
     const autoMemoryReady = options.claudeAutoMemoryReady ?? false;
     const indexPath = joinPath(memoryDir, MEMORY_INDEX);
     if ((provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
-      const index = readBoundedMemoryIndex(indexPath);
+      const index = readMemoryIndex(indexPath);
       if (index !== null) sections.push(`Shared project memory (${indexPath}):\n${index}`);
     }
   }
@@ -198,7 +189,7 @@ const MCP_LINE =
   "with a folder for the properties of every note there; neighbors or subgraph for links; " +
   "set_property to change one property. All tools: " +
   `${MCP_READ_TOOLS.join(", ")} to look notes up; ${MCP_WRITE_TOOLS.join(", ")} to write ` +
-  "(they stamp updated themselves).";
+  `(they stamp updated themselves); ${MCP_MEMORY_TOOLS.join(", ")} for shared project memory.`;
 
 export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();
@@ -209,7 +200,7 @@ export function sessionStart(data: Payload, options: SessionStartOptions = {}): 
   const linked = inside ? null : linkedProjectDocs(cwd, root);
   if (!inside && linked === null) return null;
   const claudeAutoMemoryReady = options.claudeAutoMemoryReady ?? hasAutoMemoryDir(cwd, root);
-  return sessionContext(root, linked, { data, claudeAutoMemoryReady });
+  return sessionContext(root, linked, { data, claudeAutoMemoryReady, cwd });
 }
 
 function patchPaths(command: string): string[] {

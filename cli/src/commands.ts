@@ -17,6 +17,18 @@ import { renderReference, renderSkill } from "./docs.ts";
 import { isClean, qmdSection, RUN_RECORDS, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { DAILY_DIR } from "./layout.ts";
+import {
+  forgetMemory,
+  MAX_INDEX_BYTES,
+  MAX_INDEX_LINES,
+  MEMORY_TYPES,
+  type MemoryInput,
+  type MemoryScope,
+  type MemoryType,
+  memoryScope,
+  projectScope,
+  saveMemory,
+} from "./memory.ts";
 import { runObsidian } from "./obsidian.ts";
 import {
   indexedPaths,
@@ -25,6 +37,7 @@ import {
   reindex,
   type SearchMode,
   search,
+  searchMemory,
   unembeddedCount,
 } from "./qmd.ts";
 import { readConfig, validated } from "./root.ts";
@@ -1144,6 +1157,160 @@ Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
   },
 };
 
+const SCOPE_OPTIONS: Record<string, OptionSpec> = {
+  project: {
+    type: "string",
+    metavar: "NAME",
+    help: "Vault project folder under projects/ whose memory to use. Wins over --workspace.",
+  },
+  workspace: {
+    type: "string",
+    metavar: "PATH",
+    help:
+      "Folder of the session: the vault project of its Git repository, else personal. " +
+      "Default: the current folder.",
+  },
+};
+
+/** The memory scope of `--project`, else of `--workspace` (default: the current folder). */
+function scopeOf(values: Values, root: string): MemoryScope {
+  const project = optionalStr(values, "project");
+  if (project !== undefined) return projectScope(root, project);
+  return memoryScope(root, resolve(optionalStr(values, "workspace") ?? "."));
+}
+
+const memoryScopeCommand: Command = {
+  name: "memory scope",
+  summary: "Print which project's shared memory a session uses, and its index path.",
+  description: `Use when an agent or plugin must know where shared project memory lives
+(ADR-0020) before it reads or writes it. A workspace inside a Git repository
+whose name matches a folder under \`projects/\` uses that project, by the
+session-start hook's rule; any other workspace uses \`personal\`.`,
+  arguments: [],
+  options: { ...SCOPE_OPTIONS, ...vaultOption('Must be "llmos".') },
+  exampleOutput: `{"project": "llmos-tools", "dir": "projects/llmos-tools/memory",
+  "index": "projects/llmos-tools/memory/MEMORY.md",
+  "index_path": "/Users/me/vault/projects/llmos-tools/memory/MEMORY.md"}`,
+  example: "llmos memory scope --workspace ~/code/llmos-tools",
+  run(values, context) {
+    const root = llmosOnly(vaultName(values), context);
+    const scope = scopeOf(values, root);
+    return { json: { ...scope, index_path: join(root, scope.index) } };
+  },
+};
+
+const memorySave: Command = {
+  name: "memory save",
+  summary: "Save one shared memory: a topic note and its MEMORY.md index line.",
+  description: `Use when an agent learns a fact that another agent or a later session can
+use: a user preference, a correction, a project constraint, or a pointer to
+an outside resource. Writes \`<dir>/<name>.md\` with the frontmatter Claude
+Code writes (\`name\`, \`description\`, \`metadata.node_type: memory\`,
+\`metadata.type\`, \`metadata.modified\`) and adds or replaces its line in
+\`MEMORY.md\`. Saving a name again replaces that memory's body and keeps its
+other properties. Fails, and writes nothing, when the index would pass ${MAX_INDEX_LINES}
+lines or ${MAX_INDEX_BYTES} bytes, because agents load only that much: merge or
+forget memories first.
+Do NOT use for durable knowledge notes -- those follow the vault's
+authoring.md.`,
+  arguments: [
+    { name: "name", help: "Lowercase slug of the memory and its file name, such as use-uv." },
+    { name: "description", help: "One line that says when the memory is relevant." },
+    {
+      name: "body",
+      help: "The fact; for feedback and project, add **Why:** and **How to apply:**.",
+    },
+  ],
+  options: {
+    type: {
+      type: "string",
+      choices: MEMORY_TYPES,
+      default: "project",
+      help: "user (who the user is), feedback (how to work), project (ongoing work), or reference (a pointer).",
+    },
+    title: {
+      type: "string",
+      metavar: "TEXT",
+      help: "Link text of the index line. Default: the name with spaces.",
+    },
+    ...SCOPE_OPTIONS,
+    ...vaultOption('Must be "llmos".'),
+  },
+  exampleOutput: `{"path": "projects/llmos-tools/memory/use-uv.md",
+  "index": "projects/llmos-tools/memory/MEMORY.md", "created": true}`,
+  example:
+    'llmos memory save use-uv "Run Python through uv" "Use uv run, never bare python." --type feedback',
+  run(values, context) {
+    const root = llmosOnly(vaultName(values), context);
+    const input: MemoryInput = {
+      name: str(values, "name"),
+      description: str(values, "description"),
+      body: str(values, "body"),
+      type: str(values, "type") as MemoryType,
+    };
+    const title = optionalStr(values, "title");
+    if (title !== undefined) input.title = title;
+    return { json: saveMemory(root, scopeOf(values, root), input, new Date()) };
+  },
+};
+
+const memorySearch: Command = {
+  name: "memory search",
+  summary: "Search one project's shared memory notes; semantic by default.",
+  description: `Use when an agent needs the memories that match a task and the index lines
+do not settle it. Runs a qmd search on the llmOS collection and keeps the
+topic notes of the scope's memory folder (not its subfolders or the index).
+Semantic search loads the embedding model on the first call in a process;
+--keyword needs no model. A memory saved since the last \`reindex\` is not
+found yet.`,
+  arguments: [{ name: "query", help: "What to search for." }],
+  options: {
+    keyword: { type: "boolean", help: "BM25 keyword search instead of vector search." },
+    limit: { type: "integer", default: 5, metavar: "N", help: "Maximum number of results." },
+    ...SCOPE_OPTIONS,
+    ...vaultOption('Must be "llmos".'),
+  },
+  exampleOutput: `[{"path": "projects/llmos-tools/memory/use-uv.md",
+  "title": "use-uv", "score": 0.82, "line": 9, "snippet": "..."}]`,
+  example: 'llmos memory search "python packaging" --project llmos-tools',
+  async run(values, context) {
+    const root = llmosOnly(vaultName(values), context);
+    const scope = scopeOf(values, root);
+    const location = qmdLocation(context.env);
+    if (!existsSync(location.dbPath)) {
+      throw new Error(`no qmd index at ${location.dbPath}; add the collection with qmd first`);
+    }
+    const store = await openQmd(location, false);
+    try {
+      const hits = await searchMemory(store, scope, str(values, "query"), {
+        collection: "llmos",
+        limit: count(values, "limit", 1),
+        mode: values.keyword === true ? "keyword" : "semantic",
+      });
+      return { json: hits };
+    } finally {
+      await store.close();
+    }
+  },
+};
+
+const memoryForget: Command = {
+  name: "memory forget",
+  summary: "Delete one shared memory: its topic note and its MEMORY.md index line.",
+  description: `Use when a memory is wrong or no longer true. Removes \`<dir>/<name>.md\`
+and its index line; fails when neither exists.
+Do NOT use to change a memory -- \`memory save\` with the same name replaces it.`,
+  arguments: [{ name: "name", help: "The memory's name (its file name without .md)." }],
+  options: { ...SCOPE_OPTIONS, ...vaultOption('Must be "llmos".') },
+  exampleOutput: `{"path": "projects/llmos-tools/memory/use-uv.md",
+  "index": "projects/llmos-tools/memory/MEMORY.md"}`,
+  example: "llmos memory forget use-uv --project llmos-tools",
+  run(values, context) {
+    const root = llmosOnly(vaultName(values), context);
+    return { json: forgetMemory(root, scopeOf(values, root), str(values, "name")) };
+  },
+};
+
 const reindexCommand: Command = {
   name: "reindex",
   summary: "Update, embed, and clean up the qmd index for a collection.",
@@ -1301,6 +1468,10 @@ export const COMMANDS: readonly Command[] = [
   dailyRecent,
   dailyActivity,
   searchCommand,
+  memoryScopeCommand,
+  memorySave,
+  memorySearch,
+  memoryForget,
   reindexCommand,
   mcp,
   configSetRoot,

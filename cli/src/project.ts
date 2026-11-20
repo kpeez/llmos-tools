@@ -1,0 +1,73 @@
+/**
+ * Which vault project a folder belongs to. A Git repository is a vault
+ * project when `<root>/projects/<repo name>` exists; the name comes from the
+ * main checkout, so a worktree in `~/code/my-repo-wt-x` still maps to
+ * `my-repo`. The session-start links and shared memory use the same rule.
+ */
+
+import { readdirSync, statSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+
+export interface Checkout {
+  /** The worktree's top level. */
+  top: string;
+  /** The main checkout: the parent of the shared Git directory. */
+  main: string;
+  /** The shared Git directory (`git rev-parse --git-common-dir`). */
+  common: string;
+}
+
+function isDir(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The vault project folder under `<root>/projects/` matching `main`, or `null`.
+ * Checks the exact directory name first, then strips a leading dot and
+ * lowercases (so `.dotfiles` -> `dotfiles` and `llmOS` -> `llmos`), matching
+ * directory entries on disk so case-insensitive filesystems use the canonical
+ * vault folder name.
+ */
+export function projectSlug(main: string, root: string): string | null {
+  const projectsDir = join(root, "projects");
+  let entries: string[];
+  try {
+    entries = readdirSync(projectsDir);
+  } catch {
+    return null;
+  }
+  const name = basename(main);
+  if (entries.includes(name) && isDir(join(projectsDir, name))) return name;
+  const normalized = name.replace(/^\./, "").toLowerCase();
+  if (normalized && entries.includes(normalized) && isDir(join(projectsDir, normalized))) {
+    return normalized;
+  }
+  return null;
+}
+
+/** The Git worktree containing `path`, or `null` outside one. */
+export function checkoutAt(path: string): Checkout | null {
+  const result = Bun.spawnSync({
+    cmd: [
+      "git",
+      "-C",
+      path,
+      "rev-parse",
+      "--path-format=absolute",
+      "--show-toplevel",
+      "--git-common-dir",
+    ],
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) return null;
+  const [top, common] = result.stdout.toString().trim().split("\n");
+  if (!top || !common) return null;
+  // A worktree of a bare repository has no main checkout; name it by itself.
+  const main = basename(common) === ".git" ? dirname(common) : top;
+  return { top, main, common };
+}

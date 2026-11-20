@@ -23,10 +23,13 @@
         "check": { "approval_mode": "approve" },
         "health": { "approval_mode": "approve" },
         "search": { "approval_mode": "approve" },
+        "memory_search": { "approval_mode": "approve" },
         "setup": { "approval_mode": "approve" },
         "daily_append_thought": { "approval_mode": "prompt" },
         "file_inbox": { "approval_mode": "prompt" },
-        "set_property": { "approval_mode": "prompt" }
+        "set_property": { "approval_mode": "prompt" },
+        "memory_save": { "approval_mode": "prompt" },
+        "memory_forget": { "approval_mode": "prompt" }
       }
     }
   }

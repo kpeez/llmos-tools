@@ -10,7 +10,8 @@ description: Route vault operations to the llmos MCP tools when the server is co
 The plugin's `llmos` MCP server offers the common verbs as typed tools for
 the llmOS vault: `read`, `list`, `neighbors`, `subgraph`, `check`, `health`,
 and `search` to look notes up; `daily_append_thought`, `file_inbox`, and
-`set_property` to write. Claude Code lists them as
+`set_property` to write; `memory_save`, `memory_search`, and `memory_forget`
+for shared project memory. Claude Code lists them as
 `mcp__plugin_llmos_llmos__<tool>`, Codex as `mcp__llmos__<tool>`; their
 schemas load on demand. When they are present, use them instead of the
 matching verb: arguments need no shell quoting, the vault model and the
@@ -69,6 +70,10 @@ health` reports the count of documents that still need embedding as
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
+| `memory forget` | Delete one shared memory: its topic note and its MEMORY.md index line. |
+| `memory save` | Save one shared memory: a topic note and its MEMORY.md index line. |
+| `memory scope` | Print which project's shared memory a session uses, and its index path. |
+| `memory search` | Search one project's shared memory notes; semantic by default. |
 | `move` | Move or rename a note via obsidian-cli, rewriting every backlink. |
 | `neighbors` | Print one note's outgoing links, backlinks, and shared-topic siblings. |
 | `read` | Print one note's frontmatter and body as JSON. |

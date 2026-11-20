@@ -32,7 +32,8 @@ Read this index, then use the feature file as the recipe.
 - [Lint claims](./claims-lint.md): `claims lint` on the fact and conflict callouts.
 - [Capture a source](./source-capture.md): `source add` on recorded pages. Real network capture is not driven.
 - [Hooks](./hooks.md): session-start context, pre-tool-use context, the Bash guard, the post-tool-use stamp.
-- [MCP server](./mcp.md): the stdio tools, argument checks, and vault confinement.
+- [Shared memory](./memory.md): `memory scope`, `save`, keyword `search`, and `forget` on a scratch project.
+- [MCP server](./mcp.md): the stdio tools, the memory tools, argument checks, and vault confinement.
 
 ## Not covered
 

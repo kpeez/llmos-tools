@@ -15,6 +15,12 @@ export const READ_TOOLS = [
   "health",
   "search",
 ] as const;
+/**
+ * Shared project memory tools. They format their own notes, so they are not
+ * write tools: the PreToolUse hook gives write tools the durable-note
+ * authoring contract, which memory notes do not follow.
+ */
+export const MEMORY_TOOLS = ["memory_save", "memory_search", "memory_forget"] as const;
 export const WRITE_TOOLS = ["daily_append_thought", "file_inbox", "set_property"] as const;
 
 /**

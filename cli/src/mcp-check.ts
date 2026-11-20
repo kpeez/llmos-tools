@@ -9,7 +9,7 @@
 
 import { dirname } from "node:path";
 import { installedServer, SAFE_BUN_FLAGS } from "./mcp-launcher.ts";
-import { READ_TOOLS, WRITE_TOOLS } from "./mcp-names.ts";
+import { MEMORY_TOOLS, READ_TOOLS, WRITE_TOOLS } from "./mcp-names.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -80,7 +80,7 @@ export async function mcpCheck(
   }
   try {
     const tools = await listTools(found.entry, env, timeoutMs);
-    const expected = [...READ_TOOLS, ...WRITE_TOOLS];
+    const expected = [...READ_TOOLS, ...MEMORY_TOOLS, ...WRITE_TOOLS];
     const missing = expected.filter((tool) => !tools.includes(tool));
     if (missing.length > 0) {
       return { ok: false, detail: `${found.entry} mcp lacks ${missing.join(", ")}` };

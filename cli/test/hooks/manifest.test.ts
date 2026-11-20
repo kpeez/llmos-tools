@@ -110,6 +110,9 @@ test("Codex approves the read tools and prompts for the write tools", () => {
     ...Object.fromEntries(READ_TOOLS.map((tool) => [tool, "approve"])),
     setup: "approve",
     ...Object.fromEntries(WRITE_TOOLS.map((tool) => [tool, "prompt"])),
+    memory_search: "approve",
+    memory_save: "prompt",
+    memory_forget: "prompt",
   });
 });
 

@@ -24,6 +24,7 @@
 import { existsSync, statSync } from "node:fs";
 import { relative } from "node:path";
 import type { Readable, Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { StdioServerTransport, serveStdio } from "@modelcontextprotocol/server/stdio";
 import type { QMDStore } from "@tobilu/qmd";
@@ -32,7 +33,17 @@ import type { Command, Context, Outcome, Values } from "./cli.ts";
 import { COMMANDS, searchMode } from "./commands.ts";
 import { DAILY_DIR } from "./layout.ts";
 import { SERVER_NAME } from "./mcp-names.ts";
-import { openQmd, qmdLocation, search } from "./qmd.ts";
+import {
+  forgetMemory,
+  MEMORY_TYPES,
+  type MemoryInput,
+  MemoryRefused,
+  type MemoryScope,
+  memoryScope,
+  projectScope,
+  saveMemory,
+} from "./memory.ts";
+import { openQmd, qmdLocation, search, searchMemory } from "./qmd.ts";
 import { VaultModel, walkVault } from "./vault.ts";
 import { realTarget, stampNote, WriteRefused } from "./write.ts";
 
@@ -63,6 +74,14 @@ function prose(max: number) {
     .refine((value) => !CONTROL_EXCEPT_LINES.test(value), "must not contain control characters");
 }
 
+const MEMORY_PROJECT =
+  "Vault project folder under projects/ whose memory to use; the session-start context " +
+  "names it. Default: the project of the session's folder, when the client names one.";
+const MEMORY_NOTE =
+  "In this server: pass project. Without it, the scope comes from the session's folder " +
+  "(the client's first root, else the folder the agent started the server in), and the " +
+  "call fails when the client names none.";
+
 /** The registry command a tool runs. */
 function command(name: string): Command {
   const found = COMMANDS.find((entry) => entry.name === name);
@@ -78,10 +97,12 @@ function help(source: Command, name: string): string {
   return text;
 }
 
-/** What a tool call needs: the handler context and the warm qmd store. */
+/** What a tool call needs: the handler context, the warm qmd store, and the client's roots. */
 interface CallState {
   context: Context;
   store(): Promise<QMDStore>;
+  /** The client's root folders, first is the session's; empty when it offers none. */
+  roots(): Promise<string[]>;
 }
 
 interface Tool {
@@ -129,6 +150,31 @@ function stamp(state: CallState, root: string, paths: string[]): void {
 
 const READ: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
 
+/**
+ * The memory scope of a tool call. The named vault project wins. Without
+ * one, the session's folder picks it: the client's first root (Claude Code
+ * sends the project), then `CLAUDE_PROJECT_DIR`, then the folder the
+ * launcher started in (`LLMOS_SESSION_CWD`). The server's own folder is
+ * its install, never the session's, so with no signal the call fails
+ * rather than guess. A tool takes a project name, never a path.
+ */
+async function memoryScopeOf(
+  state: CallState,
+  root: string,
+  project: unknown,
+): Promise<MemoryScope> {
+  if (typeof project === "string") return projectScope(root, project);
+  const env = state.context.env;
+  const folder =
+    (await state.roots())[0] ?? env.CLAUDE_PROJECT_DIR ?? env.LLMOS_SESSION_CWD ?? null;
+  if (!folder) {
+    throw new MemoryRefused(
+      "this client names no session folder; pass project (the session-start context names it)",
+    );
+  }
+  return memoryScope(root, folder);
+}
+
 function readTool(name: string, source: Command, extra: Partial<Tool> = {}): Tool {
   const note = line(1024).describe(help(source, "note"));
   return {
@@ -153,6 +199,9 @@ function tools(): Tool[] {
   const thought = command("daily append-thought");
   const fileInbox = command("file-inbox");
   const setProperty = command("set-property");
+  const memorySave = command("memory save");
+  const memorySearchCommand = command("memory search");
+  const memoryForgetCommand = command("memory forget");
   return [
     readTool("read", readCommand, {
       schema: z.strictObject({
@@ -259,6 +308,88 @@ function tools(): Tool[] {
       },
     },
     {
+      name: "memory_save",
+      command: memorySave,
+      schema: z.strictObject({
+        name: line(80).describe(help(memorySave, "name")),
+        description: line(300).describe(help(memorySave, "description")),
+        body: prose(20_000).describe(help(memorySave, "body")),
+        type: z.enum(MEMORY_TYPES).describe(help(memorySave, "type")),
+        title: line(120).optional().describe(help(memorySave, "title")),
+        project: line(100).optional().describe(MEMORY_PROJECT),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      note: MEMORY_NOTE,
+      async call(args, state) {
+        const root = rootOf(state);
+        const input: MemoryInput = {
+          name: args.name as string,
+          description: args.description as string,
+          body: args.body as string,
+          type: args.type as MemoryInput["type"],
+        };
+        if (args.title !== undefined) input.title = args.title as string;
+        const scope = await memoryScopeOf(state, root, args.project);
+        return { json: saveMemory(root, scope, input, new Date()) };
+      },
+    },
+    {
+      name: "memory_search",
+      command: memorySearchCommand,
+      schema: z.strictObject({
+        query: line(1000).describe(help(memorySearchCommand, "query")),
+        keyword: z.boolean().optional().describe(help(memorySearchCommand, "keyword")),
+        limit: z
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe(`${help(memorySearchCommand, "limit")} Default: 5.`),
+        project: line(100).optional().describe(MEMORY_PROJECT),
+      }),
+      annotations: READ,
+      note: `${MEMORY_NOTE} The models stay loaded between calls, as in search.`,
+      async call(args, state) {
+        const root = rootOf(state);
+        const hits = await searchMemory(
+          await state.store(),
+          await memoryScopeOf(state, root, args.project),
+          args.query as string,
+          {
+            collection: COLLECTION,
+            limit: (args.limit as number | undefined) ?? 5,
+            mode: args.keyword === true ? "keyword" : "semantic",
+          },
+        );
+        return { json: hits };
+      },
+    },
+    {
+      name: "memory_forget",
+      command: memoryForgetCommand,
+      schema: z.strictObject({
+        name: line(80).describe(help(memoryForgetCommand, "name")),
+        project: line(100).optional().describe(MEMORY_PROJECT),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+      note: MEMORY_NOTE,
+      async call(args, state) {
+        const root = rootOf(state);
+        const scope = await memoryScopeOf(state, root, args.project);
+        return { json: forgetMemory(root, scope, args.name as string) };
+      },
+    },
+    {
       name: "daily_append_thought",
       command: thought,
       schema: z.strictObject({ text: prose(20_000).describe(help(thought, "text")) }),
@@ -336,6 +467,7 @@ export const INSTRUCTIONS = `Tools for the shared llmOS Obsidian vault (the vaul
 Prefer them to the llmos command line: arguments need no shell quoting, and the vault model and search models stay loaded.
 Read: read (one note; section for one heading, properties_only for the frontmatter), list (the properties of every note under a folder), neighbors and subgraph (links), check (unlinked references and Markdown that renders wrongly), health (vault hygiene), search (qmd keyword search by default; semantic: true for vector search, about 1 s; hybrid: true for query expansion and reranking, 13 to 22 s, only when the others miss).
 Write: daily_append_thought (a paragraph under ## Thoughts in today's daily note), file_inbox (file an inbox note; needs the running Obsidian app), set_property (one frontmatter property). Write tools stamp updated themselves.
+Memory: memory_save (one shared project memory: a topic note and its MEMORY.md index line), memory_search (the memories that match a query; semantic by default), memory_forget (delete one memory). Save a fact any agent can use; one session's progress is not a memory.
 Before creating or materially editing a note, follow the vault's AGENTS.md and authoring.md. Paths are vault-relative; nothing outside the vault is read or written.`;
 
 /**
@@ -435,6 +567,19 @@ async function invoke(
   }
 }
 
+/** The client's root folders, asked fresh each call (roots can change); empty when it offers none. */
+async function clientRoots(server: McpServer): Promise<string[]> {
+  if (!server.server.getClientCapabilities()?.roots) return [];
+  try {
+    const { roots } = await server.server.listRoots(undefined, { timeout: 2_000 });
+    return roots.flatMap((entry) =>
+      entry.uri.startsWith("file://") ? [fileURLToPath(entry.uri)] : [],
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** Build the MCP server and its tools over `state`. */
 export function createServer(state: ServerState): McpServer {
   const server = new McpServer(
@@ -444,6 +589,7 @@ export function createServer(state: ServerState): McpServer {
   const callState: CallState = {
     context: state.handlerContext(),
     store: () => state.openStore(),
+    roots: () => clientRoots(server),
   };
   for (const tool of tools()) {
     server.registerTool(

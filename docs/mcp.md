@@ -11,6 +11,23 @@ vault model and the qmd search models loaded between calls.
 | --- | --- |
 | `read`, `list`, `neighbors`, `subgraph`, `check`, `health`, `search` | Read |
 | `daily_append_thought`, `file_inbox`, `set_property` | Write; each stamps `updated` on the notes it changes |
+| `memory_save`, `memory_search`, `memory_forget` | Shared project memory (`projects/<project>/memory/`, ADR-0020) |
+
+The memory tools write the notes and `MEMORY.md` index lines that Claude Code
+writes through `autoMemoryDirectory`, so every agent shares one store. They
+take an optional `project`, a folder name under `projects/`, never a path.
+The session-start context names the session's project, so agents pass it.
+Without it, the session's folder picks the project: the client's first MCP
+root (Claude Code sends the project), then `CLAUDE_PROJECT_DIR`, then the
+folder the agent started the launcher in, which the launcher passes as
+`LLMOS_SESSION_CWD` unless that is its own plugin folder (Codex starts it
+there, and Codex sends no roots). A folder outside every vault project uses
+`personal`; a worktree uses its main checkout's project. With no signal at
+all, the call fails instead of guessing: the server's own folder is its
+install, not the session's. `memory_save` fails when the index would
+pass 200 lines or 25,000 bytes, because agents load only that much.
+`memory_search` keeps only the topic notes directly in the memory folder, so
+a subfolder such as Hermes's own `hermes/` store stays out of it.
 
 Each tool runs the handler of the matching `llmos` command, and its
 description comes from that command's help. The server serves only the llmOS

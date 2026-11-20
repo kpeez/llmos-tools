@@ -17,31 +17,16 @@ import {
   appendFileSync,
   lstatSync,
   mkdirSync,
-  readdirSync,
   readlinkSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { MEMORY_DIR } from "../layout.ts";
-import {
-  expandUser,
-  isDict,
-  isDir,
-  isFile,
-  isSymlink,
-  isUnder,
-  joinPath,
-  readText,
-} from "./common.ts";
+import { type Checkout, checkoutAt, projectSlug } from "../project.ts";
+import { expandUser, isDict, isFile, isSymlink, isUnder, joinPath, readText } from "./common.ts";
 
-interface Repository {
-  /** The worktree's top level, where the links go. */
-  top: string;
-  /** The main checkout: the parent of the shared Git directory. */
-  main: string;
-  /** The shared Git directory (`git rev-parse --git-common-dir`). */
-  common: string;
+interface Repository extends Checkout {
   root: string;
   /** The matching folder name under `<root>/projects/`. */
   slug: string;
@@ -78,53 +63,13 @@ const LINKS: LinkSpec[] = [
   },
 ];
 
-/**
- * The vault project folder under `<root>/projects/` matching `main`, or `null`.
- * Checks the exact directory name first, then strips a leading dot and
- * lowercases (so `.dotfiles` -> `dotfiles` and `llmOS` -> `llmos`), matching
- * directory entries on disk so case-insensitive filesystems use the canonical
- * vault folder name.
- */
-export function projectSlug(main: string, root: string): string | null {
-  const projectsDir = joinPath(root, "projects");
-  let entries: string[];
-  try {
-    entries = readdirSync(projectsDir);
-  } catch {
-    return null;
-  }
-  const name = basename(main);
-  if (entries.includes(name) && isDir(joinPath(projectsDir, name))) return name;
-  const normalized = name.replace(/^\./, "").toLowerCase();
-  if (normalized && entries.includes(normalized) && isDir(joinPath(projectsDir, normalized))) {
-    return normalized;
-  }
-  return null;
-}
-
 /** The worktree containing `path`, or `null` outside a Git worktree or vault project. */
 function repositoryAt(path: string, root: string): Repository | null {
-  const result = Bun.spawnSync({
-    cmd: [
-      "git",
-      "-C",
-      path,
-      "rev-parse",
-      "--path-format=absolute",
-      "--show-toplevel",
-      "--git-common-dir",
-    ],
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (result.exitCode !== 0) return null;
-  const [top, common] = result.stdout.toString().trim().split("\n");
-  if (!top || !common) return null;
-  // A worktree of a bare repository has no main checkout; name it by itself.
-  const main = basename(common) === ".git" ? dirname(common) : top;
-  const slug = projectSlug(main, root);
+  const checkout = checkoutAt(path);
+  if (checkout === null) return null;
+  const slug = projectSlug(checkout.main, root);
   if (slug === null) return null;
-  return { top, main, common, root, slug };
+  return { ...checkout, root, slug };
 }
 
 function exists(path: string): boolean {

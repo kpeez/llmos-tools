@@ -20,7 +20,7 @@ import type { Context } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import { Frontmatter } from "../src/frontmatter.ts";
 import { INSTRUCTIONS } from "../src/mcp.ts";
-import { READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
+import { MEMORY_TOOLS, READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
 import { openQmd, qmdLocation } from "../src/qmd.ts";
 import { VaultModel } from "../src/vault.ts";
@@ -77,11 +77,18 @@ describe("the tool list", () => {
     const { client, close } = await connect(contextFor(vault()));
     const tools = await client.tools();
     await close();
-    expect(tools.map((tool) => tool.name)).toEqual([...READ_TOOLS, ...WRITE_TOOLS]);
+    expect(tools.map((tool) => tool.name)).toEqual([
+      ...READ_TOOLS,
+      ...MEMORY_TOOLS,
+      ...WRITE_TOOLS,
+    ]);
     const commandOf: Record<string, string> = {
       daily_append_thought: "daily append-thought",
       file_inbox: "file-inbox",
       set_property: "set-property",
+      memory_save: "memory save",
+      memory_search: "memory search",
+      memory_forget: "memory forget",
     };
     for (const tool of tools) {
       const name = tool.name as string;
@@ -90,7 +97,8 @@ describe("the tool list", () => {
         `${command?.summary}\n\n${command?.description}`,
       );
       const hints = tool.annotations as Record<string, boolean>;
-      expect(hints.readOnlyHint).toBe((READ_TOOLS as readonly string[]).includes(name));
+      const readOnly = [...READ_TOOLS, "memory_search"] as readonly string[];
+      expect(hints.readOnlyHint).toBe(readOnly.includes(name));
       expect(hints.openWorldHint).toBe(false);
       expect((tool.inputSchema as { additionalProperties?: boolean }).additionalProperties).toBe(
         false,
@@ -425,6 +433,126 @@ describe("hostile arguments are refused", () => {
       expect(read(root, "notes/alpha.md")).toBe(NOTE);
       expect(read(root, DAILY)).toBe(dailyNote(TODAY));
       expect(read(root, "raw/capture.md")).toBe(CAPTURE);
+    });
+  }
+});
+
+describe("memory tools", () => {
+  test("save, search, and forget one memory in a named project", async () => {
+    const root = vault({ "projects/garden/garden.md": "# Garden\n" });
+    const env = isolatedEnv();
+    const { client, close } = await connect(contextFor(root, { env }));
+
+    const saved = await client.call("memory_save", {
+      name: "tank-heater",
+      description: "The zebrafish tank needs a heater",
+      body: "Set the zebrafish tank heater to 26 C.",
+      type: "project",
+      project: "garden",
+    });
+    expect(saved.isError).toBeFalsy();
+    expect(JSON.parse(saved.text)).toMatchObject({ path: "projects/garden/memory/tank-heater.md" });
+    expect(read(root, "projects/garden/memory/MEMORY.md")).toContain(
+      "- [Tank heater](tank-heater.md) — The zebrafish tank needs a heater",
+    );
+
+    const config = join(env.QMD_CONFIG_DIR as string, "index.yml");
+    mkdirSync(dirname(config), { recursive: true });
+    writeFileSync(config, `collections:\n  llmos:\n    path: ${root}\n    pattern: "**/*.md"\n`);
+    mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
+    const store = await openQmd(qmdLocation(env), true);
+    await store.update({ collections: ["llmos"] });
+    await store.close();
+    const found = await client.call("memory_search", {
+      query: "zebrafish",
+      keyword: true,
+      project: "garden",
+    });
+    expect(JSON.parse(found.text).map((hit: { path: string }) => hit.path)).toEqual([
+      "projects/garden/memory/tank-heater.md",
+    ]);
+
+    const forgot = await client.call("memory_forget", { name: "tank-heater", project: "garden" });
+    await close();
+    expect(forgot.isError).toBeFalsy();
+    expect(read(root, "projects/garden/memory/MEMORY.md")).not.toContain("tank-heater");
+  });
+
+  describe("without a project argument", () => {
+    const SAVE = { name: "fact", description: "A fact", body: "The fact.", type: "project" };
+    const projects = () =>
+      vault({ "projects/garden/g.md": "# g\n", "projects/personal/p.md": "# p\n" });
+    function repo(name: string): string {
+      const path = join(scratch("repo"), name);
+      mkdirSync(path, { recursive: true });
+      Bun.spawnSync({ cmd: ["git", "init", "--quiet", path] });
+      return path;
+    }
+    async function saveWith(
+      env: Record<string, string>,
+      roots: string[] | null,
+    ): Promise<{ root: string; isError: boolean; text: string }> {
+      const root = projects();
+      const context = contextFor(root, { env: { ...isolatedEnv(), ...env } });
+      const { client, close } = await connect(context, "claude-code", roots);
+      const result = await client.call("memory_save", SAVE);
+      await close();
+      return { root, ...result };
+    }
+    const saved = (root: string, project: string) =>
+      existsSync(join(root, "projects", project, "memory", "fact.md"));
+
+    test("fails when the client names no session folder, and writes nothing", async () => {
+      const { root, isError, text } = await saveWith({}, null);
+      expect(isError).toBe(true);
+      expect(text).toContain("pass project");
+      expect(saved(root, "personal")).toBe(false);
+    });
+
+    test("uses the client's first root, a worktree's main checkout included", async () => {
+      const main = repo("garden");
+      const worktree = join(dirname(main), "garden-wt");
+      Bun.spawnSync({ cmd: ["git", "-C", main, "commit", "--quiet", "--allow-empty", "-m", "x"] });
+      Bun.spawnSync({ cmd: ["git", "-C", main, "worktree", "add", "--quiet", worktree] });
+      const { root, isError } = await saveWith({ LLMOS_SESSION_CWD: repo("other") }, [
+        worktree,
+        scratch("extra"),
+      ]);
+      expect(isError).toBe(false);
+      expect(saved(root, "garden")).toBe(true);
+    });
+
+    test("uses CLAUDE_PROJECT_DIR, then the launcher's folder, when there are no roots", async () => {
+      const both = await saveWith(
+        { CLAUDE_PROJECT_DIR: repo("garden"), LLMOS_SESSION_CWD: scratch("plain") },
+        [],
+      );
+      expect(saved(both.root, "garden")).toBe(true);
+      const launcherOnly = await saveWith({ LLMOS_SESSION_CWD: repo("garden") }, null);
+      expect(saved(launcherOnly.root, "garden")).toBe(true);
+    });
+
+    test("a session folder outside any vault project uses personal memory", async () => {
+      const { root, isError } = await saveWith({ LLMOS_SESSION_CWD: scratch("plain") }, null);
+      expect(isError).toBe(false);
+      expect(saved(root, "personal")).toBe(true);
+    });
+  });
+
+  const HOSTILE: [string, Record<string, unknown>][] = [
+    ["memory_save", { name: "x", description: "d", body: "b", type: "project", project: ".." }],
+    ["memory_save", { name: "../x", description: "d", body: "b", type: "project" }],
+    ["memory_save", { name: "x", description: "d", body: "b", type: "project", path: "/tmp" }],
+    ["memory_search", { query: "q", project: "../.." }],
+    ["memory_forget", { name: "x", project: "notes/../.." }],
+  ];
+  for (const [tool, args] of HOSTILE) {
+    test(`${tool} refuses ${JSON.stringify(args)}`, async () => {
+      const root = vault();
+      const { client, close } = await connect(contextFor(root));
+      const result = await client.call(tool, args);
+      await close();
+      expect(result.isError).toBe(true);
     });
   }
 });

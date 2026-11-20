@@ -20,7 +20,7 @@
 
 import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { SERVER_NAME } from "./mcp-names.ts";
 
 type Env = Record<string, string | undefined>;
@@ -73,12 +73,37 @@ async function serveSetup(reason: string): Promise<void> {
   await handle.close();
 }
 
+/** This launcher's plugin root: above `dist/` for the bundle, above `cli/src/` for the source. */
+const HERE = dirname(realpathSync(import.meta.path));
+const PLUGIN_ROOT_DIR = basename(HERE) === "src" ? dirname(dirname(HERE)) : dirname(HERE);
+
+/**
+ * The session's folder, for the server's memory scope: the folder the agent
+ * started this launcher in. Claude Code starts it in the project; Codex
+ * starts it in the plugin folder, which says nothing about the session.
+ */
+export function sessionFolder(cwd: string, pluginRoot: string): string | null {
+  let real: string;
+  try {
+    real = realpathSync(cwd);
+  } catch {
+    return null;
+  }
+  return real === pluginRoot || real.startsWith(`${pluginRoot}/`) ? null : real;
+}
+
 /** Run the installed server as a child that shares this process's stdio. */
 async function runServer(entry: string): Promise<number> {
   const argv = [process.execPath, ...SAFE_BUN_FLAGS, entry, "mcp"];
+  const folder = process.env.LLMOS_SESSION_CWD ?? sessionFolder(process.cwd(), PLUGIN_ROOT_DIR);
   const child = Bun.spawn(argv, {
+    // The server runs in its own install, so the session folder goes in the environment.
     cwd: dirname(dirname(entry)),
-    env: { ...process.env, GGML_METAL_NO_RESIDENCY: "1" },
+    env: {
+      ...process.env,
+      GGML_METAL_NO_RESIDENCY: "1",
+      ...(folder ? { LLMOS_SESSION_CWD: folder } : {}),
+    },
     stdio: ["inherit", "inherit", "inherit"],
   });
   for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const) {

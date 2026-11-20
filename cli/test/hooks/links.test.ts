@@ -7,7 +7,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, readlinkSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { projectSlug } from "../../src/hooks/links.ts";
+import { projectSlug } from "../../src/project.ts";
 import {
   GIT_ENV,
   git,
