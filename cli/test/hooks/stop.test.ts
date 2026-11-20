@@ -1,13 +1,15 @@
 /**
  * The stop hook reindexes only when the stamp hook left a dirty flag, and
  * clears the flag only after a successful reindex. Failures stay retryable
- * and never block the turn. `llmos` and `qmd` are stubs on `PATH`; the
- * real binaries never run. Ported from the retired Python test `test_stop_qmd_hook.py`.
+ * and never block the turn. `llmos` and `qmd` are stubs on `PATH`, except in
+ * the last test, where `llmos` runs this checkout's CLI on a scratch vault and
+ * index. Ported from the retired Python test `test_stop_qmd_hook.py`.
  */
 
 import { afterEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { cli, indexVault, isolatedEnv, makeVault } from "../helpers.ts";
 import { dirtyFlag, removeTemporaryFolders, runHook, temporaryFolder } from "./helpers.ts";
 
 afterEach(removeTemporaryFolders);
@@ -133,4 +135,39 @@ test("keeps the flag and exits 0 when every reindex fails", () => {
   expect(result.stderr).toContain(
     "llmos qmd hook: llmos reindex --no-embed exited 1; qmd update exited 7; dirty flag retained for retry",
   );
+});
+
+test("a memory note written outside llmos is found by memory search after the Stop hook", async () => {
+  const root = makeVault({ "projects/demo/demo.md": "# demo\n" });
+  const env = isolatedEnv();
+  await indexVault(root, env, { llmos: "**/*.md", memory: "projects/*/memory/*.md" });
+  // Claude Code writes memory notes itself; the stamp hook marks the turn dirty.
+  mkdirSync(join(root, "projects/demo/memory"), { recursive: true });
+  writeFileSync(
+    join(root, "projects/demo/memory/heron.md"),
+    "---\nname: heron\ndescription: The heron\nmetadata:\n  node_type: memory\n  type: project\n---\n\nThe heron nests by the weir.\n",
+  );
+  const search = async () => {
+    const result = await cli(root, ["memory", "search", "weir", "--keyword", "--project", "demo"], {
+      env,
+    });
+    return (JSON.parse(result.stdout) as { path: string }[]).map((hit) => hit.path);
+  };
+  expect(await search()).toEqual([]);
+
+  const tmp = temporaryFolder();
+  const binDir = join(tmp, "bin");
+  mkdirSync(binDir);
+  const entry = join(import.meta.dir, "..", "..", "bin", "llmos.ts");
+  writeFileSync(join(binDir, "llmos"), `#!/bin/sh\nexec "${process.execPath}" "${entry}" "$@"\n`);
+  chmodSync(join(binDir, "llmos"), 0o755);
+  const flag = setFlag(tmp);
+  const result = runHook("stop", { session_id: "sess-1" }, tmp, {
+    root,
+    env: { ...env, PATH: `${binDir}:/usr/bin:/bin` },
+  });
+
+  expect(result.exitCode).toBe(0);
+  expect(existsSync(flag)).toBe(false);
+  expect(await search()).toEqual(["projects/demo/memory/heron.md"]);
 });

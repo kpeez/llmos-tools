@@ -74,6 +74,7 @@ describe("qmd", () => {
     expect(result.exitCode).toBe(0);
     const report = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(report.update).toMatchObject({ indexed: 1 });
+    expect(report.memory).toBeNull();
     expect(report.embed).toBeNull();
     expect(report.cleanup).toBeNull();
     const health = await cli(root, ["health", "--json"], { env });

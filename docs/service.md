@@ -91,3 +91,9 @@ qmd collection add "<vault root>" --name memory --mask 'projects/*/memory/*.md'
 
 `llmos doctor` fails until the collection exists and prints that command. While
 it is missing, memory search falls back to the `llmos` collection.
+
+Memory notes also change outside `llmos memory`: Claude Code writes its own,
+the memory sync pulls them from other hosts, and people edit them by hand. So
+`llmos reindex` of `llmos`, which the Stop hook runs with `--no-embed` after a
+turn that changed the vault, also scans the `memory` collection when it exists.
+Its fallback, `qmd update`, scans every collection.

@@ -347,8 +347,21 @@ export async function withEmbedLock<T>(dbPath: string, work: () => Promise<T>): 
   }
 }
 
+type ScanCounts = {
+  indexed: number;
+  updated: number;
+  unchanged: number;
+  removed: number;
+  skipped: number;
+};
+
 export interface ReindexResult {
-  update: { indexed: number; updated: number; unchanged: number; removed: number; skipped: number };
+  update: ScanCounts;
+  /**
+   * The scan of the `memory` collection, which a reindex of `llmos` runs too
+   * when that collection exists; `null` otherwise.
+   */
+  memory: ScanCounts | null;
   /** `null` when the embed step was skipped (`embed: false`). */
   embed: {
     docsProcessed: number;
@@ -373,6 +386,11 @@ export interface ReindexResult {
  *
  * With `embed: false` only the scan runs: the keyword index is current, no
  * model loads, and vectors for changed documents wait for a full reindex.
+ *
+ * A reindex of `llmos` also scans the `memory` collection when it exists:
+ * memory search reads only that collection, and its notes change outside
+ * `llmos memory` too (Claude Code's own writes, the memory sync, hand edits).
+ * Embedding `llmos` covers them, since qmd keys vectors by content hash.
  */
 export async function reindex(
   store: QMDStore,
@@ -381,20 +399,29 @@ export async function reindex(
   options: { embed?: boolean } = {},
 ): Promise<ReindexResult> {
   await requireCollection(store, collection);
-  const scanned = await store.update({ collections: [collection] });
-  const update = {
-    indexed: scanned.indexed,
-    updated: scanned.updated,
-    unchanged: scanned.unchanged,
-    removed: scanned.removed,
-    skipped: scanned.skipped,
+  const scan = async (name: string): Promise<ScanCounts> => {
+    const scanned = await store.update({ collections: [name] });
+    return {
+      indexed: scanned.indexed,
+      updated: scanned.updated,
+      unchanged: scanned.unchanged,
+      removed: scanned.removed,
+      skipped: scanned.skipped,
+    };
   };
-  if (options.embed === false) return { update, embed: null, cleanup: null };
+  const update = await scan(collection);
+  const names = (await store.listCollections()).map((entry) => entry.name);
+  const memory =
+    collection === "llmos" && names.includes(MEMORY_COLLECTION)
+      ? await scan(MEMORY_COLLECTION)
+      : null;
+  if (options.embed === false) return { update, memory, embed: null, cleanup: null };
   const embed = await withEmbedLock(dbPath, () => store.embed({ collection }));
   const { Maintenance } = await import("@tobilu/qmd");
   const cleanup = new Maintenance(store.internal).run();
   return {
     update,
+    memory,
     embed: {
       docsProcessed: embed.docsProcessed,
       chunksEmbedded: embed.chunksEmbedded,

@@ -1348,6 +1348,9 @@ embedding model when there is work), and \`qmd cleanup\` (orphaned vectors,
 inactive documents, LLM cache, FTS compaction, vacuum; this step covers
 the whole index) through the qmd SDK. Two embeds never run at once: a
 second one fails while another process holds qmd's embed lock.
+A reindex of \`llmos\` also scans the \`memory\` collection when it exists
+("memory" in the report; null otherwise), because memory notes change outside
+\`llmos memory\` too.
 --no-embed runs only the scan: keyword search is current at once and no
 model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
 after each turn that changed the vault. Run plain \`reindex\` by hand to
@@ -1367,6 +1370,7 @@ Do NOT use when you only want to search -- use \`search\`.`,
     },
   },
   exampleOutput: `{"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},
+ "memory": {"indexed": 0, "updated": 1, "unchanged": 40, "removed": 0, "skipped": 0},
  "embed": {"docsProcessed": 3, "chunksEmbedded": 9, "errors": 0, "durationMs": 2100},
  "cleanup": {"cacheCount": 4, "orphanedVectors": 120, "inactiveDocs": 1, "orphanedContent": 1}}`,
   example: "llmos reindex",

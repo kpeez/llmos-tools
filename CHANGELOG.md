@@ -18,7 +18,10 @@ Newest first. Versions are the `version` field shared by
   (`projects/*/memory/*.md`). `llmos doctor` now reports the service, whether
   that collection exists (with the `qmd collection add` command that adds it),
   and how many memory notes lack an embedding. Until the collection exists,
-  memory search uses the `llmos` collection as before.
+  memory search uses the `llmos` collection as before. `llmos reindex` of
+  `llmos`, which the Stop hook runs after a turn that changed the vault, also
+  scans the `memory` collection, so memories that Claude Code writes, the
+  memory sync pulls, or a person edits are found after the turn.
 - `llmos memory save` and `forget` (and the MCP tools) update the keyword index
   at once, and a running service embeds the change in the background, so a
   semantic memory search finds a new memory without `llmos reindex`.
