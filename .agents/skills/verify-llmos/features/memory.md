@@ -29,4 +29,4 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 ## Gotchas
 
 - Semantic search (the default) needs the embedding model, which the scratch run does not download. The drive uses `--keyword`.
-- A memory saved since the last `reindex` is not found by search.
+- A save updates the keyword index of the qmd collection at once, so `--keyword` finds it. Semantic search finds it after the service embeds it, or after `reindex`.

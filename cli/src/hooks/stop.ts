@@ -1,14 +1,16 @@
 /**
- * Stop: update the qmd keyword index of the `llmos` collection, only if
- * this session's stamp hook left a dirty flag.
+ * Stop: update the qmd keyword index of the `llmos` collection, and of the
+ * `memory` collection when it exists, only if this session's stamp hook left
+ * a dirty flag.
  *
  * It never embeds: loading the embedding model takes seconds, too long for
  * the end of every turn. Embedding is done by running `llmos reindex`
  * by hand; `llmos health` reports how many documents still need it.
  *
- * It runs `llmos reindex --no-embed` when `llmos` is on `PATH`.
- * If that install lacks the flag or the verb, or fails, it runs `qmd update
- * -c llmos`. The flag clears only after one of them succeeds, so a failure
+ * It runs `llmos reindex --no-embed` when `llmos` is on `PATH`; a reindex of
+ * `llmos` also scans `memory`. If that install lacks the flag or the verb, or
+ * fails, it runs `qmd update -c llmos`, which scans every collection (qmd's
+ * `update` ignores `-c`). The flag clears only after one of them succeeds, so a failure
  * stays retryable. A failure prints a short diagnostic on stderr and never
  * blocks the turn. A turn that did not touch the vault spawns nothing. This
  * hook never imports qmd itself.

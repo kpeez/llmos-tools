@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileSha256, recordHeartbeat } from "../src/heartbeat.ts";
 import { MEMORY_TOOLS, READ_TOOLS, WRITE_TOOLS } from "../src/mcp-names.ts";
@@ -21,7 +21,7 @@ interface Setup {
 }
 
 async function setup(
-  options: { collectionPath?: string; sentinelIndexed?: boolean } = {},
+  options: { collectionPath?: string; sentinelIndexed?: boolean; memory?: boolean } = {},
 ): Promise<Setup> {
   const root = makeVault(options.sentinelIndexed === false ? {} : { "llmOS.md": SENTINEL });
   const bin = scratch("doctor-bin");
@@ -47,12 +47,15 @@ cat "$FAKE_VAULT_ROOT/llmOS.md" | sed '$ { /^$/d; }'
   mkdirSync(dirname(config), { recursive: true });
   writeFileSync(
     config,
-    `collections:\n  llmos:\n    path: ${options.collectionPath ?? root}\n    pattern: "**/*.md"\n`,
+    `collections:\n  llmos:\n    path: ${options.collectionPath ?? root}\n    pattern: "**/*.md"\n` +
+      (options.memory === false
+        ? ""
+        : `  memory:\n    path: ${root}\n    pattern: "projects/*/memory/*.md"\n`),
   );
   mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
   const store = await openQmd(qmdLocation(env), true);
   try {
-    await store.update({ collections: ["llmos"] });
+    await store.update({ collections: ["llmos", ...(options.memory === false ? [] : ["memory"])] });
   } finally {
     await store.close();
   }
@@ -115,6 +118,9 @@ describe("llmos doctor", () => {
       "obsidian-vault",
       "qmd",
       "qmd-collection",
+      "qmd-memory-collection",
+      "memory-embeddings",
+      "service",
       "qmd-index",
       "qmd-retrieval",
       "mcp-server",
@@ -199,6 +205,19 @@ describe("llmos doctor", () => {
     const elsewhere = scratch("elsewhere");
     const { env } = await setup({ collectionPath: elsewhere });
     failed(doctor(env), "qmd-collection", "qmd collection remove llmos && qmd collection add");
+  });
+
+  test("a missing memory collection fails with the add command, and the service is reported", async () => {
+    const { env, root } = await setup({ memory: false });
+    const result = doctor(env);
+    failed(
+      result,
+      "qmd-memory-collection",
+      `qmd collection add "${realpathSync(root)}" --name memory --mask 'projects/*/memory/*.md'`,
+    );
+    expect(result.stdout).toContain("PASS service: off (LLMOS_SERVICE=off)");
+    const live = doctor({ ...env, LLMOS_SERVICE: "on", XDG_STATE_HOME: scratch("st") });
+    expect(live.stdout).toContain("PASS service: not running");
   });
 
   test("an unindexed or stale sentinel fails with the reindex repair", async () => {

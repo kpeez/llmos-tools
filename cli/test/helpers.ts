@@ -14,6 +14,7 @@ import { type CliResult, type Context, runCli } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
 import type { ObsidianRunner } from "../src/obsidian.ts";
 import type { PdfConverter } from "../src/pdf.ts";
+import { openQmd, qmdLocation } from "../src/qmd.ts";
 import type { Fetcher } from "../src/sources.ts";
 import { VaultModel } from "../src/vault.ts";
 
@@ -130,7 +131,12 @@ export function recordedObsidian(root: string, notRunning = false): RecordedObsi
   return { calls, runner };
 }
 
-/** An environment that keeps qmd and the llmOS config inside a temporary folder. */
+/**
+ * An environment that keeps qmd and the llmOS config inside a temporary
+ * folder. The llmOS service is off, so a search never starts a background
+ * process; a test of the service passes `LLMOS_SERVICE: "on"` and its own
+ * state folder.
+ */
 export function isolatedEnv(extra: Record<string, string> = {}): Record<string, string> {
   const home = scratch("home");
   return {
@@ -139,6 +145,7 @@ export function isolatedEnv(extra: Record<string, string> = {}): Record<string, 
     XDG_CONFIG_HOME: join(home, ".config"),
     INDEX_PATH: join(home, ".cache", "qmd", "index.sqlite"),
     QMD_CONFIG_DIR: join(home, ".config", "qmd"),
+    LLMOS_SERVICE: "off",
     ...extra,
   };
 }
@@ -171,4 +178,28 @@ export function executable(path: string, text: string): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
   chmodSync(path, 0o755);
+}
+
+/**
+ * Index the vault at `root` into the qmd index of `env`, one collection per
+ * entry of `collections` (name to glob pattern); keyword search needs no model.
+ */
+export async function indexVault(
+  root: string,
+  env: Record<string, string>,
+  collections: Record<string, string> = { llmos: "**/*.md" },
+): Promise<void> {
+  const config = join(env.QMD_CONFIG_DIR as string, "index.yml");
+  mkdirSync(dirname(config), { recursive: true });
+  const entries = Object.entries(collections).map(
+    ([name, pattern]) => `  ${name}:\n    path: ${root}\n    pattern: "${pattern}"\n`,
+  );
+  writeFileSync(config, `collections:\n${entries.join("")}`);
+  mkdirSync(dirname(env.INDEX_PATH as string), { recursive: true });
+  const store = await openQmd(qmdLocation(env), true);
+  try {
+    await store.update({ collections: Object.keys(collections) });
+  } finally {
+    await store.close();
+  }
 }

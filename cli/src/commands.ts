@@ -34,14 +34,17 @@ import { runObsidian } from "./obsidian.ts";
 import {
   indexedPaths,
   openQmd,
+  type QmdLocation,
   qmdLocation,
   reindex,
+  type Searcher,
   type SearchMode,
   search,
-  searchMemory,
+  searchMemoryNotes,
   unembeddedCount,
 } from "./qmd.ts";
 import { readConfig, validated } from "./root.ts";
+import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
 import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
 import {
@@ -1099,6 +1102,18 @@ export function searchMode(values: Values): SearchMode {
   return values.semantic === true ? "semantic" : "keyword";
 }
 
+/** A searcher that opens the qmd store for each search and closes it, as a one-off command does. */
+function localSearcher(location: QmdLocation): Searcher {
+  return async (query, options) => {
+    const store = await openQmd(location, false);
+    try {
+      return await search(store, query, options);
+    } finally {
+      await store.close();
+    }
+  };
+}
+
 const searchCommand: Command = {
   name: "search",
   summary:
@@ -1149,12 +1164,12 @@ Do NOT use when you know the note -- use \`read\` or \`neighbors\`.`,
     if (!existsSync(location.dbPath)) {
       throw new Error(`no qmd index at ${location.dbPath}; add the collection with qmd first`);
     }
-    const store = await openQmd(location, false);
-    try {
-      return { json: await search(store, query, options) };
-    } finally {
-      await store.close();
-    }
+    return {
+      json: await viaService(context.env, localSearcher(location), { start: false })(
+        query,
+        options,
+      ),
+    };
   },
 };
 
@@ -1216,6 +1231,9 @@ Code writes (\`name\`, \`description\`, \`metadata.node_type: memory\`,
 other properties. Fails, and writes nothing, when the index would pass ${MAX_INDEX_LINES}
 lines or ${MAX_INDEX_BYTES} bytes, because agents load only that much: merge or
 forget memories first.
+Then updates the qmd keyword index (no model), so \`memory search --keyword\`
+finds the memory at once. A running llmOS service also embeds it in the
+background; a save never starts the service or loads a model.
 Do NOT use for durable knowledge notes -- those follow the vault's
 authoring.md.`,
   arguments: [
@@ -1245,7 +1263,7 @@ authoring.md.`,
   "index": "projects/llmos-tools/memory/MEMORY.md", "created": true}`,
   example:
     'llmos memory save use-uv "Run Python through uv" "Use uv run, never bare python." --type feedback',
-  run(values, context) {
+  async run(values, context) {
     const root = llmosOnly(vaultName(values), context);
     const input: MemoryInput = {
       name: str(values, "name"),
@@ -1255,7 +1273,9 @@ authoring.md.`,
     };
     const title = optionalStr(values, "title");
     if (title !== undefined) input.title = title;
-    return { json: saveMemory(root, scopeOf(values, root), input, new Date()) };
+    const saved = saveMemory(root, scopeOf(values, root), input, new Date());
+    const warning = await afterMemoryWrite(context.env);
+    return warning === null ? { json: saved } : { json: saved, stderr: `${warning}\n` };
   },
 };
 
@@ -1263,11 +1283,15 @@ const memorySearch: Command = {
   name: "memory search",
   summary: "Search one project's shared memory notes; semantic by default.",
   description: `Use when an agent needs the memories that match a task and the index lines
-do not settle it. Runs a qmd search on the llmOS collection and keeps the
-topic notes of the scope's memory folder (not its subfolders or the index).
-Semantic search loads the embedding model on the first call in a process;
---keyword needs no model. A memory saved since the last \`reindex\` is not
-found yet.`,
+do not settle it. Searches the \`memory\` qmd collection (the top-level notes
+of every \`projects/*/memory/\` folder) and keeps the topic notes of the
+scope's memory folder, not the index. While that collection is missing, it
+searches the \`llmos\` collection instead; \`doctor\` says how to add it.
+Semantic search needs the embedding model. A running llmOS service
+(\`service serve\`) has it loaded, so the search takes about 1 s; without
+the service, the first call in a process loads the model. --keyword needs no
+model and finds a saved memory at once. Semantic search finds it after the
+service embeds it in the background, or after \`reindex\`.`,
   arguments: [{ name: "query", help: "What to search for." }],
   options: {
     keyword: { type: "boolean", help: "BM25 keyword search instead of vector search." },
@@ -1285,17 +1309,12 @@ found yet.`,
     if (!existsSync(location.dbPath)) {
       throw new Error(`no qmd index at ${location.dbPath}; add the collection with qmd first`);
     }
-    const store = await openQmd(location, false);
-    try {
-      const hits = await searchMemory(store, scope, str(values, "query"), {
-        collection: "llmos",
-        limit: count(values, "limit", 1),
-        mode: values.keyword === true ? "keyword" : "semantic",
-      });
-      return { json: hits };
-    } finally {
-      await store.close();
-    }
+    const searcher = viaService(context.env, localSearcher(location), { start: false });
+    const hits = await searchMemoryNotes(searcher, scope, str(values, "query"), {
+      limit: count(values, "limit", 1),
+      mode: values.keyword === true ? "keyword" : "semantic",
+    });
+    return { json: hits };
   },
 };
 
@@ -1304,15 +1323,18 @@ const memoryForget: Command = {
   summary: "Delete one shared memory: its topic note and its MEMORY.md index line.",
   description: `Use when a memory is wrong or no longer true. Removes \`<dir>/<name>.md\`
 and its index line; fails when neither exists.
+Updates the qmd keyword index too, as \`memory save\` does.
 Do NOT use to change a memory -- \`memory save\` with the same name replaces it.`,
   arguments: [{ name: "name", help: "The memory's name (its file name without .md)." }],
   options: { ...SCOPE_OPTIONS, ...vaultOption('Must be "llmos".') },
   exampleOutput: `{"path": "projects/llmos-tools/memory/use-uv.md",
   "index": "projects/llmos-tools/memory/MEMORY.md"}`,
   example: "llmos memory forget use-uv --project llmos-tools",
-  run(values, context) {
+  async run(values, context) {
     const root = llmosOnly(vaultName(values), context);
-    return { json: forgetMemory(root, scopeOf(values, root), str(values, "name")) };
+    const forgotten = forgetMemory(root, scopeOf(values, root), str(values, "name"));
+    const warning = await afterMemoryWrite(context.env);
+    return warning === null ? { json: forgotten } : { json: forgotten, stderr: `${warning}\n` };
   },
 };
 
@@ -1326,6 +1348,9 @@ embedding model when there is work), and \`qmd cleanup\` (orphaned vectors,
 inactive documents, LLM cache, FTS compaction, vacuum; this step covers
 the whole index) through the qmd SDK. Two embeds never run at once: a
 second one fails while another process holds qmd's embed lock.
+A reindex of \`llmos\` also scans the \`memory\` collection when it exists
+("memory" in the report; null otherwise), because memory notes change outside
+\`llmos memory\` too.
 --no-embed runs only the scan: keyword search is current at once and no
 model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
 after each turn that changed the vault. Run plain \`reindex\` by hand to
@@ -1345,6 +1370,7 @@ Do NOT use when you only want to search -- use \`search\`.`,
     },
   },
   exampleOutput: `{"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},
+ "memory": {"indexed": 0, "updated": 1, "unchanged": 40, "removed": 0, "skipped": 0},
  "embed": {"docsProcessed": 3, "chunksEmbedded": 9, "errors": 0, "durationMs": 2100},
  "cleanup": {"cacheCount": 4, "orphanedVectors": 120, "inactiveDocs": 1, "orphanedContent": 1}}`,
   example: "llmos reindex",
@@ -1357,6 +1383,66 @@ Do NOT use when you only want to search -- use \`search\`.`,
     } finally {
       await store.close();
     }
+  },
+};
+
+const serviceServe: Command = {
+  name: "service serve",
+  summary: "Run the llmOS service: one warm qmd model set for every agent session on this host.",
+  description: `Use rarely by hand: \`llmos mcp\` starts the service itself when it finds
+none, detached, and its search tools and the search verbs then use it. The
+service keeps the qmd models loaded, so a semantic search takes about 1 s
+instead of a cold model load, and it embeds new shared memories in the
+background after \`memory save\`. It listens on the Unix socket
+\`service.sock\` in the llmOS state folder (\`$XDG_STATE_HOME/llmos\`, else
+\`~/.local/state/llmos\`; the folder is mode 0700, the socket 0600), and
+speaks one JSON request per line (docs/service.md). It stops after 30
+minutes without a request. Only one service runs per host: a second
+\`service serve\` exits at once with exit code 0 and says so. Foreground; it
+returns when the service stops. \`LLMOS_SERVICE=off\` stops every client from
+using or starting it; \`LLMOS_SERVICE_IDLE_MS\` changes the idle limit.
+Do NOT use to stop the service -- send it SIGTERM (\`service status\` gives
+the pid).`,
+  arguments: [],
+  options: {},
+  exampleOutput: "the llmOS service stopped",
+  example: "llmos service serve",
+  async run(_values, context) {
+    const { ServiceInUse, serveService } = await import("./service.ts");
+    let running: Awaited<ReturnType<typeof serveService>>;
+    try {
+      running = await serveService({ env: context.env });
+    } catch (error) {
+      if (error instanceof ServiceInUse) return { text: error.message };
+      throw error;
+    }
+    const stop = (): void => void running.close();
+    process.once("SIGTERM", stop);
+    process.once("SIGINT", stop);
+    await running.done;
+    return { text: "the llmOS service stopped" };
+  },
+};
+
+const serviceStatusCommand: Command = {
+  name: "service status",
+  summary: "Say whether the llmOS service runs, and what it holds.",
+  description: `Use to see whether the llmOS service runs on this host, which qmd models it
+holds in memory, and whether it embeds in the background. Starts nothing.
+\`running\` is false when no service listens on the socket.`,
+  arguments: [],
+  options: {},
+  exampleOutput: `{"running": true, "socket": "/home/me/.local/state/llmos/service.sock",
+ "pid": 4242, "started_at": "2026-11-19T10:00:00.000Z", "index": "/home/me/.cache/qmd/index.sqlite",
+ "requests": 12, "idle_stop_ms": 1800000,
+ "models": {"embed": true, "rerank": false, "generate": false}, "embedding": false}`,
+  example: "llmos service status",
+  async run(_values, context) {
+    const status = await serviceStatus(context.env);
+    const socket = servicePaths(context.env).socket;
+    return {
+      json: status === null ? { running: false, socket } : { running: true, socket, ...status },
+    };
   },
 };
 
@@ -1478,6 +1564,8 @@ export const COMMANDS: readonly Command[] = [
   memorySearch,
   memoryForget,
   reindexCommand,
+  serviceServe,
+  serviceStatusCommand,
   mcp,
   configSetRoot,
   doctorCommand,

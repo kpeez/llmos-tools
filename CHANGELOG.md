@@ -5,6 +5,30 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- New llmOS service: one long-lived process per host that keeps the qmd search
+  models loaded, so every agent session shares one warm model set. `llmos mcp`
+  sends `search` and `memory_search` to it and starts it when it is down;
+  `llmos search` and `llmos memory search` use it when it runs. A semantic search
+  from a new client takes tens of milliseconds instead of a cold model load, and
+  `llmos mcp` works as before when the service is down or cannot start. The
+  service listens on a Unix socket in the llmOS state folder, stops after 30
+  minutes without a request, and has `llmos service serve|status`. See
+  `docs/service.md`; `LLMOS_SERVICE=off` turns it off.
+- Memory search and background embedding use a new `memory` qmd collection
+  (`projects/*/memory/*.md`). `llmos doctor` now reports the service, whether
+  that collection exists (with the `qmd collection add` command that adds it),
+  and how many memory notes lack an embedding. Until the collection exists,
+  memory search uses the `llmos` collection as before. `llmos reindex` of
+  `llmos`, which the Stop hook runs after a turn that changed the vault, also
+  scans the `memory` collection, so memories that Claude Code writes, the
+  memory sync pulls, or a person edits are found after the turn.
+- `llmos memory save` and `forget` (and the MCP tools) update the keyword index
+  at once, and a running service embeds the change in the background, so a
+  semantic memory search finds a new memory without `llmos reindex`.
+- `llmos memory search` now runs with `GGML_METAL_NO_RESIDENCY` set on macOS,
+  as the other model-loading verbs do, so a semantic search no longer aborts at
+  exit.
+
 - Hermes Agent gets a memory provider, `llmos`. A profile that sets
   `memory.provider: llmos` gets the shared project memory index in its system
   prompt and the `memory_save`, `memory_search`, and `memory_forget` tools,

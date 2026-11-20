@@ -34,6 +34,7 @@ Read this index, then use the feature file as the recipe.
 - [Hooks](./hooks.md): session-start context, pre-tool-use context, the Bash guard, the post-tool-use stamp.
 - [Shared memory](./memory.md): `memory scope`, `save`, keyword `search`, and `forget` on a scratch project.
 - [MCP server](./mcp.md): the stdio tools, the memory tools, argument checks, and vault confinement.
+- [The service](./service.md): start on first use, one service for two starts, the fallback, the socket modes, and a keyword memory save with the service up.
 
 ## Not covered
 

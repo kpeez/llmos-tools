@@ -34,6 +34,8 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `reindex` | Update, embed, and clean up the qmd index for a collection. |
 | `remove-property` | Remove a property from a note. |
 | `search` | Search a qmd collection for notes: keyword by default, --semantic for vector search, --hybrid for qmd's full pipeline. |
+| `service serve` | Run the llmOS service: one warm qmd model set for every agent session on this host. |
+| `service status` | Say whether the llmOS service runs, and what it holds. |
 | `set-property` | Set a property on a note. |
 | `source add` | Capture an arXiv paper, web page, or PDF into a frozen source folder: raw bytes, figures, converted text, and a manifest. |
 | `subgraph` | Print the transitive neighborhood of a note out to `depth` hops as JSON. |
@@ -594,6 +596,7 @@ Delete one shared memory: its topic note and its MEMORY.md index line.
 
 Use when a memory is wrong or no longer true. Removes `<dir>/<name>.md`
 and its index line; fails when neither exists.
+Updates the qmd keyword index too, as `memory save` does.
 Do NOT use to change a memory -- `memory save` with the same name replaces it.
 
 Arguments:
@@ -628,6 +631,9 @@ Code writes (`name`, `description`, `metadata.node_type: memory`,
 other properties. Fails, and writes nothing, when the index would pass 200
 lines or 25000 bytes, because agents load only that much: merge or
 forget memories first.
+Then updates the qmd keyword index (no model), so `memory search --keyword`
+finds the memory at once. A running llmOS service also embeds it in the
+background; a save never starts the service or loads a model.
 Do NOT use for durable knowledge notes -- those follow the vault's
 authoring.md.
 
@@ -688,11 +694,15 @@ Usage: llmos memory search <query> [--keyword] [--limit N] [--project NAME] [--w
 Search one project's shared memory notes; semantic by default.
 
 Use when an agent needs the memories that match a task and the index lines
-do not settle it. Runs a qmd search on the llmOS collection and keeps the
-topic notes of the scope's memory folder (not its subfolders or the index).
-Semantic search loads the embedding model on the first call in a process;
---keyword needs no model. A memory saved since the last `reindex` is not
-found yet.
+do not settle it. Searches the `memory` qmd collection (the top-level notes
+of every `projects/*/memory/` folder) and keeps the topic notes of the
+scope's memory folder, not the index. While that collection is missing, it
+searches the `llmos` collection instead; `doctor` says how to add it.
+Semantic search needs the embedding model. A running llmOS service
+(`service serve`) has it loaded, so the search takes about 1 s; without
+the service, the first call in a process loads the model. --keyword needs no
+model and finds a saved memory at once. Semantic search finds it after the
+service embeds it in the background, or after `reindex`.
 
 Arguments:
   query  What to search for.
@@ -812,6 +822,9 @@ embedding model when there is work), and `qmd cleanup` (orphaned vectors,
 inactive documents, LLM cache, FTS compaction, vacuum; this step covers
 the whole index) through the qmd SDK. Two embeds never run at once: a
 second one fails while another process holds qmd's embed lock.
+A reindex of `llmos` also scans the `memory` collection when it exists
+("memory" in the report; null otherwise), because memory notes change outside
+`llmos memory` too.
 --no-embed runs only the scan: keyword search is current at once and no
 model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
 after each turn that changed the vault. Run plain `reindex` by hand to
@@ -824,6 +837,7 @@ Options:
 
 Example output:
   {"update": {"indexed": 1, "updated": 2, "unchanged": 890, "removed": 0, "skipped": 0},
+   "memory": {"indexed": 0, "updated": 1, "unchanged": 40, "removed": 0, "skipped": 0},
    "embed": {"docsProcessed": 3, "chunksEmbedded": 9, "errors": 0, "durationMs": 2100},
    "cleanup": {"cacheCount": 4, "orphanedVectors": 120, "inactiveDocs": 1, "orphanedContent": 1}}
 
@@ -902,6 +916,56 @@ Example output:
 
 Example:
   llmos search "qmd index" --limit 5
+```
+
+## `service serve`
+
+```text
+Usage: llmos service serve
+
+Run the llmOS service: one warm qmd model set for every agent session on this host.
+
+Use rarely by hand: `llmos mcp` starts the service itself when it finds
+none, detached, and its search tools and the search verbs then use it. The
+service keeps the qmd models loaded, so a semantic search takes about 1 s
+instead of a cold model load, and it embeds new shared memories in the
+background after `memory save`. It listens on the Unix socket
+`service.sock` in the llmOS state folder (`$XDG_STATE_HOME/llmos`, else
+`~/.local/state/llmos`; the folder is mode 0700, the socket 0600), and
+speaks one JSON request per line (docs/service.md). It stops after 30
+minutes without a request. Only one service runs per host: a second
+`service serve` exits at once with exit code 0 and says so. Foreground; it
+returns when the service stops. `LLMOS_SERVICE=off` stops every client from
+using or starting it; `LLMOS_SERVICE_IDLE_MS` changes the idle limit.
+Do NOT use to stop the service -- send it SIGTERM (`service status` gives
+the pid).
+
+Example output:
+  the llmOS service stopped
+
+Example:
+  llmos service serve
+```
+
+## `service status`
+
+```text
+Usage: llmos service status
+
+Say whether the llmOS service runs, and what it holds.
+
+Use to see whether the llmOS service runs on this host, which qmd models it
+holds in memory, and whether it embeds in the background. Starts nothing.
+`running` is false when no service listens on the socket.
+
+Example output:
+  {"running": true, "socket": "/home/me/.local/state/llmos/service.sock",
+   "pid": 4242, "started_at": "2026-11-19T10:00:00.000Z", "index": "/home/me/.cache/qmd/index.sqlite",
+   "requests": 12, "idle_stop_ms": 1800000,
+   "models": {"embed": true, "rerank": false, "generate": false}, "embedding": false}
+
+Example:
+  llmos service status
 ```
 
 ## `set-property`

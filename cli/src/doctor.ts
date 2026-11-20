@@ -30,7 +30,15 @@ import { parse as parseYaml } from "yaml";
 import { fileSha256, heartbeatPath, readHeartbeats } from "./heartbeat.ts";
 import { mcpCheck } from "./mcp-check.ts";
 import { MEMORY_TOOLS } from "./mcp-names.ts";
-import { indexedPaths, openQmd, qmdLocation } from "./qmd.ts";
+import {
+  indexedPaths,
+  MEMORY_COLLECTION,
+  MEMORY_PATTERN,
+  openQmd,
+  qmdLocation,
+  unembeddedIn,
+} from "./qmd.ts";
+import { serviceDisabled, servicePaths, serviceStatus } from "./service-client.ts";
 
 export type Env = Record<string, string | undefined>;
 
@@ -212,6 +220,12 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   let indexed = false;
   let retrieved = false;
   let collectionOk = false;
+  let memoryCollection: {
+    path: string;
+    pattern: string;
+    unembedded: number;
+    total: number;
+  } | null = null;
   if (!rootValid || root === null) {
     fail("qmd-collection", "blocked by vault-root failure", ROOT_REPAIR);
   } else if (!existsSync(location.dbPath)) {
@@ -234,6 +248,17 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
         } else {
           collectionOk = true;
           pass("qmd-collection", `llmos -> ${path}`);
+          const memory = (await store.listCollections()).find(
+            (entry) => entry.name === MEMORY_COLLECTION,
+          );
+          if (memory) {
+            memoryCollection = {
+              path: realOrSelf(memory.pwd),
+              pattern: memory.glob_pattern,
+              unembedded: unembeddedIn(store, MEMORY_COLLECTION),
+              total: memory.active_count,
+            };
+          }
           indexed = (await indexedPaths(store, "llmos"))?.has("llmOS.md") ?? false;
           const document = await store.get("qmd://llmos/llmOS.md", { includeBody: true });
           const body = "body" in document ? document.body : undefined;
@@ -266,6 +291,46 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
   } else {
     fail("qmd-index", "blocked by qmd-collection failure", collectionRepair);
     fail("qmd-retrieval", "blocked by qmd-collection failure", collectionRepair);
+  }
+
+  if (collectionOk && root !== null) {
+    const add = `qmd collection add "${root}" --name ${MEMORY_COLLECTION} --mask '${MEMORY_PATTERN}'`;
+    const found = memoryCollection as typeof memoryCollection;
+    if (found === null) {
+      fail(
+        "qmd-memory-collection",
+        "the memory collection is missing, so memory search uses the llmos collection and new memories are not embedded in the background",
+        add,
+      );
+    } else if (found.path !== root || found.pattern !== MEMORY_PATTERN) {
+      fail(
+        "qmd-memory-collection",
+        `memory is ${found.pattern} in ${found.path}, expected ${MEMORY_PATTERN} in ${root}`,
+        `qmd collection remove ${MEMORY_COLLECTION} && ${add}`,
+      );
+    } else {
+      pass("qmd-memory-collection", `memory -> ${found.path} (${found.pattern})`);
+      pass(
+        "memory-embeddings",
+        `${found.unembedded} of ${found.total} memory notes lack an embedding${found.unembedded > 0 ? " (llmos reindex embeds them; a running service does it after a save)" : ""}`,
+      );
+    }
+  }
+
+  // service: one warm model set for every session; it starts on first use, so "not running" is fine.
+  const socket = servicePaths(env).socket;
+  const status = serviceDisabled(env) ? null : await serviceStatus(env);
+  if (serviceDisabled(env)) pass("service", "off (LLMOS_SERVICE=off)");
+  else if (status === null) {
+    pass("service", `not running; llmos mcp starts it on first use (socket ${socket})`);
+  } else {
+    const loaded = Object.entries(status.models)
+      .filter(([, on]) => on)
+      .map(([name]) => name);
+    pass(
+      "service",
+      `running, pid ${status.pid}, socket ${socket}, models loaded: ${loaded.join(", ") || "none"}`,
+    );
   }
 
   // mcp-server: what the plugin's MCP launcher starts on this host.
