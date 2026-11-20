@@ -54,12 +54,10 @@ async function waitFor<T>(what: string, probe: () => Promise<T | null | false> |
   throw new Error(`timed out waiting for ${what}`);
 }
 
+type Answer = { id?: unknown; ok?: boolean; result?: SearchHit[]; error: { code: string } };
+
 /** Send raw lines on one connection; resolve with the first `count` response lines. */
-function raw(
-  socket: string,
-  lines: string[],
-  count = lines.length,
-): Promise<Record<string, any>[]> {
+function raw(socket: string, lines: string[], count = lines.length): Promise<Answer[]> {
   return new Promise((resolve, reject) => {
     const client = net.connect(socket);
     let buffer = "";
@@ -90,7 +88,7 @@ describe("the protocol", () => {
     const index = env.INDEX_PATH as string;
     const search = (params: object) =>
       `${JSON.stringify({ id: 7, method: "search", params: { query: "zebrafish", collection: "llmos", limit: 5, mode: "keyword", ...params } })}\n`;
-    const [ok = {}, ...bad] = await raw(service.socket, [
+    const [ok, ...bad] = await raw(service.socket, [
       search({}),
       "not json\n",
       `${JSON.stringify({ params: {} })}\n`,
@@ -104,7 +102,7 @@ describe("the protocol", () => {
       `${JSON.stringify({ id: 2, method: "search", params: { query: "x".repeat(20_000) } })}\n`,
     ]);
     expect(ok).toMatchObject({ id: 7, ok: true });
-    expect(ok.result.map((hit: SearchHit) => hit.path)).toEqual([
+    expect(ok?.result?.map((hit) => hit.path)).toEqual([
       "notes/alpha.md",
       "projects/demo/memory/tank.md",
     ]);

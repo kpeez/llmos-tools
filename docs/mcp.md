@@ -5,7 +5,9 @@ This page is for people who use or change the `llmos` MCP server.
 The plugin declares an MCP server named `llmos`, which starts in every Claude
 Code, Codex, and Antigravity (`agy`) session where the plugin is enabled. Its
 tools are typed, so multi-line text needs no shell quoting, and it keeps one
-vault model and the qmd search models loaded between calls.
+vault model loaded between calls. Its qmd search work goes to the llmOS
+service, which keeps the search models loaded for every session on the host
+(see [the service](service.md)).
 
 | Tools | Kind |
 | --- | --- |
@@ -26,12 +28,18 @@ there, and Codex sends no roots). A folder outside every vault project uses
 all, the call fails instead of guessing: the server's own folder is its
 install, not the session's. `memory_save` fails when the index would
 pass 200 lines or 25,000 bytes, because agents load only that much.
-`memory_search` keeps only the topic notes directly in the memory folder, so
-a subfolder such as Hermes's own `hermes/` store stays out of it.
+`memory_search` reads the `memory` qmd collection (`projects/*/memory/*.md`:
+the top-level notes of every memory folder) and keeps the notes of the
+session's project, never its index. While that collection is missing, it
+reads the `llmos` collection and keeps only the topic notes directly in the
+memory folder; `llmos doctor` gives the command that adds the collection.
+`memory_save` and `memory_forget` update the keyword index of that collection,
+so a keyword search finds the change at once; a running service also embeds it
+in the background.
 
 Each tool runs the handler of the matching `llmos` command, and its
 description comes from that command's help. The server serves only the llmOS
-vault and its `llmos` qmd collection. Arguments come from a model, so each
+vault and its `llmos` and `memory` qmd collections. Arguments come from a model, so each
 handler checks them again, every note must resolve to a real path inside the
 real vault root (symbolic links resolved), and there is no shell, move, create,
 or arbitrary-file tool. The vault model is read again when a note file
@@ -43,6 +51,12 @@ note. `read` takes `section` (the text under one heading) and
 and returns only the properties of the notes under it unless
 `properties_only` is false. The session-start hook tells agents to use these
 tools before `Grep` and `Read`.
+
+The `search` and `memory_search` tools ask the service first. When no service
+runs, the call starts one in the background and answers from the server's own
+qmd store, as the server did before the service existed. When the service
+cannot start or fails, the server keeps using its own store, so `llmos mcp`
+works the same without the service. `LLMOS_SERVICE=off` turns the service off.
 
 Claude Code reads `.mcp.json`, which runs the committed launcher
 `${CLAUDE_PLUGIN_ROOT}/dist/mcp.js`. Codex reads `.codex-mcp.json` (named in
