@@ -8,13 +8,16 @@ Newest first. Versions are the `version` field shared by
 - The Hermes `llmos` memory provider now recalls shared memories. After each
   turn it pools, on a background thread, the scope's memories that share a
   word with the prompt and the top semantic hits (through the llmOS service
-  when it runs). With `LLMOS_CLEF_URL` set (and `LLMOS_CLEF_TIMEOUT`, a
-  deadline of 5 seconds by default, and `LLMOS_CLEF_MODEL`, `clef-flash` by
-  default), a Clef judge picks up to five helpful notes from the pool, and
-  the next turn gets them once. Without Clef, or when it fails, recall is
-  semantic-only (the first two hits that score at least 0.75), so a memory
-  saved a moment ago is not found until it is embedded. Hermes shows the count
-  in its recall line.
+  when it runs). With `LLMOS_RECALL_JUDGE_URL` set, a decision model behind
+  a SystemOne server judges the pool, keeps up to five helpful notes, and the
+  next turn gets them once. `LLMOS_RECALL_JUDGE_MODEL` names the model
+  (default `d1-2B`), and the threshold follows it: 0.5 for `d1-2B`, 0.3 for
+  `clef-flash`. `LLMOS_RECALL_JUDGE_THRESHOLD` overrides it; a model with
+  neither never calls the judge, and the provider logs one warning at start.
+  `LLMOS_RECALL_JUDGE_TIMEOUT` bounds the whole call (default 5 seconds).
+  Without the judge, or when it fails, recall is semantic-only (the first
+  two hits that score at least 0.75), so a memory saved a moment ago is not
+  found until it is embedded. Hermes shows the count in its recall line.
 
 - New llmOS service: one long-lived process per host that keeps the qmd search
   models loaded, so every agent session shares one warm model set. `llmos mcp`

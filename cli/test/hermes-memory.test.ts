@@ -3,7 +3,7 @@
  * with a stub of Hermes's `agent.memory_provider` module. It calls this
  * checkout's `llmos` CLI on a temporary vault and qmd index, as Hermes would.
  * The index has no vectors, so semantic recall finds nothing and loads no model;
- * the recall pool comes from the word match, and a stub Clef server judges it.
+ * the recall pool comes from the word match, and a stub recall-judge server judges it.
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
@@ -119,7 +119,7 @@ function setup(): { root: string; driver: string; stub: string; env: Record<stri
   return { root, driver, stub, env };
 }
 
-// Async, so the stub Clef server in this process can answer while Python runs.
+// Async, so the stub judge server in this process can answer while Python runs.
 async function run(
   setupResult: ReturnType<typeof setup>,
   init: Record<string, unknown>,
@@ -155,13 +155,13 @@ async function run(
   return JSON.parse(stdout) as Run;
 }
 
-interface ClefBody {
+interface JudgeBody {
   model: string;
   state: string;
   questions: Record<string, { instructions: string }>;
 }
 
-type ClefMode =
+type JudgeMode =
   | "ok"
   | "http500"
   | "slow"
@@ -171,18 +171,21 @@ type ClefMode =
   | "deep"
   | "huge";
 
-/** A stub Clef endpoint. `helpful` maps a note's file name to its probability. */
+/** A stub recall-judge endpoint. `helpful` maps a note's file name to its probability. */
 const servers: { stop(force: boolean): void }[] = [];
 afterEach(() => {
   for (const server of servers.splice(0)) server.stop(true);
 });
 
-function stubClef(helpful: Record<string, number>, mode: (call: number) => ClefMode = () => "ok") {
-  const requests: { path: string; method: string; body: ClefBody }[] = [];
+function stubJudge(
+  helpful: Record<string, number>,
+  mode: (call: number) => JudgeMode = () => "ok",
+) {
+  const requests: { path: string; method: string; body: JudgeBody }[] = [];
   const server = Bun.serve({
     port: 0,
     async fetch(req) {
-      const body = (await req.json()) as ClefBody;
+      const body = (await req.json()) as JudgeBody;
       requests.push({ path: new URL(req.url).pathname, method: req.method, body });
       const behavior = mode(requests.length);
       if (behavior === "http500") return new Response("boom", { status: 500 });
@@ -224,7 +227,8 @@ function recalledNames(block: string): string[] {
   );
 }
 
-const clefLogs = (out: Run) => out.logs.filter(([, message]) => message.includes("Clef"));
+const judgeLogs = (out: Run) =>
+  out.logs.filter(([, message]) => message.toLowerCase().includes("judge"));
 
 const ZEBRA = ["alpha", "bravo", "charlie", "delta", "echo"];
 /** Notes no word of TURN matches; only canned semantic hits bring them into the pool. */
@@ -258,7 +262,7 @@ const TURN = "What does the zebrafish rule say?";
 const hits = (...pairs: [string, number][]) =>
   pairs.map(([name, score]) => ({ path: `projects/my-repo/memory/${name}.md`, score }));
 /** Note names in the order of the request's fields m1, m2, ... */
-const askedNames = (body: ClefBody) =>
+const askedNames = (body: JudgeBody) =>
   Object.values(body.questions).map((q) => /\((.+?)\.md\)/.exec(q.instructions)?.[1]);
 const recallOnce = (n: number) => Array.from({ length: n }, (_, i) => ["queue", TURN, `chat${i}`]);
 
@@ -350,9 +354,9 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
       llmos: "**/*.md",
       memory: "projects/*/memory/*.md",
     });
-    const clef = stubClef({ "tank.md": 0.9, "other.md": 0.9 });
+    const judge = stubJudge({ "tank.md": 0.9, "other.md": 0.9 });
     const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url },
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       recalls: [
         ["queue", "What temperature does the zebrafish heater need?", "chat"],
         ["prefetch", "other-chat"],
@@ -377,103 +381,162 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
     expect(out.recalls[3]).toEqual({ block: "", count: null });
   });
 
-  test("recall keeps the notes Clef rates helpful, best first, and sends one request", async () => {
+  test("recall keeps the notes the judge rates helpful, best first, and sends one request", async () => {
     const setupResult = await zebraSetup();
-    // 0.3 is kept and 0.29 dropped; the best note sorts last by path; equal
-    // probabilities order by path.
-    const clef = stubClef({
-      "alpha.md": 0.3,
-      "bravo.md": 0.3,
-      "charlie.md": 0.29,
-      "delta.md": 0.3,
+    // The default model is d1-2B, whose threshold is 0.5: 0.5 is kept and 0.49
+    // dropped; the best note sorts last by path; equal probabilities order by path.
+    const judge = stubJudge({
+      "alpha.md": 0.5,
+      "bravo.md": 0.5,
+      "charlie.md": 0.49,
+      "delta.md": 0.5,
       "echo.md": 0.9,
     });
     const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: `${clef.url}/` },
+      env: { LLMOS_RECALL_JUDGE_URL: `${judge.url}/` },
       recalls: [
         ["queue", TURN, "chat"],
         ["prefetch", "chat"],
       ],
     });
 
-    expect(clef.requests).toHaveLength(1);
-    const request = clef.requests[0] as (typeof clef.requests)[number];
+    expect(judge.requests).toHaveLength(1);
+    const request = judge.requests[0] as (typeof judge.requests)[number];
     expect(request.method).toBe("POST");
     expect(request.path).toBe("/v1/systemone");
-    expect(request.body.model).toBe("clef-flash");
+    expect(request.body.model).toBe("d1-2B");
     expect(Object.keys(request.body.questions)).toEqual(["m1", "m2", "m3", "m4", "m5"]);
     expect(request.body.state).toContain(TURN);
     expect(askedNames(request.body).sort()).toEqual(ZEBRA);
     expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["echo", "alpha", "bravo", "delta"]);
     expect(out.recalls[0]?.count).toBe(4);
-    expect(clefLogs(out)).toEqual([]);
+    expect(judgeLogs(out)).toEqual([]);
   });
 
   test("the request orders the notes by a shuffle seeded with the message it carries", async () => {
-    const clef = stubClef({});
+    const judge = stubJudge({});
     const message = "What does the\nzebrafish rule say?";
     const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url },
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       recalls: [["queue", `  ${message}  `, "chat"]],
       shuffle: { seed: message, paths: ZEBRA },
     });
-    const body = clef.requests[0]?.body as ClefBody;
+    const body = judge.requests[0]?.body as JudgeBody;
     expect(body.state).toContain(`<<<\n${message}\n>>>`);
     expect(askedNames(body)).toEqual(out.shuffled as string[]);
   });
 
   test("recall keeps at most five notes", async () => {
     const all = [...ZEBRA, ...OTHER];
-    const clef = stubClef(Object.fromEntries(all.map((name) => [`${name}.md`, 0.9])));
+    const judge = stubJudge(Object.fromEntries(all.map((name) => [`${name}.md`, 0.9])));
     const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url },
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       search_hits: hits(...OTHER.map((name): [string, number] => [name, 0.5])),
       recalls: [
         ["queue", TURN, "chat"],
         ["prefetch", "chat"],
       ],
     });
-    expect(askedNames(clef.requests[0]?.body as ClefBody).sort()).toEqual(all);
+    expect(askedNames(judge.requests[0]?.body as JudgeBody).sort()).toEqual(all);
     expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(ZEBRA);
   });
 
-  test("an empty pool sends no Clef request and recalls nothing", async () => {
-    const clef = stubClef({});
+  test("an empty pool sends no judge request and recalls nothing", async () => {
+    const judge = stubJudge({});
     const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url },
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       recalls: [
         ["queue", "Completely unrelated question about weather patterns?", "chat"],
         ["prefetch", "chat"],
       ],
     });
-    expect(clef.requests).toHaveLength(0);
+    expect(judge.requests).toHaveLength(0);
     expect(out.recalls[0]).toEqual({ block: "", count: null });
-    expect(clefLogs(out)).toEqual([]);
+    expect(judgeLogs(out)).toEqual([]);
   });
 
-  test("LLMOS_CLEF_MODEL names the model of the recall request", async () => {
-    const clef = stubClef({ "alpha.md": 0.9 });
-    await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url, LLMOS_CLEF_MODEL: "other-decider" },
-      recalls: [["queue", TURN, "chat"]],
+  test.each<[string, Record<string, string>, string, number]>([
+    ["clef-flash", { LLMOS_RECALL_JUDGE_MODEL: "clef-flash" }, "clef-flash", 0.3],
+    ["the override", { LLMOS_RECALL_JUDGE_THRESHOLD: "0.8" }, "d1-2B", 0.8],
+    [
+      "an unknown model with an override",
+      { LLMOS_RECALL_JUDGE_MODEL: "other-decider", LLMOS_RECALL_JUDGE_THRESHOLD: "0.8" },
+      "other-decider",
+      0.8,
+    ],
+  ])(
+    "the judge request carries the model and keeps notes at its threshold: %s",
+    async (_name, env, model, threshold) => {
+      // The note at the threshold is recalled; the note just below it is not.
+      const judge = stubJudge({ "alpha.md": threshold, "bravo.md": threshold - 0.01 });
+      const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
+        env: { LLMOS_RECALL_JUDGE_URL: judge.url, ...env },
+        recalls: [
+          ["queue", TURN, "chat"],
+          ["prefetch", "chat"],
+        ],
+      });
+      expect(judge.requests.map((r) => r.body.model)).toEqual([model]);
+      expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
+      expect(judgeLogs(out)).toEqual([]);
+    },
+  );
+
+  test("a model with no threshold never calls the judge and warns once, at initialize", async () => {
+    const judge = stubJudge({ "alpha.md": 0.9 });
+    const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url, LLMOS_RECALL_JUDGE_MODEL: "other-decider" },
+      search_hits: hits(["golf", 0.9]),
+      recalls: [
+        ["queue", TURN, "chat1"],
+        ["prefetch", "chat1"],
+        ["queue", TURN, "chat2"],
+        ["prefetch", "chat2"],
+      ],
     });
-    expect(clef.requests.map((r) => r.body.model)).toEqual(["other-decider"]);
+    expect(judge.requests).toHaveLength(0);
+    expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["golf"]);
+    expect(recalledNames(out.recalls[1]?.block ?? "")).toEqual(["golf"]);
+    const logs = judgeLogs(out);
+    expect(logs.map(([level]) => level)).toEqual(["WARNING"]);
+    expect(logs[0]?.[1]).toContain("other-decider");
+    expect(logs[0]?.[1]).toContain("LLMOS_RECALL_JUDGE_THRESHOLD");
   });
 
-  test("without a Clef URL, recall takes the first two semantic hits that score at least 0.75", async () => {
+  test.each(["high", "1.5"])(
+    "an invalid threshold %s is ignored with one warning and the model's threshold applies",
+    async (value) => {
+      const judge = stubJudge({ "alpha.md": 0.5, "bravo.md": 0.49 });
+      const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
+        env: { LLMOS_RECALL_JUDGE_URL: judge.url, LLMOS_RECALL_JUDGE_THRESHOLD: value },
+        recalls: [
+          ["queue", TURN, "chat"],
+          ["prefetch", "chat"],
+        ],
+      });
+      expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
+      const logs = judgeLogs(out);
+      expect(logs.map(([level]) => level)).toEqual(["WARNING"]);
+      expect(logs[0]?.[1]).toContain("LLMOS_RECALL_JUDGE_THRESHOLD");
+    },
+  );
+
+  test("without a judge URL, recall takes the first two semantic hits that score at least 0.75", async () => {
     const setupResult = await zebraSetup();
     const recall = async (searchHits: { path: string; score: number }[]) => {
       const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
+        // A model with no threshold warns only when a judge URL is set.
+        env: { LLMOS_RECALL_JUDGE_MODEL: "other-decider" },
         search_hits: searchHits,
         recalls: [
           ["queue", TURN, "chat"],
           ["prefetch", "chat"],
         ],
       });
-      expect(clefLogs(out)).toEqual([]);
+      expect(judgeLogs(out)).toEqual([]);
       return recalledNames(out.recalls[0]?.block ?? "");
     };
-    // The word matches (the ZEBRA notes) are not recalled without Clef.
+    // The word matches (the ZEBRA notes) are not recalled without the judge.
     expect(await recall(hits(["golf", 0.9], ["hotel", 0.8], ["india", 0.76]))).toEqual([
       "golf",
       "hotel",
@@ -483,45 +546,45 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
     expect(await recall(hits(["hotel", 0.8], ["golf", 0.8]))).toEqual(["hotel", "golf"]);
   });
 
-  test.each<[string, (call: number) => ClefMode, Record<string, string>]>([
-    ["is too slow", () => "slow", { LLMOS_CLEF_TIMEOUT: "0.3" }],
-    ["sends its answer a byte at a time", () => "drip", { LLMOS_CLEF_TIMEOUT: "0.5" }],
+  test.each<[string, (call: number) => JudgeMode, Record<string, string>]>([
+    ["is too slow", () => "slow", { LLMOS_RECALL_JUDGE_TIMEOUT: "0.3" }],
+    ["sends its answer a byte at a time", () => "drip", { LLMOS_RECALL_JUDGE_TIMEOUT: "0.5" }],
     ["answers HTTP 500", () => "http500", {}],
     ["omits a field", () => "missing-field", {}],
     ["answers a non-numeric probability", () => "non-numeric", {}],
     ["answers too deeply nested JSON", () => "deep", {}],
     ["answers more than 1 MiB", () => "huge", {}],
   ])(
-    "when Clef %s, recall falls back to the semantic hits and logs one warning",
+    "when the judge %s, recall falls back to the semantic hits and logs one warning",
     async (_name, mode, env) => {
-      const clef = stubClef({ "bravo.md": 0.9 }, mode);
+      const judge = stubJudge({ "bravo.md": 0.9 }, mode);
       const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-        env: { LLMOS_CLEF_URL: clef.url, ...env },
+        env: { LLMOS_RECALL_JUDGE_URL: judge.url, ...env },
         search_hits: hits(["golf", 0.9]),
         recalls: [
           ["queue", TURN, "chat"],
           ["prefetch", "chat"],
         ],
       });
-      expect(clef.requests).toHaveLength(1);
-      // Clef would recall bravo; the fallback recalls golf.
+      expect(judge.requests).toHaveLength(1);
+      // The judge would recall bravo; the fallback recalls golf.
       expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["golf"]);
       expect(out.queue_seconds[0]).toBeLessThan(1.5);
-      const logs = clefLogs(out);
+      const logs = judgeLogs(out);
       expect(logs.map(([level]) => level)).toEqual(["WARNING"]);
-      expect(logs[0]?.[1]).toContain(clef.url);
+      expect(logs[0]?.[1]).toContain(judge.url);
       expect(logs[0]?.[1]).not.toContain("zebrafish");
     },
   );
 
   test("a failure logs a warning, the next consecutive ones debug, and a success resets it", async () => {
-    const modes: ClefMode[] = ["http500", "http500", "ok", "http500"];
-    const clef = stubClef({ "alpha.md": 0.9 }, (call) => modes[call - 1] ?? "ok");
+    const modes: JudgeMode[] = ["http500", "http500", "ok", "http500"];
+    const judge = stubJudge({ "alpha.md": 0.9 }, (call) => modes[call - 1] ?? "ok");
     const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {
-      env: { LLMOS_CLEF_URL: clef.url },
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
       recalls: recallOnce(4),
     });
-    expect(clefLogs(out).map(([level]) => level)).toEqual(["WARNING", "DEBUG", "WARNING"]);
+    expect(judgeLogs(out).map(([level]) => level)).toEqual(["WARNING", "DEBUG", "WARNING"]);
   });
 
   test("a recall query fits the service's limit of 1000 JavaScript characters", async () => {

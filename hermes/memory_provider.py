@@ -12,15 +12,18 @@ Hermes's built-in `memory` tool stays on for facts only Hermes can act on.
 Recall: after each turn, `queue_prefetch` starts a background thread that
 pools the scope's notes sharing a word with the prompt (top 5) and the top 5
 hits of a semantic `llmos memory search` with a score of at least 0.45
-(through the llmOS service when it runs). With `LLMOS_CLEF_URL` set, a Clef
-judge reads the pool and the provider keeps the notes it rates helpful with a
-probability of at least 0.3, at most 5. `LLMOS_CLEF_TIMEOUT` is the deadline
-for the whole Clef call in seconds (default 5), and `LLMOS_CLEF_MODEL` names
-the model in the request (default `clef-flash`). Without Clef, or when Clef fails, recall is
-semantic-only: the first 2 semantic hits with a score of at least 0.75. A memory
-saved a moment ago has no vector yet, so only Clef finds it until it is
-embedded. The block is cached for the session. `prefetch` hands it to the next
-turn once.
+(through the llmOS service when it runs). With `LLMOS_RECALL_JUDGE_URL` set, a
+decision-model judge reads the pool and the provider keeps the notes it rates
+helpful with a probability of at least the model's threshold, at most 5.
+`LLMOS_RECALL_JUDGE_MODEL` names the model in the request (default `d1-2B`). The
+threshold follows the model: 0.5 for `d1-2B`, 0.3 for `clef-flash`.
+`LLMOS_RECALL_JUDGE_THRESHOLD` (0 to 1) overrides it. A model with no threshold and
+no override never calls the judge, and `initialize()` logs one warning.
+`LLMOS_RECALL_JUDGE_TIMEOUT` is the deadline for the whole judge call in seconds
+(default 5). Without the judge, or when it fails, recall is semantic-only: the
+first 2 semantic hits with a score of at least 0.75. A memory saved a moment ago
+has no vector yet, so only the judge finds it until it is embedded. The block is
+cached for the session. `prefetch` hands it to the next turn once.
 
 The project comes from the session's folder, by Hermes's own order: the
 `cwd` that `initialize()` receives, else the profile's `TERMINAL_CWD`. A
@@ -68,20 +71,19 @@ QUERY_CHARS = 1000
 NOTE_CHARS = 2000
 CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 DESCRIPTION = re.compile(r"^description:[ \t]*(.+)$", re.MULTILINE)
-# The pool, the Clef judge, and the fallback below are the settings an offline
+# The pool, the recall judge, and the fallback below are the settings an offline
 # evaluation picked; keep them as it defined them.
 POOL_K = 5
 POOL_FLOOR = 0.45
 # The CLI fetches the global top min(10 * limit, 200) hits, then keeps the project's
 # first `limit`: 20 * 10 = 200 is the global fetch.
 SEMANTIC_LIMIT = 20
-CLEF_THRESHOLD = 0.3
-CLEF_TIMEOUT_DEFAULT = 5.0
-# A joint answer for ten notes is about 2 KB; a larger one is not a Clef answer.
-CLEF_ANSWER_BYTES = 1 << 20
+JUDGE_TIMEOUT_DEFAULT = 5.0
+# A joint answer for ten notes is about 2 KB; a larger one is not a judge answer.
+JUDGE_ANSWER_BYTES = 1 << 20
 FALLBACK_K = 2
 FALLBACK_FLOOR = 0.75
-CLEF_NOTE_CHARS = 1500
+JUDGE_NOTE_CHARS = 1500
 MESSAGE_CHARS = 4000
 TERM = re.compile(r"[a-z0-9][a-z0-9_-]{2,}")
 STOPWORDS = frozenset(
@@ -248,14 +250,17 @@ def _keyword(query: str, notes: dict[str, tuple[str, str]]) -> list[dict[str, st
 
 
 def _fallback_picks(hits: list[tuple[str, float]]) -> list[str]:
-    """Without Clef: the first FALLBACK_K semantic hits that score at least FALLBACK_FLOOR."""
+    """Without the judge: the first FALLBACK_K semantic hits that score at least FALLBACK_FLOOR."""
     return [path for path, score in hits[:FALLBACK_K] if score >= FALLBACK_FLOOR]
 
 
-# The Clef request below is the one the offline evaluation sent. Clef's scores depend on
+# The judge request below is the one the offline evaluation sent. The judge's scores depend on
 # every character of these templates: do not rephrase or reflow them.
-# The default SystemOne model; LLMOS_CLEF_MODEL names another one.
-MODEL = "clef-flash"
+# The default SystemOne model; LLMOS_RECALL_JUDGE_MODEL names another one.
+JUDGE_MODEL = "d1-2B"
+# The probability of "helpful" a note needs, by model. An offline evaluation picked
+# each value (same pool, same request template); both recall at most RECALL_LIMIT.
+JUDGE_THRESHOLDS = {"d1-2B": 0.5, "clef-flash": 0.3}
 STATE = """A developer is working in project "{project}". Before the agent answers the \
 developer's message, recall may add some of the project's saved memories to the agent's \
 context. Most memories are irrelevant to most messages. Judge only usefulness for this \
@@ -282,8 +287,8 @@ NOISE = (
 )
 
 
-def _clef_note(text: str) -> str:
-    """A note as the judge sees it: its description, then its body, cut to CLEF_NOTE_CHARS."""
+def _judge_note(text: str) -> str:
+    """A note as the judge sees it: its description, then its body, cut to JUDGE_NOTE_CHARS."""
     if text.startswith("---\n") and "\n---" in text[4:]:
         front, body = text[4:].split("\n---", 1)
         description = next(
@@ -295,32 +300,32 @@ def _clef_note(text: str) -> str:
             "",
         )
         text = f"({description})\n{body.strip()}" if description else body.strip()
-    return text[:CLEF_NOTE_CHARS]
+    return text[:JUDGE_NOTE_CHARS]
 
 
-def _clef_message(query: str) -> str:
+def _judge_message(query: str) -> str:
     """The developer's message in the judge's state: stripped, at most MESSAGE_CHARS."""
     return query.strip()[:MESSAGE_CHARS]
 
 
-def _clef_order(pool: list[str], seed: str) -> list[str]:
+def _judge_order(pool: list[str], seed: str) -> list[str]:
     """The pool in the judge's order: sorted, then shuffled with a generator seeded by `seed`."""
     ordered = sorted(pool)
     random.Random(seed).shuffle(ordered)
     return ordered
 
 
-def _clef_request(
+def _judge_request(
     project: str,
     message: str,
     paths: list[str],
     texts: dict[str, str],
-    model: str = MODEL,
+    model: str = JUDGE_MODEL,
 ) -> dict:
     """One SystemOne request whose fields m1..mN are the notes at `paths`, in order."""
     labels = [f"m{i}" for i in range(1, len(paths) + 1)]
     memories = "\n\n".join(
-        f"[{label}] {path.rsplit('/', 1)[1]}\n{_clef_note(texts[path])}"
+        f"[{label}] {path.rsplit('/', 1)[1]}\n{_judge_note(texts[path])}"
         for label, path in zip(labels, paths)
     )
     questions = {
@@ -342,10 +347,10 @@ def _clef_request(
 
 def _timeout_from(value: str | None) -> float:
     try:
-        timeout = float(value) if value else CLEF_TIMEOUT_DEFAULT
+        timeout = float(value) if value else JUDGE_TIMEOUT_DEFAULT
     except ValueError:
-        return CLEF_TIMEOUT_DEFAULT
-    return timeout if math.isfinite(timeout) and timeout > 0 else CLEF_TIMEOUT_DEFAULT
+        return JUDGE_TIMEOUT_DEFAULT
+    return timeout if math.isfinite(timeout) and timeout > 0 else JUDGE_TIMEOUT_DEFAULT
 
 
 def _post_json(url: str, body: bytes, timeout: float) -> Any:
@@ -373,16 +378,16 @@ def _post_json(url: str, body: bytes, timeout: float) -> Any:
             response = connection.getresponse()
             if response.status != 200:
                 raise OSError(f"HTTP {response.status} {response.reason}")
-            data = response.read(CLEF_ANSWER_BYTES + 1)
-            if len(data) > CLEF_ANSWER_BYTES:
-                raise ValueError(f"answer is larger than {CLEF_ANSWER_BYTES} bytes")
+            data = response.read(JUDGE_ANSWER_BYTES + 1)
+            if len(data) > JUDGE_ANSWER_BYTES:
+                raise ValueError(f"answer is larger than {JUDGE_ANSWER_BYTES} bytes")
             outcome["answer"] = json.loads(data)
         except Exception as error:  # noqa: BLE001 -- handed to the waiting thread
             outcome["error"] = error
         finally:
             connection.close()
 
-    worker = threading.Thread(target=call, name="llmos-memory-clef", daemon=True)
+    worker = threading.Thread(target=call, name="llmos-memory-judge", daemon=True)
     started = time.monotonic()
     worker.start()
     worker.join(timeout)
@@ -397,6 +402,24 @@ def _post_json(url: str, body: bytes, timeout: float) -> Any:
     if "error" in outcome:
         raise outcome["error"]
     return outcome["answer"]
+
+
+def _threshold_from(model: str, value: str | None) -> tuple[float | None, bool]:
+    """The judge threshold and whether `value` was set but invalid.
+
+    A valid `value` (a finite float in [0, 1]) wins; otherwise the table value for
+    `model`, or None for an unknown model.
+    """
+    invalid = False
+    if value:
+        try:
+            override = float(value)
+        except ValueError:
+            override = math.nan
+        if math.isfinite(override) and 0 <= override <= 1:
+            return override, False
+        invalid = True
+    return JUDGE_THRESHOLDS.get(model), invalid
 
 
 def _helpful(answer: Any, label: str) -> float:
@@ -421,11 +444,13 @@ class LlmosMemoryProvider(MemoryProvider):
         self._recalled: dict[str, tuple[int, str, int]] = {}
         self._generation = 0
         self._last_count = 0
-        self._clef_url: str | None = None
-        self._clef_timeout = CLEF_TIMEOUT_DEFAULT
-        self._clef_model = MODEL
-        # True after a failed Clef call until the next success; under the lock.
-        self._clef_failing = False
+        self._judge_url: str | None = None
+        self._judge_timeout = JUDGE_TIMEOUT_DEFAULT
+        self._judge_model = JUDGE_MODEL
+        # None when no threshold resolves; the judge is then never called.
+        self._judge_threshold: float | None = JUDGE_THRESHOLDS[JUDGE_MODEL]
+        # True after a failed judge call until the next success; under the lock.
+        self._judge_failing = False
 
     @property
     def name(self) -> str:
@@ -473,10 +498,26 @@ class LlmosMemoryProvider(MemoryProvider):
     def initialize(self, session_id: str, **kwargs: Any) -> None:
         # Subagents, cron runs, and flushes read memory but never write it.
         self._writes = kwargs.get("agent_context", "primary") == "primary"
-        url = os.environ.get("LLMOS_CLEF_URL", "").strip().rstrip("/")
-        self._clef_url = url or None
-        self._clef_timeout = _timeout_from(os.environ.get("LLMOS_CLEF_TIMEOUT"))
-        self._clef_model = os.environ.get("LLMOS_CLEF_MODEL", "").strip() or MODEL
+        url = os.environ.get("LLMOS_RECALL_JUDGE_URL", "").strip().rstrip("/")
+        self._judge_url = url or None
+        self._judge_timeout = _timeout_from(os.environ.get("LLMOS_RECALL_JUDGE_TIMEOUT"))
+        self._judge_model = (
+            os.environ.get("LLMOS_RECALL_JUDGE_MODEL", "").strip() or JUDGE_MODEL
+        )
+        raw = os.environ.get("LLMOS_RECALL_JUDGE_THRESHOLD", "").strip()
+        self._judge_threshold, invalid = _threshold_from(self._judge_model, raw)
+        if invalid:
+            LOG.warning(
+                "llmos memory recall: LLMOS_RECALL_JUDGE_THRESHOLD must be a number "
+                "from 0 to 1; ignoring it"
+            )
+        if self._judge_url and self._judge_threshold is None:
+            LOG.warning(
+                "llmos memory recall: no threshold for the recall judge model %s; "
+                "set LLMOS_RECALL_JUDGE_THRESHOLD to use the judge, "
+                "else recall is semantic-only",
+                self._judge_model,
+            )
         folder = _session_folder(kwargs)
         where = ["--workspace", folder] if folder else ["--project", "personal"]
         scope, error = self._llmos("memory", "scope", *where)
@@ -510,23 +551,23 @@ class LlmosMemoryProvider(MemoryProvider):
             args=(query, session_id, generation),
         ).start()
 
-    def _clef_helpful(
+    def _judge_helpful(
         self, project: str, message: str, paths: list[str], texts: dict[str, str]
     ) -> dict[str, float]:
-        """Ask Clef how helpful each note is. Raises what `_post_json` raises,
+        """Ask the judge how helpful each note is. Raises what `_post_json` raises,
         RecursionError for a too deeply nested answer, or ValueError for a bad one."""
-        request = _clef_request(project, message, paths, texts, self._clef_model)
+        request = _judge_request(project, message, paths, texts, self._judge_model)
         answer = _post_json(
-            f"{self._clef_url}/v1/systemone",
+            f"{self._judge_url}/v1/systemone",
             json.dumps(request).encode("utf-8"),
-            self._clef_timeout,
+            self._judge_timeout,
         )
         return {path: _helpful(answer, f"m{i}") for i, path in enumerate(paths, 1)}
 
     def _recall(
         self, query: str, session_id: str, generation: int, seed: str | None = None
     ) -> None:
-        # `seed` orders the notes in the Clef request. Hermes never passes it, so the
+        # `seed` orders the notes in the judge request. Hermes never passes it, so the
         # seed is the message in the request, as the evaluation seeded by its case;
         # a replay of the evaluation passes the case id.
         scope = self._scope
@@ -566,26 +607,28 @@ class LlmosMemoryProvider(MemoryProvider):
         )
         pool = [path for path in pool if path in texts]
         picks = _fallback_picks(semantic)
-        if self._clef_url and pool:
-            message = _clef_message(query)
-            order = _clef_order(pool, seed if seed is not None else message)
+        threshold = self._judge_threshold
+        if self._judge_url and threshold is not None and pool:
+            message = _judge_message(query)
+            order = _judge_order(pool, seed if seed is not None else message)
             try:
-                helpful = self._clef_helpful(str(scope["project"]), message, order, texts)
+                helpful = self._judge_helpful(str(scope["project"]), message, order, texts)
             except (OSError, ValueError, http.client.HTTPException, RecursionError) as failure:
                 with self._lock:
-                    first = not self._clef_failing
-                    self._clef_failing = True
+                    first = not self._judge_failing
+                    self._judge_failing = True
                 LOG.log(
                     logging.WARNING if first else logging.DEBUG,
-                    "llmos memory recall: Clef at %s failed, using semantic-only recall: %s",
-                    self._clef_url,
+                    "llmos memory recall: the recall judge at %s failed, "
+                    "using semantic-only recall: %s",
+                    self._judge_url,
                     failure,
                 )
             else:
                 with self._lock:
-                    self._clef_failing = False
+                    self._judge_failing = False
                 kept = sorted(
-                    (path for path in order if helpful[path] >= CLEF_THRESHOLD),
+                    (path for path in order if helpful[path] >= threshold),
                     key=lambda path: (-helpful[path], path),
                 )
                 picks = kept[:RECALL_LIMIT]

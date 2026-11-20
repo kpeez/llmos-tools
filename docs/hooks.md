@@ -85,19 +85,24 @@ five hits of `llmos memory search` (by meaning, through the llmOS service when
 it runs, `docs/service.md`) that score at least 0.45. The keyword search of qmd
 needs every word of a query, so the word match is the provider's own.
 
-With `LLMOS_CLEF_URL` set to the base URL of a SystemOne server that runs the
-Clef decision model, the provider posts the pool to `<URL>/v1/systemone` in
-one request and keeps the notes that Clef rates helpful with a probability of
-at least 0.3, best first, at most five. `LLMOS_CLEF_TIMEOUT` is the deadline
-for the whole call in seconds (default 5; a bad value uses the default).
-`LLMOS_CLEF_MODEL` names the model in the request (default `clef-flash`). The
-provider reads the three variables at start. When Clef is not set, or fails,
-recall is semantic-only: the first two semantic hits that score at least 0.75.
-The word match then adds nothing, so a memory saved a moment ago is not found
-until it is embedded, unless Clef is configured. A failed Clef call logs one
-line: a warning for the first failure since start or since the last success,
-then debug lines until Clef answers again. The next turn gets the recalled
-notes once.
+With `LLMOS_RECALL_JUDGE_URL` set to the base URL of a SystemOne server that
+runs a decision model, the provider posts the pool to `<URL>/v1/systemone` in
+one request and keeps the notes that the model rates helpful with a probability
+of at least its threshold, best first, at most five. `LLMOS_RECALL_JUDGE_MODEL`
+names the model in the request (default `d1-2B`). The threshold follows the
+model: 0.5 for `d1-2B`, 0.3 for `clef-flash`. An offline evaluation picked each
+value. `LLMOS_RECALL_JUDGE_THRESHOLD`, a number from 0 to 1, overrides it; the
+provider ignores an invalid value and logs one warning. A model with no
+threshold and no override never calls the judge: recall is semantic-only, and
+the provider logs one warning at start that names the model.
+`LLMOS_RECALL_JUDGE_TIMEOUT` is the deadline for the whole call in seconds
+(default 5; a bad value uses the default). The provider reads the four variables
+at start. When the judge is not set, or fails, recall is semantic-only: the
+first two semantic hits that score at least 0.75. The word match then adds
+nothing, so a memory saved a moment ago is not found until it is embedded,
+unless the judge is configured. A failed judge call logs one line: a warning
+for the first failure since start or since the last success, then debug lines
+until the judge answers again. The next turn gets the recalled notes once.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes
