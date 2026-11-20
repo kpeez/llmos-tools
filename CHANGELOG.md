@@ -17,6 +17,9 @@ Newest first. Versions are the `version` field shared by
 
 ## 2.12.0 — 2026-11-20
 
+- 2.12.0 supersedes 2.11.1. The ADR removal (below) set the version fields to
+  2.11.1 without a release section, so a host that installed main in between
+  reports 2.11.1 for the same changes.
 - The tools no longer know architecture decision records. The `proposed`, `accepted`, and
   `superseded` note statuses are gone from the schema check, and the skills and
   docs no longer mention ADRs or an `adrs/` folder. Decisions live in pull
