@@ -1,6 +1,6 @@
 ---
 name: verify-llmos
-description: Verify the llmOS tools by driving the real `llmos` CLI, its MCP server (`llmos mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change under `tools/` to see it work, or to audit the feature map.
+description: Verify the llmOS tools by driving the real `llmos` CLI, its MCP server (`llmos mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change to the CLI, the MCP server, or the hooks to see it work, or to audit the feature map.
 ---
 
 # Verify the llmOS tools

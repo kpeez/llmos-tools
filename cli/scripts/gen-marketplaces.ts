@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
  * Generate the Claude and Codex marketplace catalogs at the llmos repository
- * root from the plugin manifest. The plugin lives in `tools/`; both
- * harnesses read their catalog from the root. Run from anywhere:
+ * root from the plugin manifest. The plugin is the repository root, and both
+ * harnesses read their catalog from there. Run from anywhere:
  *
  *   bun cli/scripts/gen-marketplaces.ts
  */

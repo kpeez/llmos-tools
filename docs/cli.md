@@ -15,10 +15,12 @@ installs the CLI. By hand, from a checkout or the plugin root, with `bun` on
 bun <checkout>/cli/scripts/install.ts
 ```
 
-This copies `tools/` to `~/.local/share/llmos/<version>/`, installs the
-dependencies of its `cli/` folder there, and links `llmos` and `qmd` into
-`~/.local/bin/`. The `qmd` is the version the CLI imports (`@tobilu/qmd`, pinned in
-`cli/package.json`); keep it the only `qmd` on `PATH`.
+This copies the plugin root to `~/.local/share/llmos/<version>/`, installs the
+dependencies of its `cli/` folder there, links `llmos` and `qmd` into
+`~/.local/bin/`, and, as its last step, points `~/.local/share/llmos/current`
+at the new version. Hermes Agent runs its plugin through `current`. The `qmd`
+is the version the CLI imports (`@tobilu/qmd`, pinned in `cli/package.json`);
+keep it the only `qmd` on `PATH`.
 
 ## `llmos`
 
