@@ -1,5 +1,5 @@
 /**
- * Committed snapshots of the external contract (ADR 0012): the CLI's JSON
+ * Committed snapshots of the external contract: the CLI's JSON
  * output and exit codes, the canonical `normalize` output, and the schema
  * audit on the fixture vaults and the generated edge vault (`cli.test.ts`),
  * and the activity digest's outcomes, block hash, markers, and notes on the

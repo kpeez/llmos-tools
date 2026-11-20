@@ -120,7 +120,7 @@ the title or body. The body holds:
   stack lands, when the run is split.
 - **Estimated review time:** the total and its parts.
 - **Checks run:** `claims lint`, `llmos audit`, `llmos check`, the member
-  note and ADR checks, `just check` when the tools changed, and the privacy
+  note checks, `just check` when the tools changed, and the privacy
   check (counts only, and what the name list was built from).
 
 Mark the PR ready only when the owner decides. Only the owner sets `verified`.

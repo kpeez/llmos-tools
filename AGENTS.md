@@ -1,12 +1,12 @@
 # Agent instructions
 
 This repository is the `llmos` agent plugin. Its `cli/` folder is the llmOS CLI,
-written in TypeScript and run by Bun (ADR 0012).
+written in TypeScript and run by Bun.
 
-The project documents, such as the ADRs and the glossary, live in the vault,
+The project documents, such as the glossary, live in the vault,
 not here. Reach them through `.agents/docs`, a link to the vault's
 `projects/llmos/` folder: `ln -s <vault root>/projects/llmos .agents/docs`.
-Git ignores the link. The ADRs are in `.agents/docs/adrs/`, by number.
+Git ignores the link.
 Run every command from `cli/`; the paths below are relative to it. The
 marketplace catalogs live at the repository root and point at it.
 
