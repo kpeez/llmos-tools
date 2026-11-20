@@ -9,8 +9,8 @@
  * so a custom target carries into each worktree.
  *
  * It never replaces or changes a path that exists, with one exception: a
- * dangling `.agents/docs` link (`repairDangling`) is replaced when the vault's
- * project folder exists, because a moved vault leaves it broken for good. A
+ * dangling `.agents/docs` link (`repairDangling`) is replaced when its new
+ * target folder exists, because a moved vault leaves it broken for good. A
  * dangling scratch or artifacts link stays, since its disk may be unmounted.
  * It keeps each link it makes out of Git through the `info/exclude` file that all worktrees share,
  * not the repository's `.gitignore`. A second run changes nothing.
@@ -55,8 +55,9 @@ interface LinkSpec {
   /** Create the target folder when it is missing. */
   makeTarget: boolean;
   /**
-   * Replace a dangling link with one to the default target when that folder
-   * exists. Only for a target that never sits on a disk that may be unmounted.
+   * Replace a dangling link with one to the target the hook would link now,
+   * when that folder exists. Only for a target that never sits on a disk that
+   * may be unmounted.
    */
   repairDangling: boolean;
 }
