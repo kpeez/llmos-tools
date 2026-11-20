@@ -78,6 +78,14 @@ comes from the session's folder: the `cwd` that Hermes passes, then the
 profile's `TERMINAL_CWD`; with neither, it is `personal`. Hermes's
 `agent_workspace` is a fixed label, not a folder, so the provider does not
 read it. Subagent, cron, and flush sessions read memory but never write it.
+After each turn that is not a bare acknowledgement or slash command, the
+provider recalls memories for the next turn on a background thread. It takes
+the scope's topic notes that share a word with the prompt, and the notes that
+`llmos memory search` finds by meaning with a score of at least 0.6, through
+the llmOS service when it runs (`docs/service.md`). It merges the two lists by
+rank and gives the next turn the top five notes, once. The word match also
+finds a memory saved a moment ago, before it has a vector. The keyword search
+of qmd needs every word of a query, so it cannot match a whole prompt.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes

@@ -5,6 +5,12 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The Hermes `llmos` memory provider now recalls shared memories. After each
+  turn it finds, on a background thread, the scope's memories that share a
+  word with the prompt or match it by meaning (through the llmOS service when
+  it runs), and the next turn gets up to five of them once. Hermes shows the
+  count in its recall line. A memory saved a moment ago is found at once.
+
 - New llmOS service: one long-lived process per host that keeps the qmd search
   models loaded, so every agent session shares one warm model set. `llmos mcp`
   sends `search` and `memory_search` to it and starts it when it is down;

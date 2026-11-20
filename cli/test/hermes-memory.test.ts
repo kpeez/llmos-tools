@@ -1,13 +1,14 @@
 /**
  * The Hermes memory provider (`hermes/memory_provider.py`), run by `python3`
  * with a stub of Hermes's `agent.memory_provider` module. It calls this
- * checkout's `llmos` CLI on a temporary vault, as Hermes would.
+ * checkout's `llmos` CLI on a temporary vault and qmd index, as Hermes would.
+ * The index has no vectors, so semantic recall finds nothing and loads no model.
  */
 
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { isolatedEnv, makeVault, read, scratch, TOOLS } from "./helpers.ts";
+import { indexVault, isolatedEnv, makeVault, read, scratch, TOOLS } from "./helpers.ts";
 
 const DRIVER = `
 import importlib.util, json, sys
@@ -23,12 +24,42 @@ out = {"available": provider.is_available(), "prompt": provider.system_prompt_bl
        "tools": [schema["name"] for schema in provider.get_tool_schemas()], "calls": []}
 for name, args in request["calls"]:
     out["calls"].append(json.loads(provider.handle_tool_call(name, args)))
+out["recalls"] = []
+for step in request.get("recalls", []):
+    if step[0] == "queue":
+        provider.queue_prefetch(step[1], session_id=step[2])
+        from agent.memory_provider import THREADS
+        for thread in THREADS:
+            thread.join()
+    else:
+        block = provider.prefetch("next turn", session_id=step[1])
+        status = provider.recall_status()
+        out["recalls"].append({"block": block, "count": status.count if status else None})
+out["merged"] = module._merge(*request.get("merge", []), limit=5)
 print(json.dumps(out))
 `;
 
 const STUB = `
+import threading
+from dataclasses import dataclass
+
+THREADS = []
+
 class MemoryProvider:
     pass
+
+@dataclass(frozen=True)
+class RecallStatus:
+    provider_label: str
+    count: int
+
+def is_trivial_prompt(text):
+    return (text or "").strip().lower() in {"", "thanks", "ok", "yes"}
+
+def spawn_context_thread(target, *, name, args=()):
+    thread = threading.Thread(target=target, name=name, args=args)
+    THREADS.append(thread)
+    return thread
 `;
 
 interface Run {
@@ -36,6 +67,8 @@ interface Run {
   prompt: string;
   tools: string[];
   calls: Record<string, unknown>[];
+  recalls: { block: string; count: number | null }[];
+  merged: string[];
 }
 
 function python(): string | null {
@@ -63,6 +96,7 @@ function run(
   setupResult: ReturnType<typeof setup>,
   init: Record<string, unknown>,
   calls: [string, Record<string, unknown>][] = [],
+  more: { recalls?: string[][]; merge?: { path: string }[][] } = {},
 ): Run {
   const result = Bun.spawnSync({
     cmd: [
@@ -72,7 +106,7 @@ function run(
       setupResult.stub,
       join(TOOLS, "hermes", "memory_provider.py"),
     ],
-    stdin: Buffer.from(JSON.stringify({ init, calls })),
+    stdin: Buffer.from(JSON.stringify({ init, calls, ...more })),
     env: setupResult.env,
     stdout: "pipe",
     stderr: "pipe",
@@ -151,5 +185,57 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
       ["memory_save", { name: "../escape", description: "d", body: "b", type: "project" }],
     ]);
     expect(String(out.calls[0]?.error)).toContain("name must be a lowercase slug");
+  });
+
+  test("after a turn, the next turn gets the matching notes of its own project once", async () => {
+    const note = (text: string) =>
+      `---\nname: x\ndescription: x\nmetadata:\n  type: project\n---\n\n${text}\n`;
+    const root = makeVault({
+      "projects/my-repo/my-repo.md": "# my-repo\n",
+      "projects/my-repo/memory/MEMORY.md": "# Memory index\n\n- zebrafish heater index line\n",
+      "projects/my-repo/memory/tank.md": note("The zebrafish tank needs a heater at 28 C."),
+      "projects/my-repo/memory/other.md": note("Unrelated: lists use short bullets."),
+      "projects/personal/personal.md": "# personal\n",
+      "projects/personal/memory/tank.md": note("A personal zebrafish heater."),
+    });
+    const setupResult = { ...setup(), root };
+    setupResult.env.LLMOS_ROOT = root;
+    await indexVault(root, setupResult.env, {
+      llmos: "**/*.md",
+      memory: "projects/*/memory/*.md",
+    });
+    const out = run(setupResult, { cwd: gitRepo("my-repo") }, [], {
+      recalls: [
+        ["queue", "What temperature does the zebrafish heater need?", "chat"],
+        ["prefetch", "other-chat"],
+        ["prefetch", "chat"],
+        ["prefetch", "chat"],
+        ["queue", "thanks", "chat"],
+        ["prefetch", "chat"],
+      ],
+    });
+
+    // Another session of the same provider gets nothing.
+    expect(out.recalls[0]).toEqual({ block: "", count: null });
+    const recalled = out.recalls[1];
+    expect(recalled?.count).toBe(1);
+    expect(recalled?.block).toContain("### projects/my-repo/memory/tank.md");
+    expect(recalled?.block).toContain("needs a heater at 28 C.");
+    expect(recalled?.block).not.toContain("metadata:");
+    expect(recalled?.block).not.toContain("personal");
+    expect(recalled?.block).not.toContain("MEMORY.md");
+    // The block is used once; a trivial prompt starts no recall.
+    expect(out.recalls[2]).toEqual({ block: "", count: null });
+    expect(out.recalls[3]).toEqual({ block: "", count: null });
+  });
+
+  test("the merge ranks a note both searches found above notes one search found", () => {
+    const out = run(setup(), {}, [], {
+      merge: [
+        [{ path: "keyword-only.md" }, { path: "both.md" }],
+        [{ path: "both.md" }, { path: "semantic-only.md" }],
+      ],
+    });
+    expect(out.merged).toEqual(["both.md", "keyword-only.md", "semantic-only.md"]);
   });
 });
