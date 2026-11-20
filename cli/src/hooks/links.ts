@@ -233,7 +233,6 @@ function repairLink(
   target: string,
 ): string | null {
   if (!isDir(target)) return null;
-  const old = readlinkSync(link);
   const temporary = `${link}.repair-${process.pid}`;
   try {
     symlinkSync(target, temporary, "dir");
@@ -243,5 +242,5 @@ function repairLink(
     throw error;
   }
   exclude(repository, spec.path);
-  return `${link} was broken (pointed at ${old}); it now links to ${target}.`;
+  return `${link} was broken; it now links to ${target}.`;
 }

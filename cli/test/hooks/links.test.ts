@@ -98,8 +98,9 @@ test("a dangling .agents/docs link is repaired when the vault project folder exi
   const target = join(root, "projects", "my-repo");
   expect(readlinkSync(join(main, ".agents", "docs"))).toBe(target);
   expect(result.stdout).toContain(
-    `${join(main, ".agents", "docs")} was broken (pointed at ${old}); it now links to ${target}.`,
+    `${join(main, ".agents", "docs")} was broken; it now links to ${target}.`,
   );
+  expect(result.stdout).not.toContain(old);
   expect(readdirSync(join(main, ".agents")).sort()).toEqual(["docs", "scratch"]);
   expect(session(tmp, root, main).stdout).not.toContain("broken");
 });
