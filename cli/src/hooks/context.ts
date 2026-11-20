@@ -178,7 +178,7 @@ export function sessionContext(
     const indexPath = joinPath(memoryDir, MEMORY_INDEX);
     const loaded = options.memoryIndexLoaded ?? false;
     if (!loaded && (provider !== "claude" || !autoMemoryReady) && isFile(indexPath)) {
-      const index = readMemoryIndex(indexPath);
+      const index = readMemoryIndex(root, indexPath);
       if (index !== null) sections.push(`Shared project memory (${indexPath}):\n${index}`);
     }
   }
