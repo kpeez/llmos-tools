@@ -441,6 +441,24 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
     expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(ZEBRA);
   });
 
+  test("a memory note that is not UTF-8 is skipped, and recall still runs", async () => {
+    const setupResult = await zebraSetup();
+    writeFileSync(
+      join(setupResult.root, "projects/my-repo/memory/broken.md"),
+      Buffer.from([0x7a, 0x65, 0x62, 0x72, 0x61, 0xff, 0xfe, 0x0a]),
+    );
+    const judge = stubJudge({ "alpha.md": 0.9 });
+    const out = await run(setupResult, { cwd: gitRepo("my-repo") }, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", TURN, "chat"],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(askedNames(judge.requests[0]?.body as JudgeBody).sort()).toEqual(ZEBRA);
+    expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
+  });
+
   test("an empty pool sends no judge request and recalls nothing", async () => {
     const judge = stubJudge({});
     const out = await run(await zebraSetup(), { cwd: gitRepo("my-repo") }, [], {

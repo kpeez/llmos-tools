@@ -582,7 +582,8 @@ class LlmosMemoryProvider(MemoryProvider):
             if note.name != "MEMORY.md":
                 try:
                     texts[f"{scope['dir']}/{note.name}"] = note.read_text(encoding="utf-8")
-                except OSError:
+                except (OSError, UnicodeDecodeError):
+                    # One unreadable note must not end the recall of the rest.
                     continue
         notes_by_path = {path: _note(text) for path, text in texts.items()}
         text = _query(query)
