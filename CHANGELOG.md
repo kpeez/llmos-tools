@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.12.2 — 2026-11-20
+
 - `llmos discover` without `--out` writes its report to
   `<vault root>/artifacts/discover`, through the `artifacts` link the session
   hook makes, instead of `<vault root>/../artifacts/discover`, which pointed
