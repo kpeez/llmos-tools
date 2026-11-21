@@ -419,16 +419,17 @@ function realPath(path: string): string {
 
 /**
  * The folder for the report. With `out` it is that folder; without it, the
- * `discover/` folder of the checkout's `artifacts/` (beside the vault root).
+ * `discover/` folder of the `artifacts` link in the vault root
+ * (the session hook links it to `~/artifacts/<repo>`).
  * It must not lie inside the vault.
  */
 export function reportFolder(root: string, out: string | undefined): string {
   let folder: string;
   if (out === undefined) {
-    const artifacts = join(realpathSync(root), "..", "artifacts");
+    const artifacts = join(root, "artifacts");
     if (!existsSync(artifacts)) {
       throw new UsageError(
-        `no artifacts folder at ${resolve(artifacts)}; create the artifacts symlink (the repository's AGENTS.md describes it) or pass --out DIR`,
+        `no artifacts folder at ${resolve(artifacts)}; create the artifacts symlink (the session hook links it to ~/artifacts/<repo>) or pass --out DIR`,
       );
     }
     folder = join(artifacts, "discover");

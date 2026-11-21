@@ -290,8 +290,8 @@ describe("headless writes", () => {
 describe("file-inbox", () => {
   const capture = "---\ncreated: 2026-07-16\n---\n\n# Capture\n";
 
-  test("moves, stamps destination properties, and records the filing", async () => {
-    const root = makeVault({ "raw/capture-1.md": capture, [DAILY]: dailyNote(TODAY) });
+  test("moves, stamps destination properties, and leaves the daily note alone", async () => {
+    const root = makeVault({ "raw/capture-1.md": capture });
     const obsidian = recordedObsidian(root);
     const result = await cli(root, ["file-inbox", "capture-1", "knowledge/some-note"], {
       obsidian: obsidian.runner,
@@ -302,9 +302,7 @@ describe("file-inbox", () => {
     expect(filed).toBe(
       '---\ncategories:\n  - "[[Knowledge]]"\ncreated: 2026-07-16\n---\n\n# Capture\n',
     );
-    expect(read(root, DAILY)).toContain(
-      "Earlier thought.\n\nFiled `capture-1` from inbox -> `knowledge/some-note.md`.\n\n## Projects",
-    );
+    expect(existsSync(join(root, DAILY))).toBe(false);
 
     // A retry finds the note at its destination: no second move, no duplicates.
     const again = await cli(root, ["file-inbox", "capture-1", "knowledge/some-note"], {

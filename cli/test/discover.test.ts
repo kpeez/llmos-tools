@@ -476,19 +476,40 @@ describe("discover", () => {
     expect(JSON.parse(result.stdout).clusters).toHaveLength(1);
   });
 
-  test("the default folder is the artifacts folder beside the real vault root", async () => {
-    const root = clusterVault();
-    const env = isolatedEnv();
-    const missing = await cli(root, ["discover"], { env });
-    expect(missing.exitCode).toBe(2);
-    expect(missing.stderr).toContain("--out");
+  describe("the default folder", () => {
+    test("is discover/ inside the artifacts link of the real vault root", async () => {
+      const root = clusterVault();
+      const target = scratch("artifacts-target");
+      symlinkSync(target, join(root, "artifacts"));
+      const alias = join(scratch("alias"), "vault");
+      symlinkSync(root, alias);
 
-    mkdirSync(join(root, "..", "artifacts"));
-    const link = join(scratch("link"), "vault");
-    symlinkSync(root, link);
-    const result = await cli(link, ["discover"], { env });
-    expect(result.exitCode).toBe(0);
-    expect(existsSync(join(root, "..", "artifacts", "discover", `${TODAY}.json`))).toBe(true);
+      const result = await cli(alias, ["discover", "--no-record"], { env: isolatedEnv() });
+
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(target, "discover", `${TODAY}.json`))).toBe(true);
+    });
+
+    test("fails naming the artifacts link when it is missing", async () => {
+      const root = clusterVault();
+
+      const result = await cli(root, ["discover", "--no-record"], { env: isolatedEnv() });
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain(`no artifacts folder at ${join(root, "artifacts")}`);
+      expect(existsSync(join(root, "..", "artifacts"))).toBe(false);
+    });
+
+    test("is refused when artifacts is a real folder inside the vault", async () => {
+      const root = clusterVault();
+      mkdirSync(join(root, "artifacts"));
+
+      const result = await cli(root, ["discover", "--no-record"], { env: isolatedEnv() });
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("never writes inside the vault");
+      expect(existsSync(join(root, "artifacts", "discover"))).toBe(false);
+    });
   });
 
   test("it refuses an --out inside the vault", async () => {

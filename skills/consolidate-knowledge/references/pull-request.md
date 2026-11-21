@@ -102,7 +102,9 @@ groups and extends the hub. The procedure is in `SKILL.md` ("Budget and split").
 
 Open a draft pull request on the vault's repository from `claude/consolidate-<slug>` with
 `gh pr create --draft`. Never put an animal ID, subject name, or staff name in
-the title or body. The body holds:
+the title or body. The body holds the items below. When the repository's PR
+tooling owns the body headings, put these items inside its sections as bold
+lead-ins instead of headings.
 
 - **Summary:** the cluster and the scope.
 - **New and changed notes:** the hub, each paper note, each dataset note, each

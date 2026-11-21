@@ -151,8 +151,8 @@ it sees the error.
 when `health` reports it as overdue, and about once a week. It ranks clusters
 of notes that restate the same works, as candidates for
 `consolidate-knowledge`. It writes the JSON report to
-`<vault root>/../artifacts/discover/YYYY-MM-DD.json` (the checkout's
-`artifacts/` folder) and prints it. Use `--out DIR` for another folder. It
+`<vault root>/artifacts/discover/YYYY-MM-DD.json` (the checkout's
+`artifacts` link) and prints it. Use `--out DIR` for another folder. It
 never writes inside the vault, except for the record above. It refuses to run
 when `artifacts/` is missing and `--out` is not given. It also refuses
 before any work when `categories/Knowledge.md` is missing, is a symbolic link,

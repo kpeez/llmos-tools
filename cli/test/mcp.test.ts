@@ -263,7 +263,7 @@ describe("write tools stamp updated", () => {
     });
   });
 
-  test("file_inbox files the note and stamps it and today's note", async () => {
+  test("file_inbox files the note, stamps it, and leaves the daily note alone", async () => {
     const root = vault({ [DAILY]: dailyNote(TODAY) });
     const obsidian = recordedObsidian(root);
     const { client, close } = await connect(contextFor(root, { obsidian: obsidian.runner }));
@@ -281,8 +281,7 @@ describe("write tools stamp updated", () => {
       categories: ["[[Knowledge]]"],
       updated: TODAY,
     });
-    expect(properties(root, DAILY)).toMatchObject({ updated: TODAY });
-    expect(read(root, DAILY)).toContain("Filed `capture` from inbox -> `knowledge/capture.md`.");
+    expect(read(root, DAILY)).toBe(dailyNote(TODAY));
   });
 
   test("file_inbox reports a closed Obsidian app as a tool error", async () => {

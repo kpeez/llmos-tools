@@ -6,6 +6,15 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos discover` without `--out` writes its report to
+  `<vault root>/artifacts/discover`, through the `artifacts` link the session
+  hook makes, instead of `<vault root>/../artifacts/discover`, which pointed
+  outside the checkout once the vault became the repository root. When the
+  link is missing, it exits 2 and names the path; a real `artifacts/` folder
+  inside the vault is still refused.
+- `llmos file-inbox` and the MCP `file_inbox` tool no longer append a
+  "Filed … from inbox" line under the daily note's `## Thoughts`; git records
+  the move.
 - The post-tool-use hook gives a shared memory topic note
   `metadata.node_type: memory` when the note lacks it, as `llmos memory save`
   and Claude Code write it. The pre-tool-use memory hint no longer asks
