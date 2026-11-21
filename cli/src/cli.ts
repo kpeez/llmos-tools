@@ -284,7 +284,7 @@ const EXPECTED_ERRORS = new Set([
   "MemoryRefused",
   "SourceRefused",
   "QmdCollectionMissing",
-  "EmbedLockBusy",
+  "EmbedLockBusyError",
 ]);
 
 export interface CliResult {

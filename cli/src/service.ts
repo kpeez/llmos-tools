@@ -54,14 +54,13 @@ import { join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import * as z from "zod";
 import {
-  EmbedLockBusy,
+  isEmbedLockBusy,
   openQmd,
   QmdCollectionMissing,
   type QmdLocation,
   qmdLocation,
   type SearchMode,
   search,
-  withEmbedLock,
 } from "./qmd.ts";
 import {
   MAX_SOCKET_PATH,
@@ -368,7 +367,7 @@ class Service {
   }
 
   /**
-   * Embed `collection` under qmd's embed lock, so it never races a manual
+   * Embed `collection`; qmd's embed lock keeps it from racing a manual
    * `llmos reindex`. While another process holds the lock, wait and try again:
    * that process may have scanned the collection before the change.
    */
@@ -377,10 +376,10 @@ class Service {
     const wait = this.options.embedRetryMs ?? 5000;
     for (let attempt = 0; attempt < 24 && !this.closed; attempt++) {
       try {
-        await withEmbedLock(this.location.dbPath, () => store.embed({ collection }));
+        await store.embed({ collection });
         return;
       } catch (error) {
-        if (!(error instanceof EmbedLockBusy)) {
+        if (!isEmbedLockBusy(error)) {
           process.stderr.write(`llmos service: embed of ${collection} failed: ${error}\n`);
           return;
         }

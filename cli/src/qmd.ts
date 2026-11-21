@@ -13,9 +13,9 @@
  * qmd version writing the shared index.
  */
 
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import type { MemoryScope } from "./memory.ts";
 
@@ -96,10 +96,14 @@ export async function indexedPaths(
  * loads no model, so it is cheap; a document without vectors is left out.
  * Throws when the index has no vector table (nothing was ever embedded).
  *
- * Like `indexedPaths`, this uses qmd's internal tables (`documents`,
- * `content_vectors`, and the sqlite-vec table `vectors_vec`, whose rows are
- * keyed `<hash>_<seq>`). `vectors_vec` is read one key at a time: a join
- * with it can hang.
+ * Like `indexedPaths`, this uses qmd's internal tables (qmd 2.9.0 layout):
+ * `documents`, `vector_collection_ids` (collection name to id), `vector_rows`
+ * (one row per chunk and collection, with `hash`, `seq`, `collection_id`), and
+ * the sqlite-vec table `vectors_by_collection`, whose rowid is
+ * `vector_rows.id`. qmd converts an older `vectors_vec` index when it opens
+ * the index; where that conversion cannot run (no sqlite-vec), the new table
+ * is missing and this throws. `vectors_by_collection` is read one rowid at a
+ * time: a join with it can hang.
  */
 export async function documentVectors(
   store: QMDStore,
@@ -114,16 +118,18 @@ export async function documentVectors(
   const { db } = store.internal;
   const chunks = db
     .prepare(
-      `SELECT d.path AS path, cv.hash AS hash, cv.seq AS seq
-       FROM documents d JOIN content_vectors cv ON cv.hash = d.hash
+      `SELECT d.path AS path, vr.id AS id
+       FROM documents d
+       JOIN vector_collection_ids vc ON vc.name = d.collection
+       JOIN vector_rows vr ON vr.hash = d.hash AND vr.collection_id = vc.id
        WHERE d.collection = ? AND d.active = 1
-       ORDER BY d.path, cv.seq`,
+       ORDER BY d.path, vr.seq`,
     )
-    .all(collection) as { path: string; hash: string; seq: number }[];
-  const byKey = db.prepare("SELECT embedding FROM vectors_vec WHERE hash_seq = ?");
+    .all(collection) as { path: string; id: number }[];
+  const byRowid = db.prepare("SELECT embedding FROM vectors_by_collection WHERE rowid = ?");
   const sums = new Map<string, Float32Array>();
-  for (const { path, hash, seq } of chunks) {
-    const row = byKey.get(`${hash}_${seq}`) as { embedding: Uint8Array } | null;
+  for (const { path, id } of chunks) {
+    const row = byRowid.get(id) as { embedding: Uint8Array } | null;
     if (row === null) continue;
     const { buffer, byteOffset, byteLength } = row.embedding;
     const vector = new Float32Array(buffer.slice(byteOffset, byteOffset + byteLength));
@@ -298,53 +304,13 @@ export function unembeddedIn(store: QMDStore, collection: string): number {
   return row.count;
 }
 
-/** Another process holds the embed lock. */
-export class EmbedLockBusy extends Error {
-  override name = "EmbedLockBusy";
-}
-
-function processAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as { code?: unknown }).code === "EPERM";
-  }
-}
-
 /**
- * Hold qmd's embed lock file (`.qmd-embed.lock` beside the index) while
- * `work` runs, so two embeds never race on the vector table. A lock whose
- * process is gone is taken over.
+ * Whether `error` is qmd's `EmbedLockBusyError`: another process is embedding
+ * this index. qmd's `store.embed` takes its own exclusive lock; a caller backs
+ * off or retries. Matched by name so the package stays a lazy import.
  */
-export async function withEmbedLock<T>(dbPath: string, work: () => Promise<T>): Promise<T> {
-  const lock = join(dirname(dbPath), ".qmd-embed.lock");
-  for (let attempt = 0; ; attempt++) {
-    try {
-      writeFileSync(lock, `${process.pid}\n`, { flag: "wx" });
-      break;
-    } catch (error) {
-      if ((error as { code?: unknown }).code !== "EEXIST" || attempt > 0) {
-        throw (error as { code?: unknown }).code === "EEXIST"
-          ? new EmbedLockBusy(`another process holds ${lock}`)
-          : error;
-      }
-      const holder = Number.parseInt(readFileSync(lock, "utf8").trim(), 10);
-      if (Number.isInteger(holder) && holder > 0 && processAlive(holder)) {
-        throw new EmbedLockBusy(`another process (pid ${holder}) holds ${lock}`);
-      }
-      unlinkSync(lock);
-    }
-  }
-  try {
-    return await work();
-  } finally {
-    try {
-      if (readFileSync(lock, "utf8").trim() === String(process.pid)) unlinkSync(lock);
-    } catch {
-      // Already gone.
-    }
-  }
+export function isEmbedLockBusy(error: unknown): boolean {
+  return error instanceof Error && error.name === "EmbedLockBusyError";
 }
 
 type ScanCounts = {
@@ -394,7 +360,6 @@ export interface ReindexResult {
  */
 export async function reindex(
   store: QMDStore,
-  dbPath: string,
   collection: string,
   options: { embed?: boolean } = {},
 ): Promise<ReindexResult> {
@@ -416,7 +381,7 @@ export async function reindex(
       ? await scan(MEMORY_COLLECTION)
       : null;
   if (options.embed === false) return { update, memory, embed: null, cleanup: null };
-  const embed = await withEmbedLock(dbPath, () => store.embed({ collection }));
+  const embed = await store.embed({ collection });
   const { Maintenance } = await import("@tobilu/qmd");
   const cleanup = new Maintenance(store.internal).run();
   return {
