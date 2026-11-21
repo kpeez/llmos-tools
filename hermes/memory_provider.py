@@ -23,7 +23,8 @@ no override never calls the judge, and `initialize()` logs one warning.
 (default 5). Without the judge, or when it fails, recall is semantic-only: the
 first 2 semantic hits with a score of at least 0.75. A memory saved a moment ago
 has no vector yet, so only the judge finds it until it is embedded. The block is
-cached for the session. `prefetch` hands it to the next turn once.
+cached per profile and session, outside the provider instance, so it survives a
+provider rebuild. `prefetch` hands it to the next turn once.
 
 The project comes from the session's folder, by Hermes's own order: the
 `cwd` that `initialize()` receives, else the profile's `TERMINAL_CWD`. A
@@ -31,12 +32,14 @@ folder in a vault project's repository uses that project; anything else
 uses `personal`. (`agent_workspace` is a fixed label, not a folder.)
 
 Standard library only. Every binding lives on the instance, because one
-gateway process can serve several profiles.
+gateway process can serve several profiles. The one exception is the recalled
+blocks, which the module keeps by profile and session.
 """
 
 from __future__ import annotations
 
 import http.client
+import itertools
 import json
 import logging
 import math
@@ -468,14 +471,44 @@ def _helpful(answer: Any, label: str) -> float:
     return float(value)
 
 
+# Hermes rebuilds the agent, and so the provider, between two turns of a session (after
+# a turn a fallback model served, after an idle timeout, on /model), so the recalled
+# blocks live here, not on the instance. A recall of an old instance can still end after
+# a newer one, so one counter orders the recalls of all instances.
+# (profile, session_id) -> (generation, block, count, monotonic time of the last write);
+# a newer recall wins. Written in last-write order, oldest first.
+RECALLED: dict[tuple[str, str], tuple[int, str, int, float]] = {}
+RECALLED_LOCK = threading.Lock()
+GENERATIONS = itertools.count(1)
+RECALLED_MAX_AGE_SECONDS = 2 * 60 * 60
+RECALLED_MAX_KEYS = 256
+# The profile when Hermes passes no `hermes_home` to `initialize()`.
+DEFAULT_PROFILE = ""
+
+
+def _store_recalled(key: tuple[str, str], generation: int, block: str, count: int) -> None:
+    """Write one entry of RECALLED, then drop the entries last written more than
+    RECALLED_MAX_AGE_SECONDS ago and the oldest past RECALLED_MAX_KEYS. Call it
+    with RECALLED_LOCK held."""
+    now = time.monotonic()
+    RECALLED.pop(key, None)
+    RECALLED[key] = (generation, block, count, now)
+    while len(RECALLED) > 1:
+        oldest = next(iter(RECALLED))
+        if (
+            len(RECALLED) <= RECALLED_MAX_KEYS
+            and now - RECALLED[oldest][3] <= RECALLED_MAX_AGE_SECONDS
+        ):
+            break
+        del RECALLED[oldest]
+
+
 class LlmosMemoryProvider(MemoryProvider):
     def __init__(self) -> None:
         self._scope: dict[str, Any] | None = None
         self._writes = False
+        self._profile = DEFAULT_PROFILE
         self._lock = threading.Lock()
-        # session_id -> (generation, block, count); a newer recall wins.
-        self._recalled: dict[str, tuple[int, str, int]] = {}
-        self._generation = 0
         self._last_count = 0
         self._judge_url: str | None = None
         self._judge_timeout = JUDGE_TIMEOUT_DEFAULT
@@ -531,6 +564,8 @@ class LlmosMemoryProvider(MemoryProvider):
     def initialize(self, session_id: str, **kwargs: Any) -> None:
         # Subagents, cron runs, and flushes read memory but never write it.
         self._writes = kwargs.get("agent_context", "primary") == "primary"
+        # Hermes's memory manager always passes the profile's home folder.
+        self._profile = str(kwargs.get("hermes_home") or DEFAULT_PROFILE)
         url = os.environ.get("LLMOS_RECALL_JUDGE_URL", "").strip().rstrip("/")
         self._judge_url = url or None
         self._judge_timeout = _timeout_from(os.environ.get("LLMOS_RECALL_JUDGE_TIMEOUT"))
@@ -573,9 +608,8 @@ class LlmosMemoryProvider(MemoryProvider):
     def queue_prefetch(self, query: str, *, session_id: str = "") -> None:
         if self._scope is None or is_trivial_prompt(query):
             return
-        with self._lock:
-            self._generation += 1
-            generation = self._generation
+        with RECALLED_LOCK:
+            generation = next(GENERATIONS)
         # Hermes runs this on its one memory worker, which also does writes; recall
         # gets its own thread so a slow search never holds them up.
         spawn_context_thread(
@@ -670,17 +704,23 @@ class LlmosMemoryProvider(MemoryProvider):
         block = ""
         if notes:
             block = "Shared project memories that match this conversation:\n\n" + "\n\n".join(notes)
-        with self._lock:
-            current = self._recalled.get(session_id)
+        key = (self._profile, session_id)
+        with RECALLED_LOCK:
+            current = RECALLED.get(key)
             if current is None or current[0] < generation:
-                self._recalled[session_id] = (generation, block, len(notes))
+                _store_recalled(key, generation, block, len(notes))
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
-        with self._lock:
-            generation, block, count = self._recalled.get(session_id, (0, "", 0))
-            # Keep the generation, so an older recall that ends later cannot refill it.
-            self._recalled[session_id] = (generation, "", 0)
-            self._last_count = count
+        key = (self._profile, session_id)
+        with RECALLED_LOCK:
+            current = RECALLED.get(key)
+            if current is None:
+                block, count = "", 0
+            else:
+                generation, block, count, _ = current
+                # Keep the generation, so an older recall that ends later cannot refill it.
+                _store_recalled(key, generation, "", 0)
+        self._last_count = count
         return block
 
     def recall_status(self) -> RecallStatus | None:

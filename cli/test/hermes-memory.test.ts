@@ -25,16 +25,27 @@ class Capture(logging.Handler):
         records.append([record.levelname, record.getMessage()])
 module.LOG.addHandler(Capture())
 module.LOG.setLevel(logging.DEBUG)
-provider = module.LlmosMemoryProvider()
-if "search_hits" in request:
-    # Canned semantic hits in place of llmos memory search, in the service's order.
-    real_llmos = provider._llmos
-    def fake_llmos(*args):
-        if args[:2] == ("memory", "search"):
-            return request["search_hits"], None
-        return real_llmos(*args)
-    provider._llmos = fake_llmos
-provider.initialize("session", **request["init"])
+def new_provider(init):
+    provider = module.LlmosMemoryProvider()
+    if "search_hits" in request:
+        # Canned semantic hits in place of llmos memory search, in the service's order.
+        real_llmos = provider._llmos
+        def fake_llmos(*args):
+            if args[:2] == ("memory", "search"):
+                return request["search_hits"], None
+            return real_llmos(*args)
+        provider._llmos = fake_llmos
+    provider.initialize("session", **init)
+    return provider
+provider = new_provider(request["init"])
+# The recalls that "hold" steps queued, oldest first; "release" runs the oldest.
+held = []
+class Held:
+    def __init__(self, target, args):
+        self.call = (target, args)
+    def start(self):
+        held.append(self.call)
+real_spawn = module.spawn_context_thread
 out = {"available": provider.is_available(), "prompt": provider.system_prompt_block(),
        "tools": [schema["name"] for schema in provider.get_tool_schemas()], "calls": []}
 for name, args in request["calls"]:
@@ -49,6 +60,17 @@ for step in request.get("recalls", []):
         for thread in THREADS:
             thread.join()
         out["queue_seconds"].append(time.monotonic() - started)
+    elif step[0] == "hold":
+        # A recall that is still running: it ends at "release".
+        module.spawn_context_thread = lambda target, *, name, args=(): Held(target, args)
+        provider.queue_prefetch(step[1], session_id=step[2])
+        module.spawn_context_thread = real_spawn
+    elif step[0] == "release":
+        target, args = held.pop(0)
+        target(*args)
+    elif step[0] == "provider":
+        # Hermes rebuilds the agent, and so the provider, in the same process.
+        provider = new_provider(step[1])
     else:
         block = provider.prefetch("next turn", session_id=step[1])
         status = provider.recall_status()
@@ -125,7 +147,7 @@ async function run(
   init: Record<string, unknown>,
   calls: [string, Record<string, unknown>][] = [],
   more: {
-    recalls?: string[][];
+    recalls?: (string | Record<string, unknown>)[][];
     search_hits?: { path: string; score: number }[];
     shuffle?: { seed: string; paths: string[] };
     query?: string;
@@ -379,6 +401,76 @@ describe.skipIf(python() === null)("Hermes memory provider", () => {
     // The block is used once; a trivial prompt starts no recall.
     expect(out.recalls[2]).toEqual({ block: "", count: null });
     expect(out.recalls[3]).toEqual({ block: "", count: null });
+  });
+
+  // Hermes rebuilds the agent, and so the provider, between two turns of a session:
+  // after a turn a fallback model served, after an idle timeout, and on /model.
+  test("a provider rebuilt for the same profile gets the recalled notes once", async () => {
+    const judge = stubJudge({ "alpha.md": 0.9 });
+    const init = { cwd: gitRepo("my-repo"), hermes_home: "/profiles/work" };
+    const out = await run(await zebraSetup(), init, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", TURN, "chat"],
+        ["provider", init],
+        ["prefetch", "chat"],
+        ["prefetch", "chat"],
+        ["provider", init],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(recalledNames(out.recalls[0]?.block ?? "")).toEqual(["alpha"]);
+    expect(out.recalls[0]?.count).toBe(1);
+    expect(out.recalls.slice(1)).toEqual([
+      { block: "", count: null },
+      { block: "", count: null },
+    ]);
+  });
+
+  test("a provider of another profile never gets the recalled notes of the same session id", async () => {
+    const judge = stubJudge({ "alpha.md": 0.9 });
+    const cwd = gitRepo("my-repo");
+    const init = { cwd, hermes_home: "/profiles/work" };
+    const out = await run(await zebraSetup(), init, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", TURN, "chat"],
+        ["provider", { cwd, hermes_home: "/profiles/home" }],
+        ["prefetch", "chat"],
+        ["provider", init],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(out.recalls[0]).toEqual({ block: "", count: null });
+    expect(recalledNames(out.recalls[1]?.block ?? "")).toEqual(["alpha"]);
+  });
+
+  test("across rebuilt providers, an older recall that ends later never replaces or refills a newer one", async () => {
+    const judge = stubJudge(Object.fromEntries(ZEBRA.map((name) => [`${name}.md`, 0.9])));
+    const init = { cwd: gitRepo("my-repo"), hermes_home: "/profiles/work" };
+    // Each query's word match pools one note, so each block names its recall.
+    const out = await run(await zebraSetup(), init, [], {
+      env: { LLMOS_RECALL_JUDGE_URL: judge.url },
+      recalls: [
+        ["queue", "Tell me about alpha", "chat"],
+        ["prefetch", "chat"],
+        ["hold", "Tell me about bravo", "chat"],
+        ["hold", "Tell me about delta", "chat"],
+        ["provider", init],
+        ["queue", "Tell me about charlie", "chat"],
+        ["release"],
+        ["provider", init],
+        ["prefetch", "chat"],
+        ["release"],
+        ["provider", init],
+        ["prefetch", "chat"],
+      ],
+    });
+    expect(out.recalls.map((recall) => recalledNames(recall.block))).toEqual([
+      ["alpha"],
+      ["charlie"],
+      [],
+    ]);
   });
 
   test("recall keeps the notes the judge rates helpful, best first, and sends one request", async () => {
