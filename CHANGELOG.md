@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.12.1 — 2026-11-20
+
 - The Hermes `llmos` memory provider's recalled notes now reach the next turn
   also when Hermes rebuilds the agent between turns, as it does after a turn
   that a fallback model served. The provider keeps them by profile and
