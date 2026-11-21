@@ -515,6 +515,35 @@ export class Frontmatter {
   }
 
   /**
+   * Set `key` to a string inside the map property `parent`, adding the map
+   * when it is missing; a new key goes first. The map's other entries keep
+   * their nodes, so their quoting and comments survive. Throws
+   * `UnsupportedFrontmatter` when `parent` holds something other than a map.
+   */
+  setInMap(parent: string, key: string, value: string): this {
+    if (parent === "created") {
+      throw new ImmutableProperty("created is immutable and is never rewritten");
+    }
+    const pair = this.pair(parent);
+    if (pair === undefined) {
+      this.map().items.push(new Pair(new Scalar(parent), this.doc.createNode({ [key]: value })));
+    } else if (isMap(pair.value)) {
+      const map = pair.value as YAMLMap;
+      const inner = (map.items as Pair[]).find((item) => keyOf(item) === key);
+      if (inner === undefined) {
+        map.items.unshift(new Pair(new Scalar(key), new Scalar(value)));
+      } else {
+        assertNoAnchor(`${parent}.${key}`, inner.value);
+        inner.value = new Scalar(value);
+      }
+    } else {
+      throw new UnsupportedFrontmatter(`property ${JSON.stringify(parent)} is not a map`);
+    }
+    this.changed.add(parent);
+    return this;
+  }
+
+  /**
    * Add `value` to the list property `key` unless it is already there. A
    * string property becomes a list that keeps the string; an empty string
    * counts as no value.

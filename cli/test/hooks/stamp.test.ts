@@ -249,7 +249,71 @@ describe("authoring findings", () => {
 });
 
 describe("shared project memory and Antigravity hooks", () => {
-  test("never stamps or checks memory notes, while still flagging qmd dirty", () => {
+  test("adds metadata.node_type to a memory note without one, and leaves MEMORY.md alone", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const memory = join(vault, "projects", "testproj", "memory");
+    const topic = writeFile(
+      join(memory, "topic.md"),
+      "---\nname: Topic\ndescription: From another agent\nmetadata:\n  type: user\n---\n\nBody.\n",
+    );
+    const indexText = "# Memory index\n\n- [Topic](topic.md) — hook\n";
+    const index = writeFile(join(memory, "MEMORY.md"), indexText);
+
+    const result = runHook(
+      "post-tool-use",
+      { session_id: "sess-mem-type", tool_name: "Write", tool_input: { file_path: topic } },
+      tmp,
+      { root: vault, env: { CLAUDECODE: "1" } },
+    );
+    const indexResult = runHook(
+      "post-tool-use",
+      { session_id: "sess-mem-type", tool_name: "Write", tool_input: { file_path: index } },
+      tmp,
+      { root: vault, env: { CLAUDECODE: "1" } },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(indexResult.exitCode).toBe(0);
+    const stamped = readFileSync(topic, "utf8");
+    expect(stamped).toContain("metadata:\n  node_type: memory\n  type: user\n");
+    expect(stamped).toContain("description: From another agent\n");
+    expect(stamped).not.toContain("updated:");
+    expect(stamped.endsWith("\nBody.\n")).toBe(true);
+    expect(readFileSync(index, "utf8")).toBe(indexText);
+  });
+
+  test("keeps comments and quoted values when it adds node_type, and skips non-map metadata", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const memory = join(vault, "projects", "testproj", "memory");
+    const topic = writeFile(
+      join(memory, "quoted.md"),
+      '---\n# keep me\nname: "3"\ndescription: Flags\nmetadata:\n  type: user # inline\n  count: "true"\n---\n\nBody.\n',
+    );
+    const scalarText =
+      "---\nname: Odd\ndescription: Scalar metadata\nmetadata: user\n---\n\nBody.\n";
+    const scalar = writeFile(join(memory, "scalar.md"), scalarText);
+
+    for (const file of [topic, scalar]) {
+      const result = runHook(
+        "post-tool-use",
+        { session_id: "sess-mem-keep", tool_name: "Write", tool_input: { file_path: file } },
+        tmp,
+        { root: vault, env: { CLAUDECODE: "1" } },
+      );
+      expect(result.exitCode).toBe(0);
+    }
+    const stamped = readFileSync(topic, "utf8");
+    expect(stamped).toContain("# keep me\n");
+    expect(stamped).toContain('name: "3"\n');
+    expect(stamped).toContain("node_type: memory\n");
+    expect(stamped).toContain("type: user # inline\n");
+    expect(stamped).toContain('count: "true"\n');
+    expect(readFileSync(scalar, "utf8")).toBe(scalarText);
+  });
+
+  test("leaves a memory note that has node_type unchanged and unchecked, while flagging qmd dirty", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));
     const memContent =

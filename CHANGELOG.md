@@ -6,6 +6,18 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The post-tool-use hook gives a shared memory topic note
+  `metadata.node_type: memory` when the note lacks it, as `llmos memory save`
+  and Claude Code write it. The pre-tool-use memory hint no longer asks
+  agents for that field, so Claude Code agents stop re-adding a field that
+  is already there.
+
+## 2.12.1 — 2026-11-20
+
+- The Hermes `llmos` memory provider's recalled notes now reach the next turn
+  also when Hermes rebuilds the agent between turns, as it does after a turn
+  that a fallback model served. The provider keeps them by profile and
+  session, so two profiles in one gateway never share them.
 - The session-start hook repairs a dangling `.agents/docs` link. When the link
   points at a folder that is gone (for example after the vault moves), the hook
   replaces it with a link to the folder it would link now, when that folder
@@ -17,6 +29,9 @@ Newest first. Versions are the `version` field shared by
 
 ## 2.12.0 — 2026-11-20
 
+- 2.12.0 supersedes 2.11.1. The ADR removal (below) set the version fields to
+  2.11.1 without a release section, so a host that installed main in between
+  reports 2.11.1 for the same changes.
 - The tools no longer know architecture decision records. The `proposed`, `accepted`, and
   `superseded` note statuses are gone from the schema check, and the skills and
   docs no longer mention ADRs or an `adrs/` folder. Decisions live in pull

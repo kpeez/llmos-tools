@@ -32,7 +32,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
-| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty                     |
+| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 
 ## Hermes Agent
@@ -109,7 +109,8 @@ or that is not UTF-8. A memory folder that resolves outside the vault, or that
 it cannot resolve, gets no recall and one debug line; a folder it cannot list
 gives no notes. A failed judge call logs one line: a warning for the first
 failure since start or since the last success, then debug lines until the
-judge answers again. The next turn gets the recalled notes once.
+judge answers again. The next turn gets the recalled notes once, also when
+Hermes rebuilds the provider between turns, and never in another profile.
 With the provider active, the adapter sets `LLMOS_MEMORY_INDEX_LOADED=1` for
 `session-start`, so the index is not sent twice. Each profile's `llmos` MCP
 server excludes its memory tools (`tools.exclude: ["memory_*"]`), so Hermes
