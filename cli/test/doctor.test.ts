@@ -128,7 +128,7 @@ describe("llmos doctor", () => {
     ]) {
       expect(result.stdout).toContain(`PASS ${check}:`);
     }
-    expect(result.stdout).toContain("(qmd 2.8.3");
+    expect(result.stdout).toContain("(qmd 2.9.0");
     expect(result.stdout).toContain(
       `mcp lists ${READ_TOOLS.length + MEMORY_TOOLS.length + WRITE_TOOLS.length} tools`,
     );
