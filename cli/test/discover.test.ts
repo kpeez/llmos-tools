@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, symlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { extractIds, findClusters, MAX_KEY_NOTES, similarPairs } from "../src/discover.ts";
 import { VaultModel } from "../src/vault.ts";
@@ -496,9 +496,7 @@ describe("discover", () => {
       const result = await cli(root, ["discover", "--no-record"], { env: isolatedEnv() });
 
       expect(result.exitCode).toBe(2);
-      expect(result.stderr).toContain(
-        `no artifacts folder at ${join(realpathSync(root), "artifacts")}`,
-      );
+      expect(result.stderr).toContain(`no artifacts folder at ${join(root, "artifacts")}`);
       expect(existsSync(join(root, "..", "artifacts"))).toBe(false);
     });
 
