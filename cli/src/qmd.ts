@@ -96,10 +96,14 @@ export async function indexedPaths(
  * loads no model, so it is cheap; a document without vectors is left out.
  * Throws when the index has no vector table (nothing was ever embedded).
  *
- * Like `indexedPaths`, this uses qmd's internal tables (`documents`,
- * `content_vectors`, and the sqlite-vec table `vectors_vec`, whose rows are
- * keyed `<hash>_<seq>`). `vectors_vec` is read one key at a time: a join
- * with it can hang.
+ * Like `indexedPaths`, this uses qmd's internal tables (qmd 2.9.0 layout):
+ * `documents`, `vector_collection_ids` (collection name to id), `vector_rows`
+ * (one row per chunk and collection, with `hash`, `seq`, `collection_id`), and
+ * the sqlite-vec table `vectors_by_collection`, whose rowid is
+ * `vector_rows.id`. qmd converts an older `vectors_vec` index when it opens
+ * the index; where that conversion cannot run (no sqlite-vec), the new table
+ * is missing and this throws. `vectors_by_collection` is read one rowid at a
+ * time: a join with it can hang.
  */
 export async function documentVectors(
   store: QMDStore,
@@ -114,16 +118,18 @@ export async function documentVectors(
   const { db } = store.internal;
   const chunks = db
     .prepare(
-      `SELECT d.path AS path, cv.hash AS hash, cv.seq AS seq
-       FROM documents d JOIN content_vectors cv ON cv.hash = d.hash
+      `SELECT d.path AS path, vr.id AS id
+       FROM documents d
+       JOIN vector_collection_ids vc ON vc.name = d.collection
+       JOIN vector_rows vr ON vr.hash = d.hash AND vr.collection_id = vc.id
        WHERE d.collection = ? AND d.active = 1
-       ORDER BY d.path, cv.seq`,
+       ORDER BY d.path, vr.seq`,
     )
-    .all(collection) as { path: string; hash: string; seq: number }[];
-  const byKey = db.prepare("SELECT embedding FROM vectors_vec WHERE hash_seq = ?");
+    .all(collection) as { path: string; id: number }[];
+  const byRowid = db.prepare("SELECT embedding FROM vectors_by_collection WHERE rowid = ?");
   const sums = new Map<string, Float32Array>();
-  for (const { path, hash, seq } of chunks) {
-    const row = byKey.get(`${hash}_${seq}`) as { embedding: Uint8Array } | null;
+  for (const { path, id } of chunks) {
+    const row = byRowid.get(id) as { embedding: Uint8Array } | null;
     if (row === null) continue;
     const { buffer, byteOffset, byteLength } = row.embedding;
     const vector = new Float32Array(buffer.slice(byteOffset, byteOffset + byteLength));
