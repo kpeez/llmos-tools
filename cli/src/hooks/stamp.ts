@@ -15,7 +15,7 @@ import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:
 import { basename, join } from "node:path";
 import { checkNote } from "../authoring.ts";
 import { Frontmatter } from "../frontmatter.ts";
-import { isMemoryNote } from "../layout.ts";
+import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
   COLLECTION,
@@ -56,6 +56,25 @@ export function stampNote(path: string, date = localDate()): boolean {
   // birth time (Obsidian's created time), extended attributes, and hard links.
   if (stamped !== text) writeFileSync(path, stamped);
   return true;
+}
+
+/**
+ * Give a shared memory topic note `metadata.node_type: memory`, as
+ * `llmos memory save` and Claude Code write it, so no agent has to remember
+ * the field. Other values keep their text, quoting, and comments. `MEMORY.md`,
+ * a note with any `metadata.node_type`, a note whose `metadata` is not a map,
+ * and a note the serializer refuses stay unchanged.
+ */
+export function stampMemoryNote(path: string): void {
+  if (basename(path) === MEMORY_INDEX) return;
+  try {
+    const text = readText(path);
+    const frontmatter = Frontmatter.parse(text);
+    const metadata = frontmatter.properties.metadata;
+    if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
+    const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
+    if (stamped !== text) writeFileSync(path, stamped);
+  } catch {}
 }
 
 interface Listed {
@@ -211,6 +230,7 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   for (const target of durableTargets) {
     if (stampNote(target)) stamped = true;
   }
+  for (const target of memoryTargets) stampMemoryNote(target);
   if (stamped || memoryTargets.length > 0) {
     closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
   }

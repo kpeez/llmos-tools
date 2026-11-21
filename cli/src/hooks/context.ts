@@ -354,7 +354,7 @@ function memoryWriteContext(): string {
   return (
     "Shared project memory (projects/<project>/memory/): keep MEMORY.md as a concise " +
     "index under 200 lines without YAML frontmatter; write topic .md files with YAML " +
-    "frontmatter (`name`, `description`, `metadata.type`, and `metadata.node_type: memory`). " +
+    "frontmatter (`name`, `description`, and `metadata.type`). " +
     "Do not add durable-vault `categories`, `created`, or `project` properties."
   );
 }
