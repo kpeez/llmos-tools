@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.13.0 — 2026-11-21
+
 - llmOS now uses `@tobilu/qmd` 2.9.0 (llama.cpp v0.9.0), so qmd can load
   Google's embeddinggemma-2 as its embed model.
 - `llmos reindex` and the service's background embed rely on qmd's own embed
