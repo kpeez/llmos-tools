@@ -1377,7 +1377,7 @@ Do NOT use when you only want to search -- use \`search\`.`,
     const store = await openQmd(location, true);
     try {
       const embed = values["no-embed"] !== true;
-      return { json: await reindex(store, location.dbPath, str(values, "collection"), { embed }) };
+      return { json: await reindex(store, str(values, "collection"), { embed }) };
     } finally {
       await store.close();
     }

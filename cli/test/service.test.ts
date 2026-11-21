@@ -274,13 +274,13 @@ describe("the fallback", () => {
 });
 
 describe("memory writes", () => {
-  /** A service whose store records embeds; the real index is behind it. */
-  async function recordingService(
-    env: Record<string, string>,
-    embeds: string[],
-    lockHeld = () => false,
-  ) {
-    const { openQmd, qmdLocation } = await import("../src/qmd.ts");
+  /**
+   * A service whose store records embeds; the real index is behind it. The
+   * first `busyAttempts` embeds fail as qmd's `EmbedLockBusyError` does.
+   */
+  async function recordingService(env: Record<string, string>, embeds: string[], busyAttempts = 0) {
+    const { openQmd } = await import("../src/qmd.ts");
+    let attempts = 0;
     return serveService({
       env,
       embedRetryMs: 30,
@@ -291,9 +291,13 @@ describe("memory writes", () => {
           listCollections: () => real.listCollections(),
           searchVector: async () => [],
           embed: async ({ collection }: { collection: string }) => {
-            embeds.push(
-              `${collection}${existsSync(join(dirname(qmdLocation(env).dbPath), ".qmd-embed.lock")) ? " locked" : ""}${lockHeld() ? " raced" : ""}`,
-            );
+            attempts++;
+            if (attempts <= busyAttempts) {
+              throw Object.assign(new Error("Another embed run already owns this index"), {
+                name: "EmbedLockBusyError",
+              });
+            }
+            embeds.push(collection);
             return {};
           },
           close: () => real.close(),
@@ -332,7 +336,7 @@ describe("memory writes", () => {
     }
   });
 
-  test("a save asks a running service to embed the memory collection, under the embed lock", async () => {
+  test("a save asks a running service to embed the memory collection", async () => {
     const root = makeVault(NOTES);
     const env = liveEnv();
     await indexVault(root, env, { llmos: "**/*.md", memory: "projects/*/memory/*.md" });
@@ -340,24 +344,19 @@ describe("memory writes", () => {
     const service = await recordingService(env, embeds);
     expect((await cli(root, SAVE, { env })).exitCode).toBe(0);
     await waitFor("the embed", () => embeds.length > 0);
-    expect(embeds).toEqual(["memory locked"]);
+    expect(embeds).toEqual(["memory"]);
     await service.close();
   });
 
-  test("an embed waits while another process holds the embed lock", async () => {
+  test("an embed tries again while qmd reports the index busy", async () => {
     const root = makeVault(NOTES);
     const env = liveEnv();
     await indexVault(root, env, { llmos: "**/*.md", memory: "projects/*/memory/*.md" });
-    const lock = join(dirname(env.INDEX_PATH as string), ".qmd-embed.lock");
-    writeFileSync(lock, `${process.pid}\n`);
     const embeds: string[] = [];
-    const service = await recordingService(env, embeds);
+    const service = await recordingService(env, embeds, 2);
     await callService(env, "embed", { collection: "memory" });
-    await Bun.sleep(300);
-    expect(embeds).toEqual([]);
-    const { unlinkSync } = await import("node:fs");
-    unlinkSync(lock);
     await waitFor("the embed", () => embeds.length > 0);
+    expect(embeds).toEqual(["memory"]);
     await service.close();
   });
 
