@@ -15,6 +15,10 @@ Newest first. Versions are the `version` field shared by
   (`vectors_by_collection`).
 - The first qmd command on an index after the upgrade converts the index in
   place. Going back to an older qmd needs `qmd embed -f`.
+- Before you upgrade, stop every running `llmos service` and `llmos mcp`
+  (restart agent sessions and the Hermes gateway). qmd 2.9.0 does not see
+  the embed lock of an older llmOS, so an old process can embed at the same
+  time as a new one.
 
 ## 2.12.2 — 2026-11-20
 

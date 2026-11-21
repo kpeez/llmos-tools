@@ -81,9 +81,9 @@ The service offers no shell, file, or arbitrary-path method. It serves the
 Memory search and background embedding use a second qmd collection beside
 `llmos` in the same index: the vault root with the pattern
 `projects/*/memory/*.md`. The pattern takes the top-level notes of every memory
-folder (the `MEMORY.md` index too) and no subfolder. qmd stores a vector by
-content hash, so a note in both collections has one vector, and embedding
-`memory` also serves a semantic search on `llmos`. Add it once per host:
+folder (the `MEMORY.md` index too) and no subfolder. qmd keeps one vector per
+collection for a note in both collections, and one embed writes all of them,
+so embedding `memory` also serves a semantic search on `llmos`. Add it once per host:
 
 ```bash
 qmd collection add "<vault root>" --name memory --mask 'projects/*/memory/*.md'
