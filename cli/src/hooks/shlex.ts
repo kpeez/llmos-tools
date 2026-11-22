@@ -1,18 +1,16 @@
 /**
  * A port of Python's `shlex` lexer in POSIX mode with `whitespace_split`.
+ * It is not a shell parser.
  *
- * The hooks were defined against `shlex.split` (no comments, no punctuation)
- * and `shlex.shlex(command, posix=True, punctuation_chars=True)` with
- * `whitespace_split = True` (comments on `#`). This port keeps that state
- * machine as it is, quirks included, so the TypeScript hooks split commands
- * exactly as the Python hooks did. It is not a shell parser.
+ * One change from Python: with operators on, an unquoted newline is an
+ * operator token, because the shell runs the text after it as a new command.
  */
 
 const WHITESPACE = " \t\r\n";
 const QUOTES = "'\"";
 const ESCAPE = "\\";
 const ESCAPED_QUOTES = '"';
-const PUNCTUATION = "();<>|&";
+const PUNCTUATION = "();<>|&\n";
 
 /** An unterminated quote or a trailing escape, as Python's `ValueError`. */
 export class ShlexError extends Error {
@@ -29,6 +27,7 @@ interface Options {
 function tokens(input: string, options: Options): string[] {
   const chars = Array.from(input);
   const punctuation = options.punctuation ? PUNCTUATION : "";
+  const whitespace = options.punctuation ? WHITESPACE.replace("\n", "") : WHITESPACE;
   const { commenters } = options;
   const pushback: string[] = [];
   let position = 0;
@@ -37,9 +36,7 @@ function tokens(input: string, options: Options): string[] {
     return position < chars.length ? (chars[position++] as string) : "";
   };
   const skipLine = (): void => {
-    while (position < chars.length) {
-      if (chars[position++] === "\n") return;
-    }
+    while (position < chars.length && chars[position] !== "\n") position++;
   };
   const has = (set: string, char: string): boolean => char !== "" && set.includes(char);
 
@@ -59,7 +56,7 @@ function tokens(input: string, options: Options): string[] {
         if (!char) {
           state = null;
           break;
-        } else if (has(WHITESPACE, char)) {
+        } else if (has(whitespace, char)) {
           if (token || quoted) break;
         } else if (has(commenters, char)) {
           skipLine();
@@ -99,7 +96,7 @@ function tokens(input: string, options: Options): string[] {
         if (!char) {
           state = null;
           break;
-        } else if (has(WHITESPACE, char)) {
+        } else if (has(whitespace, char)) {
           state = " ";
           if (token || quoted) break;
         } else if (has(commenters, char)) {
@@ -110,7 +107,7 @@ function tokens(input: string, options: Options): string[] {
           if (has(punctuation, char)) {
             token += char;
           } else {
-            if (!has(WHITESPACE, char)) pushback.push(char);
+            if (!has(whitespace, char)) pushback.push(char);
             state = " ";
             break;
           }

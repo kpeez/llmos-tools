@@ -134,13 +134,31 @@ describe("raw mv and rm on vault notes", () => {
     const vault = makeVault(join(tmp, "vault"));
     const note = writeFile(join(vault, "note.md"), "# note\n");
 
-    const spaced = guard(`cd /tmp && rm ${note}`, tmp, { root: vault });
-    const glued = guard(`echo hi&&rm ${note}`, tmp, { root: vault });
+    const commands = [
+      `cd /tmp && rm ${note}`,
+      `echo hi&&rm ${note}`,
+      `echo hi\nrm ${note}`,
+      `echo hi # comment\nrm ${note}`,
+      `sleep 1 & rm ${note}`,
+      `(rm ${note})`,
+      `echo $(rm ${note})`,
+    ];
 
-    for (const result of [spaced, glued]) {
-      expect(result.exitCode).toBe(2);
+    for (const command of commands) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 2 });
       expect(result.stderr).toContain(note);
     }
+  });
+
+  test("approves a note path that is only quoted text, even across a newline", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+
+    const result = guard(`echo "hi\nrm ${note}"`, tmp, { root: vault });
+
+    expect(result.exitCode).toBe(0);
   });
 
   test("resolves a relative argument against the payload cwd", () => {

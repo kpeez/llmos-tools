@@ -28,7 +28,7 @@ import { ShlexError, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
 const FAST_REJECT = /\b(?:obsidian-cli|mv|rm)\b/;
-const OPERATOR_TOKENS = new Set(["&&", "||", ";", "|"]);
+const SEPARATOR = /^[();|&\n]+$/;
 const REDIRECT_OPERATORS = new Set([">", ">>", "<", "<<", "&>", "&>>", ">&", "<&"]);
 
 /**
@@ -69,7 +69,7 @@ function splitSubcommands(tokens: string[]): string[][] {
   const subcommands: string[][] = [];
   let current: string[] = [];
   for (const token of tokens) {
-    if (OPERATOR_TOKENS.has(token)) {
+    if (SEPARATOR.test(token)) {
       if (current.length > 0) subcommands.push(current);
       current = [];
     } else {
