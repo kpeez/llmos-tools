@@ -6,6 +6,10 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- CI runs the TLA+ model checks in a new `models` job. `just verify-models`
+  runs the same checks locally: each `.agents/skills/verify-*` skill that
+  holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
+  `.claude/skills`; the repository now commits one link per skill.
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from

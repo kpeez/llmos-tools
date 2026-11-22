@@ -56,7 +56,12 @@ verify-daily-digest`. It model-checks with TLA+ that the digest never deletes
 text written to a note during its model call. The `verify-daily-digest`
 skill (`../.agents/skills/verify-daily-digest/`) says what the model
 covers and how to read a failure.
-`scripts/bootstrap.sh` links `.agents/skills` into `.claude/skills` for Claude Code.
+`just verify-models` runs every model check: each `../.agents/skills/verify-*`
+skill that holds a `.tla` file runs its `scripts/check.ts`. CI runs it in the
+`models` job, so a new model skill is gated with no workflow change.
+Claude Code finds each repository skill through its committed link
+`../.claude/skills/<skill>` (to `../../.agents/skills/<skill>`). A new skill
+commits its own link.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
@@ -67,7 +72,8 @@ Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
 marketplace drift check, the type check, Biome, and `bun test` (with the
 contract snapshot tests), and it fails when a committed bundle
-(`../dist/hooks.js`, or the MCP launcher `../dist/mcp.js`) is stale. After changing
+(`../dist/hooks.js`, or the MCP launcher `../dist/mcp.js`) is stale. It does
+not run the model checks; CI runs them (`just verify-models`). After changing
 `src/hooks/`, `src/mcp-launcher.ts`, or core code they import, run `just
 hooks` and commit the rebuilt bundles. `.tool-versions` pins the Bun version for
 local builds and CI (`bun-version-file`); `just hooks` refuses another `bun`,
