@@ -78,6 +78,33 @@ function runCloud(fixture: CloudFixture, env: Record<string, string> = {}) {
   });
 }
 
+describe("session-start in a cloud session before the vault is attached", () => {
+  test("tells the agent to attach the vault, then run the hook again", () => {
+    const fixture = cloudFixture();
+    const missing = join(fixture.workspace, "not-attached");
+    const result = runCloud(fixture, { LLMOS_ROOT: missing, LLMOS_VAULT_REPO: "owner/vault" });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("call the add_repo tool for owner/vault");
+    expect(result.stdout).toContain(`clone it to ${missing}`);
+    expect(result.stdout).toContain("register_repo_root");
+    expect(result.stdout).toMatch(/echo '\{\}' \| bun \/\S+ session-start/);
+  });
+
+  test("says nothing without LLMOS_VAULT_REPO", () => {
+    const fixture = cloudFixture();
+    const result = runCloud(fixture, { LLMOS_ROOT: join(fixture.workspace, "not-attached") });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain("add_repo");
+  });
+
+  test("the rerun after the attach gives the vault context", () => {
+    const fixture = cloudFixture();
+    const result = runCloud(fixture, { LLMOS_VAULT_REPO: "owner/vault" });
+    expect(result.stdout).not.toContain("add_repo");
+    expect(result.stdout).toContain(`llmOS root: ${fixture.root}.`);
+  });
+});
+
 describe("session-start in a cloud session", () => {
   test("pulls main, links each attached repository, and excludes the link", () => {
     const fixture = cloudFixture();

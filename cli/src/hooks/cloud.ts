@@ -95,6 +95,26 @@ function buildIndex(root: string, env: Env): string | null {
 }
 
 /**
+ * In a cloud session whose vault is not checked out yet, tell the agent to
+ * attach it. The cloud's GitHub proxy authorizes a push only to a repository
+ * attached to the session, and the agent can attach one itself with its
+ * `add_repo` tool. `LLMOS_VAULT_REPO` (`owner/name`) names the vault repository.
+ * `hooksScript` is this bundle, which the agent runs again once the vault exists.
+ * Returns the context line, or `null` when the hint does not apply.
+ */
+export function cloudAttachHint(env: Env, hooksScript: string): string | null {
+  const root = env.LLMOS_ROOT;
+  const repository = env.LLMOS_VAULT_REPO;
+  if (env.CLAUDE_CODE_REMOTE !== "true" || !root || !repository || existsSync(root)) return null;
+  return (
+    `The llmOS vault is not in this cloud session yet. Before other work, attach it: call the add_repo tool for ${repository}, ` +
+    `clone it to ${root} as the tool result says, and call register_repo_root with that directory. ` +
+    `Then run \`echo '{}' | bun ${hooksScript} session-start\` and treat its output as session context: ` +
+    "it gives the llmOS vault rules and the project's shared memory index, and starts the search index build."
+  );
+}
+
+/**
  * Pull the vault, start the index build, and link the repositories beside it, in a cloud session only.
  * Returns context lines for the session, or `null` outside the cloud.
  */

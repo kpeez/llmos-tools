@@ -21,7 +21,7 @@
  * nothing.
  */
 
-import { cloudSetup } from "./cloud.ts";
+import { cloudAttachHint, cloudSetup } from "./cloud.ts";
 import {
   firstTruthy,
   isAntigravityPayload,
@@ -93,7 +93,7 @@ async function run(event: string | undefined): Promise<void> {
       try {
         syncNote = root === null ? null : syncOnStart(root, process.env);
       } catch {}
-      const cloud = root === null ? null : cloudSetup(root);
+      const cloud = root === null ? cloudAttachHint(process.env, Bun.main) : cloudSetup(root);
       const linked = root && project ? linkAgentDirs(project, root).join("\n") : null;
       // A cloud session's working folder holds several repositories, so the
       // vault context applies even when the cwd itself is not linked.
