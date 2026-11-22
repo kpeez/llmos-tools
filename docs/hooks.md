@@ -188,6 +188,14 @@ writes its output to `llmos-index-build.log` in the temp folder. When
 sets the vault root with `LLMOS_ROOT`, and the claude.ai account syncs the
 plugin. The hook does neither.
 
+When `LLMOS_ROOT` does not exist yet in a cloud session and
+`LLMOS_VAULT_REPO` names the vault repository (`owner/name`), the hook tells
+the agent to attach it: call `add_repo` for that repository, clone it to
+`LLMOS_ROOT`, call `register_repo_root`, then run the session-start hook again.
+The second run gives the vault context and starts the index build. Only an
+attached repository accepts a push through the cloud's GitHub proxy, so the
+agent attaches the vault instead of cloning it with a token.
+
 In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
 vault's Git remote. It never rewrites the work tree: no `rebase`, `stash`, or
 `reset`, and a dirty vault does not pause it. It builds every new commit

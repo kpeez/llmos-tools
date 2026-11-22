@@ -23,6 +23,11 @@ Newest first. Versions are the `version` field shared by
   `plugins/synced/<bucket>/manifest.json` files and takes the folder whose
   `plugin.json` names `llmos`. The `hooks` check no longer fails with "installed for neither"
   there.
+- In a cloud session whose vault is not checked out yet, the session-start
+  hook tells the agent to attach it with `add_repo`, clone it to
+  `LLMOS_ROOT`, call `register_repo_root`, and run the hook again. Set
+  `LLMOS_VAULT_REPO` (`owner/name`) in the cloud environment to turn it on.
+  The user no longer attaches the vault by hand.
 
 ## 2.13.1 — 2026-11-22
 
