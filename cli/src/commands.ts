@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
-import { checkNote } from "./authoring.ts";
+import { checkNote, invalidFrontmatter } from "./authoring.ts";
 import { bodySection, summary as claimsSummary, lintClaims } from "./claims-lint.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
@@ -340,8 +340,15 @@ Do NOT use when you already know which note you want -- use \`read\`.`,
 
 const check: Command = {
   name: "check",
-  summary: "Review one note for unlinked references and Markdown that renders wrongly.",
-  description: `Reports body links separately from frontmatter links, plus the first
+  summary:
+    "Review one note for unlinked references and Markdown that renders wrongly; with no note, list notes whose frontmatter does not parse.",
+  description: `With no note, lists every note whose frontmatter block is not valid YAML as
+[{"path", "findings"}] and exits 1 when there is one. The finding has code
+invalid-frontmatter, the file line, the parser's line and column in the
+block, and a fix hint. A static-site build such as Quartz stops on such a
+note. The usual cause is a plain value that contains ": ", which needs
+double quotes. With a note, it reports the same finding for that note and
+also body links separately from frontmatter links, plus the first
 unlinked .md reference to each known target (code unlinked-note). It also
 reports Markdown that makes Obsidian render the note wrongly: a table row
 with the wrong number of cells (table-column-count), an empty link
@@ -356,7 +363,13 @@ not a style linter: code examples, missing files, and ambiguous filenames
 are ignored. A clean result does not certify useful connections, link
 resolution, Base formulas, or rendering. Use \`neighbors\` and Obsidian for
 those checks.`,
-  arguments: [{ name: "note", help: "Note basename or vault-relative path." }],
+  arguments: [
+    {
+      name: "note",
+      help: "Note basename or vault-relative path. Leave out to check every note's frontmatter.",
+      optional: true,
+    },
+  ],
   options: vaultOption("Which registered vault to check."),
   exampleOutput: `{"path": "notes/alpha.md", "body_links": [], "property_links": ["Project"],
  "findings": [{"code": "unlinked-note", "line": 7, "target": "notes/beta",
@@ -364,7 +377,12 @@ those checks.`,
   example: "llmos check projects/study/manuscript/README.md --vault llmos",
   run(values, context) {
     const model = context.model(context.root(vaultName(values)));
-    const report = checkNote(model, model.resolveNote(str(values, "note")));
+    const name = optionalStr(values, "note");
+    if (name === undefined) {
+      const broken = invalidFrontmatter(model);
+      return { json: broken, exitCode: broken.length > 0 ? 1 : 0 };
+    }
+    const report = checkNote(model, model.resolveNote(name));
     return { json: report, exitCode: report.findings.length > 0 ? 1 : 0 };
   },
 };

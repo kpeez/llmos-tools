@@ -6,14 +6,15 @@
  * canonical frontmatter with `updated` set to today, then flags the qmd
  * collection dirty for the stop hook. A note without a frontmatter block,
  * with a block the serializer refuses to rewrite, or with invalid UTF-8 is
- * left unchanged.
+ * left unchanged. A block that is not valid YAML, in any vault note, gives a
+ * finding with the parser's line and column.
  * Findings are informational: they never block the write or change the
  * note.
  */
 
 import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { checkNote } from "../authoring.ts";
+import { checkNote, type Finding, frontmatterFinding, INVALID_FRONTMATTER } from "../authoring.ts";
 import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
@@ -170,26 +171,7 @@ function mentionsNotePath(path: string): boolean {
   }
 }
 
-/** Concise authoring findings for the notes, or `null`. Never edits or blocks. */
-function authoringDiagnostics(root: string, paths: string[], listed: Listed[]): string | null {
-  const lines: string[] = [];
-  try {
-    const relatives = paths.map((path) => path.slice(root.length + 1));
-    const model = modelFor(root, listed, relatives);
-    outer: for (const relative of relatives) {
-      const check = checkNote(model, noteAt(model, root, relative));
-      for (const finding of check.findings) {
-        const location = finding.line ? `:${finding.line}` : "";
-        const target = finding.target ? ` -> ${finding.target}` : "";
-        let line = `${check.path}${location} [${finding.code}]${target}: ${collapseWhitespace(finding.message)}`;
-        if (line.length > MAX_LINE) line = `${line.slice(0, MAX_LINE - 3).trimEnd()}...`;
-        lines.push(line);
-        if (lines.length >= MAX_FINDINGS) break outer;
-      }
-    }
-  } catch {
-    return null;
-  }
+function render(lines: string[]): string | null {
   if (lines.length === 0) return null;
   return (
     "llmOS authoring check (informational; this checker did not block the " +
@@ -197,6 +179,45 @@ function authoringDiagnostics(root: string, paths: string[], listed: Listed[]): 
     lines.join("\n") +
     "\nRun `llmos check <note>` for complete findings."
   );
+}
+
+/** One finding as a line, cut to `MAX_LINE`, except an invalid-frontmatter line, whose fix hint must stay. */
+function findingLine(path: string, finding: Finding): string {
+  const location = finding.line ? `:${finding.line}` : "";
+  const target = finding.target ? ` -> ${finding.target}` : "";
+  const line = `${path}${location} [${finding.code}]${target}: ${collapseWhitespace(finding.message)}`;
+  if (finding.code === INVALID_FRONTMATTER || line.length <= MAX_LINE) return line;
+  return `${line.slice(0, MAX_LINE - 3).trimEnd()}...`;
+}
+
+/** Concise authoring findings for the notes, or `null`. Never edits or blocks. */
+function authoringLines(root: string, paths: string[], listed: Listed[]): string[] {
+  const lines: string[] = [];
+  try {
+    const relatives = paths.map((path) => path.slice(root.length + 1));
+    const model = modelFor(root, listed, relatives);
+    outer: for (const relative of relatives) {
+      const check = checkNote(model, noteAt(model, root, relative));
+      for (const finding of check.findings) {
+        lines.push(findingLine(check.path, finding));
+        if (lines.length >= MAX_FINDINGS) break outer;
+      }
+    }
+  } catch {}
+  return lines;
+}
+
+/** The invalid-frontmatter findings of memory notes, which get no other check. */
+function memoryLines(root: string, paths: string[]): string[] {
+  const lines: string[] = [];
+  for (const path of paths) {
+    try {
+      const relative = path.slice(root.length + 1);
+      const finding = frontmatterFinding(readSource(relative, readText(path)));
+      if (finding) lines.push(findingLine(relative, finding));
+    } catch {}
+  }
+  return lines;
 }
 
 export async function postToolUse(data: Payload): Promise<string | null> {
@@ -234,7 +255,10 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   if (stamped || memoryTargets.length > 0) {
     closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
   }
-  if (durableTargets.length === 0) return null;
-  const listed = await listing;
-  return listed ? authoringDiagnostics(root, durableTargets, listed) : null;
+  const lines = memoryLines(root, memoryTargets);
+  if (durableTargets.length > 0) {
+    const listed = await listing;
+    if (listed) lines.push(...authoringLines(root, durableTargets, listed));
+  }
+  return render(lines.slice(0, MAX_FINDINGS));
 }

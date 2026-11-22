@@ -125,6 +125,9 @@ describe("read tools", () => {
     const check = await client.call("check", { note: "notes/alpha.md" });
     expect(check.isError).toBe(false);
     expect(JSON.parse(check.text).findings).toEqual([]);
+    const all = await client.call("check", {});
+    expect(all.isError).toBe(false);
+    expect(JSON.parse(all.text)).toEqual([]);
     const health = await client.call("health", {});
     expect(health.isError).toBe(false);
     expect(JSON.parse(health.text)).toHaveProperty("orphans");

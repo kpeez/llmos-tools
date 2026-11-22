@@ -10,6 +10,7 @@
 import { lstatSync, readlinkSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
 import { blankCodeSpans, codeSpans } from "./code-spans.ts";
+import { InvalidYamlFrontmatter } from "./frontmatter.ts";
 import { RAW_DIR } from "./layout.ts";
 import { markdownFindings } from "./markdown-lint.ts";
 import { extractWikilinks, type Note, propertyLinks, type VaultModel } from "./vault.ts";
@@ -38,6 +39,38 @@ export interface NoteCheck {
   body_links: string[];
   property_links: string[];
   findings: Finding[];
+}
+
+export const INVALID_FRONTMATTER = "invalid-frontmatter";
+
+/**
+ * A finding when the note's frontmatter block is not valid YAML, else `null`.
+ * Static-site builds such as Quartz stop on such a note. The usual cause is a
+ * plain value that contains `: `.
+ */
+export function frontmatterFinding(note: Pick<Note, "frontmatterError">): Finding | null {
+  const error = note.frontmatterError;
+  if (!(error instanceof InvalidYamlFrontmatter)) return null;
+  return {
+    code: INVALID_FRONTMATTER,
+    // The block starts on the line after the opening `---`.
+    line: error.line + 1,
+    target: "",
+    message:
+      `Frontmatter does not parse at line ${error.line}, column ${error.column} of the block ` +
+      `(${error.detail}). Often an unquoted value that contains ": ": ` +
+      'double-quote it, for example description: "Rule: quote it".',
+  };
+}
+
+/** Every note whose frontmatter block is not valid YAML, in vault order. */
+export function invalidFrontmatter(model: VaultModel): { path: string; findings: Finding[] }[] {
+  const found: { path: string; findings: Finding[] }[] = [];
+  for (const note of model.notes) {
+    const finding = frontmatterFinding(note);
+    if (finding) found.push({ path: note.path, findings: [finding] });
+  }
+  return found;
 }
 
 /** Replace every character except line breaks with a space, keeping offsets. */
@@ -242,6 +275,8 @@ export function checkNote(model: VaultModel, linked: Note): NoteCheck {
 
   const seen = new Set<Note>();
   const findings: Finding[] = [];
+  const broken = frontmatterFinding(note);
+  if (broken) findings.push(broken);
   for (const [offset, reference] of candidates) {
     const target = existingNote(model, root, note, reference);
     if (target === undefined || target === note || seen.has(target)) continue;
