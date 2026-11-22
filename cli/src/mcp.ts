@@ -205,6 +205,7 @@ function tools(): Tool[] {
   const listCommand = command("list");
   const subgraph = command("subgraph");
   const searchCommand = command("search");
+  const checkCommand = command("check");
   const health = command("health");
   const thought = command("daily append-thought");
   const fileInbox = command("file-inbox");
@@ -278,7 +279,14 @@ function tools(): Tool[] {
         return run(subgraph, { note, depth: (args.depth as number | undefined) ?? 1 }, state);
       },
     }),
-    readTool("check", command("check")),
+    readTool("check", checkCommand, {
+      schema: z.strictObject({ note: line(1024).optional().describe(help(checkCommand, "note")) }),
+      call(args, state) {
+        const name = args.note as string | undefined;
+        const note = name === undefined ? {} : { note: insideNote(state, rootOf(state), name) };
+        return run(checkCommand, note, state);
+      },
+    }),
     {
       name: "health",
       command: health,

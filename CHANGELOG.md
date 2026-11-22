@@ -6,6 +6,17 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The post-tool-use hook tells the agent when a vault note's frontmatter is
+  not valid YAML, such as `description: Rule: quote me` with an unquoted
+  `: `. The finding (`invalid-frontmatter`) gives the path, the parser's line
+  and column, and a hint to double-quote the value. It covers every vault
+  note, shared memory notes included, which had no check before. The hook
+  still leaves the note unchanged and never blocks the tool call.
+- `llmos check` and the MCP `check` tool take no note to list every note in
+  the vault whose frontmatter does not parse (exit 1 when there is one), so a
+  static-site build such as Quartz, which stops on one such note, can be
+  checked before it runs. With a note, `check` also reports the finding.
+
 ## 2.13.0 — 2026-11-21
 
 - llmOS now uses `@tobilu/qmd` 2.9.0 (llama.cpp v0.9.0), so qmd can load

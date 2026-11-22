@@ -248,6 +248,38 @@ describe("authoring findings", () => {
   });
 });
 
+describe("frontmatter that does not parse", () => {
+  const BROKEN =
+    "---\ncreated: 2026-07-01\ndescription: Rule: quote values with colons\n---\n# T\n";
+  const FINDING =
+    "[invalid-frontmatter]: Frontmatter does not parse at line 2, column 14 of the block " +
+    "(Nested mappings are not allowed in compact mappings). " +
+    'Often an unquoted value that contains ": ": double-quote it, for example description: "Rule: quote it".';
+
+  test("a durable note gets a finding with the parser's position and a fix hint, and stays unchanged", () => {
+    const { tmp, vault, note } = setup(BROKEN, "broken.md");
+
+    const result = stamp(note, tmp, vault);
+
+    expect(additionalContext(result, "PostToolUse")).toContain(`broken.md:3 ${FINDING}`);
+    expect(readFileSync(note, "utf8")).toBe(BROKEN);
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("a shared memory note gets the same finding and stays unchanged", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const path = "projects/testproj/memory/topic.md";
+    const note = writeFile(join(vault, path), BROKEN);
+
+    const result = stamp(note, tmp, vault);
+
+    expect(additionalContext(result, "PostToolUse")).toContain(`${path}:3 ${FINDING}`);
+    expect(readFileSync(note, "utf8")).toBe(BROKEN);
+    expect(result.exitCode).toBe(0);
+  });
+});
+
 describe("shared project memory and Antigravity hooks", () => {
   test("adds metadata.node_type to a memory note without one, and leaves MEMORY.md alone", () => {
     const tmp = temporaryFolder();

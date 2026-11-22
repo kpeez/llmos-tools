@@ -9,7 +9,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | --- | --- |
 | `append` | Append content to the end of an existing note. |
 | `audit` | Check every llmOS note against the property contract (read-only). |
-| `check` | Review one note for unlinked references and Markdown that renders wrongly. |
+| `check` | Review one note for unlinked references and Markdown that renders wrongly; with no note, list notes whose frontmatter does not parse. |
 | `claims lint` | Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote. |
 | `config set-root` | Validate a vault root and write it to the llmOS config file. |
 | `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
@@ -93,11 +93,17 @@ Example:
 ## `check`
 
 ```text
-Usage: llmos check <note> [--vault NAME]
+Usage: llmos check [note] [--vault NAME]
 
-Review one note for unlinked references and Markdown that renders wrongly.
+Review one note for unlinked references and Markdown that renders wrongly; with no note, list notes whose frontmatter does not parse.
 
-Reports body links separately from frontmatter links, plus the first
+With no note, lists every note whose frontmatter block is not valid YAML as
+[{"path", "findings"}] and exits 1 when there is one. The finding has code
+invalid-frontmatter, the file line, the parser's line and column in the
+block, and a fix hint. A static-site build such as Quartz stops on such a
+note. The usual cause is a plain value that contains ": ", which needs
+double quotes. With a note, it reports the same finding for that note and
+also body links separately from frontmatter links, plus the first
 unlinked .md reference to each known target (code unlinked-note). It also
 reports Markdown that makes Obsidian render the note wrongly: a table row
 with the wrong number of cells (table-column-count), an empty link
@@ -114,7 +120,7 @@ resolution, Base formulas, or rendering. Use `neighbors` and Obsidian for
 those checks.
 
 Arguments:
-  note  Note basename or vault-relative path.
+  note  Note basename or vault-relative path. Leave out to check every note's frontmatter.
 
 Options:
   --vault  Which registered vault to check. Default: llmos.

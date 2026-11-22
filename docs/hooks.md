@@ -32,7 +32,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
-| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked |
+| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 
 ## Hermes Agent
@@ -121,7 +121,15 @@ or without that exclude.
 The stamp writes through the frontmatter serializer in `cli/src/frontmatter.ts`,
 so block scalars, comments, and nested maps keep their data. A note without a
 frontmatter block, with a block the serializer refuses, or with invalid UTF-8
-is left unchanged. The stamp and reindex hooks share a session-scoped dirty
+is left unchanged. When a vault note's frontmatter block is not valid YAML, in
+any folder and memory notes included, the hook also adds an
+`invalid-frontmatter` finding to its context: the vault-relative path, the
+file line, the parser's line and column in the block, and a hint to
+double-quote a value that contains `: `. A site build such as Quartz stops on
+such a note. The hook still leaves the note unchanged, and the finding never
+blocks the tool call. `llmos check` with no note lists these notes across the
+vault. A block the serializer refuses for another reason, such as an empty
+list item, gets no finding. The stamp and reindex hooks share a session-scoped dirty
 flag, so concurrent sessions never collide or leak a stale flag into each
 other. A hook failure never blocks the tool call, and the hooks never import
 qmd (it would cost about 48 ms per call). Embedding is left to a hand-run

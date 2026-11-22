@@ -71,6 +71,25 @@ export class UnsupportedFrontmatter extends Error {
   override name = "UnsupportedFrontmatter";
 }
 
+/**
+ * The block is not valid YAML: the parser reports an error or a warning. This is
+ * the one refusal that other YAML readers, such as a static-site build, also
+ * fail on. `line` and `column` count from 1, from the first line after the
+ * opening `---`.
+ */
+export class InvalidYamlFrontmatter extends UnsupportedFrontmatter {
+  // Same name as the parent: the error name is part of the contract snapshots.
+  override name = "UnsupportedFrontmatter";
+  constructor(
+    readonly detail: string,
+    readonly line: number,
+    readonly column: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 /** A change to a property that must never change (`created`). */
 export class ImmutableProperty extends Error {
   override name = "ImmutableProperty";
@@ -384,8 +403,13 @@ function parseBlock(source: string): Document.Parsed {
   const doc = parseDocument(source, PARSE_OPTIONS);
   const problem = doc.errors[0] ?? doc.warnings[0];
   if (problem) {
-    throw new UnsupportedFrontmatter(
-      `frontmatter is not valid YAML (${problem.code}: ${problem.message.split("\n")[0]})`,
+    const first = problem.message.split("\n")[0] as string;
+    const [at] = problem.linePos ?? [{ line: 1, col: 1 }];
+    throw new InvalidYamlFrontmatter(
+      first.replace(/ at line \d+, column \d+:?$/, ""),
+      at.line,
+      at.col,
+      `frontmatter is not valid YAML (${problem.code}: ${first})`,
     );
   }
   const map = doc.contents;

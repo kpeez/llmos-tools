@@ -92,3 +92,33 @@ describe("check Markdown correctness", () => {
     expect(await found("[x]()\n", "projects/sources/n.md")).toEqual([["empty-link", 1]]);
   });
 });
+
+describe("check without a note", () => {
+  const BROKEN = "---\ndescription: Rule: quote values with colons\n---\n# Broken\n";
+
+  test("lists every note whose frontmatter does not parse and exits 1", async () => {
+    const root = makeVault({
+      "notes/good.md": "---\ntitle: ok\n---\n# Good\n",
+      "notes/bad.md": BROKEN,
+    });
+    const result = await cli(root, ["check"]);
+    const report = JSON.parse(result.stdout) as { path: string; findings: Found[] }[];
+    expect(result.exitCode).toBe(1);
+    expect(report.map((entry) => entry.path)).toEqual(["notes/bad.md"]);
+    expect(report[0]?.findings[0]).toMatchObject({ code: "invalid-frontmatter", line: 2 });
+    expect(report[0]?.findings[0]?.message).toContain("line 1, column 14 of the block");
+  });
+
+  test("reports an empty list and exits 0 when every block parses", async () => {
+    const root = makeVault({ "notes/good.md": "---\ntitle: ok\n---\n# Good\n" });
+    const result = await cli(root, ["check"]);
+    expect(JSON.parse(result.stdout)).toEqual([]);
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("a note argument reports the finding for that note", async () => {
+    const { findings, exitCode } = await check(BROKEN);
+    expect(findings.map((f) => f.code)).toEqual(["invalid-frontmatter"]);
+    expect(exitCode).toBe(1);
+  });
+});

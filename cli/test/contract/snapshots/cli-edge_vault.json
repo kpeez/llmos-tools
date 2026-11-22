@@ -2135,12 +2135,19 @@
       }
     },
     "check fm/duplicate.md": {
-      "exit": 0,
+      "exit": 1,
       "json": {
         "path": "fm/duplicate.md",
         "body_links": [],
         "property_links": [],
-        "findings": []
+        "findings": [
+          {
+            "code": "invalid-frontmatter",
+            "line": 3,
+            "target": "",
+            "message": "Frontmatter does not parse at line 2, column 1 of the block (Map keys must be unique). Often an unquoted value that contains \": \": double-quote it, for example description: \"Rule: quote it\"."
+          }
+        ]
       }
     },
     "normalize fm/duplicate.md": {
@@ -2485,12 +2492,19 @@
       }
     },
     "check fm/item-after-flow.md": {
-      "exit": 0,
+      "exit": 1,
       "json": {
         "path": "fm/item-after-flow.md",
         "body_links": [],
         "property_links": [],
-        "findings": []
+        "findings": [
+          {
+            "code": "invalid-frontmatter",
+            "line": 3,
+            "target": "",
+            "message": "Frontmatter does not parse at line 2, column 1 of the block (A block sequence may not be used as an implicit map key). Often an unquoted value that contains \": \": double-quote it, for example description: \"Rule: quote it\"."
+          }
+        ]
       }
     },
     "normalize fm/item-after-flow.md": {
@@ -2592,12 +2606,19 @@
       }
     },
     "check fm/line-separator.md": {
-      "exit": 0,
+      "exit": 1,
       "json": {
         "path": "fm/line-separator.md",
         "body_links": [],
         "property_links": [],
-        "findings": []
+        "findings": [
+          {
+            "code": "invalid-frontmatter",
+            "line": 2,
+            "target": "",
+            "message": "Frontmatter does not parse at line 1, column 4 of the block (Nested mappings are not allowed in compact mappings). Often an unquoted value that contains \": \": double-quote it, for example description: \"Rule: quote it\"."
+          }
+        ]
       }
     },
     "normalize fm/line-separator.md": {
