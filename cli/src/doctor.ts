@@ -602,19 +602,51 @@ interface Agent {
   update: string;
 }
 
-/** Claude Code's install record: `installed_plugins.json` names the plugin's folder. */
+/**
+ * Claude Code's install record: `installed_plugins.json` names the plugin's
+ * folder. A plugin from the claude.ai account sync is not in that file. It
+ * lives in `plugins/synced/<bucket>/<name>/`, listed in the bucket's
+ * `manifest.json`; the folder's `plugin.json` names the plugin.
+ */
 function claudeInstall(env: Env): string | null | undefined {
   const config = env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), ".claude");
   let data: unknown;
   try {
     data = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));
   } catch {
-    return undefined;
+    return syncedInstall(config);
   }
   const entries = (data as { plugins?: Record<string, unknown> } | null)?.plugins?.[PLUGIN_ID];
-  if (!Array.isArray(entries) || entries.length === 0) return undefined;
+  if (!Array.isArray(entries) || entries.length === 0) return syncedInstall(config);
   const path = (entries[0] as { installPath?: unknown }).installPath;
   return typeof path === "string" ? path : null;
+}
+
+/** The folder of the synced `llmos` plugin, or `undefined` when no bucket lists it. */
+function syncedInstall(config: string): string | undefined {
+  const synced = join(config, "plugins", "synced");
+  let buckets: string[];
+  try {
+    buckets = readdirSync(synced);
+  } catch {
+    return undefined;
+  }
+  for (const bucket of buckets) {
+    try {
+      const manifest = JSON.parse(readFileSync(join(synced, bucket, "manifest.json"), "utf8")) as {
+        plugins?: { name?: unknown; marketplaceName?: unknown }[];
+      };
+      for (const plugin of manifest.plugins ?? []) {
+        if (plugin.marketplaceName !== "llmos-tools" || typeof plugin.name !== "string") continue;
+        const folder = join(synced, bucket, plugin.name);
+        const manifestFile = join(folder, ".claude-plugin", "plugin.json");
+        if (JSON.parse(readFileSync(manifestFile, "utf8")).name === "llmos") return folder;
+      }
+    } catch {
+      // A bucket without a readable manifest or plugin.json lists no llmos plugin.
+    }
+  }
+  return undefined;
 }
 
 /** Major, minor, patch of a version folder name, for ordering. */

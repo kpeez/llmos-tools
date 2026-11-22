@@ -192,6 +192,43 @@ describe("llmos doctor hook checks", () => {
     );
   });
 
+  test("find a plugin from the account sync, and fail when no bucket lists llmos", () => {
+    const h = host({ claude: false, codex: false });
+    const bucket = join(h.env.HOME, ".claude", "plugins", "synced", "bucket-1");
+    const synced = (name: string, plugin: string, marketplaceName: string) => {
+      mkdirSync(join(bucket, name, ".claude-plugin"), { recursive: true });
+      writeFileSync(
+        join(bucket, name, ".claude-plugin", "plugin.json"),
+        JSON.stringify({ name: plugin }),
+      );
+      return { pluginId: `plugin_${name}`, name, version: "0001", marketplaceName };
+    };
+    const other = synced("other", "other", "other-market");
+    const foreign = synced("not-llmos", "not-llmos", "llmos-tools");
+    writeFileSync(
+      join(bucket, "manifest.json"),
+      JSON.stringify({ lastUpdated: 1, plugins: [other, foreign] }),
+    );
+
+    const absent = hookChecks(h.env, NOW);
+    expect(absent.failures).toBe(1);
+    expect(absent.lines.join("\n")).toContain("FAIL hooks: the llmos@llmos-tools plugin");
+
+    const uuid = synced("0b5e-uuid-folder", "llmos", "llmos-tools");
+    writeFileSync(
+      join(bucket, "manifest.json"),
+      JSON.stringify({ lastUpdated: 2, plugins: [other, foreign, uuid] }),
+    );
+    const bundle = join(bucket, uuid.name, "dist", "hooks.js");
+    mkdirSync(join(bucket, uuid.name, "dist"), { recursive: true });
+    writeFileSync(bundle, "synced bundle");
+    beatFor(h, "claude", bundle);
+
+    const found = hookChecks(h.env, NOW);
+    expect(found.failures).toBe(0);
+    expect(found.lines.join("\n")).toContain("PASS hooks-claude: hooks ran");
+  });
+
   test("checks hooks-agy when ~/.gemini/config/plugins/llmos is installed", () => {
     const h = host({ claude: false, codex: false });
     const plugin = join(h.env.HOME, ".gemini", "config", "plugins", "llmos");
