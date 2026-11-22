@@ -5,7 +5,7 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, readlinkSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
   GIT_ENV,
@@ -140,6 +140,59 @@ describe("session-start in a cloud session", () => {
     });
     const docs = join(fixture.project, ".agents", "docs");
     expect(result.stdout).toContain(`This project session reaches llmOS through ${docs}`);
+  });
+});
+
+/** Fake `qmd` and `llmos` commands that log each call to a marker file. */
+function fakeCommands(fixture: CloudFixture): { path: string; marker: string } {
+  const bin = join(fixture.tmp, "fake-bin");
+  const marker = join(fixture.tmp, "build.log");
+  for (const name of ["qmd", "llmos"]) {
+    const script = writeFile(join(bin, name), `#!/bin/sh\necho "${name} $*" >> "${marker}"\n`);
+    chmodSync(script, 0o755);
+  }
+  return { path: `${bin}:/usr/bin:/bin`, marker };
+}
+
+/** The marker text once the build has run both commands, or `""` after about 3 s. */
+async function awaitBuild(marker: string): Promise<string> {
+  for (let i = 0; i < 60; i++) {
+    const text = existsSync(marker) ? readFileSync(marker, "utf8") : "";
+    if (text.includes("llmos reindex")) return text;
+    await Bun.sleep(50);
+  }
+  return existsSync(marker) ? readFileSync(marker, "utf8") : "";
+}
+
+describe("session-start in a cloud session without a search index", () => {
+  test("starts the index build in the background and says so", async () => {
+    const fixture = cloudFixture();
+    const fake = fakeCommands(fixture);
+    const result = runCloud(fixture, { PATH: fake.path });
+    expect(result.stdout).toContain("search index is building in the background");
+    expect(await awaitBuild(fake.marker)).toBe(
+      `qmd collection add ${fixture.root} --name llmos\n` +
+        `qmd collection add ${fixture.root} --name memory --mask projects/*/memory/*.md\n` +
+        "llmos reindex --no-embed\n",
+    );
+  });
+
+  test("starts nothing when the index exists", async () => {
+    const fixture = cloudFixture();
+    const fake = fakeCommands(fixture);
+    writeFile(join(fixture.tmp, "home", ".cache", "qmd", "index.sqlite"), "");
+    const result = runCloud(fixture, { PATH: fake.path });
+    expect(result.stdout).not.toContain("search index");
+    await Bun.sleep(300);
+    expect(existsSync(fake.marker)).toBe(false);
+  });
+
+  test("says the llmos CLI is missing when the commands are not on PATH", () => {
+    const fixture = cloudFixture();
+    const result = runCloud(fixture);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("not on PATH");
+    expect(result.stdout).not.toContain("building in the background");
   });
 });
 

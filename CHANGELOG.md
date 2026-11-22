@@ -6,6 +6,18 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The cloud session-start hook finds the vault checkout in the split layout.
+  The vault root is now its own repository root, so the hook pulls `main` in
+  the vault and links the repositories beside it. It scanned and pulled from
+  the folder above the vault before.
+- In a cloud session with no qmd index, the session-start hook starts a
+  detached background build: it adds the vault as the `llmos` and `memory`
+  collections and runs `llmos reindex --no-embed`. The hook does not wait. The
+  context says that the search index is building, so `search` and
+  `memory_search` work a minute or two later. The build writes its output to
+  `llmos-index-build.log` in the temp folder. When `llmos` or `qmd` is not on `PATH`, the context
+  says so and nothing starts.
+
 ## 2.13.1 — 2026-11-22
 
 - The post-tool-use hook tells the agent when a vault note's frontmatter is

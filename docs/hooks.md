@@ -178,7 +178,13 @@ vault notes. The session-start hook first runs `git pull --rebase origin main`
 in the vault checkout, with a 6-second limit. Then it links each repository
 beside the vault checkout the same way. The context tells the agent to push
 vault notes to `main` (`git push origin HEAD:main`), not to the session
-branch. A failed pull is reported in the context. The cloud environment
+branch. A failed pull is reported in the context. A fresh checkout has no qmd
+index, so the hook also starts a detached build when the index file is missing:
+it adds the `llmos` and `memory` collections with `qmd collection add`, then
+runs `llmos reindex --no-embed`. The
+hook does not wait for it, and `search` works a minute or two later. The build
+writes its output to `llmos-index-build.log` in the temp folder. When
+`llmos` or `qmd` is not on `PATH`, the context says so instead. The cloud environment
 sets the vault root with `LLMOS_ROOT`, and the claude.ai account syncs the
 plugin. The hook does neither.
 
