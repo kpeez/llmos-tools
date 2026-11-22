@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, utimesSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   CLI,
@@ -294,6 +294,7 @@ describe("concurrent memory writes", () => {
       names.map((name) => save(name)),
     );
     expect(listed(root)).toEqual(names);
+    expect(existsSync(join(root, "projects/my-repo/.memory.lock"))).toBe(false);
   }, 30_000);
 
   test("forgets from separate processes remove every index line", async () => {
@@ -305,6 +306,17 @@ describe("concurrent memory writes", () => {
     );
     expect(listed(root)).toEqual([]);
   }, 30_000);
+
+  test("a lock left by a crashed save is taken over", async () => {
+    const root = vault();
+    const lock = join(root, "projects/my-repo/.memory.lock");
+    writeFiles(root, { "projects/my-repo/.memory.lock": "crashed-holder" });
+    const old = new Date(Date.now() - 120_000);
+    utimesSync(lock, old, old);
+    await json(root, save("after-crash"));
+    expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](after-crash.md)");
+    expect(existsSync(lock)).toBe(false);
+  });
 });
 
 describe("memory search", () => {
