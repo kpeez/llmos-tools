@@ -23,7 +23,7 @@ interface CloudFixture {
   tmp: string;
   /** The session's working folder, which holds every attached repository. */
   workspace: string;
-  /** The vault root inside the attached vault checkout, `<workspace>/llmos/llmOS`. */
+  /** The vault root, which is the attached vault checkout, `<workspace>/llmos-vault`. */
   root: string;
   /** A code repository with a vault project folder. */
   project: string;
@@ -33,8 +33,9 @@ interface CloudFixture {
 
 /**
  * The cloud layout: an origin, and a workspace with the vault checkout on a
- * session branch beside two code repositories. Another clone then pushes a
- * note to `main` that the hook must pull.
+ * session branch beside two code repositories. The vault root is its
+ * repository's root. The seed clone then pushes a note to `main` that the
+ * hook must pull.
  */
 function cloudFixture(): CloudFixture {
   const tmp = temporaryFolder();
@@ -42,17 +43,17 @@ function cloudFixture(): CloudFixture {
   git(tmp, "init", "--bare", "--quiet", origin);
   const seed = join(tmp, "seed");
   git(tmp, "clone", "--quiet", origin, seed);
-  makeVault(join(seed, "llmOS"));
+  makeVault(seed);
   // Git keeps no empty folder, and a vault root needs `.obsidian/`.
-  writeFile(join(seed, "llmOS", ".obsidian", "app.json"), "{}\n");
-  writeFile(join(seed, "llmOS", "projects", "my-repo", "CONTEXT.md"), "# my-repo\n");
+  writeFile(join(seed, ".obsidian", "app.json"), "{}\n");
+  writeFile(join(seed, "projects", "my-repo", "CONTEXT.md"), "# my-repo\n");
   git(seed, "add", ".");
   git(seed, "commit", "--quiet", "-m", "vault");
   git(seed, "push", "--quiet", "origin", "HEAD:main");
 
   const workspace = join(tmp, "user");
   mkdirSync(workspace);
-  const vault = join(workspace, "llmos");
+  const vault = join(workspace, "llmos-vault");
   git(workspace, "clone", "--quiet", origin, vault);
   git(vault, "switch", "--quiet", "-c", "claude/session-branch");
   const project = join(workspace, "my-repo");
@@ -62,11 +63,11 @@ function cloudFixture(): CloudFixture {
     git(repository, "init", "--quiet");
   }
 
-  writeFile(join(seed, "llmOS", "projects", "my-repo", "notes", "new.md"), "# new\n");
+  writeFile(join(seed, "projects", "my-repo", "notes", "new.md"), "# new\n");
   git(seed, "add", ".");
   git(seed, "commit", "--quiet", "-m", "note");
   git(seed, "push", "--quiet", "origin", "HEAD:main");
-  return { tmp, workspace, root: join(vault, "llmOS"), project, unknown };
+  return { tmp, workspace, root: vault, project, unknown };
 }
 
 function runCloud(fixture: CloudFixture, env: Record<string, string> = {}) {
@@ -110,7 +111,7 @@ describe("session-start in a cloud session", () => {
 
   test("reports a failed pull and still links", () => {
     const fixture = cloudFixture();
-    git(join(fixture.root, ".."), "remote", "remove", "origin");
+    git(fixture.root, "remote", "remove", "origin");
     const result = runCloud(fixture);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("The llmOS vault pull failed:");

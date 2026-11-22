@@ -2,8 +2,9 @@
  * Session-start setup for cloud sessions (`CLAUDE_CODE_REMOTE=true`).
  *
  * A cloud session gets the vault as an attached repository, checked out next
- * to the session's code repositories (for example `/home/user/llmos` beside
- * `/home/user/agent-toolbox`), on the session's own branch. The cloud's
+ * to the session's code repositories (for example `/home/user/llmos-vault` beside
+ * `/home/user/agent-toolbox`), on the session's own branch. The vault root
+ * (`LLMOS_ROOT`) is that checkout. The cloud's
  * GitHub proxy serves only attached repositories, so this is the one way a
  * cloud session can push vault notes. Each session pulls `main` into the
  * vault checkout, then links every repository beside it (`links.ts`); the
@@ -61,15 +62,14 @@ function repositories(vaultRepository: string): string[] {
  */
 export function cloudSetup(root: string, env: Env = process.env): string | null {
   if (env.CLAUDE_CODE_REMOTE !== "true") return null;
-  const vaultRepository = dirname(root);
   const notes: string[] = [];
-  const pullError = pull(vaultRepository, env);
+  const pullError = pull(root, env);
   if (pullError) notes.push(`The llmOS vault pull failed: ${pullError}`);
-  for (const repository of repositories(vaultRepository)) {
+  for (const repository of repositories(root)) {
     notes.push(...linkAgentDirs(repository, root));
   }
   notes.push(
-    `This cloud session's vault checkout is ${vaultRepository}. Commit vault changes there, ` +
+    `This cloud session's vault checkout is ${root}. Commit vault changes there, ` +
       "run git pull --rebase origin main, then git push origin HEAD:main. " +
       "Vault notes go to main, not to the session branch.",
   );

@@ -172,15 +172,15 @@ that worktree links it.
 
 In a cloud session (`CLAUDE_CODE_REMOTE=true`), the vault is an attached
 repository, checked out beside the session's code repositories (for example
-`/home/user/llmos` and `/home/user/agent-toolbox`). The cloud's GitHub proxy
+`/home/user/llmos-vault` and `/home/user/agent-toolbox`). The cloud's GitHub proxy
 serves only attached repositories, so this is how a cloud session can push
 vault notes. The session-start hook first runs `git pull --rebase origin main`
 in the vault checkout, with a 6-second limit. Then it links each repository
 beside the vault checkout the same way. The context tells the agent to push
 vault notes to `main` (`git push origin HEAD:main`), not to the session
-branch. A failed pull is reported in the context. The cloud environment's
-setup script must set the vault root and install the plugin; the hook does
-neither.
+branch. A failed pull is reported in the context. The cloud environment
+sets the vault root with `LLMOS_ROOT`, and the claude.ai account syncs the
+plugin. The hook does neither.
 
 In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
 vault's Git remote. It never rewrites the work tree: no `rebase`, `stash`, or
