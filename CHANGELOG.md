@@ -17,6 +17,12 @@ Newest first. Versions are the `version` field shared by
   `memory_search` work a minute or two later. The build writes its output to
   `llmos-index-build.log` in the temp folder. When `llmos` or `qmd` is not on `PATH`, the context
   says so and nothing starts.
+- `llmos doctor` finds the plugin that the claude.ai account sync gives to
+  Claude Code, as in a cloud session. The sync does not write
+  `installed_plugins.json`. The doctor now also reads the
+  `plugins/synced/<bucket>/manifest.json` files and takes the folder whose
+  `plugin.json` names `llmos`. The `hooks` check no longer fails with "installed for neither"
+  there.
 
 ## 2.13.1 — 2026-11-22
 
