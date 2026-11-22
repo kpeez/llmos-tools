@@ -6,7 +6,16 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { cli, indexVault, isolatedEnv, makeVault, read, scratch, writeFiles } from "./helpers.ts";
+import {
+  CLI,
+  cli,
+  indexVault,
+  isolatedEnv,
+  makeVault,
+  read,
+  scratch,
+  writeFiles,
+} from "./helpers.ts";
 
 const PROJECTS = {
   "projects/my-repo/my-repo.md": "# my-repo\n",
@@ -248,6 +257,54 @@ describe("memory forget", () => {
     expect(again.exitCode).toBe(1);
     expect(again.stderr).toContain("no memory named 'drop'");
   });
+});
+
+describe("concurrent memory writes", () => {
+  const WRITERS = 8;
+  const names = Array.from({ length: WRITERS }, (_, i) => `fact-${i}`);
+
+  /** Run `argvs` as `llmos` processes at once; fail on any nonzero exit. */
+  async function together(root: string, argvs: string[][]): Promise<void> {
+    const env = isolatedEnv({ LLMOS_ROOT: root });
+    const procs = argvs.map((argv) =>
+      Bun.spawn([process.execPath, join(CLI, "bin/llmos.ts"), ...argv], {
+        env,
+        stdout: "ignore",
+        stderr: "pipe",
+      }),
+    );
+    const failures: string[] = [];
+    for (const [i, proc] of procs.entries()) {
+      if ((await proc.exited) !== 0) {
+        failures.push(`${argvs[i]?.join(" ")}: ${await new Response(proc.stderr).text()}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  }
+
+  const listed = (root: string) => {
+    const index = read(root, "projects/my-repo/memory/MEMORY.md");
+    return names.filter((name) => index.includes(`](${name}.md)`));
+  };
+
+  test("saves from separate processes keep every index line", async () => {
+    const root = vault();
+    await together(
+      root,
+      names.map((name) => save(name)),
+    );
+    expect(listed(root)).toEqual(names);
+  }, 30_000);
+
+  test("forgets from separate processes remove every index line", async () => {
+    const root = vault();
+    for (const name of names) await json(root, save(name));
+    await together(
+      root,
+      names.map((name) => ["memory", "forget", name, "--project", "my-repo"]),
+    );
+    expect(listed(root)).toEqual([]);
+  }, 30_000);
 });
 
 describe("memory search", () => {
