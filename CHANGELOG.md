@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.13.1 — 2026-11-22
+
 - The post-tool-use hook tells the agent when a vault note's frontmatter is
   not valid YAML, such as `description: Rule: quote me` with an unquoted
   `: `. The finding (`invalid-frontmatter`) gives the path, the parser's line
@@ -14,8 +16,8 @@ Newest first. Versions are the `version` field shared by
   still leaves the note unchanged and never blocks the tool call.
 - `llmos check` and the MCP `check` tool take no note to list every note in
   the vault whose frontmatter does not parse (exit 1 when there is one), so a
-  static-site build such as Quartz, which stops on one such note, can be
-  checked before it runs. With a note, `check` also reports the finding.
+  tool that stops on one such note can be checked before it runs. With a
+  note, `check` also reports the finding.
 
 ## 2.13.0 — 2026-11-21
 
