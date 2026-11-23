@@ -19,6 +19,15 @@
       "path": "./cli/lint/git-spawn.grit",
       "includes": ["**/cli/src/**", "**/cli/bin/**", "**/cli/scripts/**", "!**/cli/src/git.ts"]
     },
-    "./cli/lint/git-words.grit"
+    "./cli/lint/git-words.grit",
+    {
+      "path": "./cli/lint/hook-channels.grit",
+      "includes": [
+        "**/cli/src/hooks/**",
+        "**/cli/src/mcp.ts",
+        "**/cli/src/memory.ts",
+        "!**/cli/src/hooks/main.ts"
+      ]
+    }
   ]
 }
