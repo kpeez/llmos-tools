@@ -15,6 +15,17 @@ Newest first. Versions are the `version` field shared by
   and sha256) differs between the three model-check scripts and the CI
   workflow. The other fails on a git spawn in `hermes/` outside the `_git`
   helper, or on a `_git` call with a verb that is not read-only.
+- The `LLMOS_ROOT` warning of the session-start hook now names the real case:
+  a path that does not exist, a path that is not a folder, or a folder that
+  lacks `.obsidian/` or `AGENTS.md`. Before, it said "not an llmOS vault" for
+  all three. It quotes the path, so a newline in the path adds no line.
+- A cloud session start gives the vault fetch 6 s, as the one pull had before
+  the fetch and the fast-forward became two calls. Before, the fetch had 3 s
+  and a slow GitHub proxy made it time out more often.
+- The cloud session context now says how to retry a refused push: fetch, run
+  `git merge --no-edit origin/main`, and push once more. It stops and reports
+  after a merge conflict or a second refusal. It never rebases, stashes, or
+  resets. Before, it said only to stop and report.
 
 ## 2.14.0 — 2026-11-23
 

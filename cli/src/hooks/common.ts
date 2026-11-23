@@ -8,7 +8,7 @@
  * vault".
  */
 
-import { lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { extname } from "node:path";
 import { absoluteVaultRoot } from "../root.ts";
@@ -220,12 +220,26 @@ export function resolvedRoot(): string | null {
 /**
  * One context line when `LLMOS_ROOT` is set but names no vault, else `null`.
  * Without it the session-start hook prints nothing and the agent works with
- * no vault and no warning.
+ * no vault and no warning. The line names the real case. `JSON.stringify`
+ * quotes the user-controlled path, so a newline in it cannot add a line: the
+ * Claude Code channel is plain stdout.
  */
 export function brokenRootWarning(): string | null {
   const root = process.env.LLMOS_ROOT;
   if (!root || resolvedRoot() !== null) return null;
-  return `LLMOS_ROOT is ${root}, but that folder is not an llmOS vault (it needs .obsidian/ and AGENTS.md), so no vault context is loaded. Point LLMOS_ROOT at the vault folder, or run /setup-llmos.`;
+  const path = expandUser(root);
+  const named = `LLMOS_ROOT is ${JSON.stringify(root)}`;
+  let problem: string;
+  if (!existsSync(path)) problem = "a path that does not exist";
+  else if (!isDir(path)) problem = "not a folder";
+  else {
+    const lacks = [
+      ...(isDir(joinPath(path, ".obsidian")) ? [] : [".obsidian/"]),
+      ...(isFile(joinPath(path, "AGENTS.md")) ? [] : ["AGENTS.md"]),
+    ];
+    problem = `a folder that lacks ${lacks.join(" and ")}`;
+  }
+  return `${named}, ${problem}, so no vault context is loaded. Point LLMOS_ROOT at the vault folder, or run /setup-llmos.`;
 }
 
 /** Today's local date as `YYYY-MM-DD`. */

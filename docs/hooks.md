@@ -216,15 +216,21 @@ repository, checked out beside the session's code repositories (for example
 `/home/user/llmos-vault` and `/home/user/agent-toolbox`). The cloud's GitHub proxy
 serves only attached repositories, so this is how a cloud session can push
 vault notes. The session-start hook first fetches `origin main` into the vault
-checkout (3-second limit) and fast-forwards it there with `git merge
+checkout (6-second limit) and fast-forwards it there with `git merge
 --ff-only` (2-second limit). It never rebases: a checkout with commits that
 are not on `origin/main` is left as it is, and the context says so. Then it
 links each repository beside the vault checkout the same way. The context
 tells the agent the same safe flow: before it edits vault notes, `git fetch
 origin main` and `git merge --ff-only origin/main`; then commit and push to
 `main` (`git push origin HEAD:main`), not to the session branch. When the
-fast-forward or the push refuses, the agent stops and reports instead of
-rebasing. A failed fetch or fast-forward is reported in the
+fast-forward refuses, the agent stops and reports. When the push refuses, it
+fetches, runs `git merge --no-edit origin/main` (a fast-forward or a merge
+commit, never a rebase), and pushes once more; after a merge conflict (it runs
+`git merge --abort`) or a second refusal, it stops and reports. The 6-second
+fetch limit is the one that the single `pull` had before the fetch and the
+fast-forward were two calls. With the 2-second fast-forward limit and 1 s for
+the local calls, it fits in the session-start deadline (10 s less the 0.5 s
+reserve). A failed fetch or fast-forward is reported in the
 context. A fresh checkout has no qmd
 index, so the hook also starts a detached build when the index file is missing:
 it adds the `llmos` and `memory` collections with `qmd collection add`, then
@@ -243,10 +249,12 @@ The second run gives the vault context and starts the index build. Only an
 attached repository accepts a push through the cloud's GitHub proxy, so the
 agent attaches the vault instead of cloning it with a token.
 
-When `LLMOS_ROOT` is set but its folder is not a vault (it lacks `.obsidian/`
-or `AGENTS.md`), and the attach case above does not apply, the hook prints one
-context line. The line names the folder and says to point `LLMOS_ROOT` at the
-vault or run `/setup-llmos`. With `LLMOS_ROOT` unset, the hook stays silent.
+When `LLMOS_ROOT` is set but names no vault, and the attach case above does not
+apply, the hook prints one context line. The line quotes the path and names the
+case: the path does not exist, it is not a folder, or it is a folder that lacks
+`.obsidian/` or `AGENTS.md`. It says to point `LLMOS_ROOT` at the vault or run
+`/setup-llmos`. The path is quoted as a JSON string, so a newline in it cannot
+add a line to the plain-text context. With `LLMOS_ROOT` unset, the hook stays silent.
 
 In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
 vault's Git remote. Like every git call in the hooks and the CLI, it runs git
