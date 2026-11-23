@@ -14,10 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: cli/.tool-versions
       - run: bun install --frozen-lockfile
+      - name: Version fields and CHANGELOG agree
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_REF: ${{ github.base_ref }}
+        run: bun scripts/release.ts check --base "origin/${BASE_REF:-main}"
       - name: Marketplace catalogs match the plugin manifest
         run: |
           bun scripts/gen-marketplaces.ts
