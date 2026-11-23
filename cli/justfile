@@ -61,4 +61,10 @@ verify-daily-digest:
 verify-models:
     @bun scripts/verify-models.ts
 
+# Model-check with TLA+ that the shared-memory Git sync never reverts remote
+# or local work or pushes a private note, and its lock (the verify-memory-sync
+# skill).
+verify-memory-sync:
+    @bun ../.agents/skills/verify-memory-sync/scripts/check.ts
+
 check: drift types lint test hooks-drift
