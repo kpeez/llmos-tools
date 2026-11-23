@@ -40,7 +40,11 @@ hooks, and the MCP server share, so they agree on where the vault is.
 - **`llmos doctor`** — end-to-end health check: is the vault root valid, are
   the CLI and `qmd` reachable, is the collection indexed, does the MCP server
   start and list its tools, and have the installed plugin hooks run for each
-  agent. Its `old-names` check fails on any agent or scheduler config that
+  agent (Claude Code, Codex, Antigravity, Hermes Agent). It also reports the
+  `memory` collection (`qmd-memory-collection`) and how many memory notes lack
+  an embedding (`memory-embeddings`), the llmOS service (`service`: off,
+  not running, or running with its loaded models), and each Hermes profile
+  (`hermes-profile-<name>`: wired to llmOS or not). Its `old-names` check fails on any agent or scheduler config that
   still names a removed command or the old plugin ID.
 - **`llmos audit`** — audits frontmatter contracts across the vault; read-only.
 - **`llmos daily activity`** — writes the machine-owned `## Projects` block of

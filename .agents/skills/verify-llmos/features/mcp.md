@@ -13,7 +13,7 @@
 
 ## How to get to it (user POV)
 
-- Claude Code starts the server from `tools/.mcp.json`. Codex uses `tools/.codex-mcp.json`.
+- Claude Code starts the server from `.mcp.json`. Codex uses `.codex-mcp.json`.
 - By hand: `bun --no-env-file --config=/dev/null cli/bin/llmos.ts mcp`.
 
 ## Driving it with scripts/verify.ts
