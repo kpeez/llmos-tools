@@ -218,6 +218,52 @@ describe("raw mv and rm on vault notes", () => {
     expect(result.stderr).toContain("obsidian-cli move");
   });
 
+  test("denies an absolute vault path when the payload cwd is relative and a workspace path is absolute", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "notes", "alpha.md"), "# alpha\n");
+
+    const result = runHook(
+      "guard-bash",
+      { tool_input: { command: `rm ${note}` }, cwd: "notes", workspacePaths: [vault] },
+      tmp,
+      { root: vault },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("obsidian-cli move");
+  });
+
+  test("still denies when the Obsidian registry holds a relative path", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "notes", "alpha.md"), "# alpha\n");
+    writeRegistry(join(tmp, "home"), { "relative-id": "somewhere/else" });
+
+    const result = runHook("guard-bash", { tool_input: { command: `rm ${note}` } }, tmp, {
+      root: vault,
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("obsidian-cli move");
+  });
+
+  test("checks a cwd of ~ as written, under the hook's folder, as well as expanded", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    writeFile(join(vault, "~", "alpha.md"), "# alpha\n");
+
+    const result = runHook(
+      "guard-bash",
+      { tool_input: { command: "rm alpha.md" }, cwd: "~" },
+      tmp,
+      { root: vault, cwd: vault },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("obsidian-cli move");
+  });
+
   test("resolves a symlinked argument to the vault note it names", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));

@@ -633,11 +633,12 @@ export function createServer(state: ServerState): McpServer {
 
 /**
  * Serve over stdio until stdin closes (the client is gone), then close the
- * qmd store. `streams` replaces the process's stdin and stdout in tests.
+ * qmd store. The caller passes the streams: the process's stdin and stdout, or
+ * test streams.
  */
 export async function serve(
   context: Context,
-  streams: { stdin: Readable; stdout: Writable } = { stdin: process.stdin, stdout: process.stdout },
+  streams: { stdin: Readable; stdout: Writable },
 ): Promise<void> {
   const state = new ServerState(context);
   const transport = new StdioServerTransport(streams.stdin, streams.stdout);

@@ -117,6 +117,8 @@ export interface SessionStartOptions {
   claudeAutoMemoryReady?: boolean;
   /** The session's folder; outside the vault and any linked project it picks the memory scope. */
   cwd?: string | null;
+  /** The hook process's folder, for a session start whose payload names none. */
+  processCwd?: string | null;
   /** An agent's memory provider already puts the index in its prompt (Hermes's llmos provider). */
   memoryIndexLoaded?: boolean;
 }
@@ -197,7 +199,7 @@ const MCP_LINE =
 export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();
   if (root === null) return null;
-  const cwd = payloadCwd(data) ?? pathFrom(process.cwd());
+  const cwd = payloadCwd(data) ?? options.processCwd ?? null;
   if (cwd === null) return null;
   const inside = isUnder(cwd, root);
   const linked = inside ? null : linkedProjectDocs(cwd, root);

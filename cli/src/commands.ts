@@ -1511,7 +1511,7 @@ Do NOT use when you want one answer in a shell -- run that verb instead.`,
   async run(_values, context) {
     // Imported here: the server module imports this registry.
     const { serve } = await import("./mcp.ts");
-    await serve(context);
+    await serve(context, { stdin: process.stdin, stdout: process.stdout });
     return {};
   },
 };
