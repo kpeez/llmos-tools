@@ -56,6 +56,13 @@ verify-daily-digest`. It model-checks with TLA+ that the digest never deletes
 text written to a note during its model call. The `verify-daily-digest`
 skill (`../.agents/skills/verify-daily-digest/`) says what the model
 covers and how to read a failure.
+After a change to the shared-memory sync or anything else that runs git in
+the vault checkout (`src/hooks/sync.ts`, `pushNotes` in `src/digest.ts`),
+also run `just verify-memory-sync`. It model-checks with TLA+ the rules that
+the sync never reverts remote or local work, never pushes a private note,
+and lets one run at a time hold its lock. The `verify-memory-sync` skill
+(`../.agents/skills/verify-memory-sync/`) lists the known findings it
+expects and how to read a failure.
 `just verify-models` runs every model check: each `../.agents/skills/verify-*`
 skill that holds a `.tla` file runs its `scripts/check.ts`. CI runs it in the
 `models` job, so a new model skill is gated with no workflow change.
