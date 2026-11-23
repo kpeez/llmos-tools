@@ -64,6 +64,28 @@ describe("session-start", () => {
     expect(result.exitCode).toBe(0);
   });
 
+  test("warns when LLMOS_ROOT is a folder that is not a vault", () => {
+    const tmp = temporaryFolder();
+    const notVault = join(tmp, "empty");
+    mkdirSync(notVault);
+
+    const result = runHook("session-start", { cwd: tmp }, tmp, { root: notVault, script: BUNDLE });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      `LLMOS_ROOT is ${notVault}, but that folder is not an llmOS vault`,
+    );
+    expect(result.stdout).toContain("/setup-llmos");
+  });
+
+  test("stays silent when LLMOS_ROOT is unset", () => {
+    const tmp = temporaryFolder();
+
+    const result = runHook("session-start", { cwd: tmp }, tmp, { script: BUNDLE });
+
+    expect(result.stdout).toBe("");
+  });
+
   test("adds the root and the daily note's absolute path as bare stdout inside the vault", () => {
     const tmp = temporaryFolder();
     const vault = contextVault(join(tmp, "vault"));

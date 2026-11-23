@@ -18,11 +18,28 @@ Newest first. Versions are the `version` field shared by
   checkout, so every writer of that vault excludes the others, whatever its
   home or state folder. When the vault is not a git checkout, it is
   `locks/memory-<key>.db` in the llmOS state folder, and only writers that
-  share that folder exclude each other. Neither file is in the work tree, so
+  share that folder exclude each other. A writer whose `git rev-parse` fails
+  (a timeout, a safe.directory refusal for another user, `GIT_DIR` set) also
+  falls back to the state folder. Neither file is in the work tree, so
   no link in the vault can redirect it and no sync sees it. A lock path that
   is a symbolic link or not a regular file is refused. An old and a new
   plugin version that run at the same time do not exclude each other: they
   use different files.
+- The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
+  folder that is not a vault. It prints one context line that names the
+  folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
+  worked with no vault and no warning. An unset `LLMOS_ROOT` still prints
+  nothing.
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
+- The shared-memory sync merges a rename on one side with an edit on the
+  other side again. Since the change that turned off rename detection in every
+  git call, `git merge-tree` refused such a pair as a modify/delete conflict.
+  The merge call now turns rename detection on. The name lists that check for
+  private paths still never detect renames.
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`

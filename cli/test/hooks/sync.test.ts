@@ -439,6 +439,23 @@ function diverged() {
   return { ...fixture, b };
 }
 
+test("a rename on one side and an edit on the other side merge instead of refusing", () => {
+  const { tmp, origin, a, clone } = setup();
+  const body = "- one\n- two\n- three\n- four\n- five\n- six\n";
+  writeFile(join(a.vault, "projects/demo/memory/topic.md"), body);
+  stop(tmp, a);
+  const b = clone("host-b");
+  git(a.repo, "mv", "vault/projects/demo/memory/topic.md", "vault/projects/demo/memory/moved.md");
+  git(a.repo, "commit", "--quiet", "-m", "move the topic");
+  git(a.repo, "push", "--quiet", "origin", "main");
+  writeFile(join(b.vault, "projects/demo/memory/topic.md"), `${body}- seven\n`);
+
+  stop(tmp, b);
+
+  expect(originHead(origin)).toBe(git(b.repo, "rev-parse", "HEAD"));
+  expect(git(origin, "show", "main:vault/projects/demo/memory/moved.md")).toContain("- seven");
+});
+
 test("a fetch by another writer during the merge never reverts the new remote work", () => {
   const { tmp, origin, a, b } = diverged();
   const env = gitShim(
