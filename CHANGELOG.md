@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `install.ts` smoke-tests the new copy before it replaces the install folder.
+  Before, a reinstall of the same version that failed the smoke test had
+  already replaced the working copy, so `current` and the `~/.local/bin` links
+  pointed at a broken copy. Now a failed smoke test deletes the new copy and
+  changes nothing.
 - Two new tests guard contributor edits. One fails when the tla2tools pin (jar URL
   and sha256) differs between the three model-check scripts and the CI
   workflow. The other fails on a git spawn in `hermes/` outside the `_git`
