@@ -6,6 +6,25 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The memory project lock, the memory-sync lock, and the service start lock
+  are now one lock: an exclusive SQLite transaction on a lock file
+  (`cli/src/lock.ts`). The kernel gives it to one process and drops it when
+  the holder exits or crashes, and no code removes a lock file. Before, the
+  two lock files used a rename takeover after 30 s or 60 s. With three
+  writers and a stale lock, two could hold it, and a link-back could restore
+  a released lock, so memory saves failed for up to 30 s. The sync lock is
+  `<git-common-dir>/llmos-sync.lock.db`. The memory lock of a project is
+  `<git-common-dir>/llmos-memory-<key>.lock.db` when the vault is a git
+  checkout, so every writer of that vault excludes the others, whatever its
+  home or state folder. When the vault is not a git checkout, it is
+  `locks/memory-<key>.db` in the llmOS state folder, and only writers that
+  share that folder exclude each other. A writer whose `git rev-parse` fails
+  (a timeout, a safe.directory refusal for another user, `GIT_DIR` set) also
+  falls back to the state folder. Neither file is in the work tree, so
+  no link in the vault can redirect it and no sync sees it. A lock path that
+  is a symbolic link or not a regular file is refused. An old and a new
+  plugin version that run at the same time do not exclude each other: they
+  use different files.
 - The hooks start faster. `pre-tool-use` and `guard-bash` run on almost every
   tool call, and they now have their own small bundle,
   `dist/pre-tool-use.js` (from `cli/src/hooks/pre-tool-use.ts`), with no YAML,
@@ -81,8 +100,8 @@ Newest first. Versions are the `version` field shared by
   `just verify-llmos-service` model-checks the start rules with TLA+.
 - Two agents that save or forget shared memories at the same time no longer
   lose `MEMORY.md` lines. `llmos memory save`, `llmos memory forget`, and the
-  MCP memory tools now read and rewrite the index under a lock file,
-  `projects/<project>/.memory.lock`, and wait up to 10 s for it. Before, each
+  MCP memory tools now read and rewrite the index under a lock,
+  a lock file in the llmOS state folder, and wait up to 10 s for it. Before, each
   write rewrote the index it had read, so a concurrent save dropped the other
   save's line and left its topic note out of the index, or failed with "a file
   already exists" on a new index.

@@ -356,7 +356,7 @@ function tools(): Tool[] {
         };
         if (args.title !== undefined) input.title = args.title as string;
         const scope = await memoryScopeOf(state, root, args.project);
-        const saved = saveMemory(root, scope, input, new Date());
+        const saved = saveMemory(root, scope, input, new Date(), state.context.env);
         await afterMemoryWrite(state.context.env);
         return { json: saved };
       },
@@ -408,7 +408,7 @@ function tools(): Tool[] {
       async call(args, state) {
         const root = rootOf(state);
         const scope = await memoryScopeOf(state, root, args.project);
-        const forgotten = forgetMemory(root, scope, args.name as string);
+        const forgotten = forgetMemory(root, scope, args.name as string, state.context.env);
         await afterMemoryWrite(state.context.env);
         return { json: forgotten };
       },

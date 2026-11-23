@@ -28,23 +28,11 @@
  * cloud sessions have their own path in `cloud.ts`; a vault without
  * `origin` or off `main` is left alone; a rebase, merge, or cherry-pick in
  * progress pauses sync and session start says so). Sync work runs under a
- * lock file in the git common dir, so concurrent sessions skip instead of
- * racing. Hook stdout is a protocol channel: every git call pipes its
+ * kernel lock on a file in the git common dir (`lock.ts`), so concurrent
+ * sessions skip instead of racing. Hook stdout is a protocol channel: every git call pipes its
  * output, and diagnostics go to stderr.
  */
 
-import { randomUUID } from "node:crypto";
-import {
-  closeSync,
-  linkSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  type Stats,
-  statSync,
-  writeSync,
-} from "node:fs";
 import {
   add,
   type Checkout,
@@ -57,6 +45,7 @@ import {
   vaultPath,
 } from "../git.ts";
 import { SHARED_MEMORY_PATH } from "../layout.ts";
+import { type HeldLock, tryLock } from "../lock.ts";
 import { joinPath } from "./common.ts";
 
 type Env = Record<string, string | undefined>;
@@ -66,7 +55,6 @@ type Env = Record<string, string | undefined>;
 const LOCAL_TIMEOUT_MS = 5_000;
 const START_TIMEOUTS = { fetch: 4_000, merge: 4_000 };
 const STOP_TIMEOUTS = { fetch: 5_000, merge: 5_000, push: 5_000 };
-const LOCK_STALE_MS = 60_000;
 const COMMIT_MESSAGE = "memory: sync shared project memory";
 const MERGE_MESSAGE = "memory: merge shared project memory";
 
@@ -86,77 +74,20 @@ export function syncGate(root: string, env: Env): Gate {
   return { sync: true, ...opened.checkout };
 }
 
-function statSafe(path: string): Stats | null {
-  try {
-    return statSync(path);
-  } catch {
-    return null;
-  }
-}
-
-/** Create the lock file holding `token`; false when a live lock exists. */
-function create(path: string, token: string): boolean {
-  try {
-    const fd = openSync(path, "wx");
-    writeSync(fd, token);
-    closeSync(fd);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Take the lock and return this run's token, or `null` when another run holds
- * it. A lock older than 60 s is stale: it is renamed to a unique name before
- * removal, so only the run whose rename succeeds creates the new lock.
- */
-function acquire(path: string): string | null {
-  const token = randomUUID();
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (create(path, token)) return token;
-    const info = statSafe(path);
-    if (info !== null && Date.now() - info.mtimeMs <= LOCK_STALE_MS) return null;
-    const taken = `${path}.${process.pid}.${randomUUID()}`;
-    try {
-      renameSync(path, taken);
-    } catch {
-      continue; // Another run took it over; the next create sees its fresh lock.
-    }
-    const held = statSafe(taken);
-    if (held !== null && Date.now() - held.mtimeMs <= LOCK_STALE_MS) {
-      // The rename took a live lock a rival had just created: put it back.
-      try {
-        linkSync(taken, path);
-      } catch {
-        // A newer lock exists already.
-      }
-      rmSync(taken, { force: true });
-      return null;
-    }
-    rmSync(taken, { force: true });
-  }
-  return null;
-}
-
-/** Remove the lock only while it still holds this run's token. */
-function release(path: string, token: string): void {
-  try {
-    if (readFileSync(path, "utf8") === token) rmSync(path, { force: true });
-  } catch {
-    // Already gone.
-  }
-}
-
 /** Run `work` under the checkout's lock; skip quietly when another run holds it. */
 function withLock<T>(commonDir: string, work: () => T): T | null {
-  const path = joinPath(commonDir, "llmos-sync.lock");
-  const token = acquire(path);
-  if (token === null) return null;
+  let held: HeldLock | null;
+  try {
+    held = tryLock(joinPath(commonDir, "llmos-sync.lock.db"));
+  } catch (error) {
+    warn(`cannot take the sync lock: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+  if (held === null) return null;
   try {
     return work();
   } finally {
-    release(path, token);
+    held.release();
   }
 }
 

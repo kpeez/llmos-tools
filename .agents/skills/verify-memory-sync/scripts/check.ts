@@ -39,10 +39,13 @@ const GUARDS: Record<string, string[]> = {
     "const commitError = commit(gate, paths, COMMIT_MESSAGE);",
     "const published = publish(gate, {",
     "allowed: (path) => SHARED_MEMORY_PATH.test(path),",
-    'const fd = openSync(path, "wx");',
-    "renameSync(path, taken);",
-    "linkSync(taken, path);",
-    'if (readFileSync(path, "utf8") === token) rmSync(path, { force: true });',
+    'held = tryLock(joinPath(commonDir, "llmos-sync.lock.db"));',
+    "held.release();",
+  ],
+  "cli/src/lock.ts": [
+    'db.exec("BEGIN EXCLUSIVE");',
+    'if ((error as { code?: unknown }).code === "SQLITE_BUSY") return null;',
+    "return { release: () => db.close() };",
   ],
   "cli/src/digest.ts": [
     "const commitError = staged ? commit(checkout, inRepo, message) : null;",
@@ -109,6 +112,13 @@ const CASES: Case[] = [
   },
   { label: "lock, code, 2 runs", spec: "SyncLock", cfg: "SyncLock.cfg", expect: "holds" },
   {
+    label: "lock, code, 3 runs",
+    spec: "SyncLock",
+    cfg: "SyncLock.cfg",
+    set: { Runs: '{"s1", "s2", "s3"}' },
+    expect: "holds",
+  },
+  {
     label: "lock, rm mutant, 2 runs",
     spec: "SyncLock",
     cfg: "SyncLock.cfg",
@@ -116,13 +126,18 @@ const CASES: Case[] = [
     expect: "breaks",
   },
   {
-    label: "lock, code, 3 runs",
+    label: "lock, token-file mutant, 2 runs",
     spec: "SyncLock",
     cfg: "SyncLock.cfg",
-    set: { Runs: '{"s1", "s2", "s3"}' },
+    set: { Lock: '"token"' },
+    expect: "holds",
+  },
+  {
+    label: "lock, token-file mutant, 3 runs",
+    spec: "SyncLock",
+    cfg: "SyncLock.cfg",
+    set: { Lock: '"token"', Runs: '{"s1", "s2", "s3"}' },
     expect: "breaks",
-    finding:
-      "known finding: with three runs and a stale lock, a run that found no lock file renames a fresh lock away, so two runs hold it",
   },
 ];
 

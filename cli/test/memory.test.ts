@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, symlinkSync, utimesSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { memoryLockPath } from "../src/memory.ts";
 import {
   CLI,
   cli,
@@ -294,7 +295,6 @@ describe("concurrent memory writes", () => {
       names.map((name) => save(name)),
     );
     expect(listed(root)).toEqual(names);
-    expect(existsSync(join(root, "projects/my-repo/.memory.lock"))).toBe(false);
   }, 30_000);
 
   test("forgets from separate processes remove every index line", async () => {
@@ -307,15 +307,61 @@ describe("concurrent memory writes", () => {
     expect(listed(root)).toEqual([]);
   }, 30_000);
 
-  test("a lock left by a crashed save is taken over", async () => {
+  test("a save waits while another process holds the project lock, and a crash frees it", async () => {
     const root = vault();
-    const lock = join(root, "projects/my-repo/.memory.lock");
-    writeFiles(root, { "projects/my-repo/.memory.lock": "crashed-holder" });
-    const old = new Date(Date.now() - 120_000);
-    utimesSync(lock, old, old);
-    await json(root, save("after-crash"));
+    const env = isolatedEnv();
+    const lock = memoryLockPath(
+      root,
+      {
+        project: "my-repo",
+        dir: "projects/my-repo/memory",
+        index: "projects/my-repo/memory/MEMORY.md",
+      },
+      env,
+    );
+    const holder = Bun.spawn(
+      [
+        "bun",
+        "-e",
+        `import { tryLock } from ${JSON.stringify(join(import.meta.dir, "../src/lock.ts"))};
+         const held = tryLock(${JSON.stringify(lock)});
+         console.log("held");
+         setTimeout(() => process.kill(process.pid, "SIGKILL"), 1000);
+         setInterval(() => held?.release, 1000);`,
+      ],
+      { stdout: "pipe" },
+    );
+    await holder.stdout.getReader().read();
+    const started = Date.now();
+    await json(root, save("after-crash"), env);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(500);
     expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](after-crash.md)");
-    expect(existsSync(lock)).toBe(false);
+    await holder.exited;
+  });
+
+  test("a vault in a git checkout locks in the git dir, whatever the home of the writer", () => {
+    const root = vault();
+    expect(Bun.spawnSync(["git", "init", "--quiet", root]).exitCode).toBe(0);
+    const scope = {
+      project: "my-repo",
+      dir: "projects/my-repo/memory",
+      index: "projects/my-repo/memory/MEMORY.md",
+    };
+    const first = memoryLockPath(root, scope, isolatedEnv());
+    const second = memoryLockPath(root, scope, isolatedEnv());
+    expect(first).toBe(second);
+    expect(dirname(first)).toBe(join(realpathSync(root), ".git"));
+  });
+
+  test("a link planted where a lock file once sat is never followed", async () => {
+    const root = vault();
+    const outside = join(scratch("outside"), "planted.db");
+    for (const name of [".memory.lock", ".memory.lock.db"]) {
+      symlinkSync(outside, join(root, "projects/my-repo", name));
+    }
+    await json(root, save("with-link"));
+    expect(existsSync(outside)).toBe(false);
+    expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](with-link.md)");
   });
 });
 

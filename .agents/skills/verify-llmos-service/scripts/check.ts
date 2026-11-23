@@ -25,12 +25,14 @@ const JAVA_TOOL = "java@temurin-25";
 
 /** Each line the model assumes, as it appears in service.ts. */
 const GUARDS = [
-  "const db = new Database(paths.lock, { create: true });",
-  'db.exec("BEGIN EXCLUSIVE");',
+  "let held = tryLock(paths.lock);",
+  "held.release();",
   "if (await socketLive(paths.socket)) {",
   "rmSync(paths.socket, { force: true });",
   "server.close();",
 ];
+/** The lock the start lock takes: an exclusive SQLite transaction (cli/src/lock.ts). */
+const LOCK_GUARDS = ['db.exec("BEGIN EXCLUSIVE");', 'if ((error as { code?: unknown }).code === "SQLITE_BUSY") return null;'];
 /** Code the model rules out: removing the lock file, or a second socket removal (in close()). */
 const ABSENT = ["rmSync(paths.lock"];
 const ONCE = "rmSync(paths.socket";
@@ -95,7 +97,9 @@ function check(
 }
 
 const source = readFileSync(SERVICE, "utf8");
+const lockSource = readFileSync(join(dirname(SERVICE), "lock.ts"), "utf8");
 const problems = [
+  ...LOCK_GUARDS.filter((line) => !lockSource.includes(line)).map((line) => `guard missing from cli/src/lock.ts: ${line}`),
   ...GUARDS.filter((line) => !source.includes(line)).map((line) => `guard missing from cli/src/service.ts: ${line}`),
   ...ABSENT.filter((line) => source.includes(line)).map((line) => `cli/src/service.ts has code the model rules out: ${line}`),
 ];

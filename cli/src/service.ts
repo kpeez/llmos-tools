@@ -41,13 +41,13 @@
  * `just verify-llmos-service`.
  */
 
-import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import net from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import * as z from "zod";
+import { tryLock } from "./lock.ts";
 import {
   isEmbedLockBusy,
   openQmd,
@@ -142,20 +142,16 @@ export function socketLive(path: string, timeoutMs = 1000): Promise<boolean> {
  * holder exits or crashes, so no starter ever has to remove a stale lock.
  */
 async function withStartLock<T>(paths: ServicePaths, work: () => Promise<T>): Promise<T> {
-  const db = new Database(paths.lock, { create: true });
+  let held = tryLock(paths.lock);
+  for (let attempt = 0; held === null; attempt++) {
+    if (attempt >= 100) throw new Error(`the start lock ${paths.lock} stayed busy for 5 s`);
+    await sleep(50);
+    held = tryLock(paths.lock);
+  }
   try {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        db.exec("BEGIN EXCLUSIVE");
-        break;
-      } catch (error) {
-        if ((error as { code?: unknown }).code !== "SQLITE_BUSY" || attempt >= 100) throw error;
-        await sleep(50);
-      }
-    }
     return await work();
   } finally {
-    db.close(); // Ends the transaction, which releases the lock.
+    held.release();
   }
 }
 
