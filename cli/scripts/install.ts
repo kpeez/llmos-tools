@@ -15,10 +15,12 @@
  * and the symbolic links in `node_modules/.bin/` then stop Claude Desktop from
  * copying the plugin to an SSH host.
  *
- * It smoke-tests the new copy in place. Only then does it link `llmos` and
- * `qmd` and point `~/.local/share/llmos/current` at the new version folder, so
- * a failed install leaves every entry point on the earlier version. Hermes
- * Agent links its plugin and skills through `current`.
+ * It builds the new copy beside its install folder and smoke-tests it there.
+ * Only then does it swap the copy into place, link `llmos` and `qmd`, and
+ * point `~/.local/share/llmos/current` at the new version folder. A failed
+ * install deletes the new copy and leaves the earlier copy, `current`, and the
+ * links as they were, also when the version is the same. Hermes Agent links
+ * its plugin and skills through `current`.
  *
  * An existing `~/.local/bin` entry or `current` is replaced only when it is a
  * link into `~/.local/share/llmos/` (an earlier install). Any other entry
@@ -115,21 +117,23 @@ if (installed.exitCode !== 0) {
   process.exit(1);
 }
 
+for (const argv of [
+  [join(staging, "cli", "bin", "llmos.ts"), "--help"],
+  [join(staging, "cli", "bin", "qmd.ts"), "--version"],
+]) {
+  const result = run(argv, { stdout: "pipe", stderr: "pipe", timeoutMs: SMOKE_TIMEOUT_MS });
+  if (result.exitCode !== 0) {
+    rmSync(staging, { recursive: true, force: true });
+    console.error(`${argv.join(" ")} failed; nothing was changed:\n${result.stderr.toString()}`);
+    process.exit(1);
+  }
+}
+
 const previous = `${target}.old-${process.pid}`;
 if (existsSync(target)) renameSync(target, previous);
 renameSync(staging, target);
 rmSync(previous, { recursive: true, force: true });
 
-for (const argv of [
-  [join(target, "cli", "bin", "llmos.ts"), "--help"],
-  [join(target, "cli", "bin", "qmd.ts"), "--version"],
-]) {
-  const result = run(argv, { stdout: "pipe", stderr: "pipe", timeoutMs: SMOKE_TIMEOUT_MS });
-  if (result.exitCode !== 0) {
-    console.error(`${argv.join(" ")} failed:\n${result.stderr.toString()}`);
-    process.exit(1);
-  }
-}
 mkdirSync(binDir, { recursive: true });
 for (const name of COMMANDS) {
   const link = join(binDir, name);

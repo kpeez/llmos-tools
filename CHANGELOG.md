@@ -6,6 +6,15 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `install.ts` smoke-tests the new copy before it replaces the install folder.
+  Before, a reinstall of the same version that failed the smoke test had
+  already replaced the working copy, so `current` and the `~/.local/bin` links
+  pointed at a broken copy. Now a failed smoke test deletes the new copy and
+  changes nothing.
+- Two new tests guard contributor edits. One fails when the tla2tools pin (jar URL
+  and sha256) differs between the three model-check scripts and the CI
+  workflow. The other fails on a git spawn in `hermes/` outside the `_git`
+  helper, or on a `_git` call with a verb that is not read-only.
 - The `LLMOS_ROOT` warning of the session-start hook now names the real case:
   a path that does not exist, a path that is not a folder, or a folder that
   lacks `.obsidian/` or `AGENTS.md`. Before, it said "not an llmOS vault" for
@@ -17,6 +26,7 @@ Newest first. Versions are the `version` field shared by
   `git merge --no-edit origin/main`, and push once more. It stops and reports
   after a merge conflict or a second refusal. It never rebases, stashes, or
   resets. Before, it said only to stop and report.
+
 ## 2.14.0 — 2026-11-23
 
 - The Bash guard now parses the command with a real shell grammar (`unbash`
@@ -322,7 +332,6 @@ Newest first. Versions are the `version` field shared by
   Recall reads only regular files inside the vault: it skips a symbolic-link
   or non-UTF-8 note, and a memory folder that resolves outside the vault gets
   no recall. The provider now needs Hermes v2026.9.14 (0.21.3) or later.
-
 - New llmOS service: one long-lived process per host that keeps the qmd search
   models loaded, so every agent session shares one warm model set. `llmos mcp`
   sends `search` and `memory_search` to it and starts it when it is down;
@@ -346,7 +355,6 @@ Newest first. Versions are the `version` field shared by
 - `llmos memory search` now runs with `GGML_METAL_NO_RESIDENCY` set on macOS,
   as the other model-loading verbs do, so a semantic search no longer aborts at
   exit.
-
 - Hermes Agent gets a memory provider, `llmos`. A profile that sets
   `memory.provider: llmos` gets the shared project memory index in its system
   prompt and the `memory_save`, `memory_search`, and `memory_forget` tools,
@@ -356,7 +364,6 @@ Newest first. Versions are the `version` field shared by
   `llmos doctor` fails a Hermes profile without `memory.provider: llmos`, or
   whose `llmos` MCP server still shows its memory tools; `setup-llmos` says
   how to set both.
-
 - New `llmos memory scope|save|search|forget` verbs and MCP tools
   (`memory_save`, `memory_search`, `memory_forget`) read and write shared
   project memory (`projects/<project>/memory/`, ADR-0020) in the format Claude
@@ -891,7 +898,6 @@ run on Bun. Each host needs `bun` on the hook `PATH` and a CLI install through
   `~/.local/bin/`.
   `llmos-vault config set-root` replaces `write_config.py`. `llmos-doctor`
   fails unless exactly one `qmd` is on `PATH` and it is this install's.
-
 - Add the TypeScript core in `src/` (ADR 0012, first phase): frontmatter on
   the `yaml` Document API that keeps block scalars, comments, and nested maps;
   one vault model for reads and the link graph; root resolution with a typed
