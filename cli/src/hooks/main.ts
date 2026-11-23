@@ -100,6 +100,8 @@ function emit(result: HookResult, antigravity: boolean): void {
     case "stop":
       if (antigravity) writeJson({});
       return;
+    default:
+      result satisfies never;
   }
 }
 
@@ -113,84 +115,80 @@ async function readSessionPayload(): Promise<Payload> {
   return payloadCwd(data) === null ? { ...data, cwd: process.cwd() } : data;
 }
 
-async function guardBash(): Promise<void> {
-  const data = await readSessionPayload();
-  const toolInput = toolInputOf(data);
-  const command = toolInput
-    ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
-    : undefined;
-  const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
-  const denial = typeof command === "string" && command ? checkCommand(command, cwd) : null;
-  emit({ event: "guard-bash", denial }, isAntigravityPayload(data));
-}
+type ResultOf<E extends HookResult["event"]> = Extract<HookResult, { event: E }>;
+
+/**
+ * One handler per event, each typed to return its own event's result, so a
+ * handler cannot return the result of another event.
+ */
+const handlers: {
+  [E in HookResult["event"]]: (data: Payload) => ResultOf<E> | Promise<ResultOf<E>>;
+} = {
+  "session-start": (data) => {
+    const root = resolvedRoot();
+    const project = pathFrom(process.env.CLAUDE_PROJECT_DIR) ?? payloadCwd(data);
+    const claudeAutoMemoryReady =
+      root !== null && project !== null ? hasAutoMemoryDir(project, root) : false;
+    // Before the context: the pull makes the injected MEMORY.md fresh, and the
+    // links let sessionStart see the project.
+    let syncNote: string | null = null;
+    try {
+      syncNote = root === null ? null : syncOnStart(root, process.env);
+    } catch {}
+    const cloud = root === null ? cloudAttachHint(process.env, Bun.main) : cloudSetup(root);
+    const linked = root && project ? linkAgentDirs(project, root).join("\n") : null;
+    // A cloud session's working folder holds several repositories, so the
+    // vault context applies even when the cwd itself is not linked.
+    // Hermes's llmos memory provider puts the index in the system prompt itself.
+    const memoryIndexLoaded = process.env.LLMOS_MEMORY_INDEX_LOADED === "1";
+    const options = { claudeAutoMemoryReady, memoryIndexLoaded };
+    const vault =
+      sessionStart(data, options) ??
+      (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
+    const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
+    // `llmos doctor` reads this record to prove the hooks run for this agent;
+    // a failure never changes the result.
+    try {
+      beat(data);
+    } catch {}
+    return { event: "session-start", context: context || null };
+  },
+  "pre-tool-use": (data) => ({ event: "pre-tool-use", context: preToolUse(data) }),
+  "post-tool-use": async (data) => ({
+    event: "post-tool-use",
+    // Loaded only here: the frontmatter and vault code costs startup time.
+    context: await (await import("./stamp.ts")).postToolUse(data),
+  }),
+  "guard-bash": (data) => {
+    const toolInput = toolInputOf(data);
+    const command = toolInput
+      ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
+      : undefined;
+    const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
+    const denial = typeof command === "string" && command ? checkCommand(command, cwd) : null;
+    return { event: "guard-bash", denial };
+  },
+  stop: () => {
+    try {
+      stop();
+    } catch (error) {
+      warn(`unexpected failure: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    try {
+      const root = resolvedRoot();
+      if (root !== null) syncOnStop(root, process.env);
+    } catch (error) {
+      warn(`sync failure: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return { event: "stop" };
+  },
+};
 
 async function run(event: string | undefined): Promise<void> {
-  switch (event) {
-    case "session-start": {
-      const data = await readSessionPayload();
-      const root = resolvedRoot();
-      const project = pathFrom(process.env.CLAUDE_PROJECT_DIR) ?? payloadCwd(data);
-      const claudeAutoMemoryReady =
-        root !== null && project !== null ? hasAutoMemoryDir(project, root) : false;
-      // Before the context: the pull makes the injected MEMORY.md fresh, and the
-      // links let sessionStart see the project.
-      let syncNote: string | null = null;
-      try {
-        syncNote = root === null ? null : syncOnStart(root, process.env);
-      } catch {}
-      const cloud = root === null ? cloudAttachHint(process.env, Bun.main) : cloudSetup(root);
-      const linked = root && project ? linkAgentDirs(project, root).join("\n") : null;
-      // A cloud session's working folder holds several repositories, so the
-      // vault context applies even when the cwd itself is not linked.
-      // Hermes's llmos memory provider puts the index in the system prompt itself.
-      const memoryIndexLoaded = process.env.LLMOS_MEMORY_INDEX_LOADED === "1";
-      const options = { claudeAutoMemoryReady, memoryIndexLoaded };
-      const vault =
-        sessionStart(data, options) ??
-        (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
-      const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
-      emit({ event: "session-start", context: context || null }, isAntigravityPayload(data));
-      // After the output, and never able to change it: `llmos doctor` reads
-      // this record to prove the hooks run for this agent.
-      try {
-        beat(data);
-      } catch {}
-      return;
-    }
-    case "pre-tool-use": {
-      const data = await readSessionPayload();
-      emit({ event: "pre-tool-use", context: preToolUse(data) }, isAntigravityPayload(data));
-      return;
-    }
-    case "post-tool-use": {
-      const data = await readSessionPayload();
-      // Loaded only here: the frontmatter and vault code costs startup time.
-      const context = await (await import("./stamp.ts")).postToolUse(data);
-      emit({ event: "post-tool-use", context }, isAntigravityPayload(data));
-      return;
-    }
-    case "guard-bash":
-      await guardBash();
-      return;
-    case "stop": {
-      const data = await readPayload();
-      try {
-        stop();
-      } catch (error) {
-        warn(`unexpected failure: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      try {
-        const root = resolvedRoot();
-        if (root !== null) syncOnStop(root, process.env);
-      } catch (error) {
-        warn(`sync failure: ${error instanceof Error ? error.message : String(error)}`);
-      }
-      emit({ event: "stop" }, isAntigravityPayload(data));
-      return;
-    }
-    default:
-      return;
-  }
+  if (event === undefined || !Object.hasOwn(handlers, event)) return;
+  const data = await readSessionPayload();
+  const result = await handlers[event as HookResult["event"]](data);
+  emit(result, isAntigravityPayload(data));
 }
 
 try {
