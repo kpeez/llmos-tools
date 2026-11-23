@@ -34,8 +34,9 @@ same, with the socket path and which models are loaded.
   lock, checks whether a live service holds the socket, removes a socket file
   that no process listens on, and binds. The loser exits with code 0.
 - The start lock is an exclusive SQLite transaction on `service.lock.db` in
-  the state folder (`cli/src/lock.ts`, the lock of the memory and sync locks too). The kernel gives it to one process at a time and drops it
-  when that process exits or crashes, so no process removes another's lock.
+  the state folder (`cli/src/lock.ts`, which the memory and sync locks use
+  too). The kernel gives it to one process at a time and drops it when that
+  process exits or crashes, so no process removes another's lock.
   A starter that waits more than 5 s for the lock exits with an error.
 - A stopping service removes the socket path only through `server.close()`,
   which unlinks it before the listen ends. A new service binds only after the

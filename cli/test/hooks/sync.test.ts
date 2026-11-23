@@ -13,6 +13,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -334,6 +335,20 @@ test("a run skips while another process holds the sync lock, and runs once it en
 
   stop(tmp, a);
   expect(originHead(origin)).not.toBe(before);
+});
+
+test("a link planted at the sync lock path is refused and never followed", () => {
+  const { tmp, origin, a } = setup();
+  const before = originHead(origin);
+  const outside = join(tmp, "planted.db");
+  symlinkSync(outside, join(a.repo, ".git", "llmos-sync.lock.db"));
+  writeFile(join(a.vault, MEMORY), "- seed\n- fact\n");
+
+  const result = stop(tmp, a);
+
+  expect(existsSync(outside)).toBe(false);
+  expect(originHead(origin)).toBe(before);
+  expect(result.stderr).toContain("symbolic link");
 });
 
 test("stop with no memory change and nothing ahead never touches the network", () => {

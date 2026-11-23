@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { memoryLockPath } from "../src/memory.ts";
 import {
@@ -337,6 +337,20 @@ describe("concurrent memory writes", () => {
     expect(Date.now() - started).toBeGreaterThanOrEqual(500);
     expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](after-crash.md)");
     await holder.exited;
+  });
+
+  test("a vault in a git checkout locks in the git dir, whatever the home of the writer", () => {
+    const root = vault();
+    expect(Bun.spawnSync(["git", "init", "--quiet", root]).exitCode).toBe(0);
+    const scope = {
+      project: "my-repo",
+      dir: "projects/my-repo/memory",
+      index: "projects/my-repo/memory/MEMORY.md",
+    };
+    const first = memoryLockPath(root, scope, isolatedEnv());
+    const second = memoryLockPath(root, scope, isolatedEnv());
+    expect(first).toBe(second);
+    expect(dirname(first)).toBe(join(realpathSync(root), ".git"));
   });
 
   test("a link planted where a lock file once sat is never followed", async () => {

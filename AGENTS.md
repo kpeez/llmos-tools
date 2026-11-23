@@ -82,8 +82,11 @@ reachable service. The `verify-llmos-service` skill
 (`../.agents/skills/verify-llmos-service/`) says what the model covers.
 
 Take every lock through `src/lock.ts`: an exclusive SQLite transaction that
-the kernel drops when its holder exits or crashes. Never write a lock file
-that code must judge stale or remove. Change it only with
+the kernel drops when its holder exits or crashes. It refuses a lock path
+that is a symbolic link. A `HeldLock` frees its lock when it is garbage
+collected, so keep the reference until `release()`. Never write a lock file
+that code must judge stale or remove. Keep a lock file out of the vault work
+tree. Change it only with
 `just verify-memory-sync` and `just verify-llmos-service`.
 
 Preserve unrelated working-tree changes. Changes here go through a pull

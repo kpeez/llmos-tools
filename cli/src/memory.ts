@@ -23,9 +23,10 @@ import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
+import { locate } from "./git.ts";
 import { stateDir } from "./heartbeat.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
-import { waitLock } from "./lock.ts";
+import { type HeldLock, LockRefused, waitLock } from "./lock.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
 import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
@@ -36,6 +37,8 @@ export const MAX_INDEX_LINES = 200;
 export const MAX_INDEX_BYTES = 25_000;
 /** How long a save or forget waits for another one to finish. */
 const LOCK_WAIT_MS = 10_000;
+/** The timeout of the one git call that finds the git common dir. */
+const LOCAL_GIT_MS = 5_000;
 /** The project of a session with no vault project workspace. */
 export const PERSONAL_PROJECT = "personal";
 export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
@@ -221,14 +224,18 @@ function existing(root: string, relative: string): string | null {
 }
 
 /**
- * The lock file of the project that holds `scope`: in the llmOS state folder,
- * named by the real path of the project folder. It stays out of the vault,
- * so a link planted in the vault cannot send the lock file elsewhere, and
- * neither the file nor its journal reaches a vault sync.
+ * The lock file of the project that holds `scope`, outside the work tree so
+ * no link in the vault can redirect it and no sync sees it. When the vault
+ * is a git checkout it sits in the git common dir (beside the sync lock), so
+ * every writer of that vault finds it, whatever its home or state folder.
+ * Otherwise it sits in the llmOS state folder, and only writers that share
+ * that folder exclude each other.
  */
 export function memoryLockPath(root: string, scope: MemoryScope, env: Env): string {
   const project = newTarget(root, dirname(scope.dir));
   const key = createHash("sha256").update(project).digest("hex").slice(0, 16);
+  const repo = locate(root, env, LOCAL_GIT_MS);
+  if (repo !== null) return join(repo.commonDir, `llmos-memory-${key}.lock.db`);
   const folder = join(stateDir(env), "locks");
   mkdirSync(folder, { recursive: true, mode: 0o700 });
   return join(folder, `memory-${key}.db`);
@@ -239,7 +246,13 @@ export function memoryLockPath(root: string, scope: MemoryScope, env: Env): stri
  * kernel lock of `memoryLockPath` and waits up to `LOCK_WAIT_MS` for it.
  */
 function locked<T>(root: string, scope: MemoryScope, env: Env, work: () => T): T {
-  const held = waitLock(memoryLockPath(root, scope, env), LOCK_WAIT_MS);
+  let held: HeldLock | null;
+  try {
+    held = waitLock(memoryLockPath(root, scope, env), LOCK_WAIT_MS);
+  } catch (error) {
+    if (error instanceof LockRefused) throw new MemoryRefused(error.message);
+    throw error;
+  }
   if (held === null) {
     throw new MemoryRefused(
       `another memory write held the lock of ${dirname(scope.dir)} for ${LOCK_WAIT_MS / 1000} s`,

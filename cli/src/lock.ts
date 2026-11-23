@@ -5,18 +5,48 @@
  * lock file. The file stays on disk, empty; only its kernel lock matters.
  * It guards the memory project lock (`memory.ts`), the memory-sync lock
  * (`hooks/sync.ts`), and the service start lock (`service.ts`).
+ *
+ * SQLite follows a symbolic link at the path, so `tryLock` refuses a path
+ * that is a link or not a regular file. The lock file is created in the same
+ * step with `O_NOFOLLOW`.
  */
 
 import { Database } from "bun:sqlite";
+import { closeSync, constants, lstatSync, openSync } from "node:fs";
+
+/** The lock path is a symbolic link or not a regular file; nothing was opened. */
+export class LockRefused extends Error {
+  override name = "LockRefused";
+}
 
 export interface HeldLock {
-  /** End the transaction, which frees the lock. */
+  /**
+   * End the transaction, which frees the lock. A HeldLock that is garbage
+   * collected frees its lock too, so keep the reference until release.
+   */
   release(): void;
+}
+
+function checkedFile(path: string): void {
+  try {
+    closeSync(openSync(path, constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW, 0o600));
+    if (!lstatSync(path).isFile()) throw new LockRefused(`${path} is not a regular file`);
+  } catch (error) {
+    if (error instanceof LockRefused) throw error;
+    if ((error as { code?: unknown }).code === "ELOOP") {
+      throw new LockRefused(`${path} is a symbolic link`);
+    }
+    if ((error as { code?: unknown }).code === "EISDIR") {
+      throw new LockRefused(`${path} is not a regular file`);
+    }
+    throw error;
+  }
 }
 
 /** Take the lock at `path` once; `null` while another holder has it. */
 export function tryLock(path: string): HeldLock | null {
-  const db = new Database(path, { create: true });
+  checkedFile(path);
+  const db = new Database(path);
   try {
     db.exec("BEGIN EXCLUSIVE");
   } catch (error) {

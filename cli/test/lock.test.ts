@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { tryLock, waitLock } from "../src/lock.ts";
+import { LockRefused, tryLock, waitLock } from "../src/lock.ts";
 
 const LOCK_MODULE = join(import.meta.dir, "../src/lock.ts");
 
@@ -21,6 +21,20 @@ test("a lock is held by one caller at a time", () => {
   expect(second).not.toBeNull();
   second?.release();
   expect(existsSync(path)).toBe(true);
+  rmSync(dir, { recursive: true });
+});
+
+test("a lock path that is a symbolic link or not a regular file is refused", () => {
+  const dir = folder();
+  const outside = join(dir, "outside.db");
+  symlinkSync(outside, join(dir, "link.db"));
+  symlinkSync(join(dir, "nowhere"), join(dir, "dangling.db"));
+  mkdirSync(join(dir, "folder.db"));
+  for (const name of ["link.db", "dangling.db", "folder.db"]) {
+    expect(() => tryLock(join(dir, name))).toThrow(LockRefused);
+  }
+  expect(existsSync(outside)).toBe(false);
+  expect(existsSync(join(dir, "nowhere"))).toBe(false);
   rmSync(dir, { recursive: true });
 });
 

@@ -12,10 +12,17 @@ Newest first. Versions are the `version` field shared by
   the holder exits or crashes, and no code removes a lock file. Before, the
   two lock files used a rename takeover after 30 s or 60 s. With three
   writers and a stale lock, two could hold it, and a link-back could restore
-  a released lock, so memory saves failed for up to 30 s. The lock files are
-  now `locks/memory-<key>.db` in the llmOS state folder (one per project, keyed by the real project path, so no link in the vault can redirect it) and `<git-common-dir>/llmos-sync.lock.db`.
-  An old and a new plugin version that run at the same time do not exclude
-  each other: they use different files.
+  a released lock, so memory saves failed for up to 30 s. The sync lock is
+  `<git-common-dir>/llmos-sync.lock.db`. The memory lock of a project is
+  `<git-common-dir>/llmos-memory-<key>.lock.db` when the vault is a git
+  checkout, so every writer of that vault excludes the others, whatever its
+  home or state folder. When the vault is not a git checkout, it is
+  `locks/memory-<key>.db` in the llmOS state folder, and only writers that
+  share that folder exclude each other. Neither file is in the work tree, so
+  no link in the vault can redirect it and no sync sees it. A lock path that
+  is a symbolic link or not a regular file is refused. An old and a new
+  plugin version that run at the same time do not exclude each other: they
+  use different files.
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`
