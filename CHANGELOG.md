@@ -6,6 +6,12 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `install.ts` smoke-tests the new copy before it replaces the install folder.
+  Before, a reinstall of the same version that failed the smoke test had
+  already replaced the working copy, so `current` and the `~/.local/bin` links
+  pointed at a broken copy. Now a failed smoke test deletes the new copy and
+  changes nothing.
+
 ## 2.14.0 — 2026-11-23
 
 - The Bash guard now parses the command with a real shell grammar (`unbash`
