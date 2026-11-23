@@ -6,6 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { memoryLockPath } from "../src/memory.ts";
 import {
   CLI,
   cli,
@@ -308,7 +309,16 @@ describe("concurrent memory writes", () => {
 
   test("a save waits while another process holds the project lock, and a crash frees it", async () => {
     const root = vault();
-    const lock = join(root, "projects/my-repo/.memory.lock.db");
+    const env = isolatedEnv();
+    const lock = memoryLockPath(
+      root,
+      {
+        project: "my-repo",
+        dir: "projects/my-repo/memory",
+        index: "projects/my-repo/memory/MEMORY.md",
+      },
+      env,
+    );
     const holder = Bun.spawn(
       [
         "bun",
@@ -323,10 +333,21 @@ describe("concurrent memory writes", () => {
     );
     await holder.stdout.getReader().read();
     const started = Date.now();
-    await json(root, save("after-crash"));
+    await json(root, save("after-crash"), env);
     expect(Date.now() - started).toBeGreaterThanOrEqual(500);
     expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](after-crash.md)");
     await holder.exited;
+  });
+
+  test("a link planted where a lock file once sat is never followed", async () => {
+    const root = vault();
+    const outside = join(scratch("outside"), "planted.db");
+    for (const name of [".memory.lock", ".memory.lock.db"]) {
+      symlinkSync(outside, join(root, "projects/my-repo", name));
+    }
+    await json(root, save("with-link"));
+    expect(existsSync(outside)).toBe(false);
+    expect(read(root, "projects/my-repo/memory/MEMORY.md")).toContain("](with-link.md)");
   });
 });
 

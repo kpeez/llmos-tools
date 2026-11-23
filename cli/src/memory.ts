@@ -14,20 +14,23 @@
  * the vault.
  *
  * A save or forget reads, changes, and rewrites the index, so it runs under
- * the project's `.memory.lock.db` (the kernel lock of `lock.ts`): two agents
- * that write at once each keep their line. The lock file sits beside the
- * memory folder, not in it, because Stop sync commits every file in that
- * folder.
+ * a kernel lock (`lock.ts`) on a file in the llmOS state folder: two agents
+ * that write at once each keep their line. The lock file stays out of the
+ * vault, so it is never synced and no link in the vault can redirect it.
  */
 
-import { lstatSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { lstatSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
+import { stateDir } from "./heartbeat.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
 import { waitLock } from "./lock.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
 import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
+
+type Env = Record<string, string | undefined>;
 
 export const MAX_INDEX_LINES = 200;
 export const MAX_INDEX_BYTES = 25_000;
@@ -218,15 +221,29 @@ function existing(root: string, relative: string): string | null {
 }
 
 /**
- * Run `work` while no other save or forget of `scope` runs: it holds the
- * kernel lock on `projects/<project>/.memory.lock.db` and waits up to
- * `LOCK_WAIT_MS` for it.
+ * The lock file of the project that holds `scope`: in the llmOS state folder,
+ * named by the real path of the project folder. It stays out of the vault,
+ * so a link planted in the vault cannot send the lock file elsewhere, and
+ * neither the file nor its journal reaches a vault sync.
  */
-function locked<T>(root: string, scope: MemoryScope, work: () => T): T {
-  const name = `${dirname(scope.dir)}/.memory.lock.db`;
-  const held = waitLock(join(newTarget(root, dirname(scope.dir)), ".memory.lock.db"), LOCK_WAIT_MS);
+export function memoryLockPath(root: string, scope: MemoryScope, env: Env): string {
+  const project = newTarget(root, dirname(scope.dir));
+  const key = createHash("sha256").update(project).digest("hex").slice(0, 16);
+  const folder = join(stateDir(env), "locks");
+  mkdirSync(folder, { recursive: true, mode: 0o700 });
+  return join(folder, `memory-${key}.db`);
+}
+
+/**
+ * Run `work` while no other save or forget of `scope` runs: it holds the
+ * kernel lock of `memoryLockPath` and waits up to `LOCK_WAIT_MS` for it.
+ */
+function locked<T>(root: string, scope: MemoryScope, env: Env, work: () => T): T {
+  const held = waitLock(memoryLockPath(root, scope, env), LOCK_WAIT_MS);
   if (held === null) {
-    throw new MemoryRefused(`another memory write held ${name} for ${LOCK_WAIT_MS / 1000} s`);
+    throw new MemoryRefused(
+      `another memory write held the lock of ${dirname(scope.dir)} for ${LOCK_WAIT_MS / 1000} s`,
+    );
   }
   try {
     return work();
@@ -250,6 +267,7 @@ export function saveMemory(
   scope: MemoryScope,
   input: MemoryInput,
   now: Date,
+  env: Env,
 ): { path: string; index: string; created: boolean } {
   const name = memoryName(input.name);
   const description = oneLine("description", input.description, 300);
@@ -259,7 +277,7 @@ export function saveMemory(
   if (!body) throw new MemoryRefused("body must not be empty");
   const path = `${scope.dir}/${name}.md`;
 
-  return locked(root, scope, () => {
+  return locked(root, scope, env, () => {
     const index = upsertIndexLine(
       existing(root, scope.index) ?? "",
       name,
@@ -288,9 +306,10 @@ export function forgetMemory(
   root: string,
   scope: MemoryScope,
   name: string,
+  env: Env,
 ): { path: string; index: string } {
   const path = `${scope.dir}/${memoryName(name)}.md`;
-  return locked(root, scope, () => {
+  return locked(root, scope, env, () => {
     const index = existing(root, scope.index);
     const listed = (index ?? "").split("\n").some((line) => linksTo(line, name));
     const present = existing(root, path) !== null;

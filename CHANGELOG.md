@@ -13,7 +13,7 @@ Newest first. Versions are the `version` field shared by
   two lock files used a rename takeover after 30 s or 60 s. With three
   writers and a stale lock, two could hold it, and a link-back could restore
   a released lock, so memory saves failed for up to 30 s. The lock files are
-  now `projects/<project>/.memory.lock.db` and `<git-common-dir>/llmos-sync.lock.db`.
+  now `locks/memory-<key>.db` in the llmOS state folder (one per project, keyed by the real project path, so no link in the vault can redirect it) and `<git-common-dir>/llmos-sync.lock.db`.
   An old and a new plugin version that run at the same time do not exclude
   each other: they use different files.
 - `llmos daily activity --push` help no longer says the merge leaves the work
@@ -37,7 +37,7 @@ Newest first. Versions are the `version` field shared by
 - Two agents that save or forget shared memories at the same time no longer
   lose `MEMORY.md` lines. `llmos memory save`, `llmos memory forget`, and the
   MCP memory tools now read and rewrite the index under a lock,
-  `projects/<project>/.memory.lock.db`, and wait up to 10 s for it. Before, each
+  a lock file in the llmOS state folder, and wait up to 10 s for it. Before, each
   write rewrote the index it had read, so a concurrent save dropped the other
   save's line and left its topic note out of the index, or failed with "a file
   already exists" on a new index.

@@ -1289,7 +1289,7 @@ authoring.md.`,
     };
     const title = optionalStr(values, "title");
     if (title !== undefined) input.title = title;
-    const saved = saveMemory(root, scopeOf(values, root), input, new Date());
+    const saved = saveMemory(root, scopeOf(values, root), input, new Date(), context.env);
     const warning = await afterMemoryWrite(context.env);
     return warning === null ? { json: saved } : { json: saved, stderr: `${warning}\n` };
   },
@@ -1348,7 +1348,7 @@ Do NOT use to change a memory -- \`memory save\` with the same name replaces it.
   example: "llmos memory forget use-uv --project llmos-tools",
   async run(values, context) {
     const root = llmosOnly(vaultName(values), context);
-    const forgotten = forgetMemory(root, scopeOf(values, root), str(values, "name"));
+    const forgotten = forgetMemory(root, scopeOf(values, root), str(values, "name"), context.env);
     const warning = await afterMemoryWrite(context.env);
     return warning === null ? { json: forgotten } : { json: forgotten, stderr: `${warning}\n` };
   },
