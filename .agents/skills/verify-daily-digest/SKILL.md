@@ -60,7 +60,8 @@ Assumptions, which the check does not cover:
 - One digest run at a time: the systemd timer starts one service.
 - `--push` (`pushNotes`) and Git merges between hosts are not modeled.
 
-Sync commit: the merge of the pull request "fix(write): lock every read-change-write of a note". At that commit, the model describes the code.
+Sync commit: `627e2f0` (fix(write): lock every read-change-write of a
+note). At that commit, the model describes the code.
 
 ## When a change touches the covered code
 
