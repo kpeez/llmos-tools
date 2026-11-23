@@ -28,8 +28,8 @@ import { stateDir } from "./heartbeat.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
 import { type HeldLock, LockRefused, waitLock } from "./lock.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
-import { readText } from "./vault.ts";
-import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
+import { readText, resolveInVault, WriteRefused } from "./vault-file.ts";
+import { deleteNote, newTarget, writeNote } from "./write.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -99,14 +99,12 @@ export function memoryScope(root: string, workspace: string | null): MemoryScope
  * The first `MAX_INDEX_LINES` lines and `MAX_INDEX_BYTES` UTF-8 bytes of the
  * index at absolute path `path` in the vault at `root`, marked when cut;
  * `null` when it is missing, empty, not a regular file, or resolves outside
- * the vault (`realTarget`), so a linked index never brings in an outside file.
+ * the vault (`resolveInVault`), so a linked index never brings in an outside file.
  */
 export function readMemoryIndex(root: string, path: string): string | null {
   let raw: string;
   try {
-    const real = realTarget(root, relative(root, path));
-    if (!statSync(real).isFile()) return null;
-    raw = readText(real);
+    raw = readText(resolveInVault(root, relative(root, path)));
   } catch (error) {
     // A missing, unreadable, or outside index is no index; the session still starts.
     if (error instanceof WriteRefused) return null;
@@ -202,7 +200,7 @@ function memoryType(type: string): MemoryType {
 /**
  * The text of vault-relative `relative`, or `null` when nothing is there. A
  * file whose real path is outside the vault, or a link to a missing file, is
- * refused (`realTarget`), so a save or forget fails before it writes anything.
+ * refused (`resolveInVault`), so a save or forget fails before it writes anything.
  */
 function existing(root: string, relative: string): string | null {
   try {
@@ -211,16 +209,7 @@ function existing(root: string, relative: string): string | null {
     if ((error as { code?: unknown }).code === "ENOENT") return null;
     throw error;
   }
-  let real: string;
-  try {
-    real = realTarget(root, relative);
-  } catch (error) {
-    if ((error as { code?: unknown }).code === "ENOENT") {
-      throw new WriteRefused(`'${relative}' is a link to a missing file`);
-    }
-    throw error;
-  }
-  return readText(real);
+  return readText(resolveInVault(root, relative));
 }
 
 /**

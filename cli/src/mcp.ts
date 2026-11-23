@@ -50,7 +50,8 @@ import {
 import { openQmd, qmdLocation, type Searcher, searchMemoryNotes, storeSearcher } from "./qmd.ts";
 import { afterMemoryWrite, viaService } from "./service-client.ts";
 import { VaultModel, walkVault } from "./vault.ts";
-import { realTarget, stampNote, WriteRefused } from "./write.ts";
+import { realTarget, WriteRefused } from "./vault-file.ts";
+import { stampNote } from "./write.ts";
 
 /** The one vault and qmd collection this server serves. */
 const VAULT = "llmos";

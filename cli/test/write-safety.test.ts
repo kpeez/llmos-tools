@@ -10,7 +10,8 @@ import { existsSync, readdirSync, readFileSync, symlinkSync, writeFileSync } fro
 import { join } from "node:path";
 import { UsageError, type Values } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
-import { appendContent, createNote, setProperty, WriteRefused } from "../src/write.ts";
+import { WriteRefused } from "../src/vault-file.ts";
+import { appendContent, createNote, setProperty } from "../src/write.ts";
 import { cli, makeVault, read, recordedObsidian, scratch } from "./helpers.ts";
 
 const NOTE = "---\nstatus: draft\n---\n\n# Note\n";

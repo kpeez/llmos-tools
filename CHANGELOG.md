@@ -6,6 +6,13 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A vault note is now read through one checked path: `resolveInVault` in
+  `cli/src/vault-file.ts` gives the branded `VaultFile` type, and `readText`
+  accepts only that type. It refuses `..`, a link that leaves the vault, a
+  link to a missing file, a folder, and any dot folder. A Biome rule bans
+  `readFileSync` in the vault-handling modules, so a new reader cannot skip
+  the check. The project landing page and the daily note and template that
+  the digest reads are now refused when they link outside the vault.
 - The memory project lock, the memory-sync lock, and the service start lock
   are now one lock: an exclusive SQLite transaction on a lock file
   (`cli/src/lock.ts`). The kernel gives it to one process and drops it when

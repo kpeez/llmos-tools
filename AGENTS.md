@@ -121,10 +121,28 @@ because a bundle built by another version differs from CI's. To move Bun,
 change that file and the `@types/bun` version in `package.json` together. Changing `../hooks/hooks.json` means
 every host must approve the Codex hooks again.
 
+A vault note is read through one door. `resolveInVault(root, relative)` in
+`src/vault-file.ts` is the only constructor of the branded `VaultFile` type:
+the real path of a regular file inside the real vault root, with no dot
+folder (`.trash/`, `.obsidian/`) in its path. It refuses `..`, an absolute
+path, a link that leaves the vault, a link to a missing file, and a folder.
+`readText` takes only a `VaultFile`, and the note writes of `write.ts` take
+one from `resolveInVault`. A Biome rule (`noRestrictedImports` in
+`../biome.json`) bans `readFileSync` and `readFile` from `node:fs` and `fs` in
+`vault.ts`, `write.ts`, `memory.ts`, `schema.ts`, `digest.ts`, `daily.ts`,
+`authoring.ts`, `health.ts`, `mcp.ts`, and `commands.ts`. Other modules read
+files that are not vault notes (config, state, install, sources, the hooks)
+and are outside the rule; `Bun.file` is not covered. Two reads still take a raw
+path: `readWalkedNote`, for a note that `walkVault` listed, which follows a
+link out of the vault as Obsidian does (the `read` command contract), and the
+PostToolUse hook (`src/hooks/stamp.ts`), which checks the files a tool just
+wrote. The Hermes provider (`hermes/`, Python) keeps its own containment
+code.
+
 The MCP server (`src/mcp.ts`, `llmos mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside
-the real vault root through `write.ts`, and add no shell or arbitrary-file
-tool. Claude Code reads `../.mcp.json`, Codex `../.codex-mcp.json`, and
+the real vault root through `vault-file.ts` (`resolveInVault`) or `write.ts`,
+and add no shell or arbitrary-file tool. Claude Code reads `../.mcp.json`, Codex `../.codex-mcp.json`, and
 Antigravity (`agy`) `../mcp_config.json`; keep the Bun flags
 `--no-install --no-env-file --config=/dev/null` in all of them, so a session's
 project cannot load code or config into the server.

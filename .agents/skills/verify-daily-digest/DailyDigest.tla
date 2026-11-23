@@ -6,7 +6,7 @@
 (*   DigestReadsNote   `text = existsSync(notePath) ? readText(...) : ""`  *)
 (*                     before the model call (`completeSummary`)           *)
 (*   DigestWritesNote  after the model call: `atomicWrite(notePath,        *)
-(*                     replaceBlock(readText(notePath), block))` when the  *)
+(*                     replaceBlock(readText(...), block))` when the      *)
 (*                     note exists, else `atomicWrite(newNoteText(...))`   *)
 (* A writer is Kyle in Obsidian, or an agent through `daily_append_thought` *)
 (* (cli/src/daily.ts `bodyWithThought`, written by write.ts).        *)

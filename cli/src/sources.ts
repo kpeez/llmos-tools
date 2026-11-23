@@ -37,7 +37,8 @@ import { parse, serialize } from "./frontmatter.ts";
 import { destinationProperties } from "./inbox.ts";
 import { RAW_DIR } from "./layout.ts";
 import { mineruName, type PdfConverter, pdfText } from "./pdf.ts";
-import { newTarget, realTarget } from "./write.ts";
+import { realTarget } from "./vault-file.ts";
+import { newTarget } from "./write.ts";
 
 /** One fetched resource: the status, the final URL after redirects, and the bytes. */
 export interface Fetched {
