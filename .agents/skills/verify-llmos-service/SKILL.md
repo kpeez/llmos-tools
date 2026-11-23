@@ -80,8 +80,8 @@ Assumptions, which the check does not cover:
 - `close()`'s own `service.close()` (the qmd store) is not modeled; it runs
   after the socket is gone.
 
-Sync commit: `b76c635` (fix(service): take the start lock from the kernel
-and remove the socket once). At that commit, the model describes the code.
+Sync commit: `ee06f0f` (refactor(lock): take every lock from the kernel
+through one module). At that commit, the model describes the code.
 
 ## When a change touches the covered code
 

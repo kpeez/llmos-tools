@@ -175,8 +175,8 @@ Assumptions, which the check does not cover:
   notes broke `OnlyCheckedPush` through `Dg`'s own steps, so these cases do
   reach the digest's push.
 
-Sync commit: `c8027c1` (refactor(git): run every git call through
-cli/src/git.ts). At that commit, the models describe the code.
+Sync commit: `ee06f0f` (refactor(lock): take every lock from the kernel
+through one module). At that commit, the models describe the code.
 
 ## When a change touches the covered code
 
