@@ -72,4 +72,13 @@ verify-memory-sync:
 verify-llmos-service:
     @bun ../.agents/skills/verify-llmos-service/scripts/check.ts
 
-check: drift types lint test hooks-drift
+# The only writer of the plugin version. The owner picks the level. It sets
+# the four version fields and dates the CHANGELOG `## Unreleased` notes.
+release level:
+    bun scripts/release.ts bump {{level}}
+
+# Fail when the version fields or the CHANGELOG disagree (scripts/release.ts).
+release-check:
+    bun scripts/release.ts check
+
+check: drift types lint test hooks-drift release-check
