@@ -1,0 +1,33 @@
+// A hook reaches its harness only through emit() in cli/src/hooks/main.ts, which
+// picks the envelope for each event. Hook and MCP code takes its scope from the
+// session roots, never from the process folder, which a harness may set to the
+// plugin folder. biome.json scopes this plugin to src/hooks/**, src/mcp.ts, and
+// src/memory.ts, and leaves main.ts out.
+language js
+
+or {
+  JsStaticMemberExpression() as $stdout where {
+    $stdout <: r"process\.stdout",
+    register_diagnostic(
+      span=$stdout,
+      message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
+      severity="error"
+    )
+  },
+  JsCallExpression() as $log where {
+    $log <: r"console\.log\([\s\S]*",
+    register_diagnostic(
+      span=$log,
+      message="Emit through main.ts: console.log writes to stdout, which a harness may drop or reject. Use emit() in cli/src/hooks/main.ts.",
+      severity="error"
+    )
+  },
+  JsCallExpression() as $cwd where {
+    $cwd <: r"process\.cwd\(\)",
+    register_diagnostic(
+      span=$cwd,
+      message="Take scope from session roots, not process.cwd(): the harness may start the process in the plugin folder. Use the payload cwd or the project root.",
+      severity="error"
+    )
+  }
+}

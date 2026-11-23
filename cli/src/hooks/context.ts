@@ -197,7 +197,7 @@ const MCP_LINE =
 export function sessionStart(data: Payload, options: SessionStartOptions = {}): string | null {
   const root = resolvedRoot();
   if (root === null) return null;
-  const cwd = payloadCwd(data) ?? pathFrom(process.cwd());
+  const cwd = payloadCwd(data);
   if (cwd === null) return null;
   const inside = isUnder(cwd, root);
   const linked = inside ? null : linkedProjectDocs(cwd, root);

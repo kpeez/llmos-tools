@@ -40,6 +40,11 @@ reference is stale.
 that replays the recordings in `test/fixtures/web/` (or in-memory pages) and
 never touch the network.
 
+A hook writes its output only through `emit()` in `cli/src/hooks/main.ts`,
+which gives each event the envelope its harness reads. Hook, MCP, and memory
+code never reads `process.stdout` or `process.cwd()` to find its scope: a Biome
+lint (`cli/lint/hook-channels.grit`) fails on both, except in `main.ts`.
+
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
 to a temporary folder, as `test/helpers.ts` `isolatedEnv` does.

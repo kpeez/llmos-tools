@@ -25,6 +25,7 @@ import { cloudAttachHint, cloudSetup } from "./cloud.ts";
 import {
   firstTruthy,
   isAntigravityPayload,
+  type Payload,
   pathFrom,
   payloadCwd,
   readPayload,
@@ -39,50 +40,94 @@ import { hasAutoMemoryDir, linkAgentDirs } from "./links.ts";
 import { stop, warn } from "./stop.ts";
 import { syncOnStart, syncOnStop } from "./sync.ts";
 
-function emit(
-  eventName: "PreToolUse" | "PostToolUse",
-  context: string | null,
-  antigravity: boolean,
-): void {
-  if (antigravity) {
-    if (eventName === "PreToolUse") {
-      const out = context ? { decision: "allow", reason: context } : { decision: "allow" };
-      process.stdout.write(`${JSON.stringify(out)}\n`);
-    } else {
-      process.stdout.write("{}\n");
-    }
-    return;
-  }
+type HookResult =
+  | { event: "session-start"; context: string | null }
+  | { event: "pre-tool-use"; context: string | null }
+  | { event: "post-tool-use"; context: string | null }
+  | { event: "guard-bash"; denial: string | null }
+  | { event: "stop" };
+
+function writeJson(value: unknown): void {
+  process.stdout.write(`${JSON.stringify(value)}\n`);
+}
+
+function additionalContext(eventName: "PreToolUse" | "PostToolUse", context: string | null): void {
   if (!context) return;
-  const output = { hookSpecificOutput: { hookEventName: eventName, additionalContext: context } };
-  process.stdout.write(`${JSON.stringify(output)}\n`);
+  writeJson({ hookSpecificOutput: { hookEventName: eventName, additionalContext: context } });
+}
+
+/**
+ * The only writer of a hook's output channels. Each event keeps the envelope
+ * its harness reads; the lint in `cli/lint/hook-channels.grit` bans
+ * `process.stdout` elsewhere in the hooks.
+ */
+function emit(result: HookResult, antigravity: boolean): void {
+  switch (result.event) {
+    case "session-start":
+      if (antigravity) {
+        writeJson(
+          result.context
+            ? { injectSteps: [{ systemMessage: { systemMessage: result.context } }] }
+            : {},
+        );
+      } else if (result.context) {
+        process.stdout.write(`${result.context}\n`);
+      }
+      return;
+    case "pre-tool-use":
+      if (antigravity) {
+        writeJson(
+          result.context ? { decision: "allow", reason: result.context } : { decision: "allow" },
+        );
+      } else {
+        additionalContext("PreToolUse", result.context);
+      }
+      return;
+    case "post-tool-use":
+      if (antigravity) writeJson({});
+      else additionalContext("PostToolUse", result.context);
+      return;
+    case "guard-bash":
+      if (antigravity) {
+        writeJson(
+          result.denial ? { decision: "deny", reason: result.denial } : { decision: "allow" },
+        );
+      } else if (result.denial) {
+        process.stderr.write(`${result.denial}\n`);
+        process.exitCode = 2;
+      }
+      return;
+    case "stop":
+      if (antigravity) writeJson({});
+      return;
+  }
+}
+
+/**
+ * The payload, with `cwd` set to the hook process's folder when the payload
+ * names none. Only this file reads `process.cwd()`; the handlers take their
+ * scope from the payload.
+ */
+async function readSessionPayload(): Promise<Payload> {
+  const data = await readPayload();
+  return payloadCwd(data) === null ? { ...data, cwd: process.cwd() } : data;
 }
 
 async function guardBash(): Promise<void> {
-  const data = await readPayload();
-  const antigravity = isAntigravityPayload(data);
+  const data = await readSessionPayload();
   const toolInput = toolInputOf(data);
   const command = toolInput
     ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
     : undefined;
   const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
-  const message = typeof command === "string" && command ? checkCommand(command, cwd) : null;
-  if (antigravity) {
-    const out = message ? { decision: "deny", reason: message } : { decision: "allow" };
-    process.stdout.write(`${JSON.stringify(out)}\n`);
-    return;
-  }
-  if (message) {
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 2;
-  }
+  const denial = typeof command === "string" && command ? checkCommand(command, cwd) : null;
+  emit({ event: "guard-bash", denial }, isAntigravityPayload(data));
 }
 
 async function run(event: string | undefined): Promise<void> {
   switch (event) {
     case "session-start": {
-      const data = await readPayload();
-      const antigravity = isAntigravityPayload(data);
+      const data = await readSessionPayload();
       const root = resolvedRoot();
       const project = pathFrom(process.env.CLAUDE_PROJECT_DIR) ?? payloadCwd(data);
       const claudeAutoMemoryReady =
@@ -104,12 +149,7 @@ async function run(event: string | undefined): Promise<void> {
         sessionStart(data, options) ??
         (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
       const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
-      if (antigravity) {
-        const out = context ? { injectSteps: [{ systemMessage: { systemMessage: context } }] } : {};
-        process.stdout.write(`${JSON.stringify(out)}\n`);
-      } else if (context) {
-        process.stdout.write(`${context}\n`);
-      }
+      emit({ event: "session-start", context: context || null }, isAntigravityPayload(data));
       // After the output, and never able to change it: `llmos doctor` reads
       // this record to prove the hooks run for this agent.
       try {
@@ -118,15 +158,15 @@ async function run(event: string | undefined): Promise<void> {
       return;
     }
     case "pre-tool-use": {
-      const data = await readPayload();
-      emit("PreToolUse", preToolUse(data), isAntigravityPayload(data));
+      const data = await readSessionPayload();
+      emit({ event: "pre-tool-use", context: preToolUse(data) }, isAntigravityPayload(data));
       return;
     }
     case "post-tool-use": {
-      const data = await readPayload();
+      const data = await readSessionPayload();
       // Loaded only here: the frontmatter and vault code costs startup time.
       const context = await (await import("./stamp.ts")).postToolUse(data);
-      emit("PostToolUse", context, isAntigravityPayload(data));
+      emit({ event: "post-tool-use", context }, isAntigravityPayload(data));
       return;
     }
     case "guard-bash":
@@ -145,7 +185,7 @@ async function run(event: string | undefined): Promise<void> {
       } catch (error) {
         warn(`sync failure: ${error instanceof Error ? error.message : String(error)}`);
       }
-      if (isAntigravityPayload(data)) process.stdout.write("{}\n");
+      emit({ event: "stop" }, isAntigravityPayload(data));
       return;
     }
     default:

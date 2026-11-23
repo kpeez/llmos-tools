@@ -22,7 +22,8 @@ const MAX_SYMLINKS = 40;
  * which can block for seconds on an iCloud folder such as a synced vault.
  */
 export function realpath(path: string): string {
-  const pending = (path.startsWith("/") ? path : `${process.cwd()}/${path}`).split("/");
+  if (!path.startsWith("/")) throw new Error(`realpath needs an absolute path: ${path}`);
+  const pending = path.split("/");
   let resolved = "";
   let links = 0;
   while (pending.length > 0) {
@@ -190,15 +191,15 @@ export function isOSError(error: unknown): boolean {
 
 /**
  * Resolve a payload path: expand `~`, anchor a relative path at the payload
- * `cwd` (else the process cwd), and resolve symlinks. Blank or non-string
- * values give `null`.
+ * `cwd`, and resolve symlinks. Blank or non-string values, and a relative path
+ * with no `cwd`, give `null`.
  */
 export function pathFrom(value: unknown, cwd?: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   let path = expandUser(value);
   if (!path.startsWith("/")) {
-    const base = typeof cwd === "string" && cwd ? expandUser(cwd) : process.cwd();
-    path = joinPath(base, path);
+    if (typeof cwd !== "string" || !cwd) return null;
+    path = joinPath(expandUser(cwd), path);
   }
   try {
     return realpath(path);

@@ -6,6 +6,13 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A hook can write its output only through one `emit()` in
+  `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
+  and `emit()` gives it the envelope that its harness reads. A Biome lint
+  (`cli/lint/hook-channels.grit`) bans `process.stdout`, `console.log`, and
+  `process.cwd()` in `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except in
+  `main.ts`. A hook now takes its folder from the payload `cwd`; `main.ts`
+  fills it from the process folder when the payload has none.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into

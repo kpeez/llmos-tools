@@ -24,7 +24,7 @@
  */
 
 import { registeredVaults, VaultRootError, vaultRoot } from "../root.ts";
-import { isUnder, joinPath, realpath, suffix, truthy } from "./common.ts";
+import { isUnder, joinPath, pathFrom, realpath, suffix } from "./common.ts";
 import { ShlexError, splitShellLines, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
@@ -254,9 +254,8 @@ export function checkCommand(command: string, cwd: unknown): string | null {
 
   const roots = knownVaultRoots();
   if (roots.length === 0) return null;
-  const base = truthy(cwd) ? cwd : ".";
-  if (typeof base !== "string") return null;
-  const resolvedCwd = realpath(base);
+  const resolvedCwd = pathFrom(cwd);
+  if (resolvedCwd === null) return null;
   for (const [sub, args] of mvRm) {
     const message = checkVaultMvRm(sub, args, resolvedCwd, roots, command);
     if (message) return message;
