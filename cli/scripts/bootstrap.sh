@@ -9,9 +9,7 @@
 # 3. Installs the llmos plugin for each agent on PATH (claude, codex). It adds
 #    this checkout as the llmos-tools marketplace only when no marketplace of
 #    that name is registered, and installs the plugin only when it is missing.
-# 4. Links .agents/skills into .claude/skills, so Claude Code finds the
-#    repository's own skills (such as verify-llmos).
-# 5. Runs llmos doctor and exits with its status.
+# 4. Runs llmos doctor and exits with its status.
 #
 # Safe to run again. The steps that need a person are printed at the end; the
 # setup-llmos skill covers repair and verification.
@@ -84,9 +82,6 @@ if command -v codex >/dev/null 2>&1; then
     codex plugin add "$plugin"
   fi
 fi
-
-step "Link the repository skills for Claude Code"
-(cd "$checkout" && mkdir -p .claude && if [ -L .claude/skills ] || [ ! -e .claude/skills ]; then ln -sfn ../.agents/skills .claude/skills; else echo ".claude/skills is a real directory; link .agents/skills into it by hand"; fi)
 
 step "Run the doctor"
 status=0

@@ -56,4 +56,9 @@ verify-llmos *features:
 verify-daily-digest:
     @bun ../.agents/skills/verify-daily-digest/scripts/check.ts
 
+# Run every model check: each ../.agents/skills/verify-* skill with a .tla
+# file runs its scripts/check.ts. CI runs this in its own job.
+verify-models:
+    @bun scripts/verify-models.ts
+
 check: drift types lint test hooks-drift

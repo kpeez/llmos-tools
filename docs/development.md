@@ -62,7 +62,11 @@ plugin hooks, and the MCP server.
   `mcp-names.ts` the tool names the hooks share (see [MCP server](mcp.md)).
 
 From `cli/`, set up with `bun install --frozen-lockfile`; check with `just types`,
-`just lint`, and `just test`, or all of them with `just check`.
+`just lint`, and `just test`, or all of them with `just check`. `just
+verify-models` runs the TLA+ model checks (each `.agents/skills/verify-*`
+skill with a `.tla` file). They need Java and TLC, so `just check` leaves them
+out. CI runs both: the `check` job and the `models` job of
+`.github/workflows/tools.yml`.
 
 ## Tests
 
