@@ -10,7 +10,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { parse } from "unbash";
-import { expandUser, isDir, isUnder, joinPath, realpath, suffix } from "./common.ts";
+import { expandUser, isDir, isSymlink, isUnder, joinPath, realpath, suffix } from "./common.ts";
 
 interface Node {
   type?: string;
@@ -192,6 +192,15 @@ function globToRegExp(pattern: string, ignoreCase: boolean): RegExp {
 
 type Accept = (name: string) => boolean;
 
+/** A dot folder or `node_modules` holds no vault note (`resolveInVault` refuses the first). */
+function hidden(name: string): boolean {
+  return name.startsWith(".") || name === "node_modules";
+}
+
+/**
+ * Whether `folder` holds a note that `accept` takes. A folder with more than
+ * `MAX_ENTRIES` entries counts as holding one: the check fails closed.
+ */
 function containsNote(folder: string, accept: Accept): boolean {
   const pending = [folder];
   let seen = 0;
@@ -203,7 +212,7 @@ function containsNote(folder: string, accept: Accept): boolean {
       continue;
     }
     for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
+      if (hidden(entry.name)) continue;
       if (++seen > MAX_ENTRIES) return true;
       if (entry.isDirectory()) pending.push(joinPath(next, entry.name));
       else if (entry.isFile() && suffix(entry.name) === ".md" && accept(entry.name)) return true;
@@ -225,13 +234,24 @@ function argHit(arg: string, context: Context, folders: boolean, accept: Accept 
   const candidates = arg.startsWith("~") ? [arg, expandUser(arg)] : [arg];
   for (const candidate of candidates) {
     if (!candidate.startsWith("/") && context.base === null) continue;
-    const path = realpath(
-      candidate.startsWith("/") ? candidate : joinPath(context.base as string, candidate || "."),
-    );
-    const hit = pathHit(path, context.roots, folders, accept);
+    const typed = candidate.startsWith("/")
+      ? candidate
+      : joinPath(context.base as string, candidate || ".");
+    const path = realpath(typed);
+    const hit = pathHit(path, context.roots, folders && !namesLink(typed), accept);
     if (hit !== null) return hit;
   }
   return null;
+}
+
+/**
+ * Whether `typed` names a symbolic link itself. Without a trailing slash a
+ * move or removal acts on the link and leaves the folder it points to; with
+ * one, `rm -r` and `find -delete` act on that folder.
+ */
+function namesLink(typed: string): boolean {
+  if (typed.endsWith("/")) return false;
+  return isSymlink(joinPath(realpath(dirname(typed)), basename(typed)));
 }
 
 function pathHit(path: string, roots: string[], folders: boolean, accept: Accept): string | null {
@@ -242,7 +262,9 @@ function pathHit(path: string, roots: string[], folders: boolean, accept: Accept
   }
   if (!folders || !isDir(path)) return null;
   for (const root of roots) {
-    const walk = isUnder(path, root) ? path : isUnder(root, path) ? root : null;
+    const inside = isUnder(path, root);
+    if (inside && path.slice(root.length).split("/").some(hidden)) continue;
+    const walk = inside ? path : isUnder(root, path) ? root : null;
     if (walk !== null && containsNote(walk, accept)) return path;
   }
   return null;
@@ -259,7 +281,7 @@ function globHit(path: string, roots: string[], folders: boolean, accept: Accept
     return null;
   }
   for (const entry of entries) {
-    if (entry.name.startsWith(".") || !pattern.test(entry.name)) continue;
+    if (hidden(entry.name) || !pattern.test(entry.name)) continue;
     const full = joinPath(folder, entry.name);
     if (entry.isFile() && suffix(entry.name) === ".md" && accept(entry.name)) return full;
     if (folders && entry.isDirectory() && containsNote(full, accept)) return full;
@@ -380,9 +402,14 @@ function feederHit(words: string[], context: Context): string | null {
   return null;
 }
 
-function message(command: string, hit: string, program: string): string {
+/**
+ * `subject` is text the agent typed (an argument, a list file). The deny
+ * reason never prints a path found by a glob or in a list, because a note
+ * name can hold a newline; `JSON.stringify` escapes the control characters.
+ */
+function message(command: string, subject: string, program: string): string {
   return (
-    `'${command}' touches a vault note (${hit}) with raw ${program}: this ` +
+    `'${command}' touches a vault note or a folder of notes (${JSON.stringify(subject)}) with raw ${program}: this ` +
     "orphans any wikilinks pointing at it. Use `obsidian-cli move " +
     "file=<name> to=<dest>` (or `obsidian-cli rename`) so backlinks get " +
     "rewritten."
@@ -404,8 +431,9 @@ export function vaultDenial(
     const accept: Accept = (file) =>
       find.patterns.length === 0 || find.patterns.some((p) => p.test(file));
     for (const start of find.starts) {
-      const hit = argHit(start, context, true, accept);
-      if (hit !== null) return message(command, hit, "find -delete");
+      if (argHit(start, context, true, accept) !== null) {
+        return message(command, start, "find -delete");
+      }
     }
     return null;
   }
@@ -425,20 +453,20 @@ export function vaultDenial(
     call.program === "git mv" ||
     call.args.some((a) => RECURSIVE.test(a) || a === "--recursive");
   for (const arg of nonOptions(call.args)) {
-    const hit = argHit(arg, context, folders);
-    if (hit !== null) return message(command, hit, call.program);
+    if (argHit(arg, context, folders) !== null) return message(command, arg, call.program);
   }
   if (!invocation.viaXargs) return null;
-  for (const entry of invocation.stdinFile === null
-    ? []
-    : listEntries(invocation.stdinFile, context)) {
-    const hit = argHit(entry, context, false);
-    if (hit !== null) return message(command, hit, `xargs ${call.program}`);
+  const { stdinFile } = invocation;
+  if (
+    stdinFile !== null &&
+    listEntries(stdinFile, context).some((e) => argHit(e, context, false))
+  ) {
+    return message(command, `< ${stdinFile}`, `xargs ${call.program}`);
   }
   for (const feeder of invocation.feeders) {
-    if (feeder.length === 0) continue;
-    const hit = feederHit(feeder, context);
-    if (hit !== null) return message(command, hit, `xargs ${call.program}`);
+    if (feeder.length > 0 && feederHit(feeder, context) !== null) {
+      return message(command, feeder.join(" "), `xargs ${call.program}`);
+    }
   }
   return null;
 }
