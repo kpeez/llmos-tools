@@ -111,18 +111,20 @@ function pythonSubcommands(tokens: string[]): string[][] {
  * file-descriptor number before it (`2>/dev/null`). The `&` of `&>`, `>&`, and
  * `<&`, and the `|` of `>|`, belong to the redirection and separate nothing.
  */
-function shellSubcommands(tokens: string[]): string[][] {
+function shellSubcommands(rawTokens: string[]): string[][] {
+  const tokens = rawTokens.map((token) =>
+    OPERATOR.test(token) ? token.replace(CLOBBER, ">") : token,
+  );
   const subcommands: string[][] = [];
   let current: string[] = [];
   let skipOperand = false;
   tokens.forEach((token, index) => {
     if (OPERATOR.test(token)) {
-      const redirection = token.replace(CLOBBER, ">");
-      if (SEPARATES.test(redirection.replace(REDIRECT_AMPERSAND, ""))) {
+      if (SEPARATES.test(token.replace(REDIRECT_AMPERSAND, ""))) {
         if (current.length > 0) subcommands.push(current);
         current = [];
       }
-      skipOperand = REDIRECTS.test(redirection);
+      skipOperand = REDIRECTS.test(token);
     } else if (skipOperand) {
       skipOperand = false;
     } else if (!(FD_NUMBER.test(token) && REDIRECTS.test(tokens[index + 1] ?? ""))) {
