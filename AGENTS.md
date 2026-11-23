@@ -43,12 +43,16 @@ never touch the network.
 A hook writes its output only through `emit()` in `cli/src/hooks/main.ts`,
 which gives each event the envelope its harness reads. Hook, MCP, and memory
 code never writes to a console or to stdout, and never reads the process folder
-to find its scope. A Biome lint (`cli/lint/hook-channels.grit`) fails on
-`process.stdout`, `Bun.stdout`, `process.cwd` (called or not), any use of the
-names `console` and `globalThis`, and destructuring or importing `stdout` or
-`cwd` from `process`, `node:process`, or `Bun`. It does not catch a computed
-key such as `process["stdout"]` or an alias such as `const p = process`. It
-applies to `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except `main.ts`.
+to find its scope. A Biome lint (`cli/lint/hook-channels.grit`) fails on `process.stdout`,
+`Bun.stdout`, `process.cwd` (called or not), any use of the names `console`
+and `globalThis`, destructuring `stdout` or `cwd` from `process`, `Bun`, or a
+`require` of `process` or `bun`, and named imports of `stdout` or `cwd` from
+`process`, `node:process`, or `bun`. It does not catch a computed key such as
+`process["stdout"]`, an alias such as `const p = process`, a default or
+namespace import of `process`, a `require()` call that is not destructured, or
+an indirect read such as `process.env.PWD`, `path.resolve(".")`, or
+`fs.writeSync(1, ...)`. It applies to `src/hooks/`, `src/mcp.ts`, and
+`src/memory.ts`, except `main.ts`.
 
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`

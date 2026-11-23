@@ -9,11 +9,17 @@ Newest first. Versions are the `version` field shared by
 - A hook can write its output only through one `emit()` in
   `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
   and `emit()` gives it the envelope that its harness reads. A Biome lint
-  (`cli/lint/hook-channels.grit`) bans `process.stdout`, `Bun.stdout`,
-  `process.cwd` (called or not), any use of the names `console` and
-  `globalThis`, and destructuring or importing `stdout` or `cwd` from
-  `process`, in `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`,
-  except in `main.ts`. Only `main.ts` reads the process folder: it anchors a
+  (`cli/lint/hook-channels.grit`) bans `process.stdout`,
+  `Bun.stdout`, `process.cwd` (called or not), any use of the names
+  `console` and `globalThis`, destructuring `stdout` or `cwd` from
+  `process`, `Bun`, or a `require` of `process` or `bun`, and named imports
+  of `stdout` or `cwd` from `process`, `node:process`, or `bun`, in
+  `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except in `main.ts`. It
+  does not catch a computed key such as `process["stdout"]`, an alias such
+  as `const p = process`, a default or namespace import of `process`, a
+  `require()` call that is not destructured, or an indirect read such as
+  `process.env.PWD`, `path.resolve(".")`, or `fs.writeSync(1, ...)`.
+  Only `main.ts` reads the process folder: it anchors a
   relative payload `cwd` there, as before. A relative `LLMOS_ROOT` is made
   absolute for the hooks by `absoluteVaultRoot()` in `src/root.ts`; the CLI
   still prints it as configured.

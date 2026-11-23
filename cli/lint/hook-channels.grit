@@ -7,7 +7,7 @@ language js
 
 or {
   JsStaticMemberExpression() as $stdout where {
-    $stdout <: r"^process\??\.stdout$",
+    $stdout <: r"^process\s*\??\.\s*stdout$",
     register_diagnostic(
       span=$stdout,
       message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
@@ -15,7 +15,7 @@ or {
     )
   },
   JsStaticMemberExpression() as $bunout where {
-    $bunout <: r"^Bun\??\.stdout$",
+    $bunout <: r"^Bun\s*\??\.\s*stdout$",
     register_diagnostic(
       span=$bunout,
       message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
@@ -31,24 +31,24 @@ or {
     )
   },
   JsVariableDeclarator() as $pull where {
-    $pull <: r"^\{[^}]*\b(?:stdout|cwd)\b[^}]*\}\s*=\s*(?:process|Bun)\b[\s\S]*",
+    $pull <: r"^\{[^}]*\b(?:stdout|cwd)\b[^}]*\}\s*=\s*(?:(?:process|Bun)\b|require\(\s*[\"'](?:node:)?(?:process|bun)[\"']\s*\))[\s\S]*",
     register_diagnostic(
       span=$pull,
-      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not pull stdout or cwd out of process or Bun. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
+      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not pull stdout or cwd out of process, Bun, or a require() of them. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
       severity="error"
     )
   },
   JsImport() as $pulled where {
     $pulled <: r"[\s\S]*\b(?:stdout|cwd)\b[\s\S]*",
-    $pulled <: r"[\s\S]*from\s+[\"'](?:node:)?process[\"'][\s\S]*",
+    $pulled <: r"[\s\S]*from\s+[\"'](?:node:)?(?:process|bun)[\"'][\s\S]*",
     register_diagnostic(
       span=$pulled,
-      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not import stdout or cwd from process. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
+      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not import stdout or cwd from process or bun. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
       severity="error"
     )
   },
   JsStaticMemberExpression() as $cwd where {
-    $cwd <: r"^process\??\.cwd$",
+    $cwd <: r"^process\s*\??\.\s*cwd$",
     register_diagnostic(
       span=$cwd,
       message="Take scope from session roots, not process.cwd(): the harness may start the process in the plugin folder. Use the payload cwd or the project root.",
