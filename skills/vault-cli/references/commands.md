@@ -274,7 +274,7 @@ Do NOT use when you want to add a thought to a note -- use
 Options:
   --root  Vault root. Default: $LLMOS_ROOT, then the llmOS config file.
   --date  Process only this date (default: yesterday and today, Los Angeles time). A --date run does not set the run record on categories/Reviews.md.
-  --push  Commit the notes this run wrote, rebase on the upstream, and push.
+  --push  Commit the notes this run wrote, merge origin/main without touching the work tree, and push that commit to main.
 
 Example output:
   2026-07-16: updated

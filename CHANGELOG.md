@@ -36,6 +36,26 @@ Newest first. Versions are the `version` field shared by
   capture, and obsidian-cli write. It is never followed through a symbolic
   link. The hooks no longer leave a folder per session in the shared temp
   folder.
+- Every git call goes through one module, `cli/src/git.ts`. It has no
+  `pull`, `rebase`, `stash`, or `reset`, and every call has a timeout. Two
+  Biome plugins (`cli/lint/`) fail on a git spawn outside it and on those
+  words in any git argument list.
+- `llmos daily activity --push` no longer runs `git pull --rebase
+  --autostash` and a plain `git push`. A rebase that conflicted was aborted,
+  and the abort dropped a memory commit that the Stop sync had made while
+  HEAD was detached. The plain push also published every unpushed commit,
+  private notes too. The digest now publishes the way the memory sync does:
+  it fetches, merges without the work tree, and pushes one checked commit to
+  `main`. It refuses while an unpushed commit touches anything but daily
+  notes, its run record, and shared memory. The vault checkout must be on
+  `main` with an `origin`.
+- The cloud session-start hook no longer runs `git pull --rebase
+  --autostash`, which left a rebase in progress on a conflict. It fetches and
+  fast-forwards; a checkout with its own commits is left as it is, and the
+  context says so. The context no longer tells the agent to run `git pull
+  --rebase`: it says to fetch and fast-forward before editing, push to
+  `main`, and stop and report when either refuses.
+
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from

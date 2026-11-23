@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -451,7 +452,7 @@ describe("pushNotes", () => {
     return { remote, host, other };
   }
 
-  test("commits only its paths, rebases on a moved remote, and pushes", () => {
+  test("commits only its paths, merges a moved remote, and pushes", () => {
     const { remote, host, other } = checkouts();
     write(join(other, "vault", "notes", "laptop.md"), "from the laptop\n");
     git(other, "add", ".");
@@ -463,10 +464,11 @@ describe("pushNotes", () => {
     write(join(vault, "notes", "draft.md"), "unsaved work\n");
     pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
 
-    expect(git(remote, "log", "--format=%s", "main")).toBe(
-      "daily activity: 2026-07-16\nlaptop note\nseed",
+    expect(git(remote, "log", "--format=%s", "--first-parent", "main")).toBe(
+      "daily activity: merge the remote main\ndaily activity: 2026-07-16\nseed",
     );
-    expect(git(remote, "show", "--name-only", "--format=", "main")).toBe(
+    expect(git(remote, "log", "--format=%s", "-1", "main^2")).toBe("laptop note");
+    expect(git(remote, "show", "--name-only", "--format=", "main^1")).toBe(
       "vault/daily/2026-07-16.md",
     );
     expect(readFileSync(join(vault, "notes", "draft.md"), "utf8")).toBe("unsaved work\n");
@@ -484,10 +486,129 @@ describe("pushNotes", () => {
     write(join(host, "notes", "draft.md"), "unsaved work\n");
     pushNotes(host, ["daily/2026-07-16.md"], "daily activity: 2026-07-16");
 
-    expect(git(remote, "log", "--format=%s", "main")).toBe(
-      "daily activity: 2026-07-16\nlaptop note\nseed",
+    expect(git(remote, "log", "--format=%s", "--first-parent", "main")).toBe(
+      "daily activity: merge the remote main\ndaily activity: 2026-07-16\nseed",
     );
-    expect(git(remote, "show", "--name-only", "--format=", "main")).toBe("daily/2026-07-16.md");
+    expect(git(remote, "show", "--name-only", "--format=", "main^1")).toBe("daily/2026-07-16.md");
     expect(git(host, "status", "--porcelain")).toBe("M notes/draft.md");
+  });
+
+  const MEMORY_FILE = "vault/projects/p/memory/topic.md";
+  const MADE = "sync-commit.done";
+
+  /**
+   * Make the memory sync's commit (`git add` + `git commit -- path`) once, from
+   * the git hook `hook` in `clone`, while the digest's own git calls run. It
+   * leaves `MADE` in the git dir when it ran.
+   */
+  function syncCommitsFromHook(clone: string, hook: string, filter: string): void {
+    const path = join(clone, ".git", "hooks", hook);
+    write(
+      path,
+      `#!/bin/sh\n${filter}` +
+        `[ -e "$(git rev-parse --git-dir)/${MADE}" ] && exit 0\n` +
+        `touch "$(git rev-parse --git-dir)/${MADE}"\n` +
+        `mkdir -p "${dirname(MEMORY_FILE)}" && echo "- remember" > "${MEMORY_FILE}"\n` +
+        `git --literal-pathspecs add -A -- "${MEMORY_FILE}"\n` +
+        `git --literal-pathspecs commit --quiet -m "memory: sync shared project memory" -- "${MEMORY_FILE}"\n`,
+    );
+    chmodSync(path, 0o755);
+  }
+
+  // Where the sync's commit lands inside the digest's git calls. The fetch
+  // runs in every version of the digest, so that case cannot pass vacuously.
+  // A rebase detaches HEAD with a checkout: the window of the lost commit in
+  // the verify-memory-sync model. The digest no longer checks out, so there
+  // the hook never runs.
+  const windows = [
+    {
+      when: "a fetch moves origin/main",
+      hook: "reference-transaction",
+      filter: `[ "$1" = committed ] || exit 0\ngrep -q ' refs/remotes/origin/main$' || exit 0\n`,
+      runs: true,
+    },
+    {
+      when: "HEAD is checked out, as a rebase does",
+      hook: "post-checkout",
+      filter: "",
+      runs: false,
+    },
+  ];
+  for (const { when, hook, filter, runs } of windows) {
+    test(`a memory commit made when ${when} survives a conflict with the remote`, () => {
+      const { remote, host, other } = checkouts();
+      // Another host's digest wrote the same daily note, so the two conflict.
+      write(join(other, "vault", "daily", "2026-07-16.md"), "other host\n");
+      git(other, "add", ".");
+      git(other, "commit", "--quiet", "-m", "other host");
+      git(other, "push", "--quiet");
+      syncCommitsFromHook(host, hook, filter);
+
+      const vault = join(host, "vault");
+      write(join(vault, "daily", "2026-07-16.md"), "digest\n");
+      expect(() => pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16")).toThrow(
+        DigestError,
+      );
+
+      const made = existsSync(join(host, ".git", MADE));
+      if (runs) expect(made).toBe(true);
+      if (made) {
+        expect(existsSync(join(host, MEMORY_FILE))).toBe(true);
+        expect(git(host, "log", "--format=%s", "main", "--", MEMORY_FILE)).toBe(
+          "memory: sync shared project memory",
+        );
+      }
+      expect(git(remote, "log", "--format=%s", "-1", "main")).toBe("other host");
+    });
+  }
+
+  test("never pushes a private note the user committed", () => {
+    const { remote, host } = checkouts();
+    const vault = join(host, "vault");
+    write(join(vault, "notes", "private.md"), "not for the remote\n");
+    git(host, "add", "vault/notes/private.md");
+    git(host, "commit", "--quiet", "-m", "private note");
+
+    write(join(vault, "daily", "2026-07-16.md"), "digest\n");
+    expect(() => pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16")).toThrow(
+      "not pushing: unpushed commits also touch vault/notes/private.md",
+    );
+
+    expect(git(remote, "ls-tree", "-r", "--name-only", "main")).not.toContain("private.md");
+    expect(git(remote, "log", "--format=%s", "-1", "main")).toBe("seed");
+  });
+
+  test("never pushes a note moved into shared memory", () => {
+    const { remote, host } = checkouts();
+    // A rename lists only its new path unless rename detection is off.
+    mkdirSync(join(host, "vault", "projects", "p", "memory"), { recursive: true });
+    git(host, "mv", "vault/notes/draft.md", "vault/projects/p/memory/draft.md");
+    git(host, "commit", "--quiet", "-m", "move a note into memory");
+
+    write(join(host, "vault", "daily", "2026-07-16.md"), "digest\n");
+    expect(() =>
+      pushNotes(join(host, "vault"), ["daily/2026-07-16.md"], "daily activity: 2026-07-16"),
+    ).toThrow("not pushing: unpushed commits also touch vault/notes/draft.md");
+
+    expect(git(remote, "log", "--format=%s", "-1", "main")).toBe("seed");
+  });
+
+  test("a later run pushes the daily notes that an earlier run could not push", () => {
+    const { remote, host } = checkouts();
+    const vault = join(host, "vault");
+    const url = git(host, "remote", "get-url", "origin");
+    git(host, "remote", "set-url", "origin", join(host, "missing.git"));
+    write(join(vault, "daily", "2026-07-16.md"), "digest\n");
+    expect(() => pushNotes(vault, ["daily/2026-07-16.md"], "daily activity: 2026-07-16")).toThrow(
+      DigestError,
+    );
+
+    git(host, "remote", "set-url", "origin", url);
+    write(join(vault, "daily", "2026-07-17.md"), "digest\n");
+    pushNotes(vault, ["daily/2026-07-17.md"], "daily activity: 2026-07-17");
+
+    expect(git(remote, "log", "--format=%s", "main")).toBe(
+      "daily activity: 2026-07-17\ndaily activity: 2026-07-16\nseed",
+    );
   });
 });

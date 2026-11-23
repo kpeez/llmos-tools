@@ -28,7 +28,7 @@ The two flags stop Bun from loading the session's project `.env` and
 
 | Event                    | Hook event      | Source        | Purpose                                                                                                     |
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart             | `session-start` | `context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first pulls the vault and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
+| SessionStart             | `session-start` | `context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first fast-forwards the vault checkout to `origin/main` and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
@@ -188,11 +188,17 @@ In a cloud session (`CLAUDE_CODE_REMOTE=true`), the vault is an attached
 repository, checked out beside the session's code repositories (for example
 `/home/user/llmos-vault` and `/home/user/agent-toolbox`). The cloud's GitHub proxy
 serves only attached repositories, so this is how a cloud session can push
-vault notes. The session-start hook first runs `git pull --rebase origin main`
-in the vault checkout, with a 6-second limit. Then it links each repository
-beside the vault checkout the same way. The context tells the agent to push
-vault notes to `main` (`git push origin HEAD:main`), not to the session
-branch. A failed pull is reported in the context. A fresh checkout has no qmd
+vault notes. The session-start hook first fetches `origin main` into the vault
+checkout (3-second limit) and fast-forwards it there with `git merge
+--ff-only` (2-second limit). It never rebases: a checkout with commits that
+are not on `origin/main` is left as it is, and the context says so. Then it
+links each repository beside the vault checkout the same way. The context
+tells the agent the same safe flow: before it edits vault notes, `git fetch
+origin main` and `git merge --ff-only origin/main`; then commit and push to
+`main` (`git push origin HEAD:main`), not to the session branch. When the
+fast-forward or the push refuses, the agent stops and reports instead of
+rebasing. A failed fetch or fast-forward is reported in the
+context. A fresh checkout has no qmd
 index, so the hook also starts a detached build when the index file is missing:
 it adds the `llmos` and `memory` collections with `qmd collection add`, then
 runs `llmos reindex --no-embed`. The
@@ -211,8 +217,10 @@ attached repository accepts a push through the cloud's GitHub proxy, so the
 agent attaches the vault instead of cloning it with a token.
 
 In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
-vault's Git remote. It never rewrites the work tree: no `rebase`, `stash`, or
-`reset`, and a dirty vault does not pause it. It builds every new commit
+vault's Git remote. Like every git call in the hooks and the CLI, it runs git
+through `cli/src/git.ts`, which offers no `rebase`, `stash`, `reset`, or
+`pull`; a Biome plugin fails on any other git spawn. It never rewrites the
+work tree, and a dirty vault does not pause it. It builds every new commit
 without the work tree (`git merge-tree --write-tree` and `git commit-tree`) and
 moves `main` only with `git merge --ff-only`, which keeps unrelated edits and
 refuses, rather than overwrites, a file that an incoming change overlaps.

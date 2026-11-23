@@ -7,6 +7,9 @@
 
 import { readdirSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { locate } from "./git.ts";
+
+const GIT_TIMEOUT_MS = 5_000;
 
 export interface Checkout {
   /** The worktree's top level. */
@@ -51,22 +54,9 @@ export function projectSlug(main: string, root: string): string | null {
 
 /** The Git worktree containing `path`, or `null` outside one. */
 export function checkoutAt(path: string): Checkout | null {
-  const result = Bun.spawnSync({
-    cmd: [
-      "git",
-      "-C",
-      path,
-      "rev-parse",
-      "--path-format=absolute",
-      "--show-toplevel",
-      "--git-common-dir",
-    ],
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  if (result.exitCode !== 0) return null;
-  const [top, common] = result.stdout.toString().trim().split("\n");
-  if (!top || !common) return null;
+  const repo = locate(path, process.env, GIT_TIMEOUT_MS);
+  if (repo === null) return null;
+  const { top, commonDir: common } = repo;
   // A worktree of a bare repository has no main checkout; name it by itself.
   const main = basename(common) === ".git" ? dirname(common) : top;
   return { top, main, common };

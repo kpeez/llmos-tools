@@ -1,7 +1,8 @@
 ----------------------------- MODULE MemorySync -----------------------------
 (***************************************************************************)
-(* The Stop memory sync (`syncOnStop` in cli/src/hooks/sync.ts) in one     *)
-(* vault checkout, with the other writers of that checkout and its remote. *)
+(* The Stop memory sync (`syncOnStop` in cli/src/hooks/sync.ts, through   *)
+(* `publish` in cli/src/git.ts) in one vault checkout, with the other      *)
+(* writers of that checkout and its remote.                                *)
 (*                                                                         *)
 (* A commit is a set of parents and a tree. A tree is the set of changes   *)
 (* it holds; every change is its own file, and content only grows, so a    *)
@@ -13,11 +14,16 @@
 (*   The user (or Obsidian Git): commits a private note on `main`, and     *)
 (*     fetches `origin main`. The user never pushes in this model, so any  *)
 (*     private change on the remote was pushed by a tool.                  *)
-(*   The digest push (Digest = TRUE): `pushNotes` in cli/src/digest.ts:    *)
-(*     add and commit the notes, `git pull --rebase --autostash` (a fetch, *)
-(*     then a rebase that detaches HEAD, replays the local commits, and    *)
-(*     moves `main`), `git rebase --abort` when the pull fails, and a      *)
-(*     plain `git push` of `main`. It takes no sync lock.                  *)
+(*   The digest push, `pushNotes` in cli/src/digest.ts. It takes no sync *)
+(*     lock.                                                               *)
+(*     Digest = "publish" is the code: the run Dg commits its notes, then  *)
+(*     runs the sync's own steps (git.ts `publish`), which may push only   *)
+(*     daily notes and memory.                                             *)
+(*     Digest = "rebase" is the code before git.ts, kept as a mutant: add  *)
+(*     and commit, `git pull --rebase --autostash` (a fetch, then a rebase *)
+(*     that detaches HEAD, replays the local commits, and moves `main`),   *)
+(*     `git rebase --abort` when the pull fails, and a plain `git push`.   *)
+(*     Digest = "none": no digest.                                         *)
 (*                                                                         *)
 (* Ids = "fixed" is the code: `syncOnStop` reads `origin/main` and `HEAD`  *)
 (* once and uses those IDs for every later step. Ids = "names" is the code *)
@@ -47,13 +53,18 @@ CONSTANTS Runs,          \* sync runs (sessions) on this host
           RemoteEdits,   \* memory changes another host pushes
           PrivateEdits,  \* private notes the user commits and never pushes
           DigestEdits,   \* daily notes the digest commits and pushes
-          Digest,        \* TRUE: the digest push runs
+          Digest,        \* "none", "publish" (the code), or "rebase" (the mutant)
           Ids,           \* "fixed" (the code) or "names" (the mutant)
           Mutex          \* TRUE: sync runs hold a perfect lock
 
 Memory == MemEdits \cup RemoteEdits
 None == 0      \* no commit
 NoRun == "none" \* no run holds the lock
+Dg == "digest" \* the digest's run of the publish steps (Digest = "publish")
+\* Every run of the publish steps: the sync runs, and the digest's.
+Procs == IF Digest = "publish" THEN Runs \cup {Dg} ELSE Runs
+\* What a run may push: memory for the sync, also daily notes for the digest.
+Allowed(r) == IF r = Dg THEN Memory \cup DigestEdits ELSE Memory
 
 VARIABLES cs,          \* the commits: cs[i] = [par |-> parents, tree |-> changes]
           remote,      \* `main` on the remote
@@ -63,15 +74,15 @@ VARIABLES cs,          \* the commits: cs[i] = [par |-> parents, tree |-> change
           wtMem,       \* memory changes in the work tree, not yet committed
           made,        \* changes that a writer has made (each one once)
           holder,      \* the run that holds the sync lock, or NoRun
-          spc,         \* each sync run's next call
+          spc,         \* each run's next call (sync runs and Dg)
           paths,       \* `changedMemoryPaths` that a run read before the lock
           origin,      \* the `origin/main` ID a run read
           tip,         \* the `HEAD` ID a run read, then its merge
           mtree,       \* the tree `merge-tree` wrote
           mid,         \* the commit `commit-tree` made
-          dpc,         \* the digest's next call
-          dorig,       \* the branch commit when the digest's rebase started
-          dup          \* the upstream commit the digest's pull fetched
+          dpc,         \* the rebase mutant's next call
+          dorig,       \* the branch commit when the mutant's rebase started
+          dup          \* the upstream commit the mutant's pull fetched
 
 syncVars == <<spc, paths, origin, tip, mtree, mid>>
 vars == <<cs, remote, tracking, branch, detached, wtMem, made, holder,
@@ -89,12 +100,13 @@ Chg(c) == Tree(c) \ UNION {Tree(p) : p \in cs[c].par}
 \* `git rev-list --count a..b` > 0
 Count(a, b) == Anc(b) \ Anc(a) # {}
 
-\* `otherAheadPaths(base, tip)`: paths outside memory that the non-merge
-\* commits base..tip touch, and (Ids = "fixed") the net diff base tip.
-Others(b, t) ==
+\* `changedBetween(base, tip)` in `publish`: paths outside what run r may
+\* push that the non-merge commits base..tip touch, and (Ids = "fixed") the
+\* net diff base tip.
+Others(r, b, t) ==
   LET log == UNION {Chg(c) : c \in {x \in Anc(t) \ Anc(b) : ~IsMerge(x)}}
       net == (Tree(t) \ Tree(b)) \cup (Tree(b) \ Tree(t))
-  IN (IF Ids = "fixed" THEN log \cup net ELSE log) \ Memory
+  IN (IF Ids = "fixed" THEN log \cup net ELSE log) \ Allowed(r)
 
 NewId == Len(cs) + 1
 AddCommit(ps, t) == cs' = Append(cs, [par |-> ps, tree |-> t])
@@ -112,11 +124,12 @@ Init ==
   /\ remote = 1 /\ tracking = 1 /\ branch = 1 /\ detached = None
   /\ wtMem = MemEdits /\ made = MemEdits
   /\ holder = NoRun
-  /\ spc = [r \in Runs |-> "gate"]
-  /\ paths = [r \in Runs |-> {}]
-  /\ origin = [r \in Runs |-> None] /\ tip = [r \in Runs |-> None]
-  /\ mtree = [r \in Runs |-> {}] /\ mid = [r \in Runs |-> None]
-  /\ dpc = IF Digest THEN "commit" ELSE "done"
+  \* Dg starts at its commit: the digest runs no sync gate and takes no lock.
+  /\ spc = [r \in Procs |-> IF r = Dg THEN "commit" ELSE "gate"]
+  /\ paths = [r \in Procs |-> {}]
+  /\ origin = [r \in Procs |-> None] /\ tip = [r \in Procs |-> None]
+  /\ mtree = [r \in Procs |-> {}] /\ mid = [r \in Procs |-> None]
+  /\ dpc = IF Digest = "rebase" THEN "commit" ELSE "done"
   /\ dorig = None /\ dup = None
 
 ----------------------------------------------------------------------------
@@ -147,30 +160,38 @@ SLock(r) ==
                  origin, tip, mtree, mid, dpc, dorig, dup>>
 
 \* `git add -A -- paths` + `git commit -- paths`; it fails when none of the
-\* paths changed any more (another run committed them).
+\* paths changed any more (another run committed them). For Dg: `pushNotes`
+\* writes its notes, then `add`, `hasStaged`, and `commit` them.
 SCommit(r) ==
   /\ spc[r] = "commit"
-  /\ IF paths[r] = {} THEN SGo(r, "fetch") /\ UNCHANGED <<cs, branch, detached, wtMem>>
-     ELSE IF paths[r] \cap wtMem = {}
-     THEN SEnd(r) /\ UNCHANGED <<cs, branch, detached, wtMem>>
-     ELSE /\ AddCommit({HEAD}, Tree(HEAD) \cup (paths[r] \cap wtMem))
+  /\ IF r = Dg
+     THEN /\ AddCommit({HEAD}, Tree(HEAD) \cup DigestEdits)
           /\ SetHead(NewId)
-          /\ wtMem' = wtMem \ paths[r]
+          /\ made' = made \cup DigestEdits
           /\ SGo(r, "fetch")
-  /\ UNCHANGED <<remote, tracking, made, holder, paths, origin, tip, mtree, mid,
+          /\ UNCHANGED wtMem
+     ELSE /\ IF paths[r] = {} THEN SGo(r, "fetch") /\ UNCHANGED <<cs, branch, detached, wtMem>>
+             ELSE IF paths[r] \cap wtMem = {}
+             THEN SEnd(r) /\ UNCHANGED <<cs, branch, detached, wtMem>>
+             ELSE /\ AddCommit({HEAD}, Tree(HEAD) \cup (paths[r] \cap wtMem))
+                  /\ SetHead(NewId)
+                  /\ wtMem' = wtMem \ paths[r]
+                  /\ SGo(r, "fetch")
+          /\ UNCHANGED made
+  /\ UNCHANGED <<remote, tracking, holder, paths, origin, tip, mtree, mid,
                  dpc, dorig, dup>>
 
-\* `git fetch origin main`.
+\* `git fetch origin main`. The names mutant is a sync mutant: Dg runs the code.
 SFetch(r) ==
   /\ spc[r] = "fetch"
   /\ tracking' = remote
-  /\ SGo(r, IF Ids = "fixed" THEN "readOrigin" ELSE "nBehind")
+  /\ SGo(r, IF Ids = "fixed" \/ r = Dg THEN "readOrigin" ELSE "nBehind")
   /\ UNCHANGED <<cs, remote, branch, detached, wtMem, made, holder, paths,
                  origin, tip, mtree, mid, dpc, dorig, dup>>
 
 \* --- Ids = "fixed": the code ------------------------------------------------
 
-\* `const origin = revParse(gate, env, "origin/main");`
+\* `const origin = revParse(repo, "origin/main");` in git.ts `fetchAndRead`
 SReadOrigin(r) ==
   /\ spc[r] = "readOrigin"
   /\ origin' = [origin EXCEPT ![r] = tracking]
@@ -178,7 +199,7 @@ SReadOrigin(r) ==
   /\ UNCHANGED <<cs, remote, tracking, branch, detached, wtMem, made, holder,
                  paths, tip, mtree, mid, dpc, dorig, dup>>
 
-\* `let tip = revParse(gate, env, "HEAD");` then `behind` and `ahead`, which
+\* `const tip = revParse(repo, "HEAD");` then `behind` and `ahead`, which
 \* count between the two fixed IDs, so no other writer can change them.
 SReadTip(r) ==
   /\ spc[r] = "readTip"
@@ -230,12 +251,12 @@ SFFMerge(r) ==
   /\ UNCHANGED <<cs, remote, tracking, wtMem, made, holder, paths, origin,
                  mtree, mid, dpc, dorig, dup>>
 
-\* `otherAheadPaths(origin, tip)`, then `push origin <tip>:refs/heads/main`.
+\* `changedBetween(origin, tip)`, then `push origin <tip>:refs/heads/main`.
 \* The check reads fixed IDs only, so it is part of this step. A push that
 \* succeeds also moves the local `origin/main`.
 SPush(r) ==
   /\ spc[r] = "push"
-  /\ IF Others(origin[r], tip[r]) = {} /\ CanPush(tip[r])
+  /\ IF Others(r, origin[r], tip[r]) = {} /\ CanPush(tip[r])
      THEN \/ remote' = tip[r] /\ tracking' = tip[r]
           \/ UNCHANGED <<remote, tracking>>           \* the push fails
      ELSE UNCHANGED <<remote, tracking>>
@@ -297,7 +318,7 @@ SNFFMerge(r) ==
 \* `otherAheadPaths`: `git log --no-merges origin/main..HEAD`
 SNCheck(r) ==
   /\ spc[r] = "nCheck"
-  /\ SGo(r, IF Others(tracking, HEAD) = {} THEN "nPush" ELSE "release")
+  /\ SGo(r, IF Others(r, tracking, HEAD) = {} THEN "nPush" ELSE "release")
   /\ UNCHANGED <<cs, remote, tracking, branch, detached, wtMem, made, holder,
                  paths, origin, tip, mtree, mid, dpc, dorig, dup>>
 
@@ -319,7 +340,7 @@ SFail(r) ==
   /\ UNCHANGED <<cs, remote, tracking, branch, detached, wtMem, made, holder,
                  paths, origin, tip, mtree, mid, dpc, dorig, dup>>
 
-\* `release` in `withLock`'s finally.
+\* `release` in `withLock`'s finally. Dg holds no lock, so it releases none.
 SRelease(r) ==
   /\ spc[r] = "release"
   /\ holder' = IF holder = r THEN NoRun ELSE holder
@@ -337,6 +358,7 @@ SyncStep(r) ==
 
 ----------------------------------------------------------------------------
 (* The other writers *)
+(* The rebase mutant (Digest = "rebase") is the D* actions below. *)
 
 \* Another host pushes a memory change to the remote `main`.
 RemotePush(e) ==
@@ -422,11 +444,11 @@ DigestStep == DCommit \/ DFetch \/ DRebase \/ DReplay \/ DPush
 
 ----------------------------------------------------------------------------
 
-Finished == /\ \A r \in Runs : spc[r] = "done"
+Finished == /\ \A r \in Procs : spc[r] = "done"
             /\ dpc = "done"
             /\ UNCHANGED vars
 
-Next == \/ \E r \in Runs : SyncStep(r)
+Next == \/ \E r \in Procs : SyncStep(r)
         \/ \E e \in RemoteEdits : RemotePush(e)
         \/ \E e \in PrivateEdits : UserCommit(e)
         \/ UserFetch

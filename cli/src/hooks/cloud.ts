@@ -6,39 +6,42 @@
  * `/home/user/agent-toolbox`), on the session's own branch. The vault root
  * (`LLMOS_ROOT`) is that checkout. The cloud's
  * GitHub proxy serves only attached repositories, so this is the one way a
- * cloud session can push vault notes. Each session pulls `main` into the
- * vault checkout, then links every repository beside it (`links.ts`); the
- * session's own project is linked in every session, local or cloud.
+ * cloud session can push vault notes. Each session fast-forwards the vault
+ * checkout to `origin/main` (never a rebase), then links every repository
+ * beside it (`links.ts`); the session's own project is linked in every
+ * session, local or cloud.
  * Locally this module does nothing.
  */
 
 import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
+import { locate, update } from "../git.ts";
 import { MEMORY_COLLECTION, MEMORY_PATTERN, qmdLocation } from "../qmd-location.ts";
 import { isDir, isFile, joinPath } from "./common.ts";
 import { linkAgentDirs } from "./links.ts";
 
 type Env = Record<string, string | undefined>;
 
-/** The session-start hook's timeout is 10 s; the pull must end well before it. */
-const PULL_TIMEOUT_MS = 6_000;
+// The session-start hook's timeout is 10 s: fetch 3 s + fast-forward 2 s,
+// plus five local calls of 1 s at most (each takes milliseconds).
+const LOCAL_TIMEOUT_MS = 1_000;
+const UPDATE_TIMEOUTS = { fetch: 3_000, merge: 2_000 };
 
-function firstLine(text: string): string {
-  return text.trim().split("\n")[0] ?? "";
-}
-
-/** `git pull --rebase origin main` in the vault checkout; an error message, or `null`. */
+/**
+ * Fetch `origin main` into the vault checkout and fast-forward it there
+ * (git.ts `update`); an error message, or `null`. A checkout with its own
+ * commits is left as it is.
+ */
 function pull(repository: string, env: Env): string | null {
-  const result = Bun.spawnSync({
-    cmd: ["git", "-C", repository, "pull", "--rebase", "--autostash", "--quiet", "origin", "main"],
-    env: { ...env, GIT_TERMINAL_PROMPT: "0" },
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: PULL_TIMEOUT_MS,
-  });
-  if (result.exitCode === 0) return null;
-  return firstLine(result.stderr.toString()) || `git exited with ${result.exitCode ?? "a signal"}`;
+  const repo = locate(repository, env, LOCAL_TIMEOUT_MS);
+  if (repo === null) return "the vault is not a git checkout";
+  const updated = update(repo, UPDATE_TIMEOUTS);
+  if (!("failed" in updated)) return null;
+  if (updated.failed === "diverged") {
+    return "the checkout has commits that are not on origin/main, so it was left as it is";
+  }
+  return updated.reason;
 }
 
 function isRepository(path: string): boolean {
@@ -129,8 +132,10 @@ export function cloudSetup(root: string, env: Env = process.env): string | null 
   const indexNote = buildIndex(root, env);
   if (indexNote) notes.push(indexNote);
   notes.push(
-    `This cloud session's vault checkout is ${root}. Commit vault changes there, ` +
-      "run git pull --rebase origin main, then git push origin HEAD:main. " +
+    `This cloud session's vault checkout is ${root}. Before you edit vault notes, ` +
+      "run git fetch origin main, then git merge --ff-only origin/main; if it refuses, stop and report why. " +
+      "Commit vault changes there, then git push origin HEAD:main; if the push is refused, stop and report. " +
+      "Never rebase, stash, or reset the vault checkout: those can drop commits. " +
       "Vault notes go to main, not to the session branch.",
   );
   return notes.join("\n");

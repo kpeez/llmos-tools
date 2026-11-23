@@ -1,0 +1,21 @@
+// No git argument list names a verb that can drop a commit, in the code or
+// in a test. `git pull --rebase --autostash` followed by `git rebase --abort`
+// dropped a memory commit; the verify-memory-sync model shows why.
+language js
+
+JsStringLiteralExpression() as $word where {
+  $word <: or {
+    r"^[\"']rebase[\"']$",
+    r"^[\"']--rebase[\"']$",
+    r"^[\"']--autostash[\"']$",
+    r"^[\"']stash[\"']$",
+    r"^[\"']reset[\"']$",
+    r"^[\"']pull[\"']$"
+  },
+  $word <: or { within JsArrayExpression(), within JsCallArguments() },
+  register_diagnostic(
+    span=$word,
+    message="rebase, --autostash, stash, reset, and pull are banned in git arguments because they drop commits (see the verify-memory-sync skill). Use cli/src/git.ts: fetch, merge-tree, commit-tree, merge --ff-only, and a push of one checked commit.",
+    severity="error"
+  )
+}

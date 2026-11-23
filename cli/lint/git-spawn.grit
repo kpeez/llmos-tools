@@ -1,0 +1,25 @@
+// Only cli/src/git.ts runs git (biome.json scopes this plugin to the code
+// outside it). A git spawn elsewhere skips its timeout, its unquoted paths,
+// its no-prompt setting, and its safe verbs. A tagged template such as
+// Bun.$`git ...` counts; a plain template string does not.
+language js
+
+or {
+  JsStringLiteralExpression() as $git where {
+    $git <: r"^[\"']git[\"']$",
+    $git <: or { within JsArrayExpression(), within JsCallArguments() },
+    register_diagnostic(
+      span=$git,
+      message="Run git only through cli/src/git.ts: it sets a timeout and path-safe options, and offers no rebase, stash, reset, or pull, which drop commits (see the verify-memory-sync skill).",
+      severity="error"
+    )
+  },
+  JsTemplateExpression() as $command where {
+    $command <: r"^[^`]+`\s*git\s[\s\S]*$",
+    register_diagnostic(
+      span=$command,
+      message="Run git only through cli/src/git.ts: it sets a timeout and path-safe options, and offers no rebase, stash, reset, or pull, which drop commits (see the verify-memory-sync skill).",
+      severity="error"
+    )
+  }
+}
