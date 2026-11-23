@@ -18,6 +18,13 @@ Newest first. Versions are the `version` field shared by
   `service.lock.db`, which the kernel releases when its holder exits or
   crashes, and `close()` no longer removes the socket path a second time.
   `just verify-llmos-service` model-checks the start rules with TLA+.
+- Two agents that save or forget shared memories at the same time no longer
+  lose `MEMORY.md` lines. `llmos memory save`, `llmos memory forget`, and the
+  MCP memory tools now read and rewrite the index under a lock file,
+  `projects/<project>/.memory.lock`, and wait up to 10 s for it. Before, each
+  write rewrote the index it had read, so a concurrent save dropped the other
+  save's line and left its topic note out of the index, or failed with "a file
+  already exists" on a new index.
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
