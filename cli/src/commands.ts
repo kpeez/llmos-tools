@@ -1042,7 +1042,7 @@ Do NOT use when you want to add a thought to a note -- use
     },
     push: {
       type: "boolean",
-      help: "Commit the notes this run wrote, merge origin/main without touching the work tree, and push that commit to main.",
+      help: "Commit the notes this run wrote, merge origin/main (a fast-forward merge updates the work tree, keeps unrelated edits, and refuses rather than overwrites them), and push that commit to main.",
     },
   },
   exampleOutput: `2026-07-16: updated

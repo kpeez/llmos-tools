@@ -73,8 +73,9 @@ and lets one run at a time hold its lock. The `verify-memory-sync` skill
 (`../.agents/skills/verify-memory-sync/`) lists the known findings it
 expects and how to read a failure.
 `just verify-models` runs every model check: each `../.agents/skills/verify-*`
-skill that holds a `.tla` file runs its `scripts/check.ts`. CI runs it in the
-`models` job, so a new model skill is gated with no workflow change.
+skill that holds a `.tla` file runs the `check.ts` script in its `scripts/`
+folder. CI runs it in the `models` job, so a new model skill is gated with no
+workflow change.
 Claude Code finds each repository skill through its committed link
 `../.claude/skills/<skill>` (to `../../.agents/skills/<skill>`). A new skill
 commits its own link.
