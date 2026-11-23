@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Model-check the shared-memory Git sync (cli/src/hooks/sync.ts) with TLC.
+ * Model-check the shared-memory Git sync (cli/src/hooks/sync.ts and the
+ * digest push in cli/src/digest.ts, both through cli/src/git.ts) with TLC.
  *
  * Runs every case in CASES and compares each result with what it expects:
  * the rules hold on the code, break on each mutant (so the check can still
@@ -25,23 +26,28 @@ const JAVA_TOOL = "java@temurin-25";
 
 /** Each line the models assume, as it appears in the source file. */
 const GUARDS: Record<string, string[]> = {
-  "cli/src/hooks/sync.ts": [
-    'const origin = revParse(gate, env, "origin/main");',
-    'let tip = revParse(gate, env, "HEAD");',
-    '["commit-tree", lines[0] ?? "", "-p", head, "-p", origin, "-m", MERGE_MESSAGE],',
-    "const refused = fastForward(gate, env, id, STOP_MERGE_TIMEOUT_MS);",
-    "const others = otherAheadPaths(gate, env, origin, tip);",
+  "cli/src/git.ts": [
+    'const origin = revParse(repo, "origin/main");',
+    'const tip = revParse(repo, "HEAD");',
+    '["merge", "--ff-only", "--quiet", target]',
+    '["commit-tree", lines[0] ?? "", "-p", head, "-p", origin, "-m", message],',
+    "const refused = fastForward(repo, id, timeout);",
+    "const changed = changedBetween(checkout, origin, tip);",
     '["push", "--quiet", "origin", `${tip}:refs/heads/main`],',
+  ],
+  "cli/src/hooks/sync.ts": [
+    "const commitError = commit(gate, paths, COMMIT_MESSAGE);",
+    "const published = publish(gate, {",
+    "allowed: (path) => SHARED_MEMORY_PATH.test(path),",
     'const fd = openSync(path, "wx");',
     "renameSync(path, taken);",
     "linkSync(taken, path);",
     'if (readFileSync(path, "utf8") === token) rmSync(path, { force: true });',
   ],
   "cli/src/digest.ts": [
-    'git(root, ["commit", "--quiet", "-m", message, "--", ...paths]);',
-    'git(root, ["pull", "--quiet", "--rebase", "--autostash"]);',
-    'Bun.spawnSync(["git", "rebase", "--abort"], { cwd: root, stdout: "ignore", stderr: "ignore" });',
-    'git(root, ["push", "--quiet"]);',
+    "const commitError = staged ? commit(checkout, inRepo, message) : null;",
+    "const published = publish(checkout, {",
+    "return DAILY_NOTE.test(path) || path === DIGEST_NOTE || SHARED_MEMORY_PATH.test(path);",
   ],
 };
 
@@ -77,31 +83,29 @@ const CASES: Case[] = [
       expect: "breaks",
     }),
   ),
+  { label: "sync + digest push, code", spec: "MemorySync", cfg: "MemorySyncDigest.cfg", expect: "holds" },
   {
-    label: "sync + digest push, code",
+    label: "sync + digest push, code, no lock at all",
     spec: "MemorySync",
     cfg: "MemorySyncDigest.cfg",
-    invariant: "NoRemoteRevert",
+    set: { Mutex: "FALSE" },
     expect: "holds",
   },
   {
-    label: "sync + digest push, code, no private notes",
+    label: "sync + digest push, rebase mutant, no private notes",
     spec: "MemorySync",
     cfg: "MemorySyncDigest.cfg",
-    set: { PrivateEdits: "{}" },
+    set: { Digest: '"rebase"', PrivateEdits: "{}" },
     invariant: "NoLocalLoss",
     expect: "breaks",
-    finding:
-      "known finding: `git rebase --abort` in the digest push drops a commit made while its pull has HEAD detached, here the sync's memory commit",
   },
   {
-    label: "sync + digest push, code",
+    label: "sync + digest push, rebase mutant",
     spec: "MemorySync",
     cfg: "MemorySyncDigest.cfg",
+    set: { Digest: '"rebase"' },
     invariant: "OnlyCheckedPush",
     expect: "breaks",
-    finding:
-      "known finding: the digest push's plain `git push` publishes every unpushed commit, also a private note",
   },
   { label: "lock, code, 2 runs", spec: "SyncLock", cfg: "SyncLock.cfg", expect: "holds" },
   {

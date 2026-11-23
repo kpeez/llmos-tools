@@ -1,6 +1,6 @@
 ---
 name: verify-memory-sync
-description: Model-check with TLA+ that the shared-memory Git sync never reverts remote or local work, never pushes a private note, and that its lock admits one run at a time. Use when a change touches syncOnStop, mergeDiverged, otherAheadPaths, fastForward, or the lock (acquire, release, withLock) in cli/src/hooks/sync.ts, or pushNotes in cli/src/digest.ts, or any other code that runs git in the vault checkout, or when `just verify-memory-sync` fails.
+description: Model-check with TLA+ that the shared-memory Git sync and the digest push never revert remote or local work, never push a private note, and that the sync lock admits one run at a time. Use when a change touches cli/src/git.ts (publish, update, mergeDiverged, changedBetween, fastForward), syncOnStop or the lock (acquire, release, withLock) in cli/src/hooks/sync.ts, pushNotes in cli/src/digest.ts, or any other code that runs git in the vault checkout, or when `just verify-memory-sync` fails.
 ---
 
 # Verify the shared-memory Git sync
@@ -28,30 +28,33 @@ just verify-memory-sync
 
 The recipe runs `scripts/check.ts`. It runs each case below with TLC and
 exits 0 only when every case gives its expected result and every line in
-`GUARDS` (in `scripts/check.ts`) is still in `cli/src/hooks/sync.ts` or
-`cli/src/digest.ts`.
+`GUARDS` (in `scripts/check.ts`) is still in `cli/src/git.ts`,
+`cli/src/hooks/sync.ts`, or `cli/src/digest.ts`.
 
 | Case | Expected |
 | --- | --- |
 | Sync, the code, all rules | holds |
 | Sync, the code, no lock at all (`Mutex = FALSE`) | holds |
 | Sync, names mutant (`Ids = "names"`), each rule | breaks |
-| Sync + digest push, the code, `NoRemoteRevert` | holds |
-| Sync + digest push, the code, `NoLocalLoss` | breaks: known finding 1 |
-| Sync + digest push, the code, `OnlyCheckedPush` | breaks: known finding 2 |
+| Sync + digest push, the code, all rules | holds |
+| Sync + digest push, the code, no lock at all (`Mutex = FALSE`) | holds |
+| Sync + digest push, rebase mutant (`Digest = "rebase"`), `NoLocalLoss` | breaks |
+| Sync + digest push, rebase mutant, `OnlyCheckedPush` | breaks |
 | Lock, the code, 2 runs | holds |
 | Lock, rm mutant (`Lock = "rm"`), 2 runs | breaks |
-| Lock, the code, 3 runs | breaks: known finding 3 |
+| Lock, the code, 3 runs | breaks: known finding |
 
 Each break prints the counterexample's action names. The first run installs
 Java and the pinned TLC jar with mise, and needs the network. Set `TLA2TOOLS`
-and `JAVA` to use another TLC. A run takes about 15 s.
+and `JAVA` to use another TLC. A run takes about 45 s; the digest case
+without a lock takes most of it.
 
 ## The mutants
 
-Each mutant is the code before a fix in `29cf240` (shared project memory,
-#165), whose review rounds found both bugs. A mutant that breaks shows that
-the check can still fail.
+Each mutant is the code before a fix. A mutant that breaks shows that the
+check can still fail. The names and rm mutants are the code before two fixes
+in `29cf240` (shared project memory, #165), whose review rounds found both
+bugs.
 
 - **Names mutant** (`Ids = "names"`): every git call resolved the names
   `HEAD` and `origin/main` again when it ran, and the push was
@@ -66,55 +69,63 @@ the check can still fail.
   `rmSync(path)`, and release removed the lock file whoever owned it. Two
   runs both see a stale lock; one removes it and creates its own; the other
   then removes that fresh lock and creates its own. Both hold the lock.
+- **Rebase mutant** (`Digest = "rebase"`): `pushNotes` before it moved onto
+  `cli/src/git.ts`. It committed its notes, ran `git pull --rebase
+  --autostash`, then `git rebase --abort` when the pull failed, and ended
+  with a plain `git push`. It breaks two rules:
+  - `NoLocalLoss`: a Stop sync passes its gate; another host pushes; the
+    digest commits its note, fetches, and the rebase detaches HEAD; the
+    sync commits its memory file on the detached HEAD; the rebase
+    conflicts; the abort puts `main` back. The memory commit is off every
+    branch, and the abort resets its file on disk. The test "a memory commit
+    made when HEAD is checked out" in `cli/test/digest.test.ts` replays it
+    with real git: a `post-checkout` hook makes the sync's commit.
+  - `OnlyCheckedPush`: the plain `git push` publishes every unpushed commit
+    on `main`. One actor is enough: the user commits a private note, then
+    the digest runs.
+
+  A Biome plugin (`cli/lint/git-words.grit`) now fails on `rebase`,
+  `--autostash`, `stash`, `reset`, or `pull` in any git argument list, and
+  another (`cli/lint/git-spawn.grit`) on a git spawn outside `cli/src/git.ts`.
 
 ## Known findings
 
-The code breaks these cases. They stay findings until the code changes. Do
-not weaken a rule or the model to make them pass.
+The code breaks this case. It stays a finding until the code changes. Do
+not weaken a rule or the model to make it pass.
 
-1. **The digest push drops a commit made during its rebase.** `pushNotes`
-   runs `git pull --rebase --autostash` and, when it fails, `git rebase
-   --abort`. Trace: a Stop sync passes its gate; another host pushes; the
-   digest commits its note, fetches, and the rebase detaches HEAD; the sync
-   commits its memory file on the detached HEAD; the rebase conflicts; the
-   abort puts `main` back. The memory commit is off every branch, and the
-   abort resets its file on disk. Replayed with real git: a `post-checkout`
-   hook made the sync's commit when the rebase detached HEAD.
-2. **The digest push publishes private notes.** `pushNotes` ends with a
-   plain `git push`, which publishes every unpushed commit on `main`. The
-   sync refuses to push them (`otherAheadPaths`); the digest does not. One
-   actor is enough: the user commits a private note, then the digest runs.
-3. **The token lock admits two runs when three race over a stale lock.** Run
+1. **The token lock admits two runs when three race over a stale lock.** Run
    A renames the stale lock away. Run B's `statSafe(path)` finds no file in
    that moment, which `acquire` does not treat as a live lock, so B goes on
    to `renameSync`. A creates its own lock, and B renames that fresh lock
    away. Run C creates a lock before B links A's lock back. A and C both
-   hold. The case "Sync,
-   no lock at all" shows that the data rules hold even then: the fixed
-   commit IDs and `--ff-only` refuse instead of overwriting.
+   hold. The cases "no lock at all" show that the data rules hold even
+   then, with the digest too: the fixed commit IDs and `--ff-only` refuse
+   instead of overwriting.
 
 ## What the models cover
 
 `MemorySync.tla` with `MemorySync.cfg` (2 sync runs, 1 local memory edit, 2
 remote memory edits, 1 private note) and `MemorySyncDigest.cfg` (the same
-with the digest push and 1 remote edit). Each action is one git call:
+with the digest push and 1 remote edit). The digest is one more run, `Dg`,
+of the same steps as the sync, from `SCommit` on: it runs no sync gate and
+takes no lock. Each action is one git call:
 
-| Model | Code (`cli/src/hooks/sync.ts` unless named) |
+| Model | Code |
 | --- | --- |
-| `SGate` | `syncGate`, `changedMemoryPaths`, and `count(origin/main..HEAD)` before `withLock` in `syncOnStop` |
+| `SGate` | `syncGate` (git.ts `mainCheckout`), `changedMemoryPaths`, and `hasUnpushed` before `withLock` in `syncOnStop` |
 | `SLock`, `SRelease` | `withLock` as a perfect lock (`Mutex = TRUE`) or no lock (`Mutex = FALSE`) |
-| `SCommit` | `git add -A -- paths` and `git commit -- paths` |
-| `SFetch`, `SFail` | `fetch`; a fetch or push failure returns with `warn` |
-| `SReadOrigin`, `SReadTip` | `revParse(... "origin/main")`, `revParse(... "HEAD")`, `behind`, `ahead` |
-| `SFFOrigin` | `fastForward(gate, env, origin, ...)` when behind only |
-| `SMergeTree`, `SCommitTree`, `SFFMerge` | `mergeDiverged`: `merge-tree`, `commit-tree -p head -p origin`, `fastForward(id)` |
-| `SPush` | `otherAheadPaths(origin, tip)`, then `push origin <tip>:refs/heads/main` |
+| `SCommit` | git.ts `add` and `commit` of the memory paths; for `Dg`, `pushNotes` in `cli/src/digest.ts`: `add`, `hasStaged`, `commit` of its notes |
+| `SFetch`, `SFail` | git.ts `fetchMain`; a fetch or push failure ends the run |
+| `SReadOrigin`, `SReadTip` | git.ts `fetchAndRead`: `revParse(repo, "origin/main")`, `revParse(repo, "HEAD")`, `behind`, `ahead` |
+| `SFFOrigin` | git.ts `publish`: `fastForward(checkout, origin, ...)` when behind only |
+| `SMergeTree`, `SCommitTree`, `SFFMerge` | git.ts `mergeDiverged`: `merge-tree`, `commit-tree -p head -p origin`, `fastForward(id)` |
+| `SPush` | git.ts `publish`: `changedBetween(origin, tip)` against the run's allowed paths (memory; for `Dg` also daily notes), then `push origin <tip>:refs/heads/main` |
 | `SN*` | the names mutant of the steps above |
 | `RemotePush` | another host's sync pushes a memory change |
 | `UserCommit`, `UserFetch` | the user or Obsidian Git commits a note or fetches |
-| `DCommit` | `pushNotes` in `cli/src/digest.ts`: `git add`, `git diff --cached`, `git commit -- paths` |
-| `DFetch`, `DRebase`, `DReplay` | `git pull --rebase --autostash`: the fetch, the detach at the upstream, the replay or the conflict and `git rebase --abort` |
-| `DPush` | `git push` |
+| `DCommit` | rebase mutant: `git add`, `git diff --cached`, `git commit -- paths` |
+| `DFetch`, `DRebase`, `DReplay` | rebase mutant: `git pull --rebase --autostash`: the fetch, the detach at the upstream, the replay or the conflict and `git rebase --abort` |
+| `DPush` | rebase mutant: `git push` |
 
 `SyncLock.tla` with `SyncLock.cfg` (2 runs, and in some initial states a
 stale lock of a killed run): `create`, `acquire`, and `release`, one action
@@ -129,21 +140,35 @@ Assumptions, which the check does not cover:
   about commits. A conflict that `--autostash` leaves in the work tree is
   out of scope.
 - `git add` plus `git commit -- paths` is one step. A pathspec commit takes
-  only those paths, so another writer's staged files never enter it.
-- A rebase replays all local commits as one commit. Git may refuse a
-  pathspec commit while a rebase is stopped on a conflict, so in the code
-  the window of finding 1 can be shorter than in the model.
+  only those paths, so another writer's staged files never enter it. Two
+  writers' local calls never interleave inside one git call: git's
+  `index.lock` makes a concurrent `add` or `commit` fail, which ends that
+  run without a change.
+- In the code the digest may push every daily note and its run note
+  (`categories/Reviews.md`), not only the notes of this run, so a later run
+  retries a push that failed. The model's `DigestEdits` stand for these.
+  Daily notes are not private notes: the digest publishes them whole.
+- The rebase mutant replays all local commits as one commit. Git may refuse
+  a pathspec commit while a rebase is stopped on a conflict, so in that
+  code the window of the lost commit can be shorter than in the model.
 - The user never pushes. Every private note on the remote was pushed by a
   tool.
-- `syncOnStart` is not modeled. It runs under the same lock, and it only
-  fast-forwards with `--ff-only`, which refuses rather than overwrites.
+- `syncOnStart` and the cloud session start (`cli/src/hooks/cloud.ts`) are
+  not modeled. Both run git.ts `update`, which only fast-forwards with
+  `--ff-only` to a fixed commit ID, and that refuses rather than
+  overwrites. The cloud session has no sync and no digest.
 - A lock is stale only when its run is gone: a hook runs at most 30 s and a
   lock goes stale after 60 s. A suspended laptop can break this.
 - Bounds: 2 sync runs (3 in the lock case), 1 or 2 remote edits, 1 memory
   edit, 1 private note, 1 digest run.
+- The digest takes no sync lock. The case "sync + digest push, the code"
+  checks it beside sync runs that serialize; the case without a lock checks
+  it with no lock at all. A scratch mutant that let the digest push private
+  notes broke `OnlyCheckedPush` through `Dg`'s own steps, so these cases do
+  reach the digest's push.
 
-Sync commit: `91504b6` (feat(hooks): have the cloud agent attach the vault
-itself). At that commit, the models describe the code.
+Sync commit: the change "refactor(git): run every git call through
+cli/src/git.ts". At that change, the models describe the code.
 
 ## When a change touches the covered code
 
@@ -164,8 +189,7 @@ itself). At that commit, the models describe the code.
 4. When a fix ends a known finding, the check fails with "the finding no
    longer reproduces". Confirm the fix, then set that case to `holds` in
    `CASES` in `scripts/check.ts`, and update the table and the findings
-   here. When `pushNotes` stops rebasing, its `GUARDS` lines go away:
-   change `DFetch`, `DRebase`, `DReplay`, and `DPush` to the new calls.
+   here. Keep the code before the fix as a mutant case that breaks.
 5. When a guard line moved or changed, update `GUARDS` in `scripts/check.ts`
    to the new line, and keep the model in step.
 6. After you confirm that the models describe the code, set the sync commit
