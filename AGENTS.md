@@ -44,9 +44,10 @@ A hook writes its output only through `emit()` in `cli/src/hooks/main.ts`,
 which gives each event the envelope its harness reads. Hook, MCP, and memory
 code never writes to a console or to stdout, and never reads the process folder
 to find its scope. A Biome lint (`cli/lint/hook-channels.grit`) fails on
-`process.stdout`, `Bun.stdout`, every `console.*` call, `process.cwd()`, and
-on destructuring or importing `stdout` or `cwd` from `process`, `node:process`,
-or `Bun`. It does not catch indirect access such as `process["stdout"]`. It
+`process.stdout`, `Bun.stdout`, `process.cwd` (called or not), any use of the
+names `console` and `globalThis`, and destructuring or importing `stdout` or
+`cwd` from `process`, `node:process`, or `Bun`. It does not catch a computed
+key such as `process["stdout"]` or an alias such as `const p = process`. It
 applies to `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except `main.ts`.
 
 Never point a manual run or a test at the real qmd index

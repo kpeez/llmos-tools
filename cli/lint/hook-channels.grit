@@ -7,7 +7,7 @@ language js
 
 or {
   JsStaticMemberExpression() as $stdout where {
-    $stdout <: r"process\.stdout",
+    $stdout <: r"^process\??\.stdout$",
     register_diagnostic(
       span=$stdout,
       message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
@@ -15,18 +15,18 @@ or {
     )
   },
   JsStaticMemberExpression() as $bunout where {
-    $bunout <: r"Bun\.stdout",
+    $bunout <: r"^Bun\??\.stdout$",
     register_diagnostic(
       span=$bunout,
       message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
       severity="error"
     )
   },
-  JsCallExpression() as $log where {
-    $log <: r"console\.[A-Za-z]+\([\s\S]*",
+  JsIdentifierExpression() as $log where {
+    $log <: r"^(?:console|globalThis)$",
     register_diagnostic(
       span=$log,
-      message="Emit through main.ts: a console method writes to stdout or stderr, which a harness may drop or reject. Use emit() in cli/src/hooks/main.ts.",
+      message="Emit through main.ts: console writes to stdout or stderr, and globalThis reaches console and process around this lint; a harness may drop or reject that output. Use emit() in cli/src/hooks/main.ts.",
       severity="error"
     )
   },
@@ -47,8 +47,8 @@ or {
       severity="error"
     )
   },
-  JsCallExpression() as $cwd where {
-    $cwd <: r"process\.cwd\(\)",
+  JsStaticMemberExpression() as $cwd where {
+    $cwd <: r"^process\??\.cwd$",
     register_diagnostic(
       span=$cwd,
       message="Take scope from session roots, not process.cwd(): the harness may start the process in the plugin folder. Use the payload cwd or the project root.",

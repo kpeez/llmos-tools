@@ -11,7 +11,7 @@
 import { lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { extname } from "node:path";
-import { vaultRoot } from "../root.ts";
+import { absoluteVaultRoot } from "../root.ts";
 
 const MAX_SYMLINKS = 40;
 
@@ -211,7 +211,7 @@ export function pathFrom(value: unknown, cwd?: unknown): string | null {
 /** The configured llmOS root, resolved, or `null` when it is not configured or invalid. */
 export function resolvedRoot(): string | null {
   try {
-    return realpath(vaultRoot());
+    return realpath(absoluteVaultRoot());
   } catch {
     return null;
   }
