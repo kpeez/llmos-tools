@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
