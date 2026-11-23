@@ -17,7 +17,9 @@ sessions may retain their previous plugin definitions.
 `dist/hooks.js`, which `bun build` bundles from `cli/src/hooks/`. It runs from
 the plugin cache with no install step and needs only `bun` on the hook
 `PATH`. The same command serves Claude and Codex: each entry names its event
-on the command line, and the JSON payload arrives on stdin.
+on the command line, and the JSON payload arrives on stdin. The `hooks.json`
+at the repository root is the Antigravity copy: it holds the same command
+under Antigravity's tool names, and Antigravity finds it at the plugin root.
 
 ```sh
 bun --no-env-file --config=/dev/null "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>
@@ -255,6 +257,12 @@ cloud session, the vault is in a Git work tree with an `origin`, the branch is
 kernel lock of `cli/src/lock.ts`); a run that finds it held skips. The kernel
 drops the lock when its holder exits or crashes, so no run removes a lock
 file. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
+
+Session start also provisions shared project memory for a vault project
+(`provisionMemory` in `links.ts`). It creates `projects/<slug>/memory/` in the
+vault and rewrites the project's `.claude/settings.local.json` to set
+`autoMemoryDirectory` to that folder. It keeps the file's other keys, skips a
+file that is not a JSON object, and keeps the file out of Git.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`

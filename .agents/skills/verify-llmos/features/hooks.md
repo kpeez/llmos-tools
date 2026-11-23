@@ -12,7 +12,7 @@ The hook bundle `dist/hooks.js` runs for Claude Code and Codex. Each event reads
 
 ## How to get to it (user POV)
 
-- The agent harness runs `bun --no-env-file --config=/dev/null dist/hooks.js <event>` from `tools/hooks/hooks.json`. A user never calls it by hand.
+- The agent harness runs `bun --no-env-file --config=/dev/null dist/hooks.js <event>` from `hooks/hooks.json`. A user never calls it by hand.
 - The harness sets `CLAUDE_PLUGIN_ROOT`. The skill does not need it.
 
 ## Driving it with scripts/verify.ts
