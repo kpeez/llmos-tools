@@ -19,14 +19,11 @@
  * vault, so it is never synced and no link in the vault can redirect it.
  */
 
-import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, statSync } from "node:fs";
+import { lstatSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
-import { locate } from "./git.ts";
-import { stateDir } from "./heartbeat.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
-import { type HeldLock, LockRefused, waitLock } from "./lock.ts";
+import { type HeldLock, LockRefused, vaultLockPath, waitLock } from "./lock.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
 import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
@@ -37,8 +34,6 @@ export const MAX_INDEX_LINES = 200;
 export const MAX_INDEX_BYTES = 25_000;
 /** How long a save or forget waits for another one to finish. */
 const LOCK_WAIT_MS = 10_000;
-/** The timeout of the one git call that finds the git common dir. */
-const LOCAL_GIT_MS = 5_000;
 /** The project of a session with no vault project workspace. */
 export const PERSONAL_PROJECT = "personal";
 export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
@@ -223,22 +218,9 @@ function existing(root: string, relative: string): string | null {
   return readText(real);
 }
 
-/**
- * The lock file of the project that holds `scope`, outside the work tree so
- * no link in the vault can redirect it and no sync sees it. When the vault
- * is a git checkout it sits in the git common dir (beside the sync lock), so
- * every writer of that vault finds it, whatever its home or state folder.
- * Otherwise it sits in the llmOS state folder, and only writers that share
- * that folder exclude each other.
- */
+/** The lock file of the project that holds `scope`; see `vaultLockPath`. */
 export function memoryLockPath(root: string, scope: MemoryScope, env: Env): string {
-  const project = newTarget(root, dirname(scope.dir));
-  const key = createHash("sha256").update(project).digest("hex").slice(0, 16);
-  const repo = locate(root, env, LOCAL_GIT_MS);
-  if (repo !== null) return join(repo.commonDir, `llmos-memory-${key}.lock.db`);
-  const folder = join(stateDir(env), "locks");
-  mkdirSync(folder, { recursive: true, mode: 0o700 });
-  return join(folder, `memory-${key}.db`);
+  return vaultLockPath(root, "memory", newTarget(root, dirname(scope.dir)), env);
 }
 
 /**

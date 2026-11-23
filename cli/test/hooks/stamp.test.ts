@@ -10,12 +10,14 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { checkNote } from "../../src/authoring.ts";
+import { vaultLockPath } from "../../src/lock.ts";
 import { type Note, VaultModel } from "../../src/vault.ts";
 import {
   additionalContext,
@@ -390,5 +392,36 @@ describe("shared project memory and Antigravity hooks", () => {
     });
     expect(stopRes.exitCode).toBe(0);
     expect(JSON.parse(stopRes.stdout)).toEqual({});
+  });
+});
+
+describe("a held note lock", () => {
+  test("stops the stamp after one short wait and says so, inside the hook timeout", async () => {
+    const { tmp, vault, note } = setup(MESSY_NOTE);
+    const lock = vaultLockPath(vault, "notes", realpathSync(vault), { HOME: join(tmp, "home") });
+    const holder = Bun.spawn(
+      [
+        "bun",
+        "-e",
+        `import { tryLock } from ${JSON.stringify(join(import.meta.dir, "../../src/lock.ts"))};
+         const held = tryLock(${JSON.stringify(lock)});
+         console.log("held");
+         setInterval(() => held?.release, 1000);`,
+      ],
+      { stdout: "pipe" },
+    );
+    try {
+      await holder.stdout.getReader().read();
+      const started = Date.now();
+
+      const result = stamp(note, tmp, vault);
+
+      expect(Date.now() - started).toBeLessThan(8_000);
+      expect(result.exitCode).toBe(0);
+      expect(additionalContext(result, "PostToolUse")).toContain("note lock was busy");
+      expect(readFileSync(note, "utf8")).toBe(MESSY_NOTE);
+    } finally {
+      holder.kill("SIGKILL");
+    }
   });
 });
