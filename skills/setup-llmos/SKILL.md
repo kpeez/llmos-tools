@@ -118,12 +118,13 @@ not prove the hooks can see it; the heartbeat check below does.
 
 Every time the session-start hook runs, it records a heartbeat in
 `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`, keyed by agent
-(`claude`, `codex`): the time, the Bun version, the SHA-256 of the hook
+(`claude`, `codex`, `agy`, `hermes`): the time, the Bun version, the SHA-256 of the hook
 bundle that ran, and the plugin root. `llmos doctor` finds the installed
 plugin for each agent (Claude's `~/.claude/plugins/installed_plugins.json`, or
 the claude.ai account sync's `~/.claude/plugins/synced/<bucket>/` folder,
 Codex's `[plugins."llmos@llmos-tools"]` in `~/.codex/config.toml` and its
-plugin cache) and checks the heartbeat against it:
+plugin cache, Antigravity's `~/.gemini/config/plugins/llmos`, Hermes Agent's
+`~/.hermes/plugins/llmos` link) and checks the heartbeat against it:
 
 - `PASS hooks-<agent>`: the installed hooks have run.
 - `FAIL hooks-<agent>`: no heartbeat, or the last one ran another bundle than
