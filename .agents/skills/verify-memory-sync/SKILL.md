@@ -159,8 +159,10 @@ Assumptions, which the check does not cover:
 - A git call that a time limit or the hook deadline (`cli/src/run.ts`) kills,
   or never starts, fails (`ok: false`). A failed fetch or push ends the run,
   as `SFail` does. A failed read can change the path instead: `publish`
-  reads a failed `rev-list` as "not ahead" and then at most fast-forwards,
-  and `--ff-only` refuses to move over local commits. A kill of `merge --ff-only`
+  reads a failed `rev-list` as "not ahead" or "not behind". "Not ahead"
+  leads at most to a fast-forward, and `--ff-only` refuses to move over local
+  commits. "Not behind" can skip the merge and reach the push, which the
+  remote refuses when `origin` moved. A kill of `merge --ff-only`
   checks `HEAD` against the target (`fastForward`). A skipped `commit` also
   skips its `restore --staged`, so the index can stay staged until the next
   run. No step of the code removes a commit, and `publish` pushes only after

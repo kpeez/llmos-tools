@@ -221,7 +221,9 @@ export function hasStaged(repo: Repo, paths: string[]): boolean | { error: strin
 
 /**
  * Commit only `paths`, whatever else is staged; the reason on failure. On
- * failure the paths are unstaged again, so the index is as before `add`.
+ * failure the paths are unstaged again, so the index is as before `add`,
+ * unless the hook deadline has passed: then the unstage is skipped too, and
+ * the paths stay staged until the next run commits them.
  */
 export function commit(repo: Repo, paths: string[], message: string): string | null {
   const committed = run(
