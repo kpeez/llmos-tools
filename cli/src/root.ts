@@ -13,7 +13,7 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 
 export const DEFAULT_CONFIG_PATH = join(homedir(), ".config", "llmos", "config.json");
 export const DEFAULT_REGISTRY_PATH = join(
@@ -86,6 +86,16 @@ export function vaultRoot(options: RootOptions = {}): string {
   const root = readConfig(options.configPath ?? DEFAULT_CONFIG_PATH).vault_root;
   if (root !== undefined) return validated(expandUser(String(root)));
   throw new VaultRootError(REPAIR_MESSAGE);
+}
+
+/**
+ * `vaultRoot()` made absolute: a relative root (`LLMOS_ROOT=vault`) is
+ * anchored at the process folder. The hooks use it, as they read no process
+ * folder themselves; the CLI prints the root as configured.
+ */
+export function absoluteVaultRoot(options: RootOptions = {}): string {
+  const root = vaultRoot(options);
+  return isAbsolute(root) ? root : resolve(root);
 }
 
 /** Every vault root Obsidian's registry knows about. Throws if the registry is missing. */
