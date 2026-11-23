@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The shared-memory sync merges a rename on one side with an edit on the
+  other side again. Since the change that turned off rename detection in every
+  git call, `git merge-tree` refused such a pair as a modify/delete conflict.
+  The merge call now turns rename detection on. The name lists that check for
+  private paths still never detect renames.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
