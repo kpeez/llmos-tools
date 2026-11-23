@@ -135,6 +135,20 @@ describe("raw mv and rm on vault notes", () => {
     expect(notShell.stderr).toBe("");
   });
 
+  test("pre-tool-use guards a shell command whose payload names no tool, as guard-bash does", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+    const payload = { tool_input: { command: `rm ${note}` }, cwd: vault };
+
+    const guarded = runHook("guard-bash", payload, tmp, { root: vault });
+    const merged = runHook("pre-tool-use", payload, tmp, { root: vault });
+
+    expect(guarded.exitCode).toBe(2);
+    expect(merged.exitCode).toBe(2);
+    expect(merged.stderr).toBe(guarded.stderr);
+  });
+
   test("guards a vault known only from Obsidian's registry", () => {
     const tmp = temporaryFolder();
     const notebook = makeVault(join(tmp, "notebook"));

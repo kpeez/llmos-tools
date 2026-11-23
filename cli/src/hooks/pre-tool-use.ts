@@ -25,7 +25,13 @@ import { preToolUse } from "./context.ts";
 import { checkCommand } from "./guard.ts";
 import { type Handlers, runHook } from "./runtime.ts";
 
-const SHELL_TOOLS = new Set(["Bash", "run_command"]);
+/**
+ * The tools whose command the guard checks. A payload that names no tool is
+ * checked too: `guard-bash` checks every payload, and the merged hook must
+ * never be weaker. A named tool that is not a shell is not checked, since
+ * Codex's `apply_patch` carries patch text in `command`.
+ */
+const SHELL_TOOLS = new Set(["Bash", "run_command", ""]);
 
 /**
  * Every folder the guard checks a command from, so it is never weaker than
