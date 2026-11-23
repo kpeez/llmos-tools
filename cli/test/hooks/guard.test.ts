@@ -175,6 +175,9 @@ describe("raw mv and rm on vault notes", () => {
       `echo a\\\\\nmv ${note} ${other}`,
       `rm &>/dev/null ${note}`,
       `2>/dev/null rm ${note}`,
+      `ls &</dev/null rm ${note}`,
+      `echo hi\nrm >| log ${note}`,
+      `echo hi\nrm 2>|log ${note}`,
     ];
     for (const command of denied) {
       const result = guard(command, tmp, { root: vault });

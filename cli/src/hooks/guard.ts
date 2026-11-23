@@ -39,7 +39,8 @@ const QUOTES_AND_ESCAPES = /["'\\]/g;
 const CONTINUATION = /\\\n/g;
 const OPERATOR = /^[();|&<>\n]+$/;
 const SEPARATES = /[();|&\n]/;
-const REDIRECT_AMPERSAND = /&(?=[<>])|(?<=[<>])&/g;
+const CLOBBER = />\|/g;
+const REDIRECT_AMPERSAND = /&(?=>)|(?<=[<>])&/g;
 const REDIRECTS = /[<>]&?$/;
 const FD_NUMBER = /^\d+$/;
 
@@ -107,7 +108,8 @@ function pythonSubcommands(tokens: string[]): string[][] {
  * can both end a subcommand and redirect (`;`, a newline, then `>`), so each
  * part applies: a separator character starts a new subcommand, and a run that
  * ends in `<` or `>` drops the next word, the redirection's operand, with any
- * file-descriptor number before it (`2>/dev/null`).
+ * file-descriptor number before it (`2>/dev/null`). The `&` of `&>`, `>&`, and
+ * `<&`, and the `|` of `>|`, belong to the redirection and separate nothing.
  */
 function shellSubcommands(tokens: string[]): string[][] {
   const subcommands: string[][] = [];
@@ -115,11 +117,12 @@ function shellSubcommands(tokens: string[]): string[][] {
   let skipOperand = false;
   tokens.forEach((token, index) => {
     if (OPERATOR.test(token)) {
-      if (SEPARATES.test(token.replace(REDIRECT_AMPERSAND, ""))) {
+      const redirection = token.replace(CLOBBER, ">");
+      if (SEPARATES.test(redirection.replace(REDIRECT_AMPERSAND, ""))) {
         if (current.length > 0) subcommands.push(current);
         current = [];
       }
-      skipOperand = REDIRECTS.test(token);
+      skipOperand = REDIRECTS.test(redirection);
     } else if (skipOperand) {
       skipOperand = false;
     } else if (!(FD_NUMBER.test(token) && REDIRECTS.test(tokens[index + 1] ?? ""))) {
