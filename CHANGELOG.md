@@ -6,6 +6,14 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `just release <major|minor|patch>` is now the only writer of the plugin
+  version. It sets the four version fields (the three `plugin.json` files and
+  `cli/package.json`) and dates the `## Unreleased` notes under the new
+  version. `just release-check`, which `just check` and CI run, fails when the
+  fields differ, when the version differs from `main` and the CHANGELOG has no
+  heading for it, and in CI when a version change is in a pull request not
+  titled `chore(release): ...`. It warns when shipped files changed since the
+  last release and the version stayed the same.
 - The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
   folder that is not a vault. It prints one context line that names the
   folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
