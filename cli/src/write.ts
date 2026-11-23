@@ -8,10 +8,14 @@
  * Every function takes the vault root and a vault-relative path. A write
  * lands only inside the vault: the path may not be absolute or climb out
  * with `..`, and its real path (every symbolic link in it resolved) must be
- * inside the real vault root (`resolveInVault`, `newTarget`). So a symlinked note or folder that points
+ * inside the real vault root. So a symlinked note or folder that points
  * inside the vault is written through, and one that points outside is
  * refused (`WriteRefused`). The temporary file lives in the real target's
  * folder, so the final rename never crosses folders.
+ *
+ * A function that reads a note, changes it, and writes it back does that under
+ * the vault's note lock (`withNoteLock`), so two writers at once, in any
+ * process, never lose each other's change. Obsidian takes no lock.
  *
  * Each function reads the note again just before writing it. A note whose
  * frontmatter block cannot be read is never rewritten
@@ -34,10 +38,19 @@ import {
   unlinkSync,
   writeSync,
 } from "node:fs";
-import { basename, dirname, join, relative as relativePath } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative as relativePath,
+  resolve,
+  sep,
+} from "node:path";
 import { bodyWithThought } from "./daily.ts";
 import { markDirty } from "./dirty.ts";
 import { Frontmatter, MissingFrontmatter } from "./frontmatter.ts";
+import { LockRefused, vaultLockPath, waitLock } from "./lock.ts";
 import { LINK_FIELDS } from "./schema.ts";
 import {
   insideVault,
@@ -148,6 +161,33 @@ export function deleteNote(root: string, relative: string): void {
   markDirty(root);
 }
 
+/** How long a read-change-write waits for another one to finish. */
+const NOTE_LOCK_WAIT_MS = 10_000;
+
+/**
+ * Run `work` while no other read-change-write of a note in the vault at
+ * `root` runs, in this or another process: it holds one kernel lock per vault
+ * (`vaultLockPath`) and waits up to `waitMs` for it. A write holds it for
+ * milliseconds. Never hold it across a slow call such as a model call.
+ */
+export function withNoteLock<T>(root: string, work: () => T, waitMs = NOTE_LOCK_WAIT_MS): T {
+  let held: ReturnType<typeof waitLock>;
+  try {
+    held = waitLock(vaultLockPath(root, "notes", realpathSync(root), process.env), waitMs);
+  } catch (error) {
+    if (error instanceof LockRefused) throw new WriteRefused(error.message);
+    throw error;
+  }
+  if (held === null) {
+    throw new WriteRefused(`another note write held the vault lock for ${waitMs / 1000} s`);
+  }
+  try {
+    return work();
+  } finally {
+    held.release();
+  }
+}
+
 /** The note's frontmatter, or an empty block when the note has none. */
 function frontmatterOf(text: string): Frontmatter {
   try {
@@ -160,19 +200,21 @@ function frontmatterOf(text: string): Frontmatter {
 
 /** Rewrite a note with its body changed by `edit`; a note without a block stays without one. */
 function editBody(root: string, relative: string, edit: (body: string) => string): void {
-  const real = resolveInVault(root, relative);
-  const text = readText(real);
-  let frontmatter: Frontmatter;
-  try {
-    frontmatter = Frontmatter.parse(text);
-  } catch (error) {
-    if (!(error instanceof MissingFrontmatter)) throw error;
-    const edited = edit(text);
-    atomicReplace(root, real, edited.endsWith("\n") ? edited : `${edited}\n`);
-    return;
-  }
-  frontmatter.body = edit(frontmatter.body);
-  atomicReplace(root, real, frontmatter.toString());
+  withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const text = readText(real);
+    let frontmatter: Frontmatter;
+    try {
+      frontmatter = Frontmatter.parse(text);
+    } catch (error) {
+      if (!(error instanceof MissingFrontmatter)) throw error;
+      const edited = edit(text);
+      atomicReplace(root, real, edited.endsWith("\n") ? edited : `${edited}\n`);
+      return;
+    }
+    frontmatter.body = edit(frontmatter.body);
+    atomicReplace(root, real, frontmatter.toString());
+  });
 }
 
 const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
@@ -183,11 +225,13 @@ const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
  * is already there. `created` never changes.
  */
 export function setProperty(root: string, relative: string, key: string, value: string): void {
-  const real = resolveInVault(root, relative);
-  const frontmatter = frontmatterOf(readText(real));
-  if (LIST_PROPERTIES.has(key)) frontmatter.appendUnique(key, value);
-  else frontmatter.setScalar(key, value);
-  atomicReplace(root, real, frontmatter.toString());
+  withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const frontmatter = frontmatterOf(readText(real));
+    if (LIST_PROPERTIES.has(key)) frontmatter.appendUnique(key, value);
+    else frontmatter.setScalar(key, value);
+    atomicReplace(root, real, frontmatter.toString());
+  });
 }
 
 /**
@@ -203,21 +247,27 @@ export function recordRun(
   date: string,
   dryRun = false,
 ): void {
-  const real = resolveInVault(root, relative);
-  const frontmatter = frontmatterOf(readText(real));
-  frontmatter.setScalar(key, date);
-  frontmatter.setScalar("updated", date);
-  const text = frontmatter.toString();
-  if (!dryRun) atomicReplace(root, real, text);
+  const edit = (): void => {
+    const real = resolveInVault(root, relative);
+    const frontmatter = frontmatterOf(readText(real));
+    frontmatter.setScalar(key, date);
+    frontmatter.setScalar("updated", date);
+    const text = frontmatter.toString();
+    if (!dryRun) atomicReplace(root, real, text);
+  };
+  if (dryRun) edit();
+  else withNoteLock(root, edit);
 }
 
 /** Remove property `key`. Returns false (and writes nothing) when the note has no such property. */
 export function removeProperty(root: string, relative: string, key: string): boolean {
-  const real = resolveInVault(root, relative);
-  const frontmatter = frontmatterOf(readText(real));
-  if (!frontmatter.delete(key)) return false;
-  atomicReplace(root, real, frontmatter.toString());
-  return true;
+  return withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const frontmatter = frontmatterOf(readText(real));
+    if (!frontmatter.delete(key)) return false;
+    atomicReplace(root, real, frontmatter.toString());
+    return true;
+  });
 }
 
 /** Append `content` to the end of the note, on a new line. */
@@ -243,20 +293,22 @@ export function appendThought(root: string, relative: string, thought: string): 
  * whether it wrote.
  */
 export function stampNote(root: string, relative: string, date: string): boolean {
-  const real = resolveInVault(root, relative);
-  const text = readText(real);
-  let frontmatter: Frontmatter;
-  try {
-    frontmatter = Frontmatter.parse(text);
-  } catch (error) {
-    if (error instanceof MissingFrontmatter) return false;
-    throw error;
-  }
-  frontmatter.setScalar("updated", date);
-  const stamped = frontmatter.toString();
-  if (stamped === text) return false;
-  atomicReplace(root, real, stamped);
-  return true;
+  return withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const text = readText(real);
+    let frontmatter: Frontmatter;
+    try {
+      frontmatter = Frontmatter.parse(text);
+    } catch (error) {
+      if (error instanceof MissingFrontmatter) return false;
+      throw error;
+    }
+    frontmatter.setScalar("updated", date);
+    const stamped = frontmatter.toString();
+    if (stamped === text) return false;
+    atomicReplace(root, real, stamped);
+    return true;
+  });
 }
 
 /**
@@ -268,15 +320,17 @@ export function stampProperties(
   relative: string,
   stamps: Record<string, string[]>,
 ): boolean {
-  const real = resolveInVault(root, relative);
-  const frontmatter = frontmatterOf(readText(real));
-  const current = frontmatter.properties;
-  let changed = false;
-  for (const [key, values] of Object.entries(stamps)) {
-    if (key in current) continue;
-    for (const value of values) frontmatter.appendUnique(key, value);
-    changed = true;
-  }
-  if (changed) atomicReplace(root, real, frontmatter.toString());
-  return changed;
+  return withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const frontmatter = frontmatterOf(readText(real));
+    const current = frontmatter.properties;
+    let changed = false;
+    for (const [key, values] of Object.entries(stamps)) {
+      if (key in current) continue;
+      for (const value of values) frontmatter.appendUnique(key, value);
+      changed = true;
+    }
+    if (changed) atomicReplace(root, real, frontmatter.toString());
+    return changed;
+  });
 }

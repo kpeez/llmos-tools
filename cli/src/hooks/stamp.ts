@@ -21,6 +21,7 @@ import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, VaultModel } from "../vault.ts";
 import { decodeText } from "../vault-file.ts";
+import { withNoteLock } from "../write.ts";
 import {
   firstTruthy,
   isFile,
@@ -36,6 +37,8 @@ import {
 } from "./common.ts";
 import { targetPaths } from "./context.ts";
 
+/** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does, once for all its targets. */
+const STAMP_LOCK_WAIT_MS = 3_000;
 /**
  * The text of a file the tool just wrote, by the tool's own path. The hook
  * checks those files wherever they are (a note in `.obsidian/`, a link),
@@ -257,9 +260,22 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  for (const target of durableTargets) stampNote(target);
-  for (const target of memoryTargets) stampMemoryNote(target);
-  const lines = memoryLines(root, memoryTargets);
+  const lines: string[] = [];
+  try {
+    withNoteLock(
+      root,
+      () => {
+        for (const target of durableTargets) stampNote(target);
+        for (const target of memoryTargets) stampMemoryNote(target);
+      },
+      STAMP_LOCK_WAIT_MS,
+    );
+  } catch {
+    lines.push(
+      `The vault's note lock was busy for ${STAMP_LOCK_WAIT_MS / 1000} s, so this hook did not stamp or normalize ${targets.length} note(s). Another write holds the lock; the next write of each note stamps it.`,
+    );
+  }
+  lines.push(...memoryLines(root, memoryTargets));
   if (durableTargets.length > 0) {
     const listed = await listing;
     if (listed) lines.push(...authoringLines(root, durableTargets, listed));

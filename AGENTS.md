@@ -100,8 +100,9 @@ the kernel drops when its holder exits or crashes. It refuses a lock path
 that is a symbolic link. A `HeldLock` frees its lock when it is garbage
 collected, so keep the reference until `release()`. Never write a lock file
 that code must judge stale or remove. Keep a lock file out of the vault work
-tree. Change it only with
-`just verify-memory-sync` and `just verify-llmos-service`.
+tree. A note write that reads, changes,
+and replaces a note runs in `withNoteLock` (`src/write.ts`). Change it only with
+`just verify-memory-sync`, `just verify-llmos-service`, and `just verify-daily-digest`.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
