@@ -25,6 +25,7 @@ and Antigravity finds it at the plugin root.
   `guard-bash`. Both run on almost every tool call, so the bundle holds only
   the path resolution and the guard: no YAML, memory, or vault-model code.
   Bun loads a bundle before it runs, so a small bundle starts faster.
+  It also serves `post-shell`, the after-shell removal check.
 - `dist/hooks.js` (from `main.ts`) serves `session-start`, `post-tool-use`,
   and `stop`.
 
@@ -50,7 +51,34 @@ The two flags stop Bun from loading the session's project `.env` and
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `pre-tool-use` (the guard part) | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and sets the dirty flag for every vault note the tool wrote, stamped or not; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
+| PostToolUse (Bash)       | `post-shell`    | `removals.ts` | Lists the vault's notes again and reports each note that was in the session's saved list and is gone: its path (and the new path when a note with the same name now exists), that a raw move or delete breaks links, and how to undo it. Reports only; it never restores a note |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** the dirty flag is set, by this turn or by any other process: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
+
+## After-shell removal check
+
+The guard reads a command before it runs, so a form it cannot parse
+(`find -delete`, `bash -c '...'`, `git -C <vault> rm`, a wrapper) passes.
+`post-shell` reads the result. Session start saves the list of the vault's
+`.md` notes outside dot folders (`notes/<vault hash>-<session hash>` in the
+llmOS state folder; a Write or Edit that the stamp hook sees adds its notes to
+it). After each shell call the hook lists the vault again (about 4 ms for 1,600
+notes), reports each saved note that is gone, and saves the new list, so a
+removal is reported once. It adds about 19 ms per Bash call, in a second
+process after the command.
+
+The report goes to the agent as PostToolUse `additionalContext` (Claude Code),
+appended to the tool result (Hermes), or, for Antigravity, which reads only
+`{}` after a tool, held in a pending file and sent with the next
+`pre-tool-use`. The hook never restores a note: a restore writes to the vault
+and could replace an edit made since.
+
+It cannot tell who removed a note. A note removed by another session, the
+Obsidian app, or a `git` sync between two checks is reported too, and the
+message says to ignore it if the command was not the agent's. It leaves out a
+note whose path or name appears in a command that also names `obsidian-cli` or
+`llmos`. It never reports a note that was never in the saved list: one made
+and removed between two checks without a Write or Edit. It prevents nothing;
+the guard still decides what a command may do.
 
 ## Hermes Agent
 

@@ -24,6 +24,7 @@ export const HOOK_TIMEOUT_MS: Record<string, number> = {
   "pre-tool-use": 10_000,
   "guard-bash": 10_000,
   "post-tool-use": 10_000,
+  "post-shell": 10_000,
   stop: 30_000,
 };
 

@@ -6,6 +6,17 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A new PostToolUse hook, `post-shell`, tells the agent which vault notes a
+  shell command removed or moved. The guard reads the command text before it
+  runs and misses a form it cannot parse (`find -delete`, `bash -c`, `git -C`,
+  a wrapper). `post-shell` reads the vault after the command: session start
+  saves the list of notes, and each shell call compares it with the vault. The
+  report names each note, says that a raw move or delete breaks links, and
+  says how to undo it (`git restore`, or `obsidian-cli move` back). It never
+  restores a note. The guard is unchanged. It runs for Claude Code (`Bash`),
+  Antigravity (`run_command`; the report arrives with the next tool call), and
+  Hermes (`terminal`). Changing `hooks/hooks.json` means every host must
+  approve the Codex hooks again.
 - Every subprocess in the CLI now has a time limit, except children that
   outlive their caller (`startDetached`) and the three pass-through launchers
   (`UNBOUNDED`: `bin/llmos.ts`, `bin/qmd.ts`, the MCP launcher). `src/run.ts`

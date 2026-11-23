@@ -19,7 +19,6 @@
  * symbolic link, so a link planted at its path is replaced, never followed.
  */
 
-import { createHash } from "node:crypto";
 import {
   closeSync,
   constants,
@@ -40,12 +39,12 @@ type Env = Record<string, string | undefined>;
 
 /** The flag of the vault at `root`. */
 export function flagPath(root: string, env: Env = process.env): string {
-  const key = createHash("sha256").update(realpath(root)).digest("hex").slice(0, 16);
+  const key = new Bun.CryptoHasher("sha256").update(realpath(root)).digest("hex").slice(0, 16);
   return join(stateDir(env), "dirty", key);
 }
 
 /** The flag's folder, made private when missing; throws unless no other user can change it. */
-function safeFolder(flag: string): string {
+export function safeFolder(flag: string): string {
   const folder = dirname(flag);
   mkdirSync(folder, { recursive: true, mode: 0o700 });
   const stat = lstatSync(folder);
@@ -61,7 +60,7 @@ function missing(error: unknown): boolean {
 }
 
 /** The text of the file at `path`, read without following a symbolic link. */
-function readNoFollow(path: string): string {
+export function readNoFollow(path: string): string {
   const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     return readFileSync(fd, "utf8");

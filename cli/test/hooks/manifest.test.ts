@@ -22,6 +22,7 @@ const BUNDLE_OF: Record<string, string> = {
   "session-start": "hooks.js",
   "pre-tool-use": "pre-tool-use.js",
   "post-tool-use": "hooks.js",
+  "post-shell": "pre-tool-use.js",
   stop: "hooks.js",
 };
 
@@ -50,7 +51,7 @@ test("each hook command runs the bundle with a known event", () => {
   expect(events).toEqual({
     SessionStart: [of("session-start")],
     PreToolUse: [of("pre-tool-use"), of("pre-tool-use")],
-    PostToolUse: [of("post-tool-use")],
+    PostToolUse: [of("post-tool-use"), of("post-shell")],
     Stop: [of("stop")],
   });
 });
@@ -65,6 +66,7 @@ test("the tool matchers cover every file and shell tool of both harnesses", () =
     expect([tool, matched("PreToolUse", tool)]).toEqual([tool, true]);
   }
   expect(matched("PreToolUse", "Bash")).toBe(true);
+  expect(matched("PostToolUse", "Bash")).toBe(true);
   for (const tool of ["Write", "Edit", "MultiEdit", "apply_patch"]) {
     expect([tool, matched("PostToolUse", tool)]).toEqual([tool, true]);
   }
@@ -154,6 +156,7 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   ]);
   expect(postToolUse.flatMap((group) => group.hooks.map((h) => run(h.command)))).toEqual([
     of("post-tool-use"),
+    of("post-shell"),
   ]);
 
   const preMatcher = new RegExp(`^(?:${preToolUse[0]?.matcher})$`);
@@ -172,6 +175,7 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   const postMatcher = new RegExp(`^(?:${postToolUse[0]?.matcher})$`);
   expect(postMatcher.test("write_file")).toBe(true);
   expect(postMatcher.test("edit_file")).toBe(true);
+  expect(new RegExp(`^(?:${postToolUse[1]?.matcher})$`).test("run_command")).toBe(true);
 });
 
 test("the hook timeouts in hook-limits.ts match hooks.json, and guard-bash matches Hermes", () => {

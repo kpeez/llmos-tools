@@ -9,6 +9,8 @@ for Claude Code, runs `bun dist/<bundle>.js <event>`, and maps the output back
 - `pre_llm_call` on a session's first turn runs `session-start`; its stdout
   becomes context for that turn.
 - `pre_tool_call` on `terminal` runs `guard-bash`; exit 2 blocks the call.
+- `transform_tool_result` on `terminal` runs `post-shell`; the vault notes the
+  command removed are appended to the result.
 - `transform_tool_result` on a file tool that names a vault path runs
   `pre-tool-use` after a read and `post-tool-use` (the stamp) after a write,
   and appends the context they return to the tool result. Hermes has no
@@ -44,7 +46,7 @@ LOG = logging.getLogger(__name__)
 PLUGIN_ROOT = Path.home() / ".hermes" / "plugins" / "llmos"
 DIST = Path(__file__).resolve().parent.parent / "dist"
 # The hooks that run on every tool call have their own small bundle.
-HOT_EVENTS = {"pre-tool-use", "guard-bash"}
+HOT_EVENTS = {"pre-tool-use", "guard-bash", "post-shell"}
 CONFIG = Path.home() / ".config" / "llmos" / "config.json"
 # Under Hermes's 30 s plugin-callback limit, past which pre_tool_call fails closed.
 TIMEOUT_SECONDS = 10
@@ -299,6 +301,18 @@ def on_transform_tool_result(
 ):
     if not isinstance(args, dict) or not isinstance(result, str):
         return None
+    if tool_name == "terminal" and args.get("command"):
+        ran = _run(
+            "post-shell",
+            _payload(
+                session_id,
+                "Bash",
+                {"command": args["command"]},
+                _cwd(task_id, args.get("workdir")),
+            ),
+        )
+        context = _additional_context(ran.stdout) if ran else None
+        return f"{result}\n\n[llmOS vault]\n{context}" if context else None
     mapped = _claude_tool(tool_name or "", args, task_id)
     if mapped is None:
         return None

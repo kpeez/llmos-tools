@@ -11,12 +11,16 @@
  *   failure of one part never hides the other.
  * - `guard-bash`: the guard alone, for a caller that sends only shell
  *   commands (the Hermes adapter).
+ * - `post-shell`: after a shell tool, the notes it removed from the vault
+ *   (`removals.ts`).
  */
 
 import {
   firstTruthy,
+  isAntigravityPayload,
   type Payload,
   pathFrom,
+  resolvedRoot,
   toolInputOf,
   toolNameOf,
   workspacePath,
@@ -56,13 +60,37 @@ function firstDenial(command: string, folders: (string | null)[]): string | null
   return null;
 }
 
-/** The reason the guard denies the shell command of the raw payload, else null. */
-function guardDenial(raw: Payload): string | null {
+function commandOf(raw: Payload): string | null {
   const toolInput = toolInputOf(raw);
   const command = toolInput
     ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
     : undefined;
-  return typeof command === "string" && command ? firstDenial(command, guardFolders(raw)) : null;
+  return typeof command === "string" && command ? command : null;
+}
+
+/** The reason the guard denies the shell command of the raw payload, else null. */
+function guardDenial(raw: Payload): string | null {
+  const command = commandOf(raw);
+  return command === null ? null : firstDenial(command, guardFolders(raw));
+}
+
+/** The report of the notes the shell command removed; Antigravity gets it with its next tool call. */
+async function removalReport(raw: Payload): Promise<string | null> {
+  const root = resolvedRoot();
+  if (root === null) return null;
+  const { checkRemovals, holdReport } = await import("./removals.ts");
+  const report = checkRemovals(root, raw, commandOf(raw) ?? "");
+  if (report === null || !isAntigravityPayload(raw)) return report;
+  holdReport(root, raw, report);
+  return null;
+}
+
+/** The report that an Antigravity `post-shell` held, handed over once. */
+async function heldReport(raw: Payload): Promise<string | null> {
+  if (!isAntigravityPayload(raw)) return null;
+  const root = resolvedRoot();
+  if (root === null) return null;
+  return (await import("./removals.ts")).takeReport(root, raw);
 }
 
 /** `compute()`, or null when it fails: a hook failure never blocks the tool call. */
@@ -74,13 +102,29 @@ function orNull(compute: () => string | null): string | null {
   }
 }
 
-const handlers: Handlers<"pre-tool-use" | "guard-bash"> = {
-  "pre-tool-use": ({ raw, data }) => ({
+/** `compute()` awaited, or null when it fails. */
+async function orNullAsync(compute: () => Promise<string | null>): Promise<string | null> {
+  try {
+    return await compute();
+  } catch {
+    return null;
+  }
+}
+
+const handlers: Handlers<"pre-tool-use" | "guard-bash" | "post-shell"> = {
+  "pre-tool-use": async ({ raw, data }) => ({
     event: "pre-tool-use",
-    context: orNull(() => preToolUse(data)),
+    context:
+      [orNull(() => preToolUse(data)), await orNullAsync(() => heldReport(raw))]
+        .filter(Boolean)
+        .join("\n\n") || null,
     denial: SHELL_TOOLS.has(toolNameOf(raw)) ? orNull(() => guardDenial(raw)) : null,
   }),
   "guard-bash": ({ raw }) => ({ event: "guard-bash", denial: guardDenial(raw) }),
+  "post-shell": async ({ raw }) => ({
+    event: "post-shell",
+    report: await orNullAsync(() => removalReport(raw)),
+  }),
 };
 
 await runHook(process.argv[2], handlers);

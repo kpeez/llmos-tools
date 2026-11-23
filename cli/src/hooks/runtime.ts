@@ -23,6 +23,7 @@ export type HookResult =
   | { event: "session-start"; context: string | null }
   | { event: "pre-tool-use"; context: string | null; denial: string | null }
   | { event: "post-tool-use"; context: string | null }
+  | { event: "post-shell"; report: string | null }
   | { event: "guard-bash"; denial: string | null }
   | { event: "stop" };
 
@@ -66,6 +67,10 @@ function deny(denial: string): void {
  * `pre-tool-use` answers for the context and the guard together: the context
  * on stdout, and a denial as exit code 2 with the reason on stderr (for
  * Antigravity, a `deny` decision). A denial wins.
+ *
+ * `post-shell` answers a removal report as PostToolUse `additionalContext`.
+ * Antigravity reads only `{}` after a tool, so `pre-tool-use.ts` holds the
+ * report and hands it over with the next `pre-tool-use`.
  */
 export function emit(result: HookResult, antigravity: boolean): void {
   switch (result.event) {
@@ -96,6 +101,10 @@ export function emit(result: HookResult, antigravity: boolean): void {
     case "post-tool-use":
       if (antigravity) writeJson({});
       else additionalContext("PostToolUse", result.context);
+      return;
+    case "post-shell":
+      if (antigravity) writeJson({});
+      else additionalContext("PostToolUse", result.report);
       return;
     case "guard-bash":
       if (antigravity) {

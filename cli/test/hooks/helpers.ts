@@ -12,7 +12,7 @@ import { flagPath } from "../../src/dirty.ts";
 
 export const CLI = join(import.meta.dir, "..", "..");
 export const TOOLS = join(CLI, "..");
-const HOT_EVENTS = new Set(["pre-tool-use", "guard-bash"]);
+const HOT_EVENTS = new Set(["pre-tool-use", "guard-bash", "post-shell"]);
 /** The source entry point of an event: the hot events have their own. */
 export const entryOf = (event: string): string =>
   join(CLI, "src", "hooks", HOT_EVENTS.has(event) ? "pre-tool-use.ts" : "main.ts");

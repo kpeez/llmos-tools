@@ -36,6 +36,7 @@ import {
   workspacePath,
 } from "./common.ts";
 import { targetPaths } from "./context.ts";
+import { recordNotes } from "./removals.ts";
 
 /** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does, once for all its targets. */
 const STAMP_LOCK_WAIT_MS = 3_000;
@@ -244,6 +245,9 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   );
   if (targets.length === 0) return null;
   markDirty(root);
+  try {
+    recordNotes(root, data, targets);
+  } catch {}
 
   const rootPrefix = root.endsWith("/") ? root : `${root}/`;
   const durableTargets: string[] = [];

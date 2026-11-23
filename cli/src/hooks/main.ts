@@ -24,6 +24,7 @@ import { cloudAttachHint, cloudSetup } from "./cloud.ts";
 import { brokenRootWarning, pathFrom, payloadCwd, resolvedRoot } from "./common.ts";
 import { beat } from "./heartbeat.ts";
 import { hasAutoMemoryDir, linkAgentDirs } from "./links.ts";
+import { startNoteWatch } from "./removals.ts";
 import { type Handlers, runHook } from "./runtime.ts";
 import { sessionContext, sessionStart } from "./session-context.ts";
 import { stop, warn } from "./stop.ts";
@@ -56,6 +57,9 @@ const handlers: Handlers<"session-start" | "post-tool-use" | "stop"> = {
       sessionStart(data, { ...options, processCwd }) ??
       (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
     const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
+    try {
+      if (root !== null) startNoteWatch(root, data);
+    } catch {}
     // `llmos doctor` reads this record to prove the hooks run for this agent;
     // a failure never changes the result.
     try {
