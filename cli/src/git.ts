@@ -13,7 +13,9 @@
  * `verify-memory-sync` model, `.agents/skills/verify-memory-sync/`).
  *
  * Every call has a timeout, pipes its output (hook stdout is a protocol
- * channel), never prompts for credentials, and reads paths unquoted.
+ * channel), never prompts for credentials, and reads paths unquoted. Name
+ * lists never detect renames: a rename lists only its new path, so a commit
+ * that moves a private note into shared memory would pass the path check.
  */
 
 import { statSync } from "node:fs";
@@ -32,7 +34,7 @@ interface Result {
 function run(cwd: string, args: string[], env: Env, timeout: number): Result {
   try {
     const result = Bun.spawnSync({
-      cmd: ["git", "-C", cwd, "-c", "core.quotePath=false", ...args],
+      cmd: ["git", "-C", cwd, "-c", "core.quotePath=false", "-c", "diff.renames=false", ...args],
       env: { ...env, GIT_TERMINAL_PROMPT: "0" },
       stdin: "ignore",
       stdout: "pipe",
@@ -316,11 +318,16 @@ function mergeDiverged(
 function changedBetween(repo: Repo, base: string, tip: string): string[] | null {
   const log = run(
     repo.top,
-    ["log", "-z", "--format=", "--name-only", "--no-merges", `${base}..${tip}`],
+    ["log", "-z", "--no-renames", "--format=", "--name-only", "--no-merges", `${base}..${tip}`],
     repo.env,
     repo.local,
   );
-  const net = run(repo.top, ["diff", "-z", "--name-only", base, tip], repo.env, repo.local);
+  const net = run(
+    repo.top,
+    ["diff", "-z", "--no-renames", "--name-only", base, tip],
+    repo.env,
+    repo.local,
+  );
   if (!log.ok || !net.ok) return null;
   return [...new Set([...nulList(log.stdout), ...nulList(net.stdout)])];
 }

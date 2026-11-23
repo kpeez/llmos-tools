@@ -578,6 +578,21 @@ describe("pushNotes", () => {
     expect(git(remote, "log", "--format=%s", "-1", "main")).toBe("seed");
   });
 
+  test("never pushes a note moved into shared memory", () => {
+    const { remote, host } = checkouts();
+    // A rename lists only its new path unless rename detection is off.
+    mkdirSync(join(host, "vault", "projects", "p", "memory"), { recursive: true });
+    git(host, "mv", "vault/notes/draft.md", "vault/projects/p/memory/draft.md");
+    git(host, "commit", "--quiet", "-m", "move a note into memory");
+
+    write(join(host, "vault", "daily", "2026-07-16.md"), "digest\n");
+    expect(() =>
+      pushNotes(join(host, "vault"), ["daily/2026-07-16.md"], "daily activity: 2026-07-16"),
+    ).toThrow("not pushing: unpushed commits also touch vault/notes/draft.md");
+
+    expect(git(remote, "log", "--format=%s", "-1", "main")).toBe("seed");
+  });
+
   test("a later run pushes the daily notes that an earlier run could not push", () => {
     const { remote, host } = checkouts();
     const vault = join(host, "vault");
