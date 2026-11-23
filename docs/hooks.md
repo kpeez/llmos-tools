@@ -26,7 +26,8 @@ and Antigravity finds it at the plugin root.
   the path resolution and the guard: no YAML, memory, or vault-model code.
   Bun loads a bundle before it runs, so a small bundle starts faster.
   `dist/shell-grammar.js` holds the shell parser (`unbash`) and its check. The
-  guard loads it only when a command names `mv`, `rm`, or `find`. When that
+  guard loads it only when a command names `mv`, `rm`, `find`, or
+  `obsidian-cli`. When that
   bundle fails to load, the guard falls back to its older token check. The
   grammar check reads at most 20,000 entries of a folder; a larger folder counts
   as holding a note, so the guard denies the call (it fails closed). It skips
