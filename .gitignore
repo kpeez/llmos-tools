@@ -12,6 +12,7 @@ build/
 dist/*
 !dist/hooks.js
 !dist/pre-tool-use.js
+!dist/shell-grammar.js
 !dist/mcp.js
 .DS_Store
 artifacts

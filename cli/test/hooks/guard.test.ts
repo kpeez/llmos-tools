@@ -230,6 +230,53 @@ describe("raw mv and rm on vault notes", () => {
     // One hook process per command: 26 starts outrun bun's default 5 s on a loaded host.
   }, 60_000);
 
+  test("denies a raw note removal that the shell runs through a wrapper, a nested command, or a folder", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "notes", "n.md"), "# note\n");
+    const list = writeFile(join(tmp, "list.txt"), `${note}\n`);
+    const outside = join(tmp, "outside");
+
+    const denied = [
+      `git -C ${vault} rm notes/n.md`,
+      `rm -r ${vault}/notes/`,
+      `find ${vault}/notes -name '*.md' -delete`,
+      `find ${vault}/notes -name '*.md' | xargs rm`,
+      `xargs rm < ${list}`,
+      `sudo rm ${note}`,
+      `env X=1 rm ${note}`,
+      `timeout 5 rm ${note}`,
+      `bash -c 'rm ${note}'`,
+      `{ rm ${note}; }`,
+      `if true; then rm ${note}; fi`,
+      `echo \`rm ${note}\``,
+      `echo "$(rm ${note})"`,
+      `rm ">" ${note}`,
+      `echo x#; rm ${note}`,
+    ];
+    for (const command of denied) {
+      for (const cwd of [vault, outside]) {
+        const result = guard(command, tmp, { root: vault, cwd });
+        expect({ command, cwd, exitCode: result.exitCode }).toEqual({ command, cwd, exitCode: 2 });
+      }
+    }
+
+    const approved = [
+      `git -C ${outside} rm README.md`,
+      `rm -r ${outside}/build`,
+      `find ${vault}/notes -name '*.png' -delete`,
+      `find ${outside} -name '*.md' | xargs rm`,
+      `sudo ls ${note}`,
+      `bash -c 'cat ${note}'`,
+      `echo "rm ${note}"`,
+    ];
+    for (const command of approved) {
+      const result = guard(command, tmp, { root: vault, cwd: outside });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 0 });
+    }
+    // One hook process per command: 37 starts outrun bun's default 5 s on a loaded host.
+  }, 60_000);
+
   test("approves a note path that is only quoted text, even across a newline", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));

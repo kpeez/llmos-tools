@@ -25,6 +25,21 @@
 
 import { registeredVaults, VaultRootError, vaultRoot } from "../root.ts";
 import { isUnder, joinPath, realpath, suffix } from "./common.ts";
+import type * as Grammar from "./shell-grammar.ts";
+
+/**
+ * The grammar check lives in its own bundle (`dist/shell-grammar.js`, with the
+ * parser), so a call that names no `mv`, `rm`, or `find` never loads it. From
+ * source, where that bundle is absent, it loads the TypeScript module.
+ */
+function loadGrammar(): typeof Grammar {
+  try {
+    return require(`${import.meta.dir}/shell-grammar.js`);
+  } catch {
+    return require(`${import.meta.dir}/shell-grammar.ts`);
+  }
+}
+
 import { ShlexError, splitShellLines, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
@@ -32,7 +47,7 @@ import { ShlexError, splitShellLines, splitWithOperators } from "./shlex.ts";
 // (`r"m"`, `r\m`, `r\<newline>m` all run rm), so the filter also reads the
 // command with them removed; it keeps the raw reading, because a backslash
 // in a comment is not a continuation.
-const FAST_REJECT = /\b(?:obsidian-cli|mv|rm)\b/;
+const FAST_REJECT = /\b(?:obsidian-cli|mv|rm|find)\b/;
 const OPERATOR_TOKENS = new Set(["&&", "||", ";", "|"]);
 const REDIRECT_OPERATORS = new Set([">", ">>", "<", "<<", "&>", "&>>", ">&", "<&"]);
 const QUOTES_AND_ESCAPES = /["'\\]/g;
@@ -245,13 +260,42 @@ function checkVaultMvRm(
 }
 
 /**
+ * The grammar check: the commands of a real shell parse, wrappers removed.
+ * A parse or check failure approves, as the token check beneath it decides
+ * alone then.
+ */
+function grammarCheck(command: string, cwd: string | null, anchor?: string): string | null {
+  try {
+    const { invocations, vaultDenial } = loadGrammar();
+    const found = invocations(command);
+    for (const invocation of found) {
+      const message = checkObsidianCli(invocation.words);
+      if (message) return message;
+    }
+    const roots = knownVaultRoots(anchor);
+    if (roots.length === 0) return null;
+    const resolvedCwd = cwd === null ? null : realpath(cwd);
+    for (const invocation of found) {
+      const message = vaultDenial(invocation, resolvedCwd, roots, command);
+      if (message) return message;
+    }
+  } catch {}
+  return null;
+}
+
+/**
  * The deny message for `command`, or `null` to approve. `cwd` is an absolute
  * folder, or `null` when none is known: then only absolute arguments are
- * checked. `anchor` is where a relative registry entry points. When the check
- * of a raw `mv` or `rm` itself fails, the command is denied, never approved.
+ * checked. `anchor` is where a relative registry entry points. The token
+ * check and the grammar check each can deny; the call is approved only when
+ * both approve.
  */
 export function checkCommand(command: string, cwd: string | null, anchor?: string): string | null {
   if (!mayNameGuardedCommand(command)) return null;
+  return tokenCheck(command, cwd, anchor) ?? grammarCheck(command, cwd, anchor);
+}
+
+function tokenCheck(command: string, cwd: string | null, anchor?: string): string | null {
   const subcommands = [
     ...readSubcommands(command, splitWithOperators, pythonSubcommands),
     ...readSubcommands(command, splitShellLines, shellSubcommands),
