@@ -211,14 +211,15 @@ function knownVaultRoots(): string[] {
 function checkVaultMvRm(
   tokens: string[],
   args: string[],
-  cwd: string,
+  cwd: string | null,
   roots: string[],
   rawCommand: string,
 ): string | null {
   const program =
     basename(tokens[0] as string) === "git" ? `git ${tokens[1]}` : basename(tokens[0] as string);
   for (const arg of args) {
-    const path = realpath(arg.startsWith("/") ? arg : joinPath(cwd, arg || "."));
+    if (!arg.startsWith("/") && cwd === null) continue;
+    const path = realpath(arg.startsWith("/") ? arg : joinPath(cwd as string, arg || "."));
     if (suffix(path).toLowerCase() !== ".md") continue;
     if (roots.some((root) => isUnder(path, root))) {
       return (
@@ -255,7 +256,6 @@ export function checkCommand(command: string, cwd: unknown): string | null {
   const roots = knownVaultRoots();
   if (roots.length === 0) return null;
   const resolvedCwd = pathFrom(cwd);
-  if (resolvedCwd === null) return null;
   for (const [sub, args] of mvRm) {
     const message = checkVaultMvRm(sub, args, resolvedCwd, roots, command);
     if (message) return message;

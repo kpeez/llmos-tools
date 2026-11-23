@@ -9,10 +9,12 @@ Newest first. Versions are the `version` field shared by
 - A hook can write its output only through one `emit()` in
   `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
   and `emit()` gives it the envelope that its harness reads. A Biome lint
-  (`cli/lint/hook-channels.grit`) bans `process.stdout`, `console.log`, and
-  `process.cwd()` in `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except in
-  `main.ts`. A hook now takes its folder from the payload `cwd`; `main.ts`
-  fills it from the process folder when the payload has none.
+  (`cli/lint/hook-channels.grit`) bans `process.stdout`, `Bun.stdout`, every
+  `console.*` call, `process.cwd()`, and destructuring or importing `stdout` or
+  `cwd` from `process`, in `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`,
+  except in `main.ts`. Only `main.ts` reads the process folder: it anchors a
+  relative payload `cwd` there, as before. A relative `LLMOS_ROOT` is now made
+  absolute where the root is read (`src/root.ts`).
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`

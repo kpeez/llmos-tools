@@ -42,8 +42,12 @@ never touch the network.
 
 A hook writes its output only through `emit()` in `cli/src/hooks/main.ts`,
 which gives each event the envelope its harness reads. Hook, MCP, and memory
-code never reads `process.stdout` or `process.cwd()` to find its scope: a Biome
-lint (`cli/lint/hook-channels.grit`) fails on both, except in `main.ts`.
+code never writes to a console or to stdout, and never reads the process folder
+to find its scope. A Biome lint (`cli/lint/hook-channels.grit`) fails on
+`process.stdout`, `Bun.stdout`, every `console.*` call, `process.cwd()`, and
+on destructuring or importing `stdout` or `cwd` from `process`, `node:process`,
+or `Bun`. It does not catch indirect access such as `process["stdout"]`. It
+applies to `src/hooks/`, `src/mcp.ts`, and `src/memory.ts`, except `main.ts`.
 
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`

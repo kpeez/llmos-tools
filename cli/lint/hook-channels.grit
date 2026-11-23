@@ -14,11 +14,36 @@ or {
       severity="error"
     )
   },
+  JsStaticMemberExpression() as $bunout where {
+    $bunout <: r"Bun\.stdout",
+    register_diagnostic(
+      span=$bunout,
+      message="Emit through main.ts: a hook writes its output only through emit() in cli/src/hooks/main.ts, which picks the channel and envelope the harness reads.",
+      severity="error"
+    )
+  },
   JsCallExpression() as $log where {
-    $log <: r"console\.log\([\s\S]*",
+    $log <: r"console\.[A-Za-z]+\([\s\S]*",
     register_diagnostic(
       span=$log,
-      message="Emit through main.ts: console.log writes to stdout, which a harness may drop or reject. Use emit() in cli/src/hooks/main.ts.",
+      message="Emit through main.ts: a console method writes to stdout or stderr, which a harness may drop or reject. Use emit() in cli/src/hooks/main.ts.",
+      severity="error"
+    )
+  },
+  JsVariableDeclarator() as $pull where {
+    $pull <: r"^\{[^}]*\b(?:stdout|cwd)\b[^}]*\}\s*=\s*(?:process|Bun)\b[\s\S]*",
+    register_diagnostic(
+      span=$pull,
+      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not pull stdout or cwd out of process or Bun. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
+      severity="error"
+    )
+  },
+  JsImport() as $pulled where {
+    $pulled <: r"[\s\S]*\b(?:stdout|cwd)\b[\s\S]*",
+    $pulled <: r"[\s\S]*from\s+[\"'](?:node:)?process[\"'][\s\S]*",
+    register_diagnostic(
+      span=$pulled,
+      message="Emit through main.ts, and take scope from session roots, not process.cwd(): do not import stdout or cwd from process. Use emit() in cli/src/hooks/main.ts, and the payload cwd.",
       severity="error"
     )
   },

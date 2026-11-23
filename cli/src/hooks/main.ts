@@ -106,13 +106,18 @@ function emit(result: HookResult, antigravity: boolean): void {
 }
 
 /**
- * The payload, with `cwd` set to the hook process's folder when the payload
- * names none. Only this file reads `process.cwd()`; the handlers take their
- * scope from the payload.
+ * The payload with `cwd` resolved, as a hook has always read it: a relative
+ * `cwd` or `workspacePaths[0]` is anchored at the hook process's folder. A
+ * payload that names no folder gets one only for the events that always had
+ * one; a session start without one reads no project. Only this file reads
+ * `process.cwd()`; the handlers take their scope from the payload.
  */
-async function readSessionPayload(): Promise<Payload> {
+async function readSessionPayload(event: HookResult["event"]): Promise<Payload> {
   const data = await readPayload();
-  return payloadCwd(data) === null ? { ...data, cwd: process.cwd() } : data;
+  const here = process.cwd();
+  const named = pathFrom(data.cwd, here) ?? pathFrom(workspacePath(data), here);
+  if (named !== null) return { ...data, cwd: named };
+  return event === "session-start" ? data : { ...data, cwd: here };
 }
 
 type ResultOf<E extends HookResult["event"]> = Extract<HookResult, { event: E }>;
@@ -126,7 +131,7 @@ const handlers: {
 } = {
   "session-start": (data) => {
     const root = resolvedRoot();
-    const project = pathFrom(process.env.CLAUDE_PROJECT_DIR) ?? payloadCwd(data);
+    const project = pathFrom(process.env.CLAUDE_PROJECT_DIR, process.cwd()) ?? payloadCwd(data);
     const claudeAutoMemoryReady =
       root !== null && project !== null ? hasAutoMemoryDir(project, root) : false;
     // Before the context: the pull makes the injected MEMORY.md fresh, and the
@@ -142,8 +147,9 @@ const handlers: {
     // Hermes's llmos memory provider puts the index in the system prompt itself.
     const memoryIndexLoaded = process.env.LLMOS_MEMORY_INDEX_LOADED === "1";
     const options = { claudeAutoMemoryReady, memoryIndexLoaded };
+    const processCwd = pathFrom(process.cwd());
     const vault =
-      sessionStart(data, options) ??
+      sessionStart(data, { ...options, processCwd }) ??
       (cloud && root ? sessionContext(root, null, { data, ...options, cwd: project }) : null);
     const context = [vault, cloud, syncNote, linked].filter(Boolean).join("\n");
     // `llmos doctor` reads this record to prove the hooks run for this agent;
@@ -164,8 +170,7 @@ const handlers: {
     const command = toolInput
       ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
       : undefined;
-    const cwd = firstTruthy([data.cwd, workspacePath(data)], undefined);
-    const denial = typeof command === "string" && command ? checkCommand(command, cwd) : null;
+    const denial = typeof command === "string" && command ? checkCommand(command, data.cwd) : null;
     return { event: "guard-bash", denial };
   },
   stop: () => {
@@ -186,8 +191,9 @@ const handlers: {
 
 async function run(event: string | undefined): Promise<void> {
   if (event === undefined || !Object.hasOwn(handlers, event)) return;
-  const data = await readSessionPayload();
-  const result = await handlers[event as HookResult["event"]](data);
+  const name = event as HookResult["event"];
+  const data = await readSessionPayload(name);
+  const result = await handlers[name](data);
   emit(result, isAntigravityPayload(data));
 }
 

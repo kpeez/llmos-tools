@@ -13,7 +13,7 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 
 export const DEFAULT_CONFIG_PATH = join(homedir(), ".config", "llmos", "config.json");
 export const DEFAULT_REGISTRY_PATH = join(
@@ -62,7 +62,7 @@ export function validated(path: string): string {
         `(must exist and contain .obsidian/ and AGENTS.md).\n${REPAIR_MESSAGE}`,
     );
   }
-  return path;
+  return isAbsolute(path) ? path : resolve(path);
 }
 
 /**
