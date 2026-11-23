@@ -792,13 +792,14 @@ const service: Feature = async (state) => {
       again.out + again.err,
     );
 
+    mkdirSync(join(state.vault, "projects", "verify"), { recursive: true });
     const saved = llmos("memory", "save", "pump-notes", "Notes on the pump", "The sump pump hums.", "--project", "verify", "--type", "project");
     const found = llmos("memory", "search", "sump", "--keyword", "--project", "verify");
     check(
       f,
       "a memory saved with the service up is found by keyword search at once",
       saved.code === 0 && found.out.includes("projects/verify/memory/pump-notes.md"),
-      found.out.slice(0, 160),
+      `save exit ${saved.code}: ${saved.err.slice(0, 120)} | search: ${found.out.slice(0, 160)}`,
     );
     llmos("memory", "forget", "pump-notes", "--project", "verify");
 
