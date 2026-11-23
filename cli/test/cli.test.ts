@@ -124,6 +124,19 @@ describe("command line", () => {
     expect(missing.stderr).toContain("no note named 'ghost'");
   });
 
+  test("read of one note neither parses the other notes nor counts a link to nothing as a match", async () => {
+    const root = makeVault({ "notes/alpha.md": ALPHA, "archive/beta.md": ALPHA });
+    writeFileSync(join(root, "notes/unreadable.md"), Buffer.from([0xff, 0xfe, 0x00]));
+    symlinkSync(join(root, "nowhere.md"), join(root, "archive/alpha.md"));
+    const result = await cli(root, ["read", "alpha", "--properties-only"]);
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      name: "alpha",
+      path: join(root, "notes/alpha.md"),
+      properties: { created: "2026-07-01", status: "draft", authors: ["human"] },
+    });
+  });
+
   test("daily verbs refuse a vault without the llmOS daily contract", async () => {
     const result = await cli(makeVault(), ["daily", "recent", "--vault", "notebook"]);
     expect(result.exitCode).toBe(1);

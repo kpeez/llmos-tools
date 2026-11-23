@@ -46,7 +46,14 @@ import {
 import { readConfig, validated } from "./root.ts";
 import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
-import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
+import {
+  findNotePath,
+  type Note,
+  type NoteRecord,
+  readSource,
+  readText,
+  type VaultModel,
+} from "./vault.ts";
 import {
   appendContent,
   appendThought,
@@ -183,7 +190,7 @@ function noteJson(model: VaultModel, note: Note): object {
 }
 
 /** A note read straight from its file, printed as `noteJson` prints it. */
-function fileJson(root: string, relative: string): object {
+function fileJson(root: string, relative: string): NoteRecord {
   const source = readSource(relative, readText(join(root, relative)));
   return {
     name: basename(relative, ".md"),
@@ -284,12 +291,11 @@ the vault once instead of resolving names one at a time.`,
  "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}`,
   example: "llmos read alpha --vault llmos --section Results",
   run(values, context) {
-    const model = context.model(context.root(vaultName(values)));
-    const note = model.resolveNote(str(values, "note"));
-    const json = noteJson(model, note);
+    const root = context.root(vaultName(values));
+    const json = fileJson(root, findNotePath(root, str(values, "note")));
     if (values.section === undefined) return { json: narrowed(json, values) };
     const heading = str(values, "section");
-    return { json: { ...json, section: heading, body: bodySection(note.body, heading) } };
+    return { json: { ...json, section: heading, body: bodySection(json.body, heading) } };
   },
 };
 

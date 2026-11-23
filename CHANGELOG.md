@@ -6,6 +6,10 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos read` no longer loads the whole vault: it lists the vault, resolves
+  the name as before, and reads only that note. Its output is unchanged. A note
+  that cannot be read (for example invalid UTF-8) no longer makes `llmos read`
+  of another note fail.
 - A hook can write its output only through one `emit()` in
   `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
   and `emit()` gives it the envelope that its harness reads. A Biome lint

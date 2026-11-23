@@ -254,12 +254,92 @@ function topicsOf(note: Note): Set<string> {
   return typeof topics === "string" && topics ? new Set([topics]) : new Set();
 }
 
+/**
+ * Resolves a note name or path typed by a caller to one note path, from the
+ * list of note paths alone: no note is read. `exists` drops a path that is
+ * listed but not readable, a `.md` symbolic link whose target is missing.
+ */
+export class NoteIndex {
+  private readonly paths: ReadonlySet<string>;
+  private readonly byStem = new Map<string, string[]>();
+  /** The root with one trailing `/`, the prefix of an absolute note path. */
+  private readonly rootPrefix: string;
+
+  constructor(
+    private readonly root: string,
+    paths: readonly string[],
+    private readonly exists: ((path: string) => boolean) | null = null,
+  ) {
+    this.paths = new Set(paths);
+    this.rootPrefix = join(root, "/");
+    for (const path of paths) {
+      const key = basename(path, ".md").toLowerCase();
+      const group = this.byStem.get(key);
+      if (group) group.push(path);
+      else this.byStem.set(key, [path]);
+    }
+  }
+
+  /**
+   * The note at an exact path `<stem>.md`, if one exists: vault-relative, or
+   * absolute under the root. The path is normalized first (`./`, `//`, `..`).
+   */
+  direct(target: string, allowRoot: boolean): string | undefined {
+    const base = target.endsWith(".md") ? target.slice(0, -3) : target;
+    if (!base.includes("/") && !allowRoot) return undefined;
+    const path = normalize(`${base}.md`);
+    const relative = !path.startsWith("/")
+      ? path
+      : path.startsWith(this.rootPrefix)
+        ? path.slice(this.rootPrefix.length)
+        : undefined;
+    return relative !== undefined && this.paths.has(relative) && (this.exists?.(relative) ?? true)
+      ? relative
+      : undefined;
+  }
+
+  /** Every note whose basename is the target's, in path order. */
+  stem(target: string): string[] {
+    const group = this.byStem.get(stemKey(target)) ?? [];
+    return this.exists ? group.filter(this.exists) : group;
+  }
+
+  /**
+   * Resolve a name or path typed by a caller to exactly one note path. An
+   * exact vault-relative path wins even without a slash, so a root-level
+   * note stays addressable when a nested note shares its name.
+   */
+  resolve(target: string): string {
+    const direct = this.direct(target, true);
+    if (direct !== undefined) return direct;
+    const matches = this.stem(target);
+    if (matches.length === 0) {
+      throw new NoteNotFoundError(`no note named '${target}' found in vault '${this.root}'`);
+    }
+    if (matches.length > 1) {
+      throw new AmbiguousNoteError(
+        `'${target}' is ambiguous, matches: ${matches.join(", ")}`,
+        matches,
+      );
+    }
+    return matches[0] as string;
+  }
+}
+
+/**
+ * The vault-relative path of the note a caller's name or path means, as
+ * `VaultModel.resolveNote` resolves it. The vault is listed, never read:
+ * `VaultModel.load` parses every note, which one note does not need.
+ */
+export function findNotePath(root: string, target: string): string {
+  const paths = walkVault(root).filter((path) => path.endsWith(".md"));
+  return new NoteIndex(root, paths, (path) => existsSync(join(root, path))).resolve(target);
+}
+
 export class VaultModel {
   readonly notes: readonly Note[];
   private readonly byPath = new Map<string, Note>();
-  private readonly byStem = new Map<string, Note[]>();
-  /** The root with one trailing `/`, the prefix of an absolute note path. */
-  private readonly rootPrefix: string;
+  private readonly index: NoteIndex;
   /** Vault-relative paths (lower case) of the non-note files, and the same by file name. */
   private readonly filePaths = new Set<string>();
   private readonly fileNames = new Set<string>();
@@ -284,14 +364,8 @@ export class VaultModel {
       this.filePaths.add(file.toLowerCase());
       this.fileNames.add(basename(file).toLowerCase());
     }
-    this.rootPrefix = join(root, "/");
-    for (const note of notes) {
-      this.byPath.set(note.path, note);
-      const key = note.name.toLowerCase();
-      const group = this.byStem.get(key);
-      if (group) group.push(note);
-      else this.byStem.set(key, [note]);
-    }
+    for (const note of notes) this.byPath.set(note.path, note);
+    this.index = new NoteIndex(root, [...this.byPath.keys()]);
     for (const note of notes) {
       this.linkedFrom.set(note, new Set());
       const topics = topicsOf(note);
@@ -358,46 +432,16 @@ export class VaultModel {
     return join(this.root, note.path);
   }
 
-  /**
-   * The note at an exact path `<stem>.md`, if one exists: vault-relative, or
-   * absolute under the root. The path is normalized first (`./`, `//`, `..`).
-   */
-  private directPath(target: string, allowRoot: boolean): Note | undefined {
-    const base = target.endsWith(".md") ? target.slice(0, -3) : target;
-    if (!base.includes("/") && !allowRoot) return undefined;
-    const path = normalize(`${base}.md`);
-    if (!path.startsWith("/")) return this.byPath.get(path);
-    if (!path.startsWith(this.rootPrefix)) return undefined;
-    return this.byPath.get(path.slice(this.rootPrefix.length));
-  }
-
-  /**
-   * Resolve a note name or path typed by a caller to exactly one note.
-   * An exact vault-relative path wins even without a slash, so a root-level
-   * note stays addressable when a nested note shares its name.
-   */
+  /** Resolve a note name or path typed by a caller to exactly one note (see `NoteIndex.resolve`). */
   resolveNote(target: string): Note {
-    const direct = this.directPath(target, true);
-    if (direct) return direct;
-    const matches = this.byStem.get(stemKey(target)) ?? [];
-    if (matches.length === 0) {
-      throw new NoteNotFoundError(`no note named '${target}' found in vault '${this.root}'`);
-    }
-    if (matches.length > 1) {
-      const candidates = matches.map((note) => note.path);
-      throw new AmbiguousNoteError(
-        `'${target}' is ambiguous, matches: ${candidates.join(", ")}`,
-        candidates,
-      );
-    }
-    return matches[0] as Note;
+    return this.byPath.get(this.index.resolve(target)) as Note;
   }
 
   /** Resolve a wikilink found in vault content; ambiguous or missing targets are undefined. */
   resolveLink(target: string, source?: Note): Note | undefined {
-    const direct = this.directPath(target, false);
-    if (direct) return direct;
-    const matches = this.byStem.get(stemKey(target)) ?? [];
+    const path = this.index.direct(target, false);
+    if (path !== undefined) return this.byPath.get(path);
+    const matches = this.index.stem(target).map((match) => this.byPath.get(match) as Note);
     if (matches.length <= 1) return matches[0];
     if (source) {
       const folder = dirname(source.path);
