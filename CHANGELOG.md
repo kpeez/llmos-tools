@@ -17,6 +17,16 @@ Newest first. Versions are the `version` field shared by
   relative payload `cwd` there, as before. A relative `LLMOS_ROOT` is made
   absolute for the hooks by `absoluteVaultRoot()` in `src/root.ts`; the CLI
   still prints it as configured.
+- The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
+  folder that is not a vault. It prints one context line that names the
+  folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
+  worked with no vault and no warning. An unset `LLMOS_ROOT` still prints
+  nothing.
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
 - The shared-memory sync merges a rename on one side with an edit on the
   other side again. Since the change that turned off rename detection in every
   git call, `git merge-tree` refused such a pair as a modify/delete conflict.
