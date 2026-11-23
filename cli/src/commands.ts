@@ -5,7 +5,7 @@
  * `create --template`, which need the running Obsidian app.
  */
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
 import { checkNote, invalidFrontmatter } from "./authoring.ts";
@@ -13,7 +13,7 @@ import { bodySection, summary as claimsSummary, lintClaims } from "./claims-lint
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
-import { renderReference, renderSkill } from "./docs.ts";
+import { readSkillFile, renderReference, renderSkill } from "./docs.ts";
 import { isClean, qmdSection, RUN_RECORDS, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { DAILY_DIR } from "./layout.ts";
@@ -46,13 +46,13 @@ import {
 import { readConfig, validated } from "./root.ts";
 import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
-import { type Note, readSource, readText, type VaultModel } from "./vault.ts";
+import { type Note, readSource, type VaultModel } from "./vault.ts";
+import { readText, realTarget, resolveInVault } from "./vault-file.ts";
 import {
   appendContent,
   appendThought,
   createNote,
   newTarget,
-  realTarget,
   removeProperty,
   setProperty,
   stampProperties,
@@ -184,7 +184,7 @@ function noteJson(model: VaultModel, note: Note): object {
 
 /** A note read straight from its file, printed as `noteJson` prints it. */
 function fileJson(root: string, relative: string): object {
-  const source = readSource(relative, readText(join(root, relative)));
+  const source = readSource(relative, readText(resolveInVault(root, relative)));
   return {
     name: basename(relative, ".md"),
     path: join(root, relative),
@@ -1545,7 +1545,7 @@ Do NOT use when you only want to read the help -- run \`<command> --help\`.`,
       relative(TOOLS, resolve(values[name] === undefined ? fallback : str(values, name)));
     const reference = newTarget(TOOLS, inTools("reference", DEFAULT_REFERENCE_PATH));
     const skill = realTarget(TOOLS, inTools("skill", DEFAULT_SKILL_PATH));
-    const skillText = renderSkill(readFileSync(skill, "utf8"), COMMANDS);
+    const skillText = renderSkill(readSkillFile(skill), COMMANDS);
     mkdirSync(dirname(reference), { recursive: true });
     writeFileSync(reference, renderReference(COMMANDS));
     writeFileSync(skill, skillText);

@@ -10,12 +10,11 @@
  * a string rule.
  */
 
-import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
 import type { PropertyValue } from "./frontmatter.ts";
 import { untracked } from "./git.ts";
 import { DAILY_DIR, isMemoryNote, TEMPLATES_DIR } from "./layout.ts";
-import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
+import { type BrokenLink, comparePaths, type Note, type VaultModel } from "./vault.ts";
+import { readText, refusedOrMissing, resolveInVault } from "./vault-file.ts";
 
 const GIT_TIMEOUT_MS = 30_000;
 
@@ -36,11 +35,12 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Display alias for a project link: the landing page's H1, else the slug. */
 export function projectAlias(root: string, slug: string): string {
-  const landing = join(root, "projects", slug, `${slug}.md`);
-  if (existsSync(landing) && statSync(landing).isFile()) {
-    for (const line of readText(landing).split("\n")) {
+  try {
+    for (const line of readText(resolveInVault(root, `projects/${slug}/${slug}.md`)).split("\n")) {
       if (line.startsWith("# ")) return line.slice(2).trim();
     }
+  } catch (error) {
+    if (!refusedOrMissing(error)) throw error;
   }
   return slug;
 }

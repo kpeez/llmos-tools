@@ -37,7 +37,8 @@ import { parse, serialize } from "./frontmatter.ts";
 import { destinationProperties } from "./inbox.ts";
 import { RAW_DIR } from "./layout.ts";
 import { mineruName, type PdfConverter, pdfText } from "./pdf.ts";
-import { newTarget, realTarget } from "./write.ts";
+import { readText, realTarget, resolveInVault } from "./vault-file.ts";
+import { newTarget } from "./write.ts";
 
 /** One fetched resource: the status, the final URL after redirects, and the bytes. */
 export interface Fetched {
@@ -350,7 +351,7 @@ function resolveTarget(root: string, argument: string, fromNote = false): Target
       `'${text}' is not an arXiv ID, a URL, or an existing note that holds only a URL.`,
     );
   }
-  const body = parse(readFileSync(realTarget(root, note), "utf8")).body.trim();
+  const body = parse(readText(resolveInVault(root, note))).body.trim();
   const link = /^<?(https?:\/\/\S+?)>?$/.exec(body);
   if (link === null) {
     throw new SourceRefused(

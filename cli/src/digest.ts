@@ -64,7 +64,7 @@ import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
 import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH, TEMPLATES_DIR } from "./layout.ts";
 import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
 import { run } from "./run.ts";
-import { readText } from "./vault.ts";
+import { readText, resolveInVault, WriteRefused } from "./vault-file.ts";
 import { recordRun, withNoteLock } from "./write.ts";
 
 export const LOCAL_TZ = "America/Los_Angeles";
@@ -388,11 +388,12 @@ export function readProjects(
     let properties: Record<string, unknown>;
     let body: string;
     try {
-      ({ properties, body } = parse(readText(join(root, path))));
+      ({ properties, body } = parse(readText(resolveInVault(root, path))));
     } catch (error) {
       const unreadable =
         error instanceof MissingFrontmatter ||
         error instanceof UnsupportedFrontmatter ||
+        error instanceof WriteRefused ||
         (error as { code?: string }).code === "ERR_ENCODING_INVALID_ENCODED_DATA";
       if (!unreadable) throw error;
       console.error(`skipping ${path}: ${(error as Error).message}`);
@@ -794,7 +795,7 @@ export function replaceBlock(text: string, block: string): string {
 }
 
 export function newNoteText(day: Day, root: string, block: string): string {
-  const template = readText(join(root, TEMPLATES_DIR, "daily-note.md"));
+  const template = readText(resolveInVault(root, `${TEMPLATES_DIR}/daily-note.md`));
   return replaceBlock(template.replaceAll("{{date:YYYY-MM-DD}}", isoDate(day)), block);
 }
 
@@ -836,7 +837,8 @@ export function processDay(day: Day, root: string, options: ProcessOptions): str
   }
 
   const hash = blockHash(grouped, unseen);
-  const text = existsSync(notePath) ? readText(notePath) : "";
+  const noteFile = `${DAILY_DIR}/${isoDate(day)}.md`;
+  const text = existsSync(notePath) ? readText(resolveInVault(root, noteFile)) : "";
   if (existingHash(text) === hash) return "unchanged (hash match, no model call)";
 
   const prose = completeSummary(grouped, day, (g, d) =>
@@ -848,7 +850,7 @@ export function processDay(day: Day, root: string, options: ProcessOptions): str
   // note lock that the other writers take; the lock is not held across the model call.
   return withNoteLock(root, () => {
     if (existsSync(notePath)) {
-      atomicWrite(notePath, replaceBlock(readText(notePath), block));
+      atomicWrite(notePath, replaceBlock(readText(resolveInVault(root, noteFile)), block));
       return "updated";
     }
     mkdirSync(dirname(notePath), { recursive: true });
@@ -896,7 +898,11 @@ export function runDigest(options: { root?: string; date?: Day; push?: boolean }
     }
     return { lines };
   } catch (error) {
-    if (error instanceof DigestError || error instanceof VaultRootError) {
+    if (
+      error instanceof DigestError ||
+      error instanceof VaultRootError ||
+      error instanceof WriteRefused
+    ) {
       return { lines, error: `llmos daily activity: ${error.message}` };
     }
     return {

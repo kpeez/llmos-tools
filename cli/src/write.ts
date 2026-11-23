@@ -38,59 +38,20 @@ import {
   unlinkSync,
   writeSync,
 } from "node:fs";
-import {
-  basename,
-  dirname,
-  isAbsolute,
-  join,
-  relative as relativePath,
-  resolve,
-  sep,
-} from "node:path";
+import { basename, dirname, join, relative as relativePath } from "node:path";
 import { bodyWithThought } from "./daily.ts";
 import { markDirty } from "./dirty.ts";
 import { Frontmatter, MissingFrontmatter } from "./frontmatter.ts";
 import { LockRefused, vaultLockPath, waitLock } from "./lock.ts";
 import { LINK_FIELDS } from "./schema.ts";
-import { readText } from "./vault.ts";
-
-/** A write the caller asked for cannot be done; nothing was written. */
-export class WriteRefused extends Error {
-  override name = "WriteRefused";
-}
-
-/** Whether `path` is `folder` itself or inside it (both absolute and real). */
-function within(folder: string, path: string): boolean {
-  const rest = relativePath(folder, path);
-  return rest === "" || (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest));
-}
-
-/**
- * The absolute path of vault-relative `relative`, checked lexically: not
- * absolute, and no `..` that leaves the vault. Symbolic links are not
- * resolved; `realTarget` and `newTarget` do that.
- */
-export function insideVault(root: string, relative: string): string {
-  const absolute = resolve(root, relative);
-  if (
-    relative === "" ||
-    isAbsolute(relative) ||
-    !within(resolve(root), absolute) ||
-    absolute === resolve(root)
-  ) {
-    throw new WriteRefused(`'${relative}' is not a path inside the vault`);
-  }
-  return absolute;
-}
-
-/** The real path of an existing note, refused unless it is inside the real vault root. */
-export function realTarget(root: string, relative: string): string {
-  const real = realpathSync(insideVault(root, relative));
-  if (!within(realpathSync(root), real)) {
-    throw new WriteRefused(`'${relative}' resolves to ${real}, which is outside the vault`);
-  }
-  return real;
-}
+import {
+  insideVault,
+  readText,
+  resolveInVault,
+  type VaultFile,
+  WriteRefused,
+  within,
+} from "./vault-file.ts";
 
 function present(path: string): boolean {
   try {
@@ -144,7 +105,7 @@ function writeTemporary(folder: string, name: string, text: string, mode: number
  * atomically: write a temporary file beside it, then rename it over the
  * original. The file keeps its permission bits.
  */
-function atomicReplace(root: string, real: string, text: string): void {
+function atomicReplace(root: string, real: VaultFile, text: string): void {
   const mode = statSync(real).mode & 0o7777;
   const temporary = writeTemporary(dirname(real), basename(real), text, mode);
   try {
@@ -180,7 +141,7 @@ export function writeNote(root: string, relative: string, text: string): void {
     createNote(root, relative, text);
     return;
   }
-  atomicReplace(root, realTarget(root, relative), text);
+  atomicReplace(root, resolveInVault(root, relative), text);
 }
 
 /** Delete the note at `relative`; refused when it is missing or outside the vault. */
@@ -188,7 +149,7 @@ export function deleteNote(root: string, relative: string): void {
   if (!present(insideVault(root, relative))) {
     throw new WriteRefused(`no file at ${relative}`);
   }
-  unlinkSync(realTarget(root, relative));
+  unlinkSync(resolveInVault(root, relative));
   markDirty(root);
 }
 
@@ -232,7 +193,7 @@ function frontmatterOf(text: string): Frontmatter {
 /** Rewrite a note with its body changed by `edit`; a note without a block stays without one. */
 function editBody(root: string, relative: string, edit: (body: string) => string): void {
   withNoteLock(root, () => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const text = readText(real);
     let frontmatter: Frontmatter;
     try {
@@ -257,7 +218,7 @@ const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
  */
 export function setProperty(root: string, relative: string, key: string, value: string): void {
   withNoteLock(root, () => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const frontmatter = frontmatterOf(readText(real));
     if (LIST_PROPERTIES.has(key)) frontmatter.appendUnique(key, value);
     else frontmatter.setScalar(key, value);
@@ -279,7 +240,7 @@ export function recordRun(
   dryRun = false,
 ): void {
   const edit = (): void => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const frontmatter = frontmatterOf(readText(real));
     frontmatter.setScalar(key, date);
     frontmatter.setScalar("updated", date);
@@ -293,7 +254,7 @@ export function recordRun(
 /** Remove property `key`. Returns false (and writes nothing) when the note has no such property. */
 export function removeProperty(root: string, relative: string, key: string): boolean {
   return withNoteLock(root, () => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const frontmatter = frontmatterOf(readText(real));
     if (!frontmatter.delete(key)) return false;
     atomicReplace(root, real, frontmatter.toString());
@@ -325,7 +286,7 @@ export function appendThought(root: string, relative: string, thought: string): 
  */
 export function stampNote(root: string, relative: string, date: string): boolean {
   return withNoteLock(root, () => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const text = readText(real);
     let frontmatter: Frontmatter;
     try {
@@ -352,7 +313,7 @@ export function stampProperties(
   stamps: Record<string, string[]>,
 ): boolean {
   return withNoteLock(root, () => {
-    const real = realTarget(root, relative);
+    const real = resolveInVault(root, relative);
     const frontmatter = frontmatterOf(readText(real));
     const current = frontmatter.properties;
     let changed = false;
