@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
+  folder that is not a vault. It prints one context line that names the
+  folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
+  worked with no vault and no warning. An unset `LLMOS_ROOT` still prints
+  nothing.
 - A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
   linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
   so a broken version left them on the broken copy while `current` stayed on
