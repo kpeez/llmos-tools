@@ -10,6 +10,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { HOOK_RESERVE_MS, HOOK_TIMEOUT_MS } from "../../src/hook-limits.ts";
 import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/mcp-names.ts";
 import { TOOLS } from "./helpers.ts";
 
@@ -34,7 +35,7 @@ function json(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(TOOLS, path), "utf8"));
 }
 
-type Groups = { matcher?: string; hooks: { command: string }[] }[];
+type Groups = { matcher?: string; hooks: { command: string; timeout: number }[] }[];
 
 test("each hook command runs the bundle with a known event", () => {
   const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
@@ -171,4 +172,19 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   const postMatcher = new RegExp(`^(?:${postToolUse[0]?.matcher})$`);
   expect(postMatcher.test("write_file")).toBe(true);
   expect(postMatcher.test("edit_file")).toBe(true);
+});
+
+test("the hook timeouts in hook-limits.ts match hooks.json, and guard-bash matches Hermes", () => {
+  const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
+  const found: Record<string, number> = {};
+  for (const groups of Object.values(hooks)) {
+    for (const hook of groups.flatMap((group) => group.hooks)) {
+      found[COMMAND.exec(hook.command)?.[2] ?? hook.command] = hook.timeout * 1000;
+    }
+  }
+  // No hooks.json entry runs guard-bash any more; Hermes still does.
+  const hermes = readFileSync(join(TOOLS, "hermes/__init__.py"), "utf8");
+  const hermesSeconds = Number(/^TIMEOUT_SECONDS = (\d+)$/m.exec(hermes)?.[1]);
+  expect(HOOK_TIMEOUT_MS).toEqual({ ...found, "guard-bash": hermesSeconds * 1000 });
+  expect(HOOK_RESERVE_MS).toBeLessThan(1_000);
 });

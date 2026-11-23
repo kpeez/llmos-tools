@@ -6,6 +6,23 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- Every subprocess in the CLI now has a time limit, except children that
+  outlive their caller (`startDetached`) and the three pass-through launchers
+  (`UNBOUNDED`: `bin/llmos.ts`, `bin/qmd.ts`, the MCP launcher). `src/run.ts`
+  is the one module that starts a child, and its options require `timeoutMs`;
+  a Biome plugin (`cli/lint/subprocess.grit`) fails on `Bun.spawn`,
+  `Bun.spawnSync`, `Bun.$`, and `node:child_process` anywhere else. New limits:
+  `gh` 60 s, `obsidian-cli` 30 s (before, none), MinerU 30 min, `unzip` 60 s,
+  `bun install` 10 min in `install.ts`, and 20 min per model check. Each hook
+  also has a deadline for all its subprocesses together: its `hooks.json`
+  timeout less 0.5 s. Before, the worst
+  Stop path could reach 35 s of limits (two 10 s reindex runs, then fetch,
+  merge, and push at 5 s each). Near the deadline a call gets the time left,
+  and later calls
+  are skipped (the message says so, not "timed out"); a cloud session start says how many repositories it did not
+  link. A call that runs into the last 0.5 s before the harness kill is cut,
+  so the hook can still write its output. The single-call limits of the hooks
+  are as before.
 - A vault note is now read through one checked path: `resolveInVault` in
   `cli/src/vault-file.ts` gives the branded `VaultFile` type, and `readText`
   accepts only that type. It refuses `..`, a link that leaves the vault, a

@@ -54,6 +54,7 @@ function pluginRoot(version: string, llmos = STUB): string {
     chmodSync(join(root, "cli", entry), 0o755);
   }
   copyFileSync(join(CLI, "scripts", "install.ts"), join(root, "cli", "scripts", "install.ts"));
+  copyFileSync(join(CLI, "src", "run.ts"), join(root, "cli", "src", "run.ts"));
   mkdirSync(join(root, "hermes"));
   return root;
 }

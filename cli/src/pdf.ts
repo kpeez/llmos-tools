@@ -9,7 +9,12 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as z from "zod";
+import { run, start } from "./run.ts";
 import { pointImagesAtAssets, SourceRefused, uniqueName } from "./sources.ts";
+
+/** MinerU parses a long scanned PDF on this machine in minutes; half an hour ends a hang. */
+const MINERU_TIMEOUT_MS = 30 * 60_000;
+const UNZIP_TIMEOUT_MS = 60_000;
 
 const Structured = z.object({
   pages: z.array(
@@ -69,17 +74,19 @@ export function mineruConverter(command: string): PdfConverter {
       const zip = join(work, "out.zip");
       const out = join(work, "out");
       writeFileSync(input, pdf);
-      const run = Bun.spawn([mineru, "parse", input, "-o", zip, ...MINERU_FLAGS], {
+      const parse = start([mineru, "parse", input, "-o", zip, ...MINERU_FLAGS], {
         stdin: "ignore",
         stdout: 2,
         stderr: "inherit",
+        timeoutMs: MINERU_TIMEOUT_MS,
       });
-      const code = await run.exited;
+      const code = await parse.exited;
       if (code !== 0)
         throw new SourceRefused(`MinerU exited with code ${code}; nothing was written.`);
-      const unpacked = Bun.spawnSync([unzip, "-q", zip, "-d", out], {
+      const unpacked = run([unzip, "-q", zip, "-d", out], {
         stdout: 2,
         stderr: "inherit",
+        timeoutMs: UNZIP_TIMEOUT_MS,
       });
       if (unpacked.exitCode !== 0) {
         throw new SourceRefused(

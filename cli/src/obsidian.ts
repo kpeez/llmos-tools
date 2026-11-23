@@ -10,6 +10,10 @@
 
 import { basename } from "node:path";
 import { markDirty } from "./dirty.ts";
+import { run as runProcess } from "./run.ts";
+
+/** A move or a template create in a running app takes seconds; a hung app must not hold the CLI. */
+const OBSIDIAN_TIMEOUT_MS = 30_000;
 
 /** The exit code for "Obsidian is not running", kept from the Python CLI. */
 export const EXIT_OBSIDIAN_NOT_RUNNING = 3;
@@ -45,9 +49,20 @@ export type ObsidianRunner = (argv: string[]) => {
 };
 
 export const spawnObsidian: ObsidianRunner = (argv) => {
-  const result = Bun.spawnSync(["obsidian-cli", ...argv], { stdout: "pipe", stderr: "pipe" });
+  const result = runProcess(["obsidian-cli", ...argv], {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeoutMs: OBSIDIAN_TIMEOUT_MS,
+  });
+  if (result.timedOut) {
+    return {
+      exitCode: 124,
+      stdout: "",
+      stderr: `obsidian-cli timed out after ${OBSIDIAN_TIMEOUT_MS / 1000} s`,
+    };
+  }
   return {
-    exitCode: result.exitCode,
+    exitCode: result.exitCode ?? 1,
     stdout: result.stdout.toString(),
     stderr: result.stderr.toString(),
   };

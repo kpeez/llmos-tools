@@ -63,6 +63,7 @@ import { add, commit, hasStaged, mainCheckout, publish } from "./git.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
 import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH, TEMPLATES_DIR } from "./layout.ts";
 import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
+import { run } from "./run.ts";
 import { readText, resolveInVault, WriteRefused } from "./vault-file.ts";
 import { recordRun, withNoteLock } from "./write.ts";
 
@@ -86,6 +87,8 @@ export const OPENCODE_CONFIG = {
   },
 };
 const OPENCODE_TIMEOUT_MS = 600_000;
+/** A `gh` list or search call: seconds on a good network, and the digest waits on it. */
+const GH_TIMEOUT_MS = 60_000;
 const SUMMARY_ATTEMPTS = 3;
 const DAY_MS = 86_400_000;
 
@@ -297,9 +300,15 @@ function decodeUtf8(bytes: Uint8Array, what: string): string {
 }
 
 export function runGh(args: string[]): unknown {
-  const result = Bun.spawnSync(["gh", ...args], { stdout: "pipe", stderr: "pipe" });
+  const result = run(["gh", ...args], {
+    stdout: "pipe",
+    stderr: "pipe",
+    timeoutMs: GH_TIMEOUT_MS,
+  });
   if (result.exitCode !== 0) {
-    const stderr = result.stderr.toString().trim();
+    const stderr = result.timedOut
+      ? `timed out after ${GH_TIMEOUT_MS / 1000} s`
+      : result.stderr.toString().trim();
     throw new DigestError(`gh ${args.slice(0, 3).join(" ")} failed: ${stderr}`);
   }
   return parseGhJson(decodeUtf8(result.stdout, "gh"));
@@ -627,16 +636,16 @@ export function summarize(grouped: Grouped, day: Day, opencodeBin = "opencode"):
       "--model",
       MODEL,
     ];
-    const result = Bun.spawnSync([opencodeBin, ...argv], {
+    const result = run([opencodeBin, ...argv], {
       cwd: scratch,
       env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(OPENCODE_CONFIG) },
       stdin: new TextEncoder().encode(summaryPrompt(grouped, day)),
       stdout: "pipe",
       stderr: "pipe",
-      timeout: OPENCODE_TIMEOUT_MS,
+      timeoutMs: OPENCODE_TIMEOUT_MS,
       killSignal: "SIGKILL",
     });
-    if (result.exitedDueToTimeout) {
+    if (result.timedOut) {
       throw new DigestError(`opencode run timed out after ${OPENCODE_TIMEOUT_MS / 1000} s`);
     }
     if (result.exitCode !== 0) {

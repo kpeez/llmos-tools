@@ -4,9 +4,12 @@
  * folder that holds a `.tla` file runs its `scripts/check.ts`. Exits 1 when a
  * check fails, when a model has no check, or when no model is found.
  */
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { run } from "../src/run.ts";
+
+/** TLC model checks take minutes; twenty ends a hung one. */
+const CHECK_TIMEOUT_MS = 20 * 60_000;
 
 const SKILLS = join(import.meta.dir, "..", "..", ".agents", "skills");
 
@@ -30,8 +33,13 @@ for (const name of models) {
     failed.push(name);
     continue;
   }
-  const r = spawnSync("bun", [check], { stdio: "inherit" });
-  if (r.status !== 0) failed.push(name);
+  const r = run(["bun", check], {
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+    timeoutMs: CHECK_TIMEOUT_MS,
+  });
+  if (r.exitCode !== 0) failed.push(name);
 }
 
 console.log(`\n${models.length - failed.length} of ${models.length} model checks passed`);

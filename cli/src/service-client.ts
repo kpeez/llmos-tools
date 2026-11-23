@@ -9,7 +9,6 @@
  * never does worse than it did without the service.
  */
 
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import net from "node:net";
 import { join, resolve } from "node:path";
@@ -21,6 +20,7 @@ import {
   qmdLocation,
   type Searcher,
 } from "./qmd.ts";
+import { startDetached } from "./run.ts";
 import type { ServiceStatus } from "./service.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -141,9 +141,9 @@ export function startService(env: Env): void {
   if (serviceDisabled(env)) return;
   if (Buffer.byteLength(servicePaths(env).socket) > MAX_SOCKET_PATH) return;
   try {
-    const child = spawn(
-      process.execPath,
+    startDetached(
       [
+        process.execPath,
         "--no-install",
         "--no-env-file",
         "--config=/dev/null",
@@ -154,13 +154,9 @@ export function startService(env: Env): void {
       {
         cwd: CLI,
         // libggml-metal aborts at exit with a loaded model unless this is set (bin/llmos.ts).
-        env: { ...env, GGML_METAL_NO_RESIDENCY: "1" } as Record<string, string>,
-        detached: true,
-        stdio: "ignore",
+        env: { ...env, GGML_METAL_NO_RESIDENCY: "1" },
       },
     );
-    child.on("error", () => {});
-    child.unref();
   } catch {
     // The caller runs the work itself.
   }

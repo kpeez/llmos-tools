@@ -21,6 +21,7 @@
  */
 
 import { clearDirty, dirtyToken } from "../dirty.ts";
+import { run as runProcess } from "../run.ts";
 import { COLLECTION, resolvedRoot } from "./common.ts";
 
 export function warn(message: string): void {
@@ -28,9 +29,9 @@ export function warn(message: string): void {
 }
 
 /**
- * The reindex shares the 30 s Stop budget with the memory sync (`sync.ts`,
- * up to about 15 s), so it gets 10 s. A timed-out reindex keeps the dirty
- * flag, and the next Stop retries it.
+ * One run gets 10 s; the hook deadline (`../run.ts`) cuts both runs and the
+ * memory sync (`sync.ts`) short together. A timed-out reindex keeps the
+ * dirty flag, and the next Stop retries it.
  */
 const REINDEX_TIMEOUT_MS = 10_000;
 const TIMED_OUT = "timed out";
@@ -38,15 +39,15 @@ const TIMED_OUT = "timed out";
 /** Run `command`, all its output on stderr; a description of the failure, or `null` on success. */
 function run(label: string, command: string[]): string | null {
   try {
-    const result = Bun.spawnSync({
-      cmd: command,
+    const result = runProcess(command, {
       stdin: "ignore",
       stdout: 2,
       stderr: "inherit",
-      timeout: REINDEX_TIMEOUT_MS,
+      timeoutMs: REINDEX_TIMEOUT_MS,
     });
     if (result.exitCode === 0) return null;
-    if (result.exitedDueToTimeout) return `${label} ${TIMED_OUT}`;
+    if (result.skipped) return `${label} skipped: no time left before the hook deadline`;
+    if (result.timedOut) return `${label} ${TIMED_OUT}`;
     return `${label} exited ${result.exitCode ?? result.signalCode}`;
   } catch (error) {
     return `${label} failed: ${error instanceof Error ? error.message : String(error)}`;

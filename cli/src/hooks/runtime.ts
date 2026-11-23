@@ -1,7 +1,8 @@
 /**
  * What every hook entry point shares: the result of each event, the one
- * writer of a hook's output channels, and the one function that reads the
- * payload, runs the event's handler, and emits its result. An entry point
+ * writer of a hook's output channels, and the one function that arms the
+ * event's deadline (`../hook-limits.ts`), reads the payload, runs the event's
+ * handler, and emits its result. An entry point
  * (`main.ts`, `pre-tool-use.ts`) is a handler table and a call to `runHook`;
  * it holds only the code of its own events, so a bundle stays small.
  *
@@ -9,6 +10,7 @@
  * output, and an unknown event does nothing.
  */
 
+import { armHookDeadline } from "../hook-limits.ts";
 import {
   isAntigravityPayload,
   type Payload,
@@ -136,6 +138,7 @@ export async function runHook<E extends HookEvent>(
 ): Promise<void> {
   try {
     if (event === undefined || !Object.hasOwn(handlers, event)) return;
+    armHookDeadline(event);
     const name = event as E;
     const raw = await readPayload();
     const result = await handlers[name]({ raw, data: sessionPayload(name, raw) });

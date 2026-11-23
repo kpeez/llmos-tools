@@ -227,7 +227,8 @@ describe("raw mv and rm on vault notes", () => {
       const result = guard(command, tmp, { root: vault });
       expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 0 });
     }
-  });
+    // One hook process per command: 26 starts outrun bun's default 5 s on a loaded host.
+  }, 60_000);
 
   test("approves a note path that is only quoted text, even across a newline", () => {
     const tmp = temporaryFolder();
