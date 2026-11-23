@@ -79,8 +79,8 @@ Assumptions, which the check does not cover:
 - `close()`'s own `service.close()` (the qmd store) is not modeled; it runs
   after the socket is gone.
 
-Sync commit: the commit of the pull request that adds this skill (fix:
-service start race). At that commit, the model describes the code.
+Sync commit: `b76c635` (fix(service): take the start lock from the kernel
+and remove the socket once). At that commit, the model describes the code.
 
 ## When a change touches the covered code
 
