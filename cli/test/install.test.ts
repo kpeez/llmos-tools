@@ -10,6 +10,7 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readlinkSync,
   symlinkSync,
   writeFileSync,
@@ -93,6 +94,28 @@ describe("install.ts current link", () => {
     expect(readlinkSync(join(data, "current"))).toBe(join(data, "1.0.0"));
     expect(readlinkSync(join(bin, "llmos"))).toBe(join(data, "1.0.0", "cli", "bin", "llmos.ts"));
     expect(readlinkSync(join(bin, "qmd"))).toBe(join(data, "1.0.0", "cli", "bin", "qmd.ts"));
+  });
+
+  test("a reinstall of the same version that fails its smoke test leaves the working copy in place", () => {
+    const home = scratch("install-home");
+    const data = join(home, ".local", "share", "llmos");
+    const bin = join(home, ".local", "bin");
+    expect(install(pluginRoot("1.0.0"), home).code).toBe(0);
+
+    const broken = install(pluginRoot("1.0.0", "#!/usr/bin/env bun\nprocess.exit(1);\n"), home);
+
+    expect(broken.code).toBe(1);
+    expect(readlinkSync(join(data, "current"))).toBe(join(data, "1.0.0"));
+    expect(readdirSync(data).sort()).toEqual(["1.0.0", "current"]);
+    for (const argv of [
+      [join(data, "1.0.0", "cli", "bin", "llmos.ts")],
+      [join(data, "current", "cli", "bin", "llmos.ts")],
+      [join(bin, "llmos")],
+      [join(bin, "qmd")],
+    ]) {
+      const result = Bun.spawnSync([process.execPath, ...argv], { stdout: "pipe", stderr: "pipe" });
+      expect(result.exitCode).toBe(0);
+    }
   });
 
   test("a current that is a real folder stops the install before anything changes", () => {
