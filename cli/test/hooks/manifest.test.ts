@@ -10,6 +10,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { HOOK_PATHS } from "../../src/hook-limits.ts";
 import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/mcp-names.ts";
 import { TOOLS } from "./helpers.ts";
 
@@ -20,7 +21,7 @@ function json(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(TOOLS, path), "utf8"));
 }
 
-type Groups = { matcher?: string; hooks: { command: string }[] }[];
+type Groups = { matcher?: string; hooks: { command: string; timeout: number }[] }[];
 
 test("each hook command runs the bundle with a known event", () => {
   const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
@@ -155,4 +156,17 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   const postMatcher = new RegExp(`^(?:${postToolUse[0]?.matcher})$`);
   expect(postMatcher.test("write_file")).toBe(true);
   expect(postMatcher.test("edit_file")).toBe(true);
+});
+
+test("the subprocess limits on the worst path of each hook stay under its timeout", () => {
+  const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
+  expect(Object.keys(HOOK_PATHS).sort()).toEqual(Object.keys(hooks).sort());
+  for (const [event, groups] of Object.entries(hooks)) {
+    for (const hook of groups.flatMap((group) => group.hooks)) {
+      for (const [path, steps] of Object.entries(HOOK_PATHS[event] ?? {})) {
+        const totalMs = steps.reduce((sum, step) => sum + step.limitMs * step.calls, 0);
+        expect([event, path, totalMs < hook.timeout * 1000]).toEqual([event, path, true]);
+      }
+    }
+  }
 });

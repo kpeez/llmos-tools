@@ -6,6 +6,18 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- Every subprocess in the CLI now has a time limit. `src/run.ts` is the one
+  module that starts a child, and its options require `timeoutMs`; a Biome
+  plugin (`cli/lint/subprocess.grit`) fails on `Bun.spawn`, `Bun.spawnSync`,
+  `Bun.$`, and `node:child_process` anywhere else. `llmos` commands that call
+  `gh` (60 s), `obsidian-cli` (30 s), or MinerU (30 min) no longer hang for
+  ever. The hook limits live in `src/hook-limits.ts`, and a test checks that
+  the limits on the worst path of each hook stay under its `hooks.json`
+  timeout. The worst Stop path could reach 35 s of subprocess limits
+  (two 10 s reindex runs, then fetch, merge, and push at 5 s each) against a
+  30 s timeout; the reindex run and its `qmd update` fallback now share 10 s,
+  and the worst path is 27 s. A cloud session links at most eight repositories beside the vault, and
+  every local git call in a session-start hook has a 250 ms limit.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into

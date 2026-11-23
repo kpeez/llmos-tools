@@ -60,6 +60,12 @@ Run git only through `src/git.ts`. It sets a timeout and path-safe options
 on every call and offers no `rebase`, `stash`, `reset`, or `pull`, which can
 drop a commit that another writer made. Two Biome plugins in `lint/` fail on a
 git spawn anywhere else and on those words in any git argument list.
+Start subprocesses only through `src/run.ts` (`run`, `start`, `startDetached`).
+Its options require `timeoutMs`, and a Biome plugin (`lint/subprocess.grit`)
+fails on `Bun.spawn`, `Bun.spawnSync`, `Bun.$`, and `node:child_process` in any
+other file. A hook step takes its limit from `src/hook-limits.ts`; add the step
+to `HOOK_PATHS` there, and `test/hooks/manifest.test.ts` fails when the limits
+on a hook's worst path reach its `hooks.json` timeout.
 After a change to `src/git.ts`, the shared-memory sync, or anything else that
 runs git in the vault checkout (`src/hooks/sync.ts`, `pushNotes` in
 `src/digest.ts`), also run `just verify-memory-sync`. It model-checks with TLA+ the rules that

@@ -20,6 +20,7 @@
 
 import { statSync } from "node:fs";
 import { join } from "node:path";
+import { run as runProcess } from "./run.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -33,20 +34,22 @@ interface Result {
 
 function run(cwd: string, args: string[], env: Env, timeout: number): Result {
   try {
-    const result = Bun.spawnSync({
-      cmd: ["git", "-C", cwd, "-c", "core.quotePath=false", "-c", "diff.renames=false", ...args],
-      env: { ...env, GIT_TERMINAL_PROMPT: "0" },
-      stdin: "ignore",
-      stdout: "pipe",
-      stderr: "pipe",
-      timeout,
-    });
+    const result = runProcess(
+      ["git", "-C", cwd, "-c", "core.quotePath=false", "-c", "diff.renames=false", ...args],
+      {
+        env: { ...env, GIT_TERMINAL_PROMPT: "0" },
+        stdin: "ignore",
+        stdout: "pipe",
+        stderr: "pipe",
+        timeoutMs: timeout,
+      },
+    );
     return {
       ok: result.exitCode === 0,
       code: result.exitCode,
       stdout: result.stdout.toString(),
       stderr: result.stderr.toString(),
-      timedOut: result.exitedDueToTimeout === true,
+      timedOut: result.timedOut,
     };
   } catch (error) {
     return { ok: false, code: null, stdout: "", stderr: String(error), timedOut: false };

@@ -1,0 +1,28 @@
+// Only cli/src/run.ts starts a subprocess (biome.json scopes this plugin to
+// the code outside it). A spawn elsewhere has no required time limit, and a
+// child that hangs hangs its caller: the Stop reindex, the doctor, and the
+// digest's model call each hung once. The plugin also catches an import of
+// `node:child_process` and an import of `spawn` or `spawnSync` from `bun`.
+language js
+
+or {
+  JsStaticMemberExpression() as $call where {
+    $call <: r"^Bun\s*\.\s*(?:spawn|spawnSync|\$)$",
+    register_diagnostic(
+      span=$call,
+      message="Start subprocesses only through run(), start(), or startDetached() in cli/src/run.ts: its options make timeoutMs required, so no child runs without a time limit.",
+      severity="error"
+    )
+  },
+  JsImport() as $import where {
+    $import <: or {
+      r"[\s\S]*[\"'](?:node:)?child_process[\"'][\s\S]*",
+      r"[\s\S]*\b(?:spawn|spawnSync|\$)\b[\s\S]*from\s*[\"']bun[\"'][\s\S]*"
+    },
+    register_diagnostic(
+      span=$import,
+      message="Start subprocesses only through run(), start(), or startDetached() in cli/src/run.ts: its options make timeoutMs required, so no child runs without a time limit.",
+      severity="error"
+    )
+  }
+}

@@ -19,6 +19,10 @@
       "path": "./cli/lint/git-spawn.grit",
       "includes": ["**/cli/src/**", "**/cli/bin/**", "**/cli/scripts/**", "!**/cli/src/git.ts"]
     },
-    "./cli/lint/git-words.grit"
+    "./cli/lint/git-words.grit",
+    {
+      "path": "./cli/lint/subprocess.grit",
+      "includes": ["**/cli/src/**", "**/cli/bin/**", "**/cli/scripts/**", "!**/cli/src/run.ts"]
+    }
   ]
 }

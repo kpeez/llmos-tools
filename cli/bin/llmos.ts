@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { main } from "../src/cli.ts";
 import { COMMANDS } from "../src/commands.ts";
+import { start, UNBOUNDED } from "../src/run.ts";
 
 const argv = process.argv.slice(2);
 
@@ -15,9 +16,13 @@ const loadsModels =
   (argv[0] === "memory" && argv[1] === "search") ||
   (argv[0] === "service" && argv[1] === "serve");
 if (process.platform === "darwin" && loadsModels && !process.env.GGML_METAL_NO_RESIDENCY) {
-  const child = Bun.spawn([process.execPath, import.meta.path, ...argv], {
+  const child = start([process.execPath, import.meta.path, ...argv], {
     env: { ...process.env, GGML_METAL_NO_RESIDENCY: "1" },
-    stdio: ["inherit", "inherit", "inherit"],
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+    // The same command as the caller ran, which has no limit of its own.
+    timeoutMs: UNBOUNDED,
   });
   process.exit(await child.exited);
 }

@@ -22,6 +22,7 @@ import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { SERVER_NAME } from "./mcp-names.ts";
+import { start, UNBOUNDED } from "./run.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -96,7 +97,7 @@ export function sessionFolder(cwd: string, pluginRoot: string): string | null {
 async function runServer(entry: string): Promise<number> {
   const argv = [process.execPath, ...SAFE_BUN_FLAGS, entry, "mcp"];
   const folder = process.env.LLMOS_SESSION_CWD ?? sessionFolder(process.cwd(), PLUGIN_ROOT_DIR);
-  const child = Bun.spawn(argv, {
+  const child = start(argv, {
     // The server runs in its own install, so the session folder goes in the environment.
     cwd: dirname(dirname(entry)),
     env: {
@@ -104,7 +105,11 @@ async function runServer(entry: string): Promise<number> {
       GGML_METAL_NO_RESIDENCY: "1",
       ...(folder ? { LLMOS_SESSION_CWD: folder } : {}),
     },
-    stdio: ["inherit", "inherit", "inherit"],
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+    // The server lives as long as the session that started it.
+    timeoutMs: UNBOUNDED,
   });
   for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const) {
     process.on(signal, () => child.kill(signal));

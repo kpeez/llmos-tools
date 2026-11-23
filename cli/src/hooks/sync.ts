@@ -56,16 +56,12 @@ import {
   update,
   vaultPath,
 } from "../git.ts";
+import { LOCAL_GIT_MS, START_GIT_MS, STOP_GIT_MS } from "../hook-limits.ts";
 import { SHARED_MEMORY_PATH } from "../layout.ts";
 import { joinPath } from "./common.ts";
 
 type Env = Record<string, string | undefined>;
 
-// Session start has a 10 s hook timeout: fetch 4 s + fast-forward 4 s.
-// Stop has 30 s: fetch 5 s + merge 5 s + push 5 s, plus local calls.
-const LOCAL_TIMEOUT_MS = 5_000;
-const START_TIMEOUTS = { fetch: 4_000, merge: 4_000 };
-const STOP_TIMEOUTS = { fetch: 5_000, merge: 5_000, push: 5_000 };
 const LOCK_STALE_MS = 60_000;
 const COMMIT_MESSAGE = "memory: sync shared project memory";
 const MERGE_MESSAGE = "memory: merge shared project memory";
@@ -81,7 +77,7 @@ function warn(message: string): void {
 export function syncGate(root: string, env: Env): Gate {
   if (env.LLMOS_NO_GIT_SYNC === "1") return { sync: false, reason: "LLMOS_NO_GIT_SYNC=1" };
   if (env.CLAUDE_CODE_REMOTE === "true") return { sync: false, reason: "cloud session" };
-  const opened = mainCheckout(root, env, LOCAL_TIMEOUT_MS);
+  const opened = mainCheckout(root, env, LOCAL_GIT_MS);
   if (!opened.ok) return { sync: false, reason: opened.reason, paused: opened.paused };
   return { sync: true, ...opened.checkout };
 }
@@ -171,7 +167,7 @@ export function syncOnStart(root: string, env: Env): string | null {
       : null;
   }
   return withLock(gate.commonDir, () => {
-    const updated = update(gate, START_TIMEOUTS);
+    const updated = update(gate, START_GIT_MS);
     if (!("failed" in updated) || updated.failed === "diverged") return null; // Diverged: Stop merges.
     if (updated.failed === "fetch") {
       return `The llmOS vault fetch failed: ${updated.reason}. Shared memory may be stale.`;
@@ -205,7 +201,7 @@ export function syncOnStop(root: string, env: Env): void {
     const published = publish(gate, {
       allowed: (path) => SHARED_MEMORY_PATH.test(path),
       mergeMessage: MERGE_MESSAGE,
-      timeouts: STOP_TIMEOUTS,
+      timeouts: STOP_GIT_MS,
     });
     if (!("failed" in published)) return;
     switch (published.failed) {

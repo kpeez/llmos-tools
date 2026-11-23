@@ -37,6 +37,12 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { run } from "../src/run.ts";
+
+/** A production install from the frozen lockfile takes under a minute; ten ends a hang. */
+const BUN_INSTALL_TIMEOUT_MS = 10 * 60_000;
+/** `llmos --help` and `qmd --version` only start and print. */
+const SMOKE_TIMEOUT_MS = 30_000;
 
 const COMMANDS = ["llmos", "qmd"];
 // Never copied: dependencies, and the caches of the retired Python package,
@@ -96,14 +102,12 @@ cpSync(source, staging, {
   recursive: true,
   filter: (path) => !SKIPPED.has(basename(path)),
 });
-const installed = Bun.spawnSync(
-  [process.execPath, "install", "--frozen-lockfile", "--production"],
-  {
-    cwd: join(staging, "cli"),
-    stdout: "inherit",
-    stderr: "inherit",
-  },
-);
+const installed = run([process.execPath, "install", "--frozen-lockfile", "--production"], {
+  cwd: join(staging, "cli"),
+  stdout: "inherit",
+  stderr: "inherit",
+  timeoutMs: BUN_INSTALL_TIMEOUT_MS,
+});
 if (installed.exitCode !== 0) {
   rmSync(staging, { recursive: true, force: true });
   console.error("bun install failed; nothing was changed.");
@@ -126,7 +130,7 @@ for (const argv of [
   [join(binDir, "llmos"), "--help"],
   [join(binDir, "qmd"), "--version"],
 ]) {
-  const result = Bun.spawnSync(argv, { stdout: "pipe", stderr: "pipe" });
+  const result = run(argv, { stdout: "pipe", stderr: "pipe", timeoutMs: SMOKE_TIMEOUT_MS });
   if (result.exitCode !== 0) {
     console.error(`${argv.join(" ")} failed:\n${result.stderr.toString()}`);
     process.exit(1);
