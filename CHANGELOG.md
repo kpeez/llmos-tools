@@ -8,8 +8,8 @@ Newest first. Versions are the `version` field shared by
 
 - Two new tests guard contributor edits. One fails when the tla2tools pin (jar URL
   and sha256) differs between the three model-check scripts and the CI
-  workflow. The other fails on a git spawn in `hermes/` outside the read-only
-  `_git` helper, or on a git write verb there.
+  workflow. The other fails on a git spawn in `hermes/` outside the `_git`
+  helper, or on a `_git` call with a verb that is not read-only.
 
 ## 2.14.0 — 2026-11-23
 

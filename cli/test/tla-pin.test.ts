@@ -18,17 +18,16 @@ function pinOf(text: string, pattern: RegExp, file: string): string {
 }
 
 test("every copy of the tla2tools pin names the same jar url and sha256", () => {
-  const scripts = readdirSync(SKILLS)
-    .filter((skill) => skill.startsWith("verify-"))
-    .map((skill) => join(SKILLS, skill, "scripts", "check.ts"))
-    .filter((file) => {
-      try {
-        return readFileSync(file, "utf8").includes("tla2tools[url=");
-      } catch {
-        return false;
-      }
-    });
-  expect(scripts.length).toBe(3);
+  const scripts: string[] = [];
+  for (const skill of readdirSync(SKILLS).filter((n) => n.startsWith("verify-"))) {
+    if (!readdirSync(join(SKILLS, skill)).some((f) => f.endsWith(".tla"))) continue;
+    const check = join(SKILLS, skill, "scripts", "check.ts");
+    if (!readFileSync(check, "utf8").includes("tla2tools[url=")) {
+      throw new Error(`${check} holds no tla2tools pin`);
+    }
+    scripts.push(check);
+  }
+  expect(scripts).not.toEqual([]);
 
   const pins = new Map<string, string>();
   for (const file of scripts) {
