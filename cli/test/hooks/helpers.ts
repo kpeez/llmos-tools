@@ -8,6 +8,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { flagPath } from "../../src/dirty.ts";
 
 export const CLI = join(import.meta.dir, "..", "..");
 export const TOOLS = join(CLI, "..");
@@ -101,9 +102,9 @@ export function writeFile(path: string, text: string): string {
   return path;
 }
 
-/** The dirty flag the stamp hook sets for `session`, under the test's TMPDIR. */
-export function dirtyFlag(tmp: string, session: string): string {
-  return join(tmp, "scratch", "llmos-hooks", session, "llmos.dirty");
+/** The dirty flag of the vault at `root`, in the state folder under the test's `HOME`. */
+export function dirtyFlag(tmp: string, root: string): string {
+  return flagPath(root, { HOME: join(tmp, "home") });
 }
 
 /** Today's local date as `YYYY-MM-DD`. */

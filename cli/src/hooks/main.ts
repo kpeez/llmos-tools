@@ -135,7 +135,7 @@ async function run(event: string | undefined): Promise<void> {
     case "stop": {
       const data = await readPayload();
       try {
-        stop(data);
+        stop();
       } catch (error) {
         warn(`unexpected failure: ${error instanceof Error ? error.message : String(error)}`);
       }

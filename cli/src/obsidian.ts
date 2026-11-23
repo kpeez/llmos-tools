@@ -9,6 +9,7 @@
  */
 
 import { basename } from "node:path";
+import { markDirty } from "./dirty.ts";
 
 /** The exit code for "Obsidian is not running", kept from the Python CLI. */
 export const EXIT_OBSIDIAN_NOT_RUNNING = 3;
@@ -86,5 +87,6 @@ export function runObsidian(
     }
     throw new ObsidianCliError(`obsidian-cli ${verb} failed: ${stderr}`);
   }
+  markDirty(root);
   return result.stdout;
 }

@@ -3,8 +3,9 @@
  * findings.
  *
  * For each Markdown note the tool wrote under the vault root, it writes the
- * canonical frontmatter with `updated` set to today, then flags the qmd
- * collection dirty for the stop hook. A note without a frontmatter block,
+ * canonical frontmatter with `updated` set to today. It sets the dirty flag
+ * (`../dirty.ts`) for every such note, stamped or not, so the stop hook
+ * reindexes it. A note without a frontmatter block,
  * with a block the serializer refuses to rewrite, or with invalid UTF-8 is
  * left unchanged. A block that is not valid YAML, in any vault note, gives a
  * finding with the parser's line and column.
@@ -12,23 +13,21 @@
  * note.
  */
 
-import { closeSync, existsSync, lstatSync, openSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { checkNote, type Finding, frontmatterFinding, INVALID_FRONTMATTER } from "../authoring.ts";
+import { markDirty } from "../dirty.ts";
 import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
 import {
-  COLLECTION,
   firstTruthy,
-  flagPath,
   isFile,
   isUnder,
   localDate,
   type Payload,
   realpath,
   resolvedRoot,
-  sessionId,
   suffix,
   toolInputOf,
   toolNameOf,
@@ -231,6 +230,7 @@ export async function postToolUse(data: Payload): Promise<string | null> {
     (target) => isUnder(target, root) && suffix(target) === ".md" && isFile(target),
   );
   if (targets.length === 0) return null;
+  markDirty(root);
 
   const rootPrefix = root.endsWith("/") ? root : `${root}/`;
   const durableTargets: string[] = [];
@@ -247,14 +247,8 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  let stamped = false;
-  for (const target of durableTargets) {
-    if (stampNote(target)) stamped = true;
-  }
+  for (const target of durableTargets) stampNote(target);
   for (const target of memoryTargets) stampMemoryNote(target);
-  if (stamped || memoryTargets.length > 0) {
-    closeSync(openSync(flagPath(sessionId(data), COLLECTION), "a"));
-  }
   const lines = memoryLines(root, memoryTargets);
   if (durableTargets.length > 0) {
     const listed = await listing;
