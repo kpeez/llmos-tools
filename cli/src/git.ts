@@ -236,6 +236,34 @@ export function revParse(repo: Repo, ref: string): string | null {
   return result.ok ? result.stdout.trim() || null : null;
 }
 
+/** The text of `path` at `ref`, or `null` when `ref` or the file is missing. */
+export function show(repo: Repo, ref: string, path: string): string | null {
+  const result = run(repo.top, ["show", `${ref}:${path}`], repo.env, repo.local);
+  return result.ok ? result.stdout : null;
+}
+
+/** The newest commit that added or removed a line matching `pattern` in `path`, or `null`. */
+export function lastChangeMatching(repo: Repo, path: string, pattern: string): string | null {
+  const result = run(
+    repo.top,
+    ["--literal-pathspecs", "log", "-1", "--format=%H", `-G${pattern}`, "--", path],
+    repo.env,
+    repo.local,
+  );
+  return result.ok ? result.stdout.trim() || null : null;
+}
+
+/** The paths under `dirs` that differ between `ref` and HEAD; `null` when git fails. */
+export function changedSince(repo: Repo, ref: string, dirs: string[]): string[] | null {
+  const result = run(
+    repo.top,
+    ["--literal-pathspecs", "diff", "--name-only", "-z", ref, "HEAD", "--", ...dirs],
+    repo.env,
+    repo.local,
+  );
+  return result.ok ? nulList(result.stdout) : null;
+}
+
 /** Whether `from..to` holds a commit. */
 function ahead(repo: Repo, from: string, to: string): boolean {
   const result = run(repo.top, ["rev-list", "--count", `${from}..${to}`], repo.env, repo.local);
