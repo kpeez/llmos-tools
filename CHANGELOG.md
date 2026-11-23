@@ -22,6 +22,39 @@ Newest first. Versions are the `version` field shared by
   are skipped (the message says so, not "timed out"); a cloud session start says how many repositories it did not
   link. A cut call is one that the harness would have killed at the same
   moment. The single-call limits of the hooks are as before.
+- Two agents that write one note at the same time no longer lose a change.
+  `daily_append_thought`, `set_property`, `llmos set-property`,
+  `llmos remove-property`, `llmos daily append-thought`, the property
+  stamps, the PostToolUse stamp, the run records of `discover` and the
+  nightly digest, and the digest's replace of the daily note's block now read,
+  change, and write a note under one lock per vault. The lock is a kernel
+  lock in the git common dir of the vault (the llmOS state folder when the
+  vault is not a git checkout, or `git rev-parse` fails). Before, a probe with
+  12 processes that appended 10 thoughts each kept 20 to 54 of 120. The
+  digest's existence check of the note now runs inside the lock too. The
+  PostToolUse stamp takes the lock once for all its notes and waits at most
+  3 s; when the lock stays busy it skips the stamps and says so in its
+  output. Obsidian takes no lock, so a save from Obsidian in the microseconds
+  between the digest's second read and its rename is still lost.
+- The memory project lock, the memory-sync lock, and the service start lock
+  are now one lock: an exclusive SQLite transaction on a lock file
+  (`cli/src/lock.ts`). The kernel gives it to one process and drops it when
+  the holder exits or crashes, and no code removes a lock file. Before, the
+  two lock files used a rename takeover after 30 s or 60 s. With three
+  writers and a stale lock, two could hold it, and a link-back could restore
+  a released lock, so memory saves failed for up to 30 s. The sync lock is
+  `<git-common-dir>/llmos-sync.lock.db`. The memory lock of a project is
+  `<git-common-dir>/llmos-memory-<key>.lock.db` when the vault is a git
+  checkout, so every writer of that vault excludes the others, whatever its
+  home or state folder. When the vault is not a git checkout, it is
+  `locks/memory-<key>.db` in the llmOS state folder, and only writers that
+  share that folder exclude each other. A writer whose `git rev-parse` fails
+  (a timeout, a safe.directory refusal for another user, `GIT_DIR` set) also
+  falls back to the state folder. Neither file is in the work tree, so
+  no link in the vault can redirect it and no sync sees it. A lock path that
+  is a symbolic link or not a regular file is refused. An old and a new
+  plugin version that run at the same time do not exclude each other: they
+  use different files.
 - A hook can write its output only through one `emit()` in
   `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
   and `emit()` gives it the envelope that its harness reads. A Biome lint
@@ -82,8 +115,8 @@ Newest first. Versions are the `version` field shared by
   `just verify-llmos-service` model-checks the start rules with TLA+.
 - Two agents that save or forget shared memories at the same time no longer
   lose `MEMORY.md` lines. `llmos memory save`, `llmos memory forget`, and the
-  MCP memory tools now read and rewrite the index under a lock file,
-  `projects/<project>/.memory.lock`, and wait up to 10 s for it. Before, each
+  MCP memory tools now read and rewrite the index under a lock,
+  a lock file in the llmOS state folder, and wait up to 10 s for it. Before, each
   write rewrote the index it had read, so a concurrent save dropped the other
   save's line and left its topic note out of the index, or failed with "a file
   already exists" on a new index.

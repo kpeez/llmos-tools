@@ -65,7 +65,7 @@ import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH, TEMPLATES_DIR } from "./layo
 import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
 import { run } from "./run.ts";
 import { readText } from "./vault.ts";
-import { recordRun } from "./write.ts";
+import { recordRun, withNoteLock } from "./write.ts";
 
 export const LOCAL_TZ = "America/Los_Angeles";
 export const MODEL = "github-copilot/claude-haiku-5.5";
@@ -844,14 +844,17 @@ export function processDay(day: Day, root: string, options: ProcessOptions): str
   );
   const block = buildBlock(prose, unseen, hash);
   // The model call takes minutes. A thought or a new note written meanwhile
-  // must survive, so replace the block in the note as it is now.
-  if (existsSync(notePath)) {
-    atomicWrite(notePath, replaceBlock(readText(notePath), block));
-    return "updated";
-  }
-  mkdirSync(dirname(notePath), { recursive: true });
-  atomicWrite(notePath, newNoteText(day, root, block));
-  return "created";
+  // must survive, so replace the block in the note as it is now, under the
+  // note lock that the other writers take; the lock is not held across the model call.
+  return withNoteLock(root, () => {
+    if (existsSync(notePath)) {
+      atomicWrite(notePath, replaceBlock(readText(notePath), block));
+      return "updated";
+    }
+    mkdirSync(dirname(notePath), { recursive: true });
+    atomicWrite(notePath, newNoteText(day, root, block));
+    return "created";
+  });
 }
 
 export interface DigestRun {
