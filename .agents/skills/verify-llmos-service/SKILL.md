@@ -80,8 +80,9 @@ Assumptions, which the check does not cover:
 - `close()`'s own `service.close()` (the qmd store) is not modeled; it runs
   after the socket is gone.
 
-Sync commit: `627e2f0` (fix(write): lock every read-change-write of a
-note). At that commit, the model describes the code.
+Sync commit: `d27b851` (perf(hooks): give pre-tool-use its own bundle, one
+process per Bash call, and read one note without the vault (#53)). At
+that commit, the model describes the code.
 
 ## When a change touches the covered code
 
