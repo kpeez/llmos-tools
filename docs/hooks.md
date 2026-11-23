@@ -131,18 +131,22 @@ blocks the tool call. `llmos check` with no note lists these notes across the
 vault. A block the serializer refuses for another reason, such as an empty
 list item, gets no finding.
 
-Every vault write sets one dirty flag, `<tmpdir>/llmos-hooks/llmos.dirty`
-(`cli/src/dirty.ts`): the headless writes of the CLI and the MCP write tools
+Every vault write sets the vault's dirty flag, `dirty/<vault hash>` in the
+llmOS state folder (`$XDG_STATE_HOME/llmos`, else `~/.local/state/llmos`;
+`cli/src/dirty.ts`): the headless writes of the CLI and the MCP write tools
 (`cli/src/write.ts`), a `llmos source add` capture, an obsidian-cli move or
 create, and the stamp hook for a harness's own Write or Edit. The flag is not
 per session, because an MCP server or CLI process does not know the session
 and every session shares the index. So the next Stop of any session
 reindexes. The flag holds a token. The Stop hook clears the flag only after a
 successful reindex, and only when the token is unchanged, so a write during
-the reindex keeps the flag for the next Stop. Writes that bypass these paths
-do not set it: a Bash command, the Obsidian app, a memory sync pull, and the
-daily digest's own daily-note write. A hook failure never blocks the tool
-call, and the hooks never import qmd (it would cost about 48 ms per call).
+the reindex keeps the flag for the next Stop. The flag's folder must be owned
+by the user and not writable by group or others, or the flag is not used. The
+flag is written to a new `0600` file and renamed into place, and read with
+`O_NOFOLLOW`, so a symbolic link at its path is replaced, never followed.
+Writes that bypass these paths do not set it: a Bash command, the Obsidian
+app, a memory sync pull, and the daily digest's own daily-note write. A hook
+failure never blocks the tool call, and the hooks never import qmd (it would cost about 48 ms per call).
 Embedding is left to a hand-run `llmos reindex`; `llmos health` counts the
 documents that still need it.
 

@@ -67,7 +67,7 @@ describe("stamping", () => {
         `  - "[[Knowledge]]"\ncreated: 2026-07-01\nupdated: ${todayIso()}\n---\n\n` +
         "# A note\n\nBody content, with a wikilink to [[Some Other Note]].\n",
     );
-    expect(existsSync(dirtyFlag(tmp))).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(true);
     // No authoring findings: the hook stays silent.
     expect(result.stdout).toBe("");
   });
@@ -116,7 +116,7 @@ describe("notes left unchanged", () => {
 
     expect(result.exitCode).toBe(0);
     expect(readFileSync(note, "utf8")).toBe(original);
-    expect(existsSync(dirtyFlag(tmp))).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(true);
   });
 
   test("a note that is not valid UTF-8", () => {
@@ -134,7 +134,7 @@ describe("notes left unchanged", () => {
 
     expect(result.exitCode).toBe(0);
     expect(readFileSync(note).equals(bytes)).toBe(true);
-    expect(existsSync(dirtyFlag(tmp))).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(true);
   });
 
   test("a write outside the vault", () => {
@@ -144,7 +144,7 @@ describe("notes left unchanged", () => {
     stamp(outside, tmp, vault);
 
     expect(readFileSync(outside, "utf8")).toBe("# hello\n");
-    expect(existsSync(dirtyFlag(tmp))).toBe(false);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(false);
   });
 
   test("Bases and Canvas files", () => {
@@ -161,7 +161,7 @@ describe("notes left unchanged", () => {
       expect(result.exitCode).toBe(0);
       expect(readFileSync(file, "utf8")).toBe(original);
     }
-    expect(existsSync(dirtyFlag(tmp))).toBe(false);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(false);
   });
 
   test("any note when no vault is configured", () => {
@@ -361,7 +361,7 @@ describe("shared project memory and Antigravity hooks", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe("");
     expect(readFileSync(topic, "utf8")).toBe(memContent);
-    expect(existsSync(dirtyFlag(tmp))).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(true);
   });
 
   test("Antigravity post-tool-use stamps durable notes and emits {} on post-tool-use and stop", () => {
@@ -382,7 +382,7 @@ describe("shared project memory and Antigravity hooks", () => {
     expect(post.exitCode).toBe(0);
     expect(JSON.parse(post.stdout)).toEqual({});
     expect(readFileSync(note, "utf8")).toContain(`updated: ${todayIso()}\n`);
-    expect(existsSync(dirtyFlag(tmp))).toBe(true);
+    expect(existsSync(dirtyFlag(tmp, vault))).toBe(true);
 
     const stopRes = runHook("stop", { hookEventName: "Stop", conversationId: "conv-agy" }, tmp, {
       root: vault,

@@ -230,7 +230,7 @@ export async function postToolUse(data: Payload): Promise<string | null> {
     (target) => isUnder(target, root) && suffix(target) === ".md" && isFile(target),
   );
   if (targets.length === 0) return null;
-  markDirty();
+  markDirty(root);
 
   const rootPrefix = root.endsWith("/") ? root : `${root}/`;
   const durableTargets: string[] = [];

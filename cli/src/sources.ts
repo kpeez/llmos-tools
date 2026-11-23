@@ -998,7 +998,7 @@ export async function captureSource(
     }
     throw error;
   }
-  markDirty();
+  markDirty(root);
   // The folder is in place: a failed flush of its parent is a warning, not a failed capture.
   const warnings = [...converted.warnings];
   try {

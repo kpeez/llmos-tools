@@ -87,6 +87,6 @@ export function runObsidian(
     }
     throw new ObsidianCliError(`obsidian-cli ${verb} failed: ${stderr}`);
   }
-  markDirty();
+  markDirty(root);
   return result.stdout;
 }

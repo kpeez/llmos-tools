@@ -4,7 +4,8 @@
  * the real pieces on a scratch vault and an isolated qmd index: a real
  * `llmos mcp` server process for the MCP write tools, the hook entry for
  * PostToolUse and Stop, and the CLI for `source add`. The MCP server, the
- * CLI, and the hooks share one `TMPDIR`, as they do under one harness.
+ * CLI, and the hooks share one llmOS state folder (`XDG_STATE_HOME`), as
+ * they do under one harness.
  */
 
 import { afterEach, expect, test } from "bun:test";
@@ -23,8 +24,6 @@ const INBOX = "---\nstatus: draft\n---\n\n# Capture\n\nA loose idea.\n";
 interface Turn {
   root: string;
   env: Record<string, string>;
-  /** The `TMPDIR` of every process in the turn. */
-  scratch: string;
   tmp: string;
   bin: string;
 }
@@ -36,11 +35,9 @@ async function turn(): Promise<Turn> {
     "raw/capture.md": INBOX,
     [`daily/${today}.md`]: dailyNote(today),
   });
-  const env = isolatedEnv();
-  await indexVault(root, env);
   const tmp = temporaryFolder();
-  const scratch = join(tmp, "scratch");
-  mkdirSync(scratch, { recursive: true });
+  const env = isolatedEnv({ XDG_STATE_HOME: join(tmp, "state") });
+  await indexVault(root, env);
   // `llmos` for the Stop hook, and an obsidian-cli that moves as the app would.
   const bin = join(tmp, "bin");
   mkdirSync(bin);
@@ -52,7 +49,7 @@ async function turn(): Promise<Turn> {
   );
   chmodSync(join(bin, "llmos"), 0o755);
   chmodSync(join(bin, "obsidian-cli"), 0o755);
-  return { root, env, scratch, tmp, bin };
+  return { root, env, tmp, bin };
 }
 
 /** The paths a keyword search of the `llmos` collection finds for `query`. */
@@ -67,7 +64,6 @@ async function callTool(t: Turn, tool: string, args: Record<string, unknown>): P
     env: {
       ...t.env,
       LLMOS_ROOT: t.root,
-      TMPDIR: t.scratch,
       GGML_METAL_NO_RESIDENCY: "1",
       // `bun test` runs in UTC; the server must see the same "today" as the test.
       TZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -138,15 +134,15 @@ test("source add: the captured text is found after Stop", async () => {
       ? { status: 200, url, contentType: "text/html; charset=utf-8", body }
       : { status: 404, url, contentType: "text/html", body: new Uint8Array() };
   };
-  // The CLI runs in this process, so it takes the turn's TMPDIR here.
-  const saved = process.env.TMPDIR;
-  process.env.TMPDIR = t.scratch;
+  // The CLI runs in this process, so it takes the turn's state folder here.
+  const saved = process.env.XDG_STATE_HOME;
+  process.env.XDG_STATE_HOME = t.env.XDG_STATE_HOME;
   try {
     const argv = ["source", "add", "https://example.org/papers/open-study.html"];
     const result = await cli(t.root, argv, { env: t.env, fetch: replay });
     expect(result.exitCode).toBe(0);
   } finally {
-    process.env.TMPDIR = saved;
+    process.env.XDG_STATE_HOME = saved;
   }
 
   stop(t);
@@ -165,7 +161,7 @@ test.each([
     "post-tool-use",
     { session_id: "sess-e2e", tool_name: "Write", tool_input: { file_path: note } },
     t.tmp,
-    { root: t.root },
+    { root: t.root, env: t.env },
   );
   expect(post.exitCode).toBe(0);
 

@@ -135,11 +135,11 @@ function writeTemporary(folder: string, name: string, text: string, mode: number
 }
 
 /**
- * Replace the file at real path `real` with `text` atomically: write a
- * temporary file beside it, then rename it over the original. The file keeps
- * its permission bits.
+ * Replace the file at real path `real`, in the vault at `root`, with `text`
+ * atomically: write a temporary file beside it, then rename it over the
+ * original. The file keeps its permission bits.
  */
-function atomicReplace(real: string, text: string): void {
+function atomicReplace(root: string, real: string, text: string): void {
   const mode = statSync(real).mode & 0o7777;
   const temporary = writeTemporary(dirname(real), basename(real), text, mode);
   try {
@@ -148,7 +148,7 @@ function atomicReplace(real: string, text: string): void {
     unlinkSync(temporary);
     throw error;
   }
-  markDirty();
+  markDirty(root);
 }
 
 /** Create the note at `relative` with `text`, atomically; refuse if anything is there. */
@@ -166,7 +166,7 @@ export function createNote(root: string, relative: string, text: string): void {
   } finally {
     unlinkSync(temporary);
   }
-  markDirty();
+  markDirty(root);
 }
 
 /** Write `text` to the note at `relative` atomically: replace it, or create it when missing. */
@@ -175,7 +175,7 @@ export function writeNote(root: string, relative: string, text: string): void {
     createNote(root, relative, text);
     return;
   }
-  atomicReplace(realTarget(root, relative), text);
+  atomicReplace(root, realTarget(root, relative), text);
 }
 
 /** Delete the note at `relative`; refused when it is missing or outside the vault. */
@@ -184,7 +184,7 @@ export function deleteNote(root: string, relative: string): void {
     throw new WriteRefused(`no file at ${relative}`);
   }
   unlinkSync(realTarget(root, relative));
-  markDirty();
+  markDirty(root);
 }
 
 /** The note's frontmatter, or an empty block when the note has none. */
@@ -207,11 +207,11 @@ function editBody(root: string, relative: string, edit: (body: string) => string
   } catch (error) {
     if (!(error instanceof MissingFrontmatter)) throw error;
     const edited = edit(text);
-    atomicReplace(real, edited.endsWith("\n") ? edited : `${edited}\n`);
+    atomicReplace(root, real, edited.endsWith("\n") ? edited : `${edited}\n`);
     return;
   }
   frontmatter.body = edit(frontmatter.body);
-  atomicReplace(real, frontmatter.toString());
+  atomicReplace(root, real, frontmatter.toString());
 }
 
 const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
@@ -226,7 +226,7 @@ export function setProperty(root: string, relative: string, key: string, value: 
   const frontmatter = frontmatterOf(readText(real));
   if (LIST_PROPERTIES.has(key)) frontmatter.appendUnique(key, value);
   else frontmatter.setScalar(key, value);
-  atomicReplace(real, frontmatter.toString());
+  atomicReplace(root, real, frontmatter.toString());
 }
 
 /**
@@ -247,7 +247,7 @@ export function recordRun(
   frontmatter.setScalar(key, date);
   frontmatter.setScalar("updated", date);
   const text = frontmatter.toString();
-  if (!dryRun) atomicReplace(real, text);
+  if (!dryRun) atomicReplace(root, real, text);
 }
 
 /** Remove property `key`. Returns false (and writes nothing) when the note has no such property. */
@@ -255,7 +255,7 @@ export function removeProperty(root: string, relative: string, key: string): boo
   const real = realTarget(root, relative);
   const frontmatter = frontmatterOf(readText(real));
   if (!frontmatter.delete(key)) return false;
-  atomicReplace(real, frontmatter.toString());
+  atomicReplace(root, real, frontmatter.toString());
   return true;
 }
 
@@ -294,7 +294,7 @@ export function stampNote(root: string, relative: string, date: string): boolean
   frontmatter.setScalar("updated", date);
   const stamped = frontmatter.toString();
   if (stamped === text) return false;
-  atomicReplace(real, stamped);
+  atomicReplace(root, real, stamped);
   return true;
 }
 
@@ -316,6 +316,6 @@ export function stampProperties(
     for (const value of values) frontmatter.appendUnique(key, value);
     changed = true;
   }
-  if (changed) atomicReplace(real, frontmatter.toString());
+  if (changed) atomicReplace(root, real, frontmatter.toString());
   return changed;
 }

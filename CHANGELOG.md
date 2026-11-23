@@ -30,10 +30,12 @@ Newest first. Versions are the `version` field shared by
   the stamp hook stamped set the dirty flag. The MCP tools
   `daily_append_thought`, `set_property`, and `file_inbox`, `llmos source add`,
   the other CLI write verbs, and a Write to a note without frontmatter left
-  search stale until a later reindex. The flag is now one file for all
-  processes, `<tmpdir>/llmos-hooks/llmos.dirty`, set by every headless write,
-  source capture, and obsidian-cli write. The hooks no longer leave a folder
-  per session in the temp folder.
+  search stale until a later reindex. The flag is now one file per vault for
+  all processes, in the private llmOS state folder
+  (`~/.local/state/llmos/dirty/`), set by every headless write, source
+  capture, and obsidian-cli write. It is never followed through a symbolic
+  link. The hooks no longer leave a folder per session in the shared temp
+  folder.
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
