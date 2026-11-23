@@ -267,7 +267,9 @@ those commit IDs for every later step. Then it checks that each unpushed commit
 and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
-seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
+seconds. The reindex runs before the sync, and each of its calls gets 10
+seconds: `llmos reindex --no-embed`, then `qmd update` when the first call
+fails without a timeout. So the reindex can use 20 seconds. A timed-out
 reindex keeps the dirty flag for the next Stop. Each hook also has a deadline
 for all its subprocesses together: its `hooks.json` timeout less half a
 second (`src/hook-limits.ts`). Near the deadline a call gets only the time left, and later calls

@@ -156,6 +156,10 @@ Assumptions, which the check does not cover:
 - The rebase mutant replays all local commits as one commit. Git may refuse
   a pathspec commit while a rebase is stopped on a conflict, so in that
   code the window of the lost commit can be shorter than in the model.
+- A git call that a time limit or the hook deadline (`cli/src/run.ts`) kills,
+  or never starts, ends the run like `SFail`. A kill of `merge --ff-only`
+  checks `HEAD` against the target (`fastForward`). No step of the code removes a
+  commit, so a run that ends early cannot break a rule.
 - The user never pushes. Every private note on the remote was pushed by a
   tool.
 - `syncOnStart` and the cloud session start (`cli/src/hooks/cloud.ts`) are
@@ -175,8 +179,9 @@ Assumptions, which the check does not cover:
   notes broke `OnlyCheckedPush` through `Dg`'s own steps, so these cases do
   reach the digest's push.
 
-Sync commit: `627e2f0` (fix(write): lock every read-change-write of a
-note). At that commit, the models describe the code.
+Sync commit: `d27b851` (perf(hooks): give pre-tool-use its own bundle, one
+process per Bash call, and read one note without the vault (#53)). At
+that commit, the models describe the code.
 
 ## When a change touches the covered code
 
