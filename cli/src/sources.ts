@@ -32,6 +32,7 @@ import { isIP } from "node:net";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Defuddle } from "defuddle/node";
 import { parseHTML } from "linkedom";
+import { markDirty } from "./dirty.ts";
 import { parse, serialize } from "./frontmatter.ts";
 import { destinationProperties } from "./inbox.ts";
 import { RAW_DIR } from "./layout.ts";
@@ -997,6 +998,7 @@ export async function captureSource(
     }
     throw error;
   }
+  markDirty();
   // The folder is in place: a failed flush of its parent is a warning, not a failed capture.
   const warnings = [...converted.warnings];
   try {

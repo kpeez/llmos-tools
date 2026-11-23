@@ -101,9 +101,9 @@ export function writeFile(path: string, text: string): string {
   return path;
 }
 
-/** The dirty flag the stamp hook sets for `session`, under the test's TMPDIR. */
-export function dirtyFlag(tmp: string, session: string): string {
-  return join(tmp, "scratch", "llmos-hooks", session, "llmos.dirty");
+/** The dirty flag that vault writes set and the stop hook clears, under the test's TMPDIR. */
+export function dirtyFlag(tmp: string): string {
+  return join(tmp, "scratch", "llmos-hooks", "llmos.dirty");
 }
 
 /** Today's local date as `YYYY-MM-DD`. */

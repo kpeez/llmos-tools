@@ -32,8 +32,8 @@ The two flags stop Bun from loading the session's project `.env` and
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
 | PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
-| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and flags the index dirty; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
-| Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** this turn dirtied the vault: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
+| PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and sets the dirty flag for every vault note the tool wrote, stamped or not; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
+| Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** the dirty flag is set, by this turn or by any other process: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 
 ## Hermes Agent
 
@@ -129,12 +129,22 @@ double-quote a value that contains `: `. A site build such as Quartz stops on
 such a note. The hook still leaves the note unchanged, and the finding never
 blocks the tool call. `llmos check` with no note lists these notes across the
 vault. A block the serializer refuses for another reason, such as an empty
-list item, gets no finding. The stamp and reindex hooks share a session-scoped dirty
-flag, so concurrent sessions never collide or leak a stale flag into each
-other. A hook failure never blocks the tool call, and the hooks never import
-qmd (it would cost about 48 ms per call). Embedding is left to a hand-run
-`llmos reindex`; `llmos health` counts the documents that still
-need it.
+list item, gets no finding.
+
+Every vault write sets one dirty flag, `<tmpdir>/llmos-hooks/llmos.dirty`
+(`cli/src/dirty.ts`): the headless writes of the CLI and the MCP write tools
+(`cli/src/write.ts`), a `llmos source add` capture, an obsidian-cli move or
+create, and the stamp hook for a harness's own Write or Edit. The flag is not
+per session, because an MCP server or CLI process does not know the session
+and every session shares the index. So the next Stop of any session
+reindexes. The flag holds a token. The Stop hook clears the flag only after a
+successful reindex, and only when the token is unchanged, so a write during
+the reindex keeps the flag for the next Stop. Writes that bypass these paths
+do not set it: a Bash command, the Obsidian app, a memory sync pull, and the
+daily digest's own daily-note write. A hook failure never blocks the tool
+call, and the hooks never import qmd (it would cost about 48 ms per call).
+Embedding is left to a hand-run `llmos reindex`; `llmos health` counts the
+documents that still need it.
 
 In every session, local or cloud, the session-start hook links the agent
 folders of the session's project (`$CLAUDE_PROJECT_DIR`, else the payload
@@ -224,7 +234,7 @@ and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
 seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
-reindex keeps its dirty flag for the next Stop.
+reindex keeps the dirty flag for the next Stop.
 
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is

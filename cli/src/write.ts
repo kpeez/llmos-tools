@@ -17,6 +17,8 @@
  * frontmatter block cannot be read is never rewritten
  * (`UnsupportedFrontmatter`). A note without a block gets one only when a
  * property is set; appending text leaves it without one.
+ *
+ * Every write sets the dirty flag (`dirty.ts`), so the Stop hook reindexes.
  */
 
 import {
@@ -42,6 +44,7 @@ import {
   sep,
 } from "node:path";
 import { bodyWithThought } from "./daily.ts";
+import { markDirty } from "./dirty.ts";
 import { Frontmatter, MissingFrontmatter } from "./frontmatter.ts";
 import { LINK_FIELDS } from "./schema.ts";
 import { readText } from "./vault.ts";
@@ -145,6 +148,7 @@ function atomicReplace(real: string, text: string): void {
     unlinkSync(temporary);
     throw error;
   }
+  markDirty();
 }
 
 /** Create the note at `relative` with `text`, atomically; refuse if anything is there. */
@@ -162,6 +166,7 @@ export function createNote(root: string, relative: string, text: string): void {
   } finally {
     unlinkSync(temporary);
   }
+  markDirty();
 }
 
 /** Write `text` to the note at `relative` atomically: replace it, or create it when missing. */
@@ -179,6 +184,7 @@ export function deleteNote(root: string, relative: string): void {
     throw new WriteRefused(`no file at ${relative}`);
   }
   unlinkSync(realTarget(root, relative));
+  markDirty();
 }
 
 /** The note's frontmatter, or an empty block when the note has none. */

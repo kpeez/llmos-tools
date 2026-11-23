@@ -8,7 +8,7 @@ The hook bundle `dist/hooks.js` runs for Claude Code and Codex. Each event reads
 - `pre-tool-use` returns `additionalContext` JSON for a tool call on a vault note.
 - `guard-bash` exits 2 with the reason on stderr to deny a raw `mv` of a vault note or an untargeted `obsidian-cli` verb.
 - `post-tool-use` stamps `updated` on a note a Write tool changed.
-- `stop` runs a reindex after a turn that changed the vault. Not driven.
+- `stop` runs a reindex when a vault write (the CLI, the MCP server, or `post-tool-use`) set the dirty flag. Not driven here; `cli/test/hooks/reindex-after-writes.test.ts` drives it.
 
 ## How to get to it (user POV)
 

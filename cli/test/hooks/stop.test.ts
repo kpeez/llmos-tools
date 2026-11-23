@@ -1,7 +1,7 @@
 /**
- * The stop hook reindexes only when the stamp hook left a dirty flag, and
- * clears the flag only after a successful reindex. Failures stay retryable
- * and never block the turn. `llmos` and `qmd` are stubs on `PATH`, except in
+ * The stop hook reindexes only when a vault write left the dirty flag, and
+ * clears the flag only after a successful reindex that no write overlapped.
+ * Failures stay retryable and never block the turn. `llmos` and `qmd` are stubs on `PATH`, except in
  * the last test, where `llmos` runs this checkout's CLI on a scratch vault and
  * index. Ported from the retired Python test `test_stop_qmd_hook.py`.
  */
@@ -23,7 +23,7 @@ function stub(binDir: string, name: string, log: string, exitCode = 0): void {
 }
 
 function setFlag(tmp: string): string {
-  const flag = dirtyFlag(tmp, "sess-1");
+  const flag = dirtyFlag(tmp);
   mkdirSync(dirname(flag), { recursive: true });
   writeFileSync(flag, "");
   return flag;
@@ -94,6 +94,20 @@ test("falls back to qmd update when llmos reindex fails, and says so", () => {
   expect(calls(log)).toEqual(["llmos reindex --no-embed", "qmd update -c llmos"]);
   expect(result.stderr).toContain("llmos reindex --no-embed exited 2; ran qmd update instead");
   expect(existsSync(flag)).toBe(false);
+});
+
+test("keeps the flag when a vault write sets it again during the reindex", () => {
+  const tmp = temporaryFolder();
+  const binDir = join(tmp, "bin");
+  mkdirSync(binDir);
+  const flag = setFlag(tmp);
+  writeFileSync(join(binDir, "llmos"), `#!/bin/sh\necho later > "${flag}"\n`);
+  chmodSync(join(binDir, "llmos"), 0o755);
+
+  const result = stop(tmp, binDir);
+
+  expect(result.exitCode).toBe(0);
+  expect(readFileSync(flag, "utf8")).toBe("later\n");
 });
 
 test("spawns nothing when the flag is absent", () => {

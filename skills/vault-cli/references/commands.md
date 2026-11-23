@@ -832,7 +832,7 @@ A reindex of `llmos` also scans the `memory` collection when it exists
 `llmos memory` too.
 --no-embed runs only the scan: keyword search is current at once and no
 model loads; "embed" and "cleanup" are null. The plugin's Stop hook runs it
-after each turn that changed the vault. Run plain `reindex` by hand to
+after a turn when a vault write set the dirty flag since the last reindex. Run plain `reindex` by hand to
 embed; `health` reports documents that still need embedding.
 Do NOT use when you only want to search -- use `search`.
 

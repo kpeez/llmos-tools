@@ -8,9 +8,9 @@
  * vault".
  */
 
-import { lstatSync, mkdirSync, readFileSync, readlinkSync, statSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { extname, join } from "node:path";
+import { lstatSync, readFileSync, readlinkSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { extname } from "node:path";
 import { vaultRoot } from "../root.ts";
 
 const MAX_SYMLINKS = 40;
@@ -60,7 +60,7 @@ export function readText(path: string): string {
 
 export type Payload = Record<string, unknown>;
 
-/** The collection the stamp hook marks dirty and the stop hook reindexes. */
+/** The collection the stop hook reindexes. */
 export const COLLECTION = "llmos";
 
 export function isDict(value: unknown): value is Payload {
@@ -103,12 +103,6 @@ export function isAntigravityPayload(
     typeof data.hookEventName === "string" &&
     ("conversationId" in data || "workspacePaths" in data || "toolCall" in data)
   );
-}
-
-/** The payload's `session_id` (or Antigravity `conversationId`), or "default". */
-export function sessionId(data: Payload): string {
-  const id = firstTruthy([data.session_id, data.conversationId], "default");
-  return typeof id === "string" && id ? id : "default";
 }
 
 /** The first `workspacePaths` entry in an Antigravity payload, if present. */
@@ -226,15 +220,4 @@ export function resolvedRoot(): string | null {
 export function localDate(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/**
- * The session-scoped dirty flag that the stamp hook sets and the stop hook
- * clears: `<tmpdir>/llmos-hooks/<session>/<collection>.dirty`. Scoping by
- * session keeps concurrent sessions from sharing a stale flag.
- */
-export function flagPath(session: string, collection: string): string {
-  const scratch = join(tmpdir(), "llmos-hooks", session);
-  mkdirSync(scratch, { recursive: true });
-  return join(scratch, `${collection}.dirty`);
 }

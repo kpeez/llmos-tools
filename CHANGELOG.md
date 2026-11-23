@@ -25,6 +25,15 @@ Newest first. Versions are the `version` field shared by
   write rewrote the index it had read, so a concurrent save dropped the other
   save's line and left its topic note out of the index, or failed with "a file
   already exists" on a new index.
+- The Stop hook now reindexes after every vault write, so a keyword search
+  finds the new text right after the turn. Before, only a Write or Edit that
+  the stamp hook stamped set the dirty flag. The MCP tools
+  `daily_append_thought`, `set_property`, and `file_inbox`, `llmos source add`,
+  the other CLI write verbs, and a Write to a note without frontmatter left
+  search stale until a later reindex. The flag is now one file for all
+  processes, `<tmpdir>/llmos-hooks/llmos.dirty`, set by every headless write,
+  source capture, and obsidian-cli write. The hooks no longer leave a folder
+  per session in the temp folder.
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
