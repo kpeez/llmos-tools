@@ -33,21 +33,16 @@
  * after 30 minutes without a request (`LLMOS_SERVICE_IDLE_MS` changes this).
  *
  * Start rules: a client that cannot connect starts `llmos service serve`
- * detached. Two services started together end as one: the starter holds a
- * short-lived lock file while it checks for a live service and binds, and a
- * socket file that no process listens on is removed first.
+ * detached. Two services started together end as one: the starter holds the
+ * start lock while it checks for a live service and binds, and a socket file
+ * that no process listens on is removed first. The lock is an exclusive
+ * SQLite transaction, so the kernel drops it when its holder dies and no
+ * process ever removes another's lock. The rules are model-checked by
+ * `just verify-llmos-service`.
  */
 
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { Database } from "bun:sqlite";
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import net from "node:net";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -126,15 +121,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function processAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as { code?: unknown }).code === "EPERM";
-  }
-}
-
 /** Whether a process listens on the socket at `path`. */
 export function socketLive(path: string, timeoutMs = 1000): Promise<boolean> {
   return new Promise((resolve) => {
@@ -149,32 +135,27 @@ export function socketLive(path: string, timeoutMs = 1000): Promise<boolean> {
   });
 }
 
-/** Hold `paths.lock` while `work` runs, so two starters never bind in turn. */
+/**
+ * Hold the start lock while `work` runs, so two starters never bind in turn.
+ * The lock is an exclusive SQLite transaction on `paths.lock`: the kernel
+ * gives it to one process (or connection) at a time and drops it when the
+ * holder exits or crashes, so no starter ever has to remove a stale lock.
+ */
 async function withStartLock<T>(paths: ServicePaths, work: () => Promise<T>): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      writeFileSync(paths.lock, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
-      break;
-    } catch (error) {
-      if ((error as { code?: unknown }).code !== "EEXIST" || attempt >= 100) throw error;
-      let holder = 0;
-      let age = 0;
-      try {
-        holder = Number.parseInt(readFileSync(paths.lock, "utf8").trim(), 10);
-        age = Date.now() - statSync(paths.lock).mtimeMs;
-      } catch {
-        continue; // Released since the failed write.
-      }
-      // A starter holds the lock for milliseconds: a dead or old holder left it behind.
-      if (!(holder > 0 && processAlive(holder)) || age > 10_000)
-        rmSync(paths.lock, { force: true });
-      else await sleep(50);
-    }
-  }
+  const db = new Database(paths.lock, { create: true });
   try {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        db.exec("BEGIN EXCLUSIVE");
+        break;
+      } catch (error) {
+        if ((error as { code?: unknown }).code !== "SQLITE_BUSY" || attempt >= 100) throw error;
+        await sleep(50);
+      }
+    }
     return await work();
   } finally {
-    rmSync(paths.lock, { force: true });
+    db.close(); // Ends the transaction, which releases the lock.
   }
 }
 
@@ -487,9 +468,10 @@ export async function serveService(options: ServiceOptions): Promise<RunningServ
   const close = (): Promise<void> => {
     stopping ??= (async () => {
       if (timer) clearTimeout(timer);
+      // server.close() unlinks the socket path, then stops the listen. A second
+      // removal here could delete the socket of a service that started since.
       server.close();
       for (const socket of connections) socket.destroy();
-      rmSync(paths.socket, { force: true });
       await service.close();
       resolveDone();
     })();

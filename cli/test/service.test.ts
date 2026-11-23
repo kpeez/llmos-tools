@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import { QmdCollectionMissing, type Searcher, type SearchHit } from "../src/qmd.ts";
-import { serveService } from "../src/service.ts";
+import { type RunningService, serveService } from "../src/service.ts";
 import { callService, servicePaths, serviceStatus, viaService } from "../src/service-client.ts";
 import { cli, indexVault, isolatedEnv, makeVault } from "./helpers.ts";
 
@@ -177,6 +177,43 @@ describe("start and stop", () => {
     for (const child of children) if (child.exitCode !== null) expect(child.exitCode).toBe(0);
     process.kill(status.pid, "SIGTERM");
     await Promise.all(children.map((child) => child.exited));
+  });
+
+  test("a start waits while another process holds the start lock, and a crash frees it", async () => {
+    const { env } = await indexedEnv();
+    const { lock, dir } = servicePaths(env);
+    mkdirSync(dir, { recursive: true });
+    // Another starter takes the lock and then dies holding it, as a crash does.
+    const holder = Bun.spawn(
+      [
+        "bun",
+        "-e",
+        `const db = new (require("bun:sqlite").Database)(${JSON.stringify(lock)}, { create: true });
+         db.exec("BEGIN EXCLUSIVE"); console.log("held"); setInterval(() => {}, 1000);`,
+      ],
+      { stdout: "pipe" },
+    );
+    let started: RunningService | null = null;
+    try {
+      const reader = holder.stdout.getReader();
+      expect(new TextDecoder().decode((await reader.read()).value)).toContain("held");
+
+      const starting = serveService({ env }).then((service) => {
+        started = service;
+        return service;
+      });
+      await Bun.sleep(500);
+      expect(started).toBeNull();
+      expect(await serviceStatus(env)).toBeNull();
+
+      holder.kill("SIGKILL");
+      await holder.exited;
+      await starting;
+      expect((await callService(env, "status")).kind).toBe("ok");
+    } finally {
+      holder.kill("SIGKILL");
+      await (started as RunningService | null)?.close();
+    }
   });
 
   test("a socket file that no process listens on is replaced", async () => {

@@ -30,10 +30,19 @@ same, with the socket path and which models are loaded.
 - The service starts on first use. There is no launchd or systemd unit.
 - It stops after 30 minutes without a request. `LLMOS_SERVICE_IDLE_MS` changes
   the limit. qmd's own 5-minute model unload is off in the service.
-- Two starts at the same moment end as one service. A starter holds a short
-  lock file, `service.lock`, checks whether a live service holds the socket,
-  removes a socket file that no process listens on, and binds. The loser exits
-  with code 0.
+- Two starts at the same moment end as one service. A starter holds the start
+  lock, checks whether a live service holds the socket, removes a socket file
+  that no process listens on, and binds. The loser exits with code 0.
+- The start lock is an exclusive SQLite transaction on `service.lock.db` in
+  the state folder. The kernel gives it to one process at a time and drops it
+  when that process exits or crashes, so no process removes another's lock.
+  A starter that waits more than 5 s for the lock exits with an error.
+- A stopping service removes the socket path only through `server.close()`,
+  which unlinks it before the listen ends. A new service binds only after the
+  old one stops listening, so a stopping service never removes a newer
+  service's socket.
+- `just verify-llmos-service` model-checks these rules with TLA+ (the
+  `verify-llmos-service` skill).
 - `LLMOS_SERVICE=off` stops every client from using or starting the service.
 - Stop a service with SIGTERM to the pid that `llmos service status` prints.
 

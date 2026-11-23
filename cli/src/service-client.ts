@@ -38,7 +38,7 @@ export interface ServicePaths {
 
 export function servicePaths(env: Env): ServicePaths {
   const dir = stateDir(env);
-  return { dir, socket: join(dir, "service.sock"), lock: join(dir, "service.lock") };
+  return { dir, socket: join(dir, "service.sock"), lock: join(dir, "service.lock.db") };
 }
 
 /** `LLMOS_SERVICE=off` turns the service off: clients never connect to it or start it. */
