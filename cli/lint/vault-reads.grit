@@ -1,0 +1,33 @@
+// A vault note is read only as readText(resolveInVault(root, relative)) from
+// cli/src/vault-file.ts. biome.json scopes this plugin to the vault-handling
+// modules (see AGENTS.md); the noRestrictedImports rule there covers the fs imports.
+// This plugin covers what an import rule cannot see: Bun.file, require of fs,
+// and a cast that forges a VaultFile.
+language js
+
+or {
+  JsStaticMemberExpression() as $file where {
+    $file <: r"^Bun\s*\??\.\s*file$",
+    register_diagnostic(
+      span=$file,
+      message="Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts: Bun.file follows symbolic links and '..' out of the vault.",
+      severity="error"
+    )
+  },
+  JsCallExpression() as $load where {
+    $load <: r"^require\s*\(\s*[\"'](?:node:)?fs(?:/promises)?[\"']\s*\)[\s\S]*",
+    register_diagnostic(
+      span=$load,
+      message="Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts: a raw fs read follows symbolic links and '..' out of the vault.",
+      severity="error"
+    )
+  },
+  TsAsExpression() as $cast where {
+    $cast <: r"[\s\S]*\bas\s+VaultFile\s*$",
+    register_diagnostic(
+      span=$cast,
+      message="Make a VaultFile only with resolveInVault(root, relative): a cast skips the realpath, containment, and regular-file checks.",
+      severity="error"
+    )
+  }
+}

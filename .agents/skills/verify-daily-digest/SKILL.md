@@ -40,8 +40,8 @@ seconds.
 
 | Model | Code |
 | --- | --- |
-| `DigestReadsNote` | `processDay`: `const text = existsSync(notePath) ? readText(notePath) : "";`, before `completeSummary` |
-| `DigestWritesNote` | `processDay`, inside `withNoteLock`: `atomicWrite(notePath, replaceBlock(readText(notePath), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
+| `DigestReadsNote` | `processDay`: `const text = existsSync(notePath) ? readText(resolveInVault(root, noteFile)) : "";`, before `completeSummary` |
+| `DigestWritesNote` | `processDay`, inside `withNoteLock`: `atomicWrite(notePath, replaceBlock(readText(resolveInVault(root, noteFile)), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
 | `WriterCreatesNote` | Kyle creates the note in Obsidian, or `daily append-thought` creates it (`ensureDaily` in `commands.ts`) |
 | `WriterAddsThought` | Kyle in Obsidian, or `daily_append_thought` (`bodyWithThought` in `daily.ts`, written by `write.ts`) |
 

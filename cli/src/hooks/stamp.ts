@@ -13,13 +13,14 @@
  * note.
  */
 
-import { existsSync, lstatSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { checkNote, type Finding, frontmatterFinding, INVALID_FRONTMATTER } from "../authoring.ts";
 import { markDirty } from "../dirty.ts";
 import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
-import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
+import { type Note, type NoteSource, readSource, VaultModel } from "../vault.ts";
+import { decodeText } from "../vault-file.ts";
 import { withNoteLock } from "../write.ts";
 import {
   firstTruthy,
@@ -38,6 +39,15 @@ import { targetPaths } from "./context.ts";
 
 /** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does, once for all its targets. */
 const STAMP_LOCK_WAIT_MS = 3_000;
+/**
+ * The text of a file the tool just wrote, by the tool's own path. The hook
+ * checks those files wherever they are (a note in `.obsidian/`, a link),
+ * so it has no `VaultFile`; it never feeds the text to the session.
+ */
+function readText(path: string): string {
+  return decodeText(readFileSync(path));
+}
+
 const MAX_FINDINGS = 8;
 const MAX_LINE = 240;
 

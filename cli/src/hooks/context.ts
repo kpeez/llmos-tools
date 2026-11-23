@@ -28,6 +28,7 @@ import {
   SERVER_NAME,
 } from "../mcp-names.ts";
 import { MemoryRefused, memoryScope, readMemoryIndex } from "../memory.ts";
+import { readText, resolveInVault, WriteRefused } from "../vault-file.ts";
 import {
   firstTruthy,
   isDir,
@@ -40,7 +41,6 @@ import {
   type Payload,
   pathFrom,
   payloadCwd,
-  readText,
   resolvedRoot,
   suffix,
   toolInputOf,
@@ -311,9 +311,10 @@ function authoringContext(root: string): string {
   }
   let text: string;
   try {
-    text = readText(authoring).trim();
+    text = readText(resolveInVault(root, AUTHORING_NOTE)).trim();
   } catch (error) {
-    if (isOSError(error)) return `Follow the canonical llmOS authoring contract at ${authoring}.`;
+    if (isOSError(error) || error instanceof WriteRefused)
+      return `Follow the canonical llmOS authoring contract at ${authoring}.`;
     throw error;
   }
   // Count characters, not UTF-16 units, so the cut never splits an emoji.
@@ -408,9 +409,9 @@ function withSchema(root: string, context: string): string {
   const schema = joinPath(root, SCHEMA_NOTE);
   if (!isFile(schema)) return context;
   try {
-    return `${readText(schema).trim()}\n\n${context}`;
+    return `${readText(resolveInVault(root, SCHEMA_NOTE)).trim()}\n\n${context}`;
   } catch (error) {
-    if (!isOSError(error)) throw error;
+    if (!isOSError(error) && !(error instanceof WriteRefused)) throw error;
     return context;
   }
 }
