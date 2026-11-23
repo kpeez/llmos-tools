@@ -109,15 +109,40 @@ function emit(result: HookResult, antigravity: boolean): void {
  * The payload with `cwd` resolved, as a hook has always read it: a relative
  * `cwd` or `workspacePaths[0]` is anchored at the hook process's folder. A
  * payload that names no folder gets one only for the events that always had
- * one; a session start without one reads no project. Only this file reads
+ * one; a session start without one reads no project. The guard reads the raw
+ * payload (see `guardFolders`). Only this file reads
  * `process.cwd()`; the handlers take their scope from the payload.
  */
 async function readSessionPayload(event: HookResult["event"]): Promise<Payload> {
   const data = await readPayload();
   const here = process.cwd();
   const named = pathFrom(data.cwd, here) ?? pathFrom(workspacePath(data), here);
+  if (event === "guard-bash") return data;
   if (named !== null) return { ...data, cwd: named };
   return event === "session-start" ? data : { ...data, cwd: here };
+}
+
+/**
+ * Every folder the guard checks a command from, so it is never weaker than
+ * any reading of the payload: the folder as written (a relative or odd value
+ * under the process folder, as hooks first read it) and the folder resolved
+ * (`~` expanded, a blank value dropped, the process folder when none is named).
+ */
+function guardFolders(data: Payload): (string | null)[] {
+  const here = process.cwd();
+  const raw = firstTruthy([data.cwd, workspacePath(data)], undefined);
+  const folders: (string | null)[] = [];
+  if (typeof raw === "string") folders.push(raw.startsWith("/") ? raw : `${here}/${raw}`);
+  folders.push(pathFrom(data.cwd, here) ?? pathFrom(workspacePath(data), here) ?? here);
+  return [...new Set(folders)];
+}
+
+function firstDenial(command: string, folders: (string | null)[]): string | null {
+  for (const folder of folders) {
+    const message = checkCommand(command, folder, process.cwd());
+    if (message) return message;
+  }
+  return null;
 }
 
 type ResultOf<E extends HookResult["event"]> = Extract<HookResult, { event: E }>;
@@ -170,7 +195,8 @@ const handlers: {
     const command = toolInput
       ? firstTruthy([toolInput.command, toolInput.CommandLine], undefined)
       : undefined;
-    const denial = typeof command === "string" && command ? checkCommand(command, data.cwd) : null;
+    const denial =
+      typeof command === "string" && command ? firstDenial(command, guardFolders(data)) : null;
     return { event: "guard-bash", denial };
   },
   stop: () => {

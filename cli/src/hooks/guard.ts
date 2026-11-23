@@ -24,7 +24,7 @@
  */
 
 import { registeredVaults, VaultRootError, vaultRoot } from "../root.ts";
-import { isUnder, joinPath, pathFrom, realpath, suffix } from "./common.ts";
+import { isUnder, joinPath, realpath, suffix } from "./common.ts";
 import { ShlexError, splitShellLines, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
@@ -192,8 +192,12 @@ function mvRmArgs(tokens: string[]): string[] | null {
   return rest.filter((token) => !token.startsWith("-"));
 }
 
-/** Every known vault root, resolved so it matches a resolved argument. */
-function knownVaultRoots(): string[] {
+/**
+ * Every known vault root, resolved so it matches a resolved argument. A
+ * relative registry entry is anchored at `anchor`; an entry that cannot be
+ * resolved is left out, so one bad entry hides no other root.
+ */
+function knownVaultRoots(anchor: string | undefined): string[] {
   const roots: string[] = [];
   try {
     roots.push(vaultRoot());
@@ -205,7 +209,14 @@ function knownVaultRoots(): string[] {
   } catch (error) {
     if (!(error instanceof VaultRootError)) throw error;
   }
-  return [...new Set(roots.map((root) => realpath(root)))];
+  const resolved = new Set<string>();
+  for (const root of roots) {
+    try {
+      if (root.startsWith("/")) resolved.add(realpath(root));
+      else if (anchor !== undefined) resolved.add(realpath(joinPath(anchor, root)));
+    } catch {}
+  }
+  return [...resolved];
 }
 
 function checkVaultMvRm(
@@ -233,8 +244,13 @@ function checkVaultMvRm(
   return null;
 }
 
-/** The deny message for `command`, or `null` to approve. */
-export function checkCommand(command: string, cwd: unknown): string | null {
+/**
+ * The deny message for `command`, or `null` to approve. `cwd` is an absolute
+ * folder, or `null` when none is known: then only absolute arguments are
+ * checked. `anchor` is where a relative registry entry points. When the check
+ * of a raw `mv` or `rm` itself fails, the command is denied, never approved.
+ */
+export function checkCommand(command: string, cwd: string | null, anchor?: string): string | null {
   if (!mayNameGuardedCommand(command)) return null;
   const subcommands = [
     ...readSubcommands(command, splitWithOperators, pythonSubcommands),
@@ -253,12 +269,20 @@ export function checkCommand(command: string, cwd: unknown): string | null {
   }
   if (mvRm.length === 0) return null;
 
-  const roots = knownVaultRoots();
-  if (roots.length === 0) return null;
-  const resolvedCwd = pathFrom(cwd);
-  for (const [sub, args] of mvRm) {
-    const message = checkVaultMvRm(sub, args, resolvedCwd, roots, command);
-    if (message) return message;
+  try {
+    const roots = knownVaultRoots(anchor);
+    if (roots.length === 0) return null;
+    const resolvedCwd = cwd === null ? null : realpath(cwd);
+    for (const [sub, args] of mvRm) {
+      const message = checkVaultMvRm(sub, args, resolvedCwd, roots, command);
+      if (message) return message;
+    }
+  } catch (error) {
+    return (
+      `'${command}' is a raw mv or rm and the guard could not check it against the vault ` +
+      `(${error instanceof Error ? error.message : String(error)}). Use \`obsidian-cli move\` ` +
+      "or `obsidian-cli rename` for vault notes."
+    );
   }
   return null;
 }
