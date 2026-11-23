@@ -80,6 +80,11 @@ model-checks with TLA+ that concurrent starts, stops, and crashes leave one
 reachable service. The `verify-llmos-service` skill
 (`../.agents/skills/verify-llmos-service/`) says what the model covers.
 
+Take every lock through `src/lock.ts`: an exclusive SQLite transaction that
+the kernel drops when its holder exits or crashes. Never write a lock file
+that code must judge stale or remove. Change it only with
+`just verify-memory-sync` and `just verify-llmos-service`.
+
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
 the real vault (`$LLMOS_ROOT`); point `LLMOS_ROOT` at a temporary vault for a

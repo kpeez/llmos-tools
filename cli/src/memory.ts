@@ -14,26 +14,17 @@
  * the vault.
  *
  * A save or forget reads, changes, and rewrites the index, so it runs under
- * the project's `.memory.lock`: two agents that write at once
- * each keep their line. The lock sits beside the memory folder, not in it,
- * because Stop sync commits every file in that folder.
+ * the project's `.memory.lock.db` (the kernel lock of `lock.ts`): two agents
+ * that write at once each keep their line. The lock file sits beside the
+ * memory folder, not in it, because Stop sync commits every file in that
+ * folder.
  */
 
-import { randomUUID } from "node:crypto";
-import {
-  closeSync,
-  linkSync,
-  lstatSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeSync,
-} from "node:fs";
+import { lstatSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
+import { waitLock } from "./lock.ts";
 import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
 import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
@@ -42,8 +33,6 @@ export const MAX_INDEX_LINES = 200;
 export const MAX_INDEX_BYTES = 25_000;
 /** How long a save or forget waits for another one to finish. */
 const LOCK_WAIT_MS = 10_000;
-/** A lock this old was left by a crashed save; a save holds it for milliseconds. */
-const LOCK_STALE_MS = 30_000;
 /** The project of a session with no vault project workspace. */
 export const PERSONAL_PROJECT = "personal";
 export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
@@ -228,77 +217,21 @@ function existing(root: string, relative: string): string | null {
   return readText(real);
 }
 
-/** The age of the file at `path` in ms, or `null` when it is gone. */
-function age(path: string): number | null {
-  try {
-    return Date.now() - statSync(path).mtimeMs;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Create the lock at `path` holding a new token and return it, or `null` when
- * a live lock is there. A stale lock is renamed away before it is removed,
- * so only one waiter takes it over; a rename that caught a rival's fresh lock
- * puts it back.
- */
-function tryLock(path: string): string | null {
-  const token = randomUUID();
-  try {
-    const fd = openSync(path, "wx");
-    writeSync(fd, token);
-    closeSync(fd);
-    return token;
-  } catch (error) {
-    if ((error as { code?: unknown }).code !== "EEXIST") throw error;
-  }
-  const held = age(path);
-  if (held === null || held <= LOCK_STALE_MS) return null;
-  const taken = `${path}.${process.pid}.${token}`;
-  try {
-    renameSync(path, taken);
-  } catch {
-    return null;
-  }
-  const renamed = age(taken);
-  if (renamed !== null && renamed <= LOCK_STALE_MS) {
-    try {
-      linkSync(taken, path);
-    } catch {
-      // A newer lock exists already.
-    }
-  }
-  rmSync(taken, { force: true });
-  return null;
-}
-
-/**
- * Run `work` while no other save or forget of `scope` runs: it holds
- * `projects/<project>/.memory.lock` and waits up to `LOCK_WAIT_MS` for it.
+ * Run `work` while no other save or forget of `scope` runs: it holds the
+ * kernel lock on `projects/<project>/.memory.lock.db` and waits up to
+ * `LOCK_WAIT_MS` for it.
  */
 function locked<T>(root: string, scope: MemoryScope, work: () => T): T {
-  // Resolve the project folder, which stays; the lock file comes and goes.
-  const path = join(newTarget(root, dirname(scope.dir)), ".memory.lock");
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  let token = tryLock(path);
-  while (token === null) {
-    if (Date.now() >= deadline) {
-      throw new MemoryRefused(
-        `another memory write held ${dirname(scope.dir)}/.memory.lock for ${LOCK_WAIT_MS / 1000} s`,
-      );
-    }
-    Bun.sleepSync(5);
-    token = tryLock(path);
+  const name = `${dirname(scope.dir)}/.memory.lock.db`;
+  const held = waitLock(join(newTarget(root, dirname(scope.dir)), ".memory.lock.db"), LOCK_WAIT_MS);
+  if (held === null) {
+    throw new MemoryRefused(`another memory write held ${name} for ${LOCK_WAIT_MS / 1000} s`);
   }
   try {
     return work();
   } finally {
-    try {
-      if (readFileSync(path, "utf8") === token) rmSync(path, { force: true });
-    } catch {
-      // Already gone.
-    }
+    held.release();
   }
 }
 

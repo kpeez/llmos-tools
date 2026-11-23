@@ -6,6 +6,16 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The memory project lock, the memory-sync lock, and the service start lock
+  are now one lock: an exclusive SQLite transaction on a lock file
+  (`cli/src/lock.ts`). The kernel gives it to one process and drops it when
+  the holder exits or crashes, and no code removes a lock file. Before, the
+  two lock files used a rename takeover after 30 s or 60 s. With three
+  writers and a stale lock, two could hold it, and a link-back could restore
+  a released lock, so memory saves failed for up to 30 s. The lock files are
+  now `projects/<project>/.memory.lock.db` and `<git-common-dir>/llmos-sync.lock.db`.
+  An old and a new plugin version that run at the same time do not exclude
+  each other: they use different files.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
@@ -20,8 +30,8 @@ Newest first. Versions are the `version` field shared by
   `just verify-llmos-service` model-checks the start rules with TLA+.
 - Two agents that save or forget shared memories at the same time no longer
   lose `MEMORY.md` lines. `llmos memory save`, `llmos memory forget`, and the
-  MCP memory tools now read and rewrite the index under a lock file,
-  `projects/<project>/.memory.lock`, and wait up to 10 s for it. Before, each
+  MCP memory tools now read and rewrite the index under a lock,
+  `projects/<project>/.memory.lock.db`, and wait up to 10 s for it. Before, each
   write rewrote the index it had read, so a concurrent save dropped the other
   save's line and left its topic note out of the index, or failed with "a file
   already exists" on a new index.

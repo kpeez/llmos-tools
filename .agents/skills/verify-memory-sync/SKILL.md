@@ -1,6 +1,6 @@
 ---
 name: verify-memory-sync
-description: Model-check with TLA+ that the shared-memory Git sync and the digest push never revert remote or local work, never push a private note, and that the sync lock admits one run at a time. Use when a change touches cli/src/git.ts (publish, update, mergeDiverged, changedBetween, fastForward), syncOnStop or the lock (acquire, release, withLock) in cli/src/hooks/sync.ts, pushNotes in cli/src/digest.ts, or any other code that runs git in the vault checkout, or when `just verify-memory-sync` fails.
+description: Model-check with TLA+ that the shared-memory Git sync and the digest push never revert remote or local work, never push a private note, and that the sync lock admits one run at a time. Use when a change touches cli/src/git.ts (publish, update, mergeDiverged, changedBetween, fastForward), syncOnStop or withLock in cli/src/hooks/sync.ts, the lock module cli/src/lock.ts, pushNotes in cli/src/digest.ts, or any other code that runs git in the vault checkout, or when `just verify-memory-sync` fails.
 ---
 
 # Verify the shared-memory Git sync
@@ -16,7 +16,9 @@ description: Model-check with TLA+ that the shared-memory Git sync and the diges
 - `OnlyCheckedPush`: the remote never receives a private note that the user
   did not push. Harm when it breaks: a note the user kept local is published.
 - `MutualExclusion` (`SyncLock.tla`): at most one run works under
-  `llmos-sync.lock`. Harm when it breaks: two sessions sync at the same time.
+  `llmos-sync.lock.db`. Harm when it breaks: two sessions sync at the same
+  time. The memory project lock and the service start lock use the same
+  module, `cli/src/lock.ts`, so the rule covers them.
 
 ## Run it
 
@@ -29,7 +31,7 @@ just verify-memory-sync
 The recipe runs `scripts/check.ts`. It runs each case below with TLC and
 exits 0 only when every case gives its expected result and every line in
 `GUARDS` (in `scripts/check.ts`) is still in `cli/src/git.ts`,
-`cli/src/hooks/sync.ts`, or `cli/src/digest.ts`.
+`cli/src/hooks/sync.ts`, `cli/src/lock.ts`, or `cli/src/digest.ts`.
 
 | Case | Expected |
 | --- | --- |
@@ -40,9 +42,11 @@ exits 0 only when every case gives its expected result and every line in
 | Sync + digest push, the code, no lock at all (`Mutex = FALSE`) | holds |
 | Sync + digest push, rebase mutant (`Digest = "rebase"`), `NoLocalLoss` | breaks |
 | Sync + digest push, rebase mutant, `OnlyCheckedPush` | breaks |
-| Lock, the code, 2 runs | holds |
+| Lock, the code (`Lock = "kernel"`), 2 runs | holds |
+| Lock, the code, 3 runs | holds |
+| Lock, token-file mutant (`Lock = "token"`), 2 runs | holds |
+| Lock, token-file mutant, 3 runs | breaks |
 | Lock, rm mutant (`Lock = "rm"`), 2 runs | breaks |
-| Lock, the code, 3 runs | breaks: known finding |
 
 Each break prints the counterexample's action names. The first run installs
 Java and the pinned TLC jar with mise, and needs the network. Set `TLA2TOOLS`
@@ -69,6 +73,15 @@ bugs.
   `rmSync(path)`, and release removed the lock file whoever owned it. Two
   runs both see a stale lock; one removes it and creates its own; the other
   then removes that fresh lock and creates its own. Both hold the lock.
+- **Token-file mutant** (`Lock = "token"`): the lock before `cli/src/lock.ts`.
+  A lock file created with `openSync(path, "wx")`, taken over when older
+  than a limit with `renameSync` and `linkSync`, and released with a token
+  check. Two runs hold it when three race over a stale lock: run A renames
+  the stale lock away; run B finds no file in that moment, which the code
+  did not treat as a live lock, so B goes on to rename; A creates its own
+  lock, and B renames that fresh lock away; run C creates a lock before B
+  links A's lock back. A and C both hold. The kernel lock has no stale
+  state to judge, so it has no such path.
 - **Rebase mutant** (`Digest = "rebase"`): `pushNotes` before it moved onto
   `cli/src/git.ts`. It committed its notes, ran `git pull --rebase
   --autostash`, then `git rebase --abort` when the pull failed, and ended
@@ -90,17 +103,9 @@ bugs.
 
 ## Known findings
 
-The code breaks this case. It stays a finding until the code changes. Do
-not weaken a rule or the model to make it pass.
-
-1. **The token lock admits two runs when three race over a stale lock.** Run
-   A renames the stale lock away. Run B's `statSafe(path)` finds no file in
-   that moment, which `acquire` does not treat as a live lock, so B goes on
-   to `renameSync`. A creates its own lock, and B renames that fresh lock
-   away. Run C creates a lock before B links A's lock back. A and C both
-   hold. The cases "no lock at all" show that the data rules hold even
-   then, with the digest too: the fixed commit IDs and `--ff-only` refuse
-   instead of overwriting.
+None. The code breaks no case. The old known finding, that the token lock
+file admitted two runs when three raced over a stale lock, ended when the
+lock moved to `cli/src/lock.ts`; the token-file mutant keeps it as a case.
 
 ## What the models cover
 
@@ -113,7 +118,7 @@ takes no lock. Each action is one git call:
 | Model | Code |
 | --- | --- |
 | `SGate` | `syncGate` (git.ts `mainCheckout`), `changedMemoryPaths`, and `hasUnpushed` before `withLock` in `syncOnStop` |
-| `SLock`, `SRelease` | `withLock` as a perfect lock (`Mutex = TRUE`) or no lock (`Mutex = FALSE`) |
+| `SLock`, `SRelease` | `withLock` (`tryLock`, `held.release()` in `cli/src/lock.ts`) as a perfect lock (`Mutex = TRUE`) or no lock (`Mutex = FALSE`) |
 | `SCommit` | git.ts `add` and `commit` of the memory paths; for `Dg`, `pushNotes` in `cli/src/digest.ts`: `add`, `hasStaged`, `commit` of its notes |
 | `SFetch`, `SFail` | git.ts `fetchMain`; a fetch or push failure ends the run |
 | `SReadOrigin`, `SReadTip` | git.ts `fetchAndRead`: `revParse(repo, "origin/main")`, `revParse(repo, "HEAD")`, `behind`, `ahead` |
@@ -127,9 +132,9 @@ takes no lock. Each action is one git call:
 | `DFetch`, `DRebase`, `DReplay` | rebase mutant: `git pull --rebase --autostash`: the fetch, the detach at the upstream, the replay or the conflict and `git rebase --abort` |
 | `DPush` | rebase mutant: `git push` |
 
-`SyncLock.tla` with `SyncLock.cfg` (2 runs, and in some initial states a
-stale lock of a killed run): `create`, `acquire`, and `release`, one action
-per file-system call.
+`SyncLock.tla` with `SyncLock.cfg` (2 runs; the mutants also start with a
+stale lock of a killed run): `Create`, `Release`, and `Crash` for the code,
+and one action per file-system call for the mutants.
 
 Assumptions, which the check does not cover:
 
@@ -157,8 +162,11 @@ Assumptions, which the check does not cover:
   not modeled. Both run git.ts `update`, which only fast-forwards with
   `--ff-only` to a fixed commit ID, and that refuses rather than
   overwrites. The cloud session has no sync and no digest.
-- A lock is stale only when its run is gone: a hook runs at most 30 s and a
-  lock goes stale after 60 s. A suspended laptop can break this.
+- The kernel grants an exclusive SQLite lock to one process at a time and
+  drops it when the process ends. The lock file must be on a local file
+  system: a network file system may not honor the lock. A holder that
+  stalls keeps the lock; a waiter for the memory lock gives up after 10 s,
+  and a sync run skips.
 - Bounds: 2 sync runs (3 in the lock case), 1 or 2 remote edits, 1 memory
   edit, 1 private note, 1 digest run.
 - The digest takes no sync lock. The case "sync + digest push, the code"

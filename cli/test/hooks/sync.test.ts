@@ -13,10 +13,10 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { tryLock } from "../../src/lock.ts";
 import {
   makeVault,
   removeTemporaryFolders,
@@ -322,37 +322,18 @@ test("the gate skips a vault without origin, off main, or with the opt-out", () 
   expect(git(a.repo, "log", "--format=%s", "-1")).toBe("seed");
 });
 
-test("a fresh lock makes the run skip, and a stale lock is taken over", () => {
+test("a run skips while another process holds the sync lock, and runs once it ends", () => {
   const { tmp, origin, a } = setup();
   const before = originHead(origin);
-  const lock = join(a.repo, ".git", "llmos-sync.lock");
-  writeFileSync(lock, "");
   writeFile(join(a.vault, MEMORY), "- seed\n- fact\n");
 
+  const held = tryLock(join(a.repo, ".git", "llmos-sync.lock.db"));
   stop(tmp, a);
-
+  held?.release();
   expect(originHead(origin)).toBe(before);
-  expect(existsSync(lock)).toBe(true);
 
-  const old = new Date(Date.now() - 120_000);
-  utimesSync(lock, old, old);
   stop(tmp, a);
-
   expect(originHead(origin)).not.toBe(before);
-  expect(existsSync(lock)).toBe(false);
-});
-
-test("a run does not delete a lock it no longer owns", () => {
-  const { tmp, a } = setup();
-  const lock = join(a.repo, ".git", "llmos-sync.lock");
-  const hook = join(a.repo, ".git", "hooks", "pre-push");
-  writeFile(hook, `#!/bin/sh\nprintf 'someone else' > '${lock}'\n`);
-  chmodSync(hook, 0o755);
-  writeFile(join(a.vault, MEMORY), "- seed\n- fact\n");
-
-  stop(tmp, a);
-
-  expect(readFileSync(lock, "utf8")).toBe("someone else");
 });
 
 test("stop with no memory change and nothing ahead never touches the network", () => {

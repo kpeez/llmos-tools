@@ -251,9 +251,10 @@ reindex keeps the dirty flag for the next Stop.
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is
 `main`, and no rebase, merge, or cherry-pick is in progress. Sync work runs under
-`<git-common-dir>/llmos-sync.lock`; a run that finds a fresh lock skips, and a
-lock older than 60 seconds is taken over by an atomic rename, and a run
-removes the lock only while it still holds that run's token. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
+`<git-common-dir>/llmos-sync.lock.db`, an exclusive SQLite transaction (the
+kernel lock of `cli/src/lock.ts`); a run that finds it held skips. The kernel
+drops the lock when its holder exits or crashes, so no run removes a lock
+file. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`

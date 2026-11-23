@@ -40,7 +40,8 @@ The recipe runs `scripts/check.ts`. It exits 0 only when all of these hold:
   - the extra socket removal in `close()` alone (`Lock = "kernel"`,
     `CloseRemoves = TRUE`);
 - `cli/src/service.ts` still has each line in `GUARDS` in
-  `scripts/check.ts`, has no `rmSync(paths.lock`, and has exactly one
+  `scripts/check.ts`, `cli/src/lock.ts` still has each line in
+  `LOCK_GUARDS`, `cli/src/service.ts` has no `rmSync(paths.lock`, and has exactly one
   `rmSync(paths.socket` (the one before the bind).
 
 The first run installs Java and the pinned TLC jar with mise, and needs the
@@ -53,11 +54,11 @@ seconds; the model of the code has about 240 distinct states.
 
 | Model | Code |
 | --- | --- |
-| `KernelAcquire` | `withStartLock`: `db.exec("BEGIN EXCLUSIVE")` on `service.lock.db`; `SQLITE_BUSY` means wait 50 ms and try again |
+| `KernelAcquire` | `withStartLock`: `tryLock(paths.lock)` (`cli/src/lock.ts`: `db.exec("BEGIN EXCLUSIVE")` on `service.lock.db`); `null` (`SQLITE_BUSY`) means wait 50 ms and try again |
 | `Probe` | `serveService`: `if (await socketLive(paths.socket))`, under the lock |
 | `RemoveSocket` | `serveService`: `rmSync(paths.socket, { force: true })` before the bind |
 | `Bind` | `server.listen(paths.socket)`, which fails with `EADDRINUSE` when any file is at the path |
-| `Release` | the end of `withStartLock`: `db.close()` ends the transaction |
+| `Release` | the end of `withStartLock`: `held.release()` (`db.close()`) ends the transaction |
 | `Close` | `close()`: `server.close()`, which unlinks the socket path by name (Bun and libuv both do this) and stops the listen |
 | `Crash` | SIGKILL or a crash at any step: files stay, the listen stops, the kernel drops the SQLite lock |
 | `FileCreate`, `FileWrite`, `FileRead`, `FileBreak` | mutant only: the pid lock file before the fix (`writeFileSync(lock, pid, { flag: "wx" })`, and `rmSync(lock)` for an empty, dead, or old holder) |
