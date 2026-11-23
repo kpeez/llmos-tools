@@ -4,7 +4,9 @@
  * exits or crashes, so no code ever has to judge a lock stale or remove a
  * lock file. The file stays on disk, empty; only its kernel lock matters.
  * It guards the memory project lock (`memory.ts`), the memory-sync lock
- * (`hooks/sync.ts`), and the service start lock (`service.ts`).
+ * (`hooks/sync.ts`), the service start lock (`service.ts`), and the vault's
+ * note lock (`withNoteLock` in `write.ts`). A wait (`waitLock`) sleeps with
+ * `Bun.sleepSync`, so it blocks the event loop of its process.
  *
  * SQLite follows a symbolic link at the path, so `tryLock` refuses a path
  * that is a link or not a regular file. The lock file is created in the same

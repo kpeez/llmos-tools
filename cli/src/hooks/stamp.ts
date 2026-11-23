@@ -36,8 +36,8 @@ import {
 } from "./common.ts";
 import { targetPaths } from "./context.ts";
 
-/** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does. */
-const STAMP_LOCK_WAIT_MS = 2_000;
+/** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does, once for all its targets. */
+const STAMP_LOCK_WAIT_MS = 3_000;
 const MAX_FINDINGS = 8;
 const MAX_LINE = 240;
 
@@ -46,23 +46,19 @@ const MAX_LINE = 240;
  * `false` means it was left unchanged because it has no frontmatter block,
  * the serializer refused to rewrite it, or it is not valid UTF-8.
  */
-export function stampNote(root: string, path: string, date = localDate()): boolean {
+export function stampNote(path: string, date = localDate()): boolean {
+  let text: string;
+  let stamped: string;
   try {
-    return withNoteLock(
-      root,
-      () => {
-        const text = readText(path);
-        const stamped = Frontmatter.parse(text).setScalar("updated", date).toString();
-        // In place, like the Python hook: a replacing rename would drop the file's
-        // birth time (Obsidian's created time), extended attributes, and hard links.
-        if (stamped !== text) writeFileSync(path, stamped);
-        return true;
-      },
-      STAMP_LOCK_WAIT_MS,
-    );
+    text = readText(path);
+    stamped = Frontmatter.parse(text).setScalar("updated", date).toString();
   } catch {
     return false;
   }
+  // In place, like the Python hook: a replacing rename would drop the file's
+  // birth time (Obsidian's created time), extended attributes, and hard links.
+  if (stamped !== text) writeFileSync(path, stamped);
+  return true;
 }
 
 /**
@@ -72,21 +68,15 @@ export function stampNote(root: string, path: string, date = localDate()): boole
  * a note with any `metadata.node_type`, a note whose `metadata` is not a map,
  * and a note the serializer refuses stay unchanged.
  */
-export function stampMemoryNote(root: string, path: string): void {
+export function stampMemoryNote(path: string): void {
   if (basename(path) === MEMORY_INDEX) return;
   try {
-    withNoteLock(
-      root,
-      () => {
-        const text = readText(path);
-        const frontmatter = Frontmatter.parse(text);
-        const metadata = frontmatter.properties.metadata;
-        if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
-        const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
-        if (stamped !== text) writeFileSync(path, stamped);
-      },
-      STAMP_LOCK_WAIT_MS,
-    );
+    const text = readText(path);
+    const frontmatter = Frontmatter.parse(text);
+    const metadata = frontmatter.properties.metadata;
+    if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
+    const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
+    if (stamped !== text) writeFileSync(path, stamped);
   } catch {}
 }
 
@@ -260,9 +250,22 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  for (const target of durableTargets) stampNote(root, target);
-  for (const target of memoryTargets) stampMemoryNote(root, target);
-  const lines = memoryLines(root, memoryTargets);
+  const lines: string[] = [];
+  try {
+    withNoteLock(
+      root,
+      () => {
+        for (const target of durableTargets) stampNote(target);
+        for (const target of memoryTargets) stampMemoryNote(target);
+      },
+      STAMP_LOCK_WAIT_MS,
+    );
+  } catch {
+    lines.push(
+      `The vault's note lock was busy for ${STAMP_LOCK_WAIT_MS / 1000} s, so this hook did not stamp or normalize ${targets.length} note(s). Another write holds the lock; the next write of each note stamps it.`,
+    );
+  }
+  lines.push(...memoryLines(root, memoryTargets));
   if (durableTargets.length > 0) {
     const listed = await listing;
     if (listed) lines.push(...authoringLines(root, durableTargets, listed));
