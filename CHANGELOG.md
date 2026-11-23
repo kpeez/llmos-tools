@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.14.0 — 2026-11-23
+
 - The Bash guard now parses the command with a real shell grammar (`unbash`
   6.0.5, in the new committed bundle `dist/shell-grammar.js`). It denies a raw
   `mv`, `rm`, `git mv`, `git rm`, or `find -delete` of a vault note that the
