@@ -5,9 +5,10 @@
  * It runs on every Bash call, so a cheap word-boundary pre-filter runs
  * before any tokenizing, and vault roots are read only once an actual
  * `mv`/`git mv`/`rm`/`git rm` invocation is found. Tokenizing keeps shell
- * operators (`&&`, `;`, `|`, redirections) as their own tokens even when
- * glued to a word (`hi&&rm`), while respecting quotes. A redirection and its
- * operand are never treated as command arguments.
+ * operators (`&&`, `;`, `|`, `&`, parentheses, newlines, redirections) as
+ * their own tokens even when glued to a word (`hi&&rm`), while respecting
+ * quotes. Every operator token except a redirection starts a new subcommand.
+ * A redirection and its operand are never treated as command arguments.
  *
  * Two rules deny the call (exit code 2, message on stderr):
  *
@@ -24,12 +25,24 @@
 
 import { registeredVaults, VaultRootError, vaultRoot } from "../root.ts";
 import { isUnder, joinPath, realpath, suffix, truthy } from "./common.ts";
-import { ShlexError, splitWithOperators } from "./shlex.ts";
+import { ShlexError, splitShellLines, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
+// The shell splices quotes, escapes, and line continuations out of a word
+// (`r"m"`, `r\m`, `r\<newline>m` all run rm), so the filter also reads the
+// command with them removed; it keeps the raw reading, because a backslash
+// in a comment is not a continuation.
 const FAST_REJECT = /\b(?:obsidian-cli|mv|rm)\b/;
 const OPERATOR_TOKENS = new Set(["&&", "||", ";", "|"]);
 const REDIRECT_OPERATORS = new Set([">", ">>", "<", "<<", "&>", "&>>", ">&", "<&"]);
+const QUOTES_AND_ESCAPES = /["'\\]/g;
+const CONTINUATION = /\\\n/g;
+const OPERATOR = /^[();|&<>\n]+$/;
+const SEPARATES = /[();|&\n]/;
+const CLOBBER = />\|/g;
+const REDIRECT_AMPERSAND = /&(?=>)|(?<=[<>])&/g;
+const REDIRECTS = /[<>]&?$/;
+const FD_NUMBER = /^\d+$/;
 
 /**
  * obsidian-cli verbs where an omitted `file=`/`path=` falls back to the
@@ -65,13 +78,23 @@ function basename(token: string): string {
   return token.slice(token.lastIndexOf("/") + 1);
 }
 
-function splitSubcommands(tokens: string[]): string[][] {
+/**
+ * The subcommands of the Python-style token list, split only on the four
+ * operator tokens, with each listed redirection and its operand dropped.
+ */
+function pythonSubcommands(tokens: string[]): string[][] {
   const subcommands: string[][] = [];
   let current: string[] = [];
+  let skipNext = false;
   for (const token of tokens) {
     if (OPERATOR_TOKENS.has(token)) {
       if (current.length > 0) subcommands.push(current);
       current = [];
+      skipNext = false;
+    } else if (skipNext) {
+      skipNext = false;
+    } else if (REDIRECT_OPERATORS.has(token)) {
+      skipNext = true;
     } else {
       current.push(token);
     }
@@ -80,20 +103,62 @@ function splitSubcommands(tokens: string[]): string[][] {
   return subcommands;
 }
 
-/** Drop each redirection operator and its operand (`> file`, `2>&1`). */
-function stripRedirections(tokens: string[]): string[] {
-  const kept: string[] = [];
-  let skipNext = false;
-  for (const token of tokens) {
-    if (skipNext) {
-      skipNext = false;
-    } else if (REDIRECT_OPERATORS.has(token)) {
-      skipNext = true;
-    } else {
-      kept.push(token);
+/**
+ * The words of each subcommand of the shell-line token list. An operator run
+ * can both end a subcommand and redirect (`;`, a newline, then `>`), so each
+ * part applies: a separator character starts a new subcommand, and a run that
+ * ends in `<` or `>` drops the next word, the redirection's operand, with any
+ * file-descriptor number before it (`2>/dev/null`). The `&` of `&>`, `>&`, and
+ * `<&`, and the `|` of `>|`, belong to the redirection and separate nothing.
+ */
+function shellSubcommands(rawTokens: string[]): string[][] {
+  const tokens = rawTokens.map((token) =>
+    OPERATOR.test(token) ? token.replace(CLOBBER, ">") : token,
+  );
+  const subcommands: string[][] = [];
+  let current: string[] = [];
+  let skipOperand = false;
+  tokens.forEach((token, index) => {
+    if (OPERATOR.test(token)) {
+      if (SEPARATES.test(token.replace(REDIRECT_AMPERSAND, ""))) {
+        if (current.length > 0) subcommands.push(current);
+        current = [];
+      }
+      skipOperand = REDIRECTS.test(token);
+    } else if (skipOperand) {
+      skipOperand = false;
+    } else if (!(FD_NUMBER.test(token) && REDIRECTS.test(tokens[index + 1] ?? ""))) {
+      current.push(token);
     }
+  });
+  if (current.length > 0) subcommands.push(current);
+  return subcommands;
+}
+
+/**
+ * The subcommands of one reading of `command`, or none when it cannot be
+ * tokenized. The guard checks both readings, so it denies every command the
+ * Python-style reading denied and also what the shell-line reading finds.
+ */
+function readSubcommands(
+  command: string,
+  tokenize: (command: string) => string[],
+  split: (tokens: string[]) => string[][],
+): string[][] {
+  try {
+    return split(tokenize(command));
+  } catch (error) {
+    if (error instanceof ShlexError) return [];
+    throw error;
   }
-  return kept;
+}
+
+function mayNameGuardedCommand(command: string): boolean {
+  return [
+    command,
+    command.replace(QUOTES_AND_ESCAPES, ""),
+    command.replace(CONTINUATION, "").replace(QUOTES_AND_ESCAPES, ""),
+  ].some((reading) => FAST_REJECT.test(reading));
 }
 
 function obsidianCliVerb(tokens: string[]): string | null {
@@ -169,16 +234,12 @@ function checkVaultMvRm(
 
 /** The deny message for `command`, or `null` to approve. */
 export function checkCommand(command: string, cwd: unknown): string | null {
-  if (!FAST_REJECT.test(command)) return null;
-  let tokens: string[];
-  try {
-    tokens = splitWithOperators(command);
-  } catch (error) {
-    if (error instanceof ShlexError) return null;
-    throw error;
-  }
-
-  const subcommands = splitSubcommands(tokens).map(stripRedirections);
+  if (!mayNameGuardedCommand(command)) return null;
+  const subcommands = [
+    ...readSubcommands(command, splitWithOperators, pythonSubcommands),
+    ...readSubcommands(command, splitShellLines, shellSubcommands),
+  ];
+  if (subcommands.length === 0) return null;
   for (const sub of subcommands) {
     const message = checkObsidianCli(sub);
     if (message) return message;

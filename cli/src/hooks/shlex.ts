@@ -1,11 +1,11 @@
 /**
  * A port of Python's `shlex` lexer in POSIX mode with `whitespace_split`.
+ * It is not a shell parser.
  *
- * The hooks were defined against `shlex.split` (no comments, no punctuation)
- * and `shlex.shlex(command, posix=True, punctuation_chars=True)` with
- * `whitespace_split = True` (comments on `#`). This port keeps that state
- * machine as it is, quirks included, so the TypeScript hooks split commands
- * exactly as the Python hooks did. It is not a shell parser.
+ * With `shellLines` on, newlines follow the shell instead of Python: an
+ * unquoted newline is an operator token, because the shell runs the text after
+ * it as a new command, and a backslash-newline outside single quotes is
+ * dropped, because the shell joins the two lines.
  */
 
 const WHITESPACE = " \t\r\n";
@@ -24,11 +24,15 @@ interface Options {
   punctuation: boolean;
   /** Characters that start a comment to the end of the line. */
   commenters: string;
+  /** Read newlines and backslash-newlines as the shell does (operators only). */
+  shellLines: boolean;
 }
 
 function tokens(input: string, options: Options): string[] {
   const chars = Array.from(input);
-  const punctuation = options.punctuation ? PUNCTUATION : "";
+  const shellLines = options.punctuation && options.shellLines;
+  const punctuation = !options.punctuation ? "" : shellLines ? `${PUNCTUATION}\n` : PUNCTUATION;
+  const whitespace = shellLines ? WHITESPACE.replace("\n", "") : WHITESPACE;
   const { commenters } = options;
   const pushback: string[] = [];
   let position = 0;
@@ -37,9 +41,8 @@ function tokens(input: string, options: Options): string[] {
     return position < chars.length ? (chars[position++] as string) : "";
   };
   const skipLine = (): void => {
-    while (position < chars.length) {
-      if (chars[position++] === "\n") return;
-    }
+    while (position < chars.length && chars[position] !== "\n") position++;
+    if (!shellLines && position < chars.length) position++;
   };
   const has = (set: string, char: string): boolean => char !== "" && set.includes(char);
 
@@ -59,7 +62,7 @@ function tokens(input: string, options: Options): string[] {
         if (!char) {
           state = null;
           break;
-        } else if (has(WHITESPACE, char)) {
+        } else if (has(whitespace, char)) {
           if (token || quoted) break;
         } else if (has(commenters, char)) {
           skipLine();
@@ -88,6 +91,10 @@ function tokens(input: string, options: Options): string[] {
         }
       } else if (has(ESCAPE, state)) {
         if (!char) throw new ShlexError("No escaped character");
+        if (shellLines && char === "\n") {
+          state = has(QUOTES, escapedState) ? escapedState : token || quoted ? "a" : " ";
+          continue;
+        }
         // Inside quotes only the quote itself or the escape can be escaped.
         if (has(QUOTES, escapedState) && char !== state && char !== escapedState) {
           token += state;
@@ -99,7 +106,7 @@ function tokens(input: string, options: Options): string[] {
         if (!char) {
           state = null;
           break;
-        } else if (has(WHITESPACE, char)) {
+        } else if (has(whitespace, char)) {
           state = " ";
           if (token || quoted) break;
         } else if (has(commenters, char)) {
@@ -110,7 +117,7 @@ function tokens(input: string, options: Options): string[] {
           if (has(punctuation, char)) {
             token += char;
           } else {
-            if (!has(WHITESPACE, char)) pushback.push(char);
+            if (!has(whitespace, char)) pushback.push(char);
             state = " ";
             break;
           }
@@ -136,7 +143,7 @@ function tokens(input: string, options: Options): string[] {
 
 /** Python's `shlex.split(command)`. Throws `ShlexError`. */
 export function split(command: string): string[] {
-  return tokens(command, { punctuation: false, commenters: "" });
+  return tokens(command, { punctuation: false, commenters: "", shellLines: false });
 }
 
 /**
@@ -146,5 +153,14 @@ export function split(command: string): string[] {
  * Throws `ShlexError`.
  */
 export function splitWithOperators(command: string): string[] {
-  return tokens(command, { punctuation: true, commenters: "#" });
+  return tokens(command, { punctuation: true, commenters: "#", shellLines: false });
+}
+
+/**
+ * `splitWithOperators` with newlines read as the shell reads them: an unquoted
+ * newline is an operator token, and a backslash-newline outside single quotes
+ * joins two lines. Throws `ShlexError`.
+ */
+export function splitShellLines(command: string): string[] {
+  return tokens(command, { punctuation: true, commenters: "#", shellLines: true });
 }

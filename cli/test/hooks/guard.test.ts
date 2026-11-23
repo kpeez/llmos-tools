@@ -134,13 +134,77 @@ describe("raw mv and rm on vault notes", () => {
     const vault = makeVault(join(tmp, "vault"));
     const note = writeFile(join(vault, "note.md"), "# note\n");
 
-    const spaced = guard(`cd /tmp && rm ${note}`, tmp, { root: vault });
-    const glued = guard(`echo hi&&rm ${note}`, tmp, { root: vault });
+    const commands = [
+      `cd /tmp && rm ${note}`,
+      `echo hi&&rm ${note}`,
+      `echo hi\nrm ${note}`,
+      `echo hi # comment\nrm ${note}`,
+      `sleep 1 & rm ${note}`,
+      `(rm ${note})`,
+      `echo $(rm ${note})`,
+    ];
 
-    for (const result of [spaced, glued]) {
-      expect(result.exitCode).toBe(2);
+    for (const command of commands) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 2 });
       expect(result.stderr).toContain(note);
     }
+  });
+
+  test("joins a backslash-newline line continuation as the shell does", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+    const other = join(vault, "other.md");
+
+    const denied = [
+      `mv \\\n  ${note} \\\n  ${other}`,
+      `rm -f \\\n  ${note}`,
+      `git mv \\\n  ${note} ${other}`,
+      `echo hi \\\n&& rm ${note}`,
+      `r\\\nm ${note}`,
+      `r"m" ${note}`,
+      `rm "${note.slice(0, -3)}\\\n.md"`,
+      `ls;\n>/dev/null rm ${note}`,
+      `ls &&\n>/dev/null rm ${note}`,
+      `ls ||\n</dev/null rm ${note}`,
+      `ls |\n>/dev/null rm ${note}`,
+      `echo hi\n</dev/null rm ${note}`,
+      `# c\\\nrm ${note}`,
+      `# don't\\\nmv ${note} ${other}`,
+      `echo a\\\\\nmv ${note} ${other}`,
+      `rm &>/dev/null ${note}`,
+      `2>/dev/null rm ${note}`,
+      `ls &</dev/null rm ${note}`,
+      `echo hi\nrm >| log ${note}`,
+      `echo hi\nrm 2>|log ${note}`,
+      `2>|log rm ${note}`,
+      `>|log rm ${note}`,
+      `echo hi\n2>|log rm ${note}`,
+    ];
+    for (const command of denied) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 2 });
+    }
+
+    const approved = [
+      "obsidian-cli move \\\n  file=note \\\n  to=archive",
+      "obsidian-cli read \\\n  file=note",
+    ];
+    for (const command of approved) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 0 });
+    }
+  });
+
+  test("approves a note path that is only quoted text, even across a newline", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+
+    const result = guard(`echo "hi\nrm ${note}"`, tmp, { root: vault });
+
+    expect(result.exitCode).toBe(0);
   });
 
   test("resolves a relative argument against the payload cwd", () => {
