@@ -20,8 +20,9 @@ Newest first. Versions are the `version` field shared by
   merge, and push at 5 s each). Near the deadline a call gets the time left,
   and later calls
   are skipped (the message says so, not "timed out"); a cloud session start says how many repositories it did not
-  link. A cut call is one that the harness would have killed at the same
-  moment. The single-call limits of the hooks are as before.
+  link. A call that runs into the last 0.5 s before the harness kill is cut,
+  so the hook can still write its output. The single-call limits of the hooks
+  are as before.
 - A vault note is now read through one checked path: `resolveInVault` in
   `cli/src/vault-file.ts` gives the branded `VaultFile` type, and `readText`
   accepts only that type. It refuses `..`, a link that leaves the vault, a

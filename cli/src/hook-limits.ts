@@ -1,8 +1,8 @@
 /**
  * Each hook's deadline: the time its subprocesses may use together, the
  * `timeout` of the hook in `../hooks/hooks.json` less `HOOK_RESERVE_MS`. A
- * call never gets less time than it would have before the deadline existed
- * unless the harness would kill the hook first. The limit of a single call
+ * call loses time only in the last `HOOK_RESERVE_MS` before the harness kill:
+ * the deadline gives that time to the output. The limit of a single call
  * stays what it was; near the deadline `run.ts` cuts a call to the time left,
  * and starts none once the time is gone. `hooks/main.ts` arms the deadline,
  * and `test/hooks/manifest.test.ts` checks `HOOK_TIMEOUT_MS` against
