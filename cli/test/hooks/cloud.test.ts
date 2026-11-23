@@ -8,6 +8,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
+import { HOOK_RESERVE_MS, HOOK_TIMEOUT_MS } from "../../src/hook-limits.ts";
+import { UPDATE_TIMEOUTS } from "../../src/hooks/cloud.ts";
 import {
   GIT_ENV,
   git,
@@ -122,7 +124,8 @@ describe("session-start in a cloud session", () => {
       "run git fetch origin main, then git merge --ff-only origin/main; if it refuses, stop and report why.",
     );
     expect(result.stdout).toContain(
-      "git push origin HEAD:main; if the push is refused, stop and report.",
+      "If the push is refused, run git fetch origin main, then git merge --no-edit origin/main, then push again once. " +
+        "If that merge conflicts, run git merge --abort. After a conflict or a second refusal, stop and report.",
     );
     expect(result.stdout).not.toContain("pull --rebase");
   });
@@ -264,5 +267,18 @@ describe("session-start outside the cloud", () => {
     expect(result.stdout).toBe("");
     expect(existsSync(join(fixture.project, ".agents"))).toBe(false);
     expect(existsSync(join(fixture.root, "projects", "my-repo", "notes", "new.md"))).toBe(false);
+  });
+});
+
+describe("the cloud start timeouts", () => {
+  const deadline = (HOOK_TIMEOUT_MS["session-start"] as number) - HOOK_RESERVE_MS;
+
+  test("the fetch keeps the 6 s of the one pull it replaced, and the merge its 2 s", () => {
+    expect(UPDATE_TIMEOUTS.fetch).toBeGreaterThanOrEqual(6_000);
+    expect(UPDATE_TIMEOUTS.merge).toBeGreaterThanOrEqual(2_000);
+  });
+
+  test("both calls and 1 s for the local calls fit in the session-start deadline", () => {
+    expect(UPDATE_TIMEOUTS.fetch + UPDATE_TIMEOUTS.merge + 1_000).toBeLessThanOrEqual(deadline);
   });
 });

@@ -6,6 +6,17 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The `LLMOS_ROOT` warning of the session-start hook now names the real case:
+  a path that does not exist, a path that is not a folder, or a folder that
+  lacks `.obsidian/` or `AGENTS.md`. Before, it said "not an llmOS vault" for
+  all three. It quotes the path, so a newline in the path adds no line.
+- A cloud session start gives the vault fetch 6 s, as the one pull had before
+  the fetch and the fast-forward became two calls. Before, the fetch had 3 s
+  and a slow GitHub proxy made it time out more often.
+- The cloud session context now says how to retry a refused push: fetch, run
+  `git merge --no-edit origin/main`, and push once more. It stops and reports
+  after a merge conflict or a second refusal. It never rebases, stashes, or
+  resets. Before, it said only to stop and report.
 ## 2.14.0 — 2026-11-23
 
 - The Bash guard now parses the command with a real shell grammar (`unbash`
