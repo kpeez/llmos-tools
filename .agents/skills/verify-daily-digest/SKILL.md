@@ -40,8 +40,8 @@ seconds.
 
 | Model | Code |
 | --- | --- |
-| `DigestReadsNote` | `processDay`: `const text = existsSync(notePath) ? readText(notePath) : "";`, before `completeSummary` |
-| `DigestWritesNote` | `processDay`, inside `withNoteLock`: `atomicWrite(notePath, replaceBlock(readText(notePath), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
+| `DigestReadsNote` | `processDay`: `const text = existsSync(notePath) ? readText(resolveInVault(root, noteFile)) : "";`, before `completeSummary` |
+| `DigestWritesNote` | `processDay`, inside `withNoteLock`: `atomicWrite(notePath, replaceBlock(readText(resolveInVault(root, noteFile)), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
 | `WriterCreatesNote` | Kyle creates the note in Obsidian, or `daily append-thought` creates it (`ensureDaily` in `commands.ts`) |
 | `WriterAddsThought` | Kyle in Obsidian, or `daily_append_thought` (`bodyWithThought` in `daily.ts`, written by `write.ts`) |
 
@@ -60,7 +60,8 @@ Assumptions, which the check does not cover:
 - One digest run at a time: the systemd timer starts one service.
 - `--push` (`pushNotes`) and Git merges between hosts are not modeled.
 
-Sync commit: the merge of the pull request "fix(write): lock every read-change-write of a note". At that commit, the model describes the code.
+Sync commit: `627e2f0` (fix(write): lock every read-change-write of a
+note). At that commit, the model describes the code.
 
 ## When a change touches the covered code
 

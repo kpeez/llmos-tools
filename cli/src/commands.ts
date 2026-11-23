@@ -5,7 +5,7 @@
  * `create --template`, which need the running Obsidian app.
  */
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
 import { checkNote, invalidFrontmatter } from "./authoring.ts";
@@ -13,7 +13,7 @@ import { bodySection, summary as claimsSummary, lintClaims } from "./claims-lint
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
 import { type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
-import { renderReference, renderSkill } from "./docs.ts";
+import { readSkillFile, renderReference, renderSkill } from "./docs.ts";
 import { isClean, qmdSection, RUN_RECORDS, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { DAILY_DIR } from "./layout.ts";
@@ -46,20 +46,13 @@ import {
 import { readConfig, validated } from "./root.ts";
 import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
-import {
-  findNotePath,
-  type Note,
-  type NoteRecord,
-  readSource,
-  readText,
-  type VaultModel,
-} from "./vault.ts";
+import { findNotePath, type Note, type NoteRecord, readSource, type VaultModel } from "./vault.ts";
+import { readText, readWalkedNote, realTarget, resolveInVault } from "./vault-file.ts";
 import {
   appendContent,
   appendThought,
   createNote,
   newTarget,
-  realTarget,
   removeProperty,
   setProperty,
   stampProperties,
@@ -189,15 +182,20 @@ function noteJson(model: VaultModel, note: Note): object {
   };
 }
 
-/** A note read straight from its file, printed as `noteJson` prints it. */
-function fileJson(root: string, relative: string): NoteRecord {
-  const source = readSource(relative, readText(join(root, relative)));
+/** A note's JSON, printed as `noteJson` prints it, from the text of its file. */
+function noteRecord(root: string, relative: string, text: string): NoteRecord {
+  const source = readSource(relative, text);
   return {
     name: basename(relative, ".md"),
     path: join(root, relative),
     properties: source.properties,
     body: source.body,
   };
+}
+
+/** A note read straight from its file (any path under the vault). */
+function fileJson(root: string, relative: string): NoteRecord {
+  return noteRecord(root, relative, readText(resolveInVault(root, relative)));
 }
 
 /** The context's today as a day number. */
@@ -292,7 +290,8 @@ the vault once instead of resolving names one at a time.`,
   example: "llmos read alpha --vault llmos --section Results",
   run(values, context) {
     const root = context.root(vaultName(values));
-    const json = fileJson(root, findNotePath(root, str(values, "note")));
+    const path = findNotePath(root, str(values, "note"));
+    const json = noteRecord(root, path, readWalkedNote(root, path));
     if (values.section === undefined) return { json: narrowed(json, values) };
     const heading = str(values, "section");
     return { json: { ...json, section: heading, body: bodySection(json.body, heading) } };
@@ -1551,7 +1550,7 @@ Do NOT use when you only want to read the help -- run \`<command> --help\`.`,
       relative(TOOLS, resolve(values[name] === undefined ? fallback : str(values, name)));
     const reference = newTarget(TOOLS, inTools("reference", DEFAULT_REFERENCE_PATH));
     const skill = realTarget(TOOLS, inTools("skill", DEFAULT_SKILL_PATH));
-    const skillText = renderSkill(readFileSync(skill, "utf8"), COMMANDS);
+    const skillText = renderSkill(readSkillFile(skill), COMMANDS);
     mkdirSync(dirname(reference), { recursive: true });
     writeFileSync(reference, renderReference(COMMANDS));
     writeFileSync(skill, skillText);

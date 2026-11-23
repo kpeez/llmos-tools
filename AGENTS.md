@@ -127,10 +127,43 @@ because a bundle built by another version differs from CI's. To move Bun,
 change that file and the `@types/bun` version in `package.json` together. Changing `../hooks/hooks.json` means
 every host must approve the Codex hooks again.
 
+A vault note is read through one door. `resolveInVault(root, relative)` in
+`src/vault-file.ts` is the only constructor of the branded `VaultFile` type:
+the real path of a regular file inside the real vault root, with no dot
+folder (`.trash/`, `.obsidian/`) in its path. It refuses `..`, an absolute
+path, a link that leaves the vault, a link to a missing file, and a folder.
+`readText` takes only a `VaultFile`, and the note writes of `write.ts` take
+one from `resolveInVault`. Two Biome checks (`../biome.json`) guard the door in
+`vault.ts`, `write.ts`, `memory.ts`, `schema.ts`, `digest.ts`, `daily.ts`,
+`authoring.ts`, `health.ts`, `mcp.ts`, `commands.ts`, and `src/hooks/context.ts`.
+`noRestrictedImports` bans `readFileSync`, `readFile`, `promises`, and a
+default or namespace import of `node:fs` and `fs`, and all of `node:fs/promises`
+and `fs/promises`. The `lint/vault-reads.grit` plugin bans `Bun.file`,
+`require("fs")` and `require("node:fs")` (with or without `/promises`), and
+the cast `as VaultFile`. Not covered:
+
+- Every module outside that list. They read files that are not vault notes
+  (config, state, install, the other hooks) or take outside paths on purpose.
+  `sources.ts` is one: its capture of a URL note goes through `resolveInVault`,
+  but the module also reads outside files, so nothing stops a new raw read there.
+- Other ways to read or to forge a `VaultFile`: named `openSync`, `readSync`,
+  and `createReadStream` imports from `node:fs`; `Bun.mmap`; an alias such as
+  `const B = Bun; B.file(p)`; the angle-bracket cast `<VaultFile>p`; and a
+  value of type `any` passed as a `VaultFile`.
+- `readSkillFile` in `src/docs.ts`: an exported raw read of any path, kept for
+  the `docs` command and outside the rule.
+- `readWalkedNote(root, relative)`: it refuses `..` and an absolute path, but it
+  follows a symbolic link out of the vault, as Obsidian does (the `read`
+  command contract). It is for paths that `walkVault` listed.
+- The PostToolUse hook (`src/hooks/stamp.ts`), which checks the files a tool
+  just wrote wherever they are.
+
+The Hermes provider (`hermes/`, Python) keeps its own containment code.
+
 The MCP server (`src/mcp.ts`, `llmos mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside
-the real vault root through `write.ts`, and add no shell or arbitrary-file
-tool. Claude Code reads `../.mcp.json`, Codex `../.codex-mcp.json`, and
+the real vault root through `vault-file.ts` (`resolveInVault`) or `write.ts`,
+and add no shell or arbitrary-file tool. Claude Code reads `../.mcp.json`, Codex `../.codex-mcp.json`, and
 Antigravity (`agy`) `../mcp_config.json`; keep the Bun flags
 `--no-install --no-env-file --config=/dev/null` in all of them, so a session's
 project cannot load code or config into the server.

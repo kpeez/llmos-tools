@@ -20,7 +20,7 @@
  * vault-relative path, then by its file name (case-insensitive).
  */
 
-import { type Dirent, existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readlinkSync } from "node:fs";
 import { basename, dirname, join, normalize } from "node:path";
 import { blankCodeSpans } from "./code-spans.ts";
 import {
@@ -30,6 +30,7 @@ import {
   readLenient,
   UnsupportedFrontmatter,
 } from "./frontmatter.ts";
+import { readWalkedNote } from "./vault-file.ts";
 
 const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g;
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
@@ -111,17 +112,6 @@ export class AmbiguousNoteError extends Error {
   ) {
     super(message);
   }
-}
-
-const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-
-/**
- * Read a file the way Python's text mode does: `\r\n` and `\r` become `\n`,
- * a byte-order mark is kept, and invalid UTF-8 throws (a `TypeError`), so a
- * later rewrite can never replace undecodable bytes.
- */
-export function readText(path: string): string {
-  return UTF8.decode(readFileSync(path)).replace(/\r\n?/g, "\n");
 }
 
 /**
@@ -400,12 +390,11 @@ export class VaultModel {
         files.push(path);
         continue;
       }
-      const absolute = join(root, path);
-      if (!existsSync(absolute)) {
-        broken.push({ path, target: readlinkSync(absolute) });
+      if (!existsSync(join(root, path))) {
+        broken.push({ path, target: readlinkSync(join(root, path)) });
         continue;
       }
-      sources.push(readSource(path, readText(absolute)));
+      sources.push(readSource(path, readWalkedNote(root, path)));
     }
     return VaultModel.fromSources(root, sources, broken, files);
   }

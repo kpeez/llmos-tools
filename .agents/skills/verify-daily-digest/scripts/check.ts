@@ -24,9 +24,9 @@ const JAVA_TOOL = "java@temurin-25";
 
 /** Each line the model assumes, as it appears in processDay. */
 const GUARDS = [
-  "const text = existsSync(notePath) ? readText(notePath) : \"\";",
+  "const text = existsSync(notePath) ? readText(resolveInVault(root, noteFile)) : \"\";",
   "if (existsSync(notePath)) {",
-  "atomicWrite(notePath, replaceBlock(readText(notePath), block));",
+  "atomicWrite(notePath, replaceBlock(readText(resolveInVault(root, noteFile)), block));",
 ];
 
 function fail(code: number, message: string): never {

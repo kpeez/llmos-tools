@@ -6,6 +6,23 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A vault note is now read through one checked path: `resolveInVault` in
+  `cli/src/vault-file.ts` gives the branded `VaultFile` type, and `readText`
+  accepts only that type. It refuses `..`, a link that leaves the vault, a
+  link to a missing file, a folder, and any dot folder. The hook that adds
+  `authoring.md` and `schema.md` to the agent's context no longer reads a
+  note that links outside the vault. A Biome rule and a lint plugin ban the
+  common raw reads (`readFileSync`, `readFile`, the `fs` default and namespace
+  imports, `fs/promises`, `Bun.file`, `require("fs")`, and the cast
+  `as VaultFile`) in the vault-handling modules; `AGENTS.md` lists the modules
+  and what the rule does not cover: other modules, named `openSync`,
+  `readSync`, and `createReadStream` imports, `Bun.mmap`, an alias of `Bun`,
+  the cast `<VaultFile>p`, `any` passed as a `VaultFile`, `readSkillFile` in
+  `docs.ts`, `readWalkedNote` (which follows links), and the PostToolUse stamp.
+  A linked-out `authoring.md` or `schema.md` now gets the fallback line
+  instead of its text. The project landing page and the daily
+  note and template that the digest reads are now refused when they link
+  outside the vault, and the digest reports that refusal as a normal error.
 - Two agents that write one note at the same time no longer lose a change.
   `daily_append_thought`, `set_property`, `llmos set-property`,
   `llmos remove-property`, `llmos daily append-thought`, the property

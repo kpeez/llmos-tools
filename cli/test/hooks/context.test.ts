@@ -5,7 +5,7 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileSha256 } from "../../src/heartbeat.ts";
 import {
@@ -334,6 +334,29 @@ describe("pre-tool-use", () => {
     expect(context).toContain(SCHEMA_SENTINEL);
     expect(context).toContain(AUTHORING_SENTINEL);
     expect(context).toContain("obsidian-markdown");
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("never reads an authoring or schema note that links outside the vault", () => {
+    const tmp = temporaryFolder();
+    const vault = contextVault(join(tmp, "vault"));
+    writeFile(join(tmp, "away", "authoring.md"), "OUTSIDE-AUTHORING-SECRET\n");
+    writeFile(join(tmp, "away", "schema.md"), "OUTSIDE-SCHEMA-SECRET\n");
+    for (const name of ["authoring.md", "schema.md"]) {
+      unlinkSync(join(vault, name));
+      symlinkSync(join(tmp, "away", name), join(vault, name));
+    }
+
+    const result = runHook(
+      "pre-tool-use",
+      { tool_input: { file_path: join(vault, "note.md") } },
+      tmp,
+      {
+        root: vault,
+      },
+    );
+
+    expect(result.stdout).not.toContain("OUTSIDE-");
     expect(result.exitCode).toBe(0);
   });
 
