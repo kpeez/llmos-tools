@@ -30,9 +30,10 @@ and Antigravity finds it at the plugin root.
   bundle fails to load, the guard falls back to its older token check. The
   grammar check reads at most 20,000 entries of a folder; a larger folder counts
   as holding a note, so the guard denies the call (it fails closed). It skips
-  dot folders (`.trash`) and `node_modules`, and it approves removing a symbolic
-  link to the vault when the path has no trailing slash, because that removes
-  only the link.
+  dot folders (`.trash`) and `node_modules`, and it approves a plain `rm`, `mv`, or
+  `git rm` of a symbolic link to the vault when the path has no trailing slash,
+  because that removes only the link. `find` and a command that lists paths for
+  `xargs` follow the link, so the guard denies them.
 - `dist/hooks.js` (from `main.ts`) serves `session-start`, `post-tool-use`,
   and `stop`.
 

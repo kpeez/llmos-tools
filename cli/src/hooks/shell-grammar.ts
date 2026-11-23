@@ -230,7 +230,13 @@ interface Context {
  * The note or folder of `arg` that a raw command would move or delete, or
  * null. `folders` reads a folder as all the notes under it.
  */
-function argHit(arg: string, context: Context, folders: boolean, accept: Accept = () => true) {
+function argHit(
+  arg: string,
+  context: Context,
+  folders: boolean,
+  accept: Accept = () => true,
+  followsLink = true,
+) {
   const candidates = arg.startsWith("~") ? [arg, expandUser(arg)] : [arg];
   for (const candidate of candidates) {
     if (!candidate.startsWith("/") && context.base === null) continue;
@@ -238,7 +244,12 @@ function argHit(arg: string, context: Context, folders: boolean, accept: Accept 
       ? candidate
       : joinPath(context.base as string, candidate || ".");
     const path = realpath(typed);
-    const hit = pathHit(path, context.roots, folders && !namesLink(typed), accept);
+    const hit = pathHit(
+      path,
+      context.roots,
+      folders && !(!followsLink && namesLink(typed)),
+      accept,
+    );
     if (hit !== null) return hit;
   }
   return null;
@@ -246,8 +257,11 @@ function argHit(arg: string, context: Context, folders: boolean, accept: Accept 
 
 /**
  * Whether `typed` names a symbolic link itself. Without a trailing slash a
- * move or removal acts on the link and leaves the folder it points to; with
- * one, `rm -r` and `find -delete` act on that folder.
+ * plain `rm`, `mv`, `git rm`, or `git mv` acts on the link and leaves the
+ * folder it points to. With a trailing slash, they act on that folder. A
+ * `find` with `-H`, `-L`, or `-follow`, and a program that lists paths for
+ * `xargs`, follow the link either way, so only the direct `mv`/`rm` call
+ * passes `followsLink = false`.
  */
 function namesLink(typed: string): boolean {
   if (typed.endsWith("/")) return false;
@@ -453,7 +467,9 @@ export function vaultDenial(
     call.program === "git mv" ||
     call.args.some((a) => RECURSIVE.test(a) || a === "--recursive");
   for (const arg of nonOptions(call.args)) {
-    if (argHit(arg, context, folders) !== null) return message(command, arg, call.program);
+    if (argHit(arg, context, folders, undefined, false) !== null) {
+      return message(command, arg, call.program);
+    }
   }
   if (!invocation.viaXargs) return null;
   const { stdinFile } = invocation;

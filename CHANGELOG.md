@@ -7,15 +7,16 @@ Newest first. Versions are the `version` field shared by
 ## Unreleased
 
 - The Bash guard now parses the command with a real shell grammar (`unbash`
-  6.0.4, in the new committed bundle `dist/shell-grammar.js`). It denies a raw
+  6.0.5, in the new committed bundle `dist/shell-grammar.js`). It denies a raw
   `mv`, `rm`, `git mv`, `git rm`, or `find -delete` of a vault note that the
   older token check missed: behind `sudo`, `env`, `timeout`, `nice`, or
   `xargs`; inside `bash -c`, `eval`, `$( )`, backticks, `{ }`, `if`, or a
   function body; with `git -C <vault>`; and on a folder (`rm -r <vault>/notes/`,
   a glob, `find <vault>/notes -name '*.md' -delete`). The older check stays
   as a floor, so the guard denies whatever it denied before. The grammar check
-  skips dot folders and `node_modules`, and approves removing a link to the
-  vault without a trailing slash. Its deny reason prints only the text the
+  skips dot folders and `node_modules`, and approves a plain `rm` or `mv` of a link to the
+  vault without a trailing slash (`find` and `xargs` listers follow the link, so
+  they stay denied). Its deny reason prints only the text the
   agent typed. The guard does not follow `cd` or variables.
 - Every subprocess in the CLI now has a time limit, except children that
   outlive their caller (`startDetached`) and the three pass-through launchers

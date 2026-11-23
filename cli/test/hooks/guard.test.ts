@@ -307,6 +307,38 @@ describe("raw mv and rm on vault notes", () => {
     // One hook process per command: 8 starts outrun bun's default 5 s on a loaded host.
   }, 60_000);
 
+  test("denies a command that follows a link to the vault, and approves removing the link itself", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    writeFile(join(vault, "projects", "p", "note.md"), "# note\n");
+    const repo = join(tmp, "repo");
+    writeFile(join(repo, ".agents", ".keep"), "");
+    symlinkSync(join(vault, "projects", "p"), join(repo, ".agents", "docs"), "dir");
+
+    // On macOS each of these removes the notes behind the link.
+    const denied = [
+      "find -L .agents/docs -name '*.md' -delete",
+      "find -H .agents/docs -name '*.md' -delete",
+      "find .agents/docs -follow -name '*.md' -delete",
+      "find .agents/docs/ -name '*.md' -delete",
+      "find -L .agents/docs -name '*.md' -exec rm {} +",
+      "ls .agents/docs/*.md | xargs rm",
+      "find -L .agents/docs | xargs rm",
+      "grep -rl note .agents/docs | xargs rm",
+      "fd -L . .agents/docs | xargs rm",
+      "rm -rf .agents/docs/",
+    ];
+    for (const command of denied) {
+      const result = guard(command, tmp, { root: vault, cwd: repo });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 2 });
+    }
+    for (const command of ["rm -rf .agents/docs", "mv .agents/docs elsewhere"]) {
+      const result = guard(command, tmp, { root: vault, cwd: repo });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 0 });
+    }
+    // One hook process per command: 12 starts outrun bun's default 5 s on a loaded host.
+  }, 60_000);
+
   test("a deny reason never carries a note name that holds a newline", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));
