@@ -1,7 +1,7 @@
 name: llmos
 label: llmOS vault hooks and memory
 description: >
-  Runs the llmOS plugin hooks (dist/hooks.js) in Hermes Agent: vault context at session start,
+  Runs the llmOS plugin hooks (dist/hooks.js and dist/pre-tool-use.js) in Hermes Agent: vault context at session start,
   the guard against raw moves and deletes of vault notes, read context and frontmatter stamps on
   file tools, the reindex and shared-memory sync at the end of each turn, and a reminder to commit and push
   changed vault notes before the agent finishes. Also registers the `llmos` memory provider for

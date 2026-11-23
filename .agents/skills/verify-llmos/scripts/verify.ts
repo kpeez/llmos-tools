@@ -38,6 +38,7 @@ const REPO = resolve(SKILL, "../../..");
 const CLI = join(REPO, "cli");
 const FIXTURES = join(CLI, "test", "fixtures");
 const BUNDLE = join(REPO, "dist", "hooks.js");
+const HOT_BUNDLE = join(REPO, "dist", "pre-tool-use.js");
 const EVIDENCE_ROOT = join(REPO, "artifacts", "verify-llmos");
 const BUN_FLAGS = ["--no-env-file", "--config=/dev/null"];
 
@@ -215,7 +216,7 @@ function launch(): State {
 function doctor(state: State): boolean {
   const problems: string[] = [];
   if (!process.versions.bun?.startsWith("1.4.")) problems.push(`bun ${process.versions.bun}`);
-  for (const path of [state.vault, state.claims, BUNDLE, join(CLI, "node_modules")]) {
+  for (const path of [state.vault, state.claims, BUNDLE, HOT_BUNDLE, join(CLI, "node_modules")]) {
     if (!existsSync(path)) problems.push(`missing ${path}`);
   }
   if (state.vault.startsWith(join(REPO, "llmOS"))) problems.push("scratch vault is the real vault");
@@ -457,12 +458,23 @@ const sourceCapture: Feature = (state) => {
 const hooks: Feature = (state) => {
   const f = "hooks";
   const run = (label: string, event: string, payload: unknown) =>
-    record(state, f, label, [process.execPath, ...BUN_FLAGS, BUNDLE, event], {
-      stdin: JSON.stringify(payload),
-      cwd: state.scratch,
-      // Claude Code sets CLAUDECODE; the hook heartbeat names the agent from it.
-      env: { ...childEnv(state), CLAUDECODE: "1" },
-    });
+    record(
+      state,
+      f,
+      label,
+      [
+        process.execPath,
+        ...BUN_FLAGS,
+        event === "pre-tool-use" || event === "guard-bash" ? HOT_BUNDLE : BUNDLE,
+        event,
+      ],
+      {
+        stdin: JSON.stringify(payload),
+        cwd: state.scratch,
+        // Claude Code sets CLAUDECODE; the hook heartbeat names the agent from it.
+        env: { ...childEnv(state), CLAUDECODE: "1" },
+      },
+    );
   const alpha = join(state.vault, "notes", "alpha.md");
   const start = run("session-start", "session-start", { cwd: state.vault, session_id: "verify" });
   check(
@@ -487,32 +499,43 @@ const hooks: Feature = (state) => {
     pre.code === 0 &&
       JSON.parse(pre.out).hookSpecificOutput?.additionalContext?.includes("Obsidian vault note"),
   );
-  const mv = run("guard-raw-mv", "guard-bash", {
+  const mv = run("guard-raw-mv", "pre-tool-use", {
     tool_name: "Bash",
     cwd: state.vault,
     tool_input: { command: `mv ${alpha} /tmp/x.md` },
   });
   check(
     f,
-    "guard-bash denies a raw mv of a vault note (exit 2)",
+    "pre-tool-use on a Bash call denies a raw mv of a vault note (exit 2)",
     mv.code === 2 && mv.err.includes("obsidian-cli move"),
     `exit ${mv.code}`,
   );
-  const bare = run("guard-obsidian-cli", "guard-bash", {
+  const bare = run("guard-obsidian-cli", "pre-tool-use", {
     tool_name: "Bash",
     tool_input: { command: "obsidian-cli read" },
   });
   check(
     f,
-    "guard-bash denies obsidian-cli read without a target (exit 2)",
+    "pre-tool-use on a Bash call denies obsidian-cli read without a target (exit 2)",
     bare.code === 2 && bare.err.includes("file="),
   );
-  const fine = run("guard-allowed", "guard-bash", {
+  const fine = run("guard-allowed", "pre-tool-use", {
     tool_name: "Bash",
     cwd: state.vault,
     tool_input: { command: "ls" },
   });
-  check(f, "guard-bash allows ls (exit 0, silent)", fine.code === 0 && fine.err === "");
+  check(f, "pre-tool-use allows a Bash ls (exit 0, silent)", fine.code === 0 && fine.err === "");
+  const direct = run("guard-bash-event", "guard-bash", {
+    tool_name: "Bash",
+    cwd: state.vault,
+    tool_input: { command: `mv ${alpha} /tmp/x.md` },
+  });
+  check(
+    f,
+    "the guard-bash event, which Hermes runs, denies a raw mv of a vault note (exit 2)",
+    direct.code === 2 && direct.err.includes("obsidian-cli move"),
+    `exit ${direct.code}`,
+  );
   const post = run("post-tool-use-stamp", "post-tool-use", {
     tool_name: "Write",
     session_id: "verify",

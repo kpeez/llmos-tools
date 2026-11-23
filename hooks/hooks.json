@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js pre-tool-use",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/pre-tool-use.js pre-tool-use",
             "timeout": 10
           }
         ]
@@ -28,17 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js pre-tool-use",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/hooks.js guard-bash",
+            "command": "bun --no-env-file --config=/dev/null \"$CLAUDE_PLUGIN_ROOT\"/dist/pre-tool-use.js pre-tool-use",
             "timeout": 10
           }
         ]

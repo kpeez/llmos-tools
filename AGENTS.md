@@ -40,7 +40,7 @@ reference is stale.
 that replays the recordings in `test/fixtures/web/` (or in-memory pages) and
 never touch the network.
 
-A hook writes its output only through `emit()` in `cli/src/hooks/main.ts`,
+A hook writes its output only through `emit()` in `cli/src/hooks/runtime.ts`,
 which gives each event the envelope its harness reads. Hook, MCP, and memory
 code never writes to a console or to stdout, and never reads the process folder
 to find its scope. A Biome lint (`cli/lint/hook-channels.grit`) fails on `process.stdout`,
@@ -52,7 +52,8 @@ and `globalThis`, destructuring `stdout` or `cwd` from `process`, `Bun`, or a
 namespace import of `process`, a `require()` call that is not destructured, or
 an indirect read such as `process.env.PWD`, `path.resolve(".")`, or
 `fs.writeSync(1, ...)`. It applies to `src/hooks/`, `src/mcp.ts`, and
-`src/memory.ts`, except `main.ts`.
+`src/memory.ts`, except the hook entry points (`main.ts`, `pre-tool-use.ts`)
+and `runtime.ts`.
 
 Never point a manual run or a test at the real qmd index
 (`~/.cache/qmd`): set `INDEX_PATH`, `QMD_CONFIG_DIR`, and `XDG_CACHE_HOME`
@@ -78,7 +79,7 @@ Start subprocesses only through `src/run.ts` (`run`, `start`, `startDetached`).
 Its options require `timeoutMs`, and a Biome plugin (`lint/subprocess.grit`)
 fails on `Bun.spawn`, `Bun.spawnSync`, `Bun.$`, and `node:child_process` in any
 other file. A hook arms one deadline for all its subprocesses
-(`src/hook-limits.ts`, armed in `src/hooks/main.ts`); `run` cuts each call to
+(`src/hook-limits.ts`, armed in `runHook` in `src/hooks/runtime.ts`); `run` cuts each call to
 the time left. `test/hooks/manifest.test.ts` fails when a hook's deadline plus
 its reserve reaches its `hooks.json` timeout. Never give a hook call a limit
 below the one it had before: the deadline is the bound.
@@ -121,10 +122,14 @@ Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
 marketplace drift check, the type check, Biome, and `bun test` (with the
 contract snapshot tests), and it fails when a committed bundle
-(`../dist/hooks.js`, or the MCP launcher `../dist/mcp.js`) is stale. It does
+(`../dist/hooks.js`, `../dist/pre-tool-use.js`, or the MCP launcher
+`../dist/mcp.js`) is stale. It does
 not run the model checks; CI runs them (`just verify-models`). After changing
 `src/hooks/`, `src/mcp-launcher.ts`, or core code they import, run `just
-hooks` and commit the rebuilt bundles. `.tool-versions` pins the Bun version for
+hooks` and commit the rebuilt bundles. The hooks that run on every tool call
+(`pre-tool-use`, `guard-bash`) have their own entry point and bundle
+(`src/hooks/pre-tool-use.ts`): keep YAML, memory, and vault-model code out of
+its imports, because Bun loads the whole bundle on every tool call. `.tool-versions` pins the Bun version for
 local builds and CI (`bun-version-file`); `just hooks` refuses another `bun`,
 because a bundle built by another version differs from CI's. To move Bun,
 change that file and the `@types/bun` version in `package.json` together. Changing `../hooks/hooks.json` means

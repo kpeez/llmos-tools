@@ -13,35 +13,50 @@ sessions may retain their previous plugin definitions.
 
 ## How they run
 
-`hooks/hooks.json` wires four lifecycle events to one file,
-`dist/hooks.js`, which `bun build` bundles from `cli/src/hooks/`. It runs from
-the plugin cache with no install step and needs only `bun` on the hook
-`PATH`. The same command serves Claude and Codex: each entry names its event
-on the command line, and the JSON payload arrives on stdin. The `hooks.json`
-at the repository root is the Antigravity copy: it holds the same command
-under Antigravity's tool names, and Antigravity finds it at the plugin root.
+`hooks/hooks.json` wires four lifecycle events to two files that `bun build`
+bundles from `cli/src/hooks/`. It runs from the plugin cache with no install
+step and needs only `bun` on the hook `PATH`. The same command form serves
+Claude and Codex: each entry names its event on the command line, and the JSON
+payload arrives on stdin. The `hooks.json` at the repository root is the
+Antigravity copy: it holds the same commands under Antigravity's tool names,
+and Antigravity finds it at the plugin root.
+
+- `dist/pre-tool-use.js` (from `pre-tool-use.ts`) serves `pre-tool-use` and
+  `guard-bash`. Both run on almost every tool call, so the bundle holds only
+  the path resolution and the guard: no YAML, memory, or vault-model code.
+  Bun loads a bundle before it runs, so a small bundle starts faster.
+- `dist/hooks.js` (from `main.ts`) serves `session-start`, `post-tool-use`,
+  and `stop`.
 
 ```sh
+bun --no-env-file --config=/dev/null "$CLAUDE_PLUGIN_ROOT"/dist/pre-tool-use.js pre-tool-use
 bun --no-env-file --config=/dev/null "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>
 ```
+
+A Bash call runs one process, not two. For a shell tool (`Bash`,
+`run_command`), `pre-tool-use` computes the vault context and runs the guard.
+A denial wins: exit code 2 with the reason on stderr (Antigravity: a `deny`
+decision). The context goes to stdout as before. A failure of one part never
+hides the other. The `guard-bash` event stays for a caller that sends only
+shell commands (the Hermes adapter).
 
 The two flags stop Bun from loading the session's project `.env` and
 `bunfig.toml` (whose `preload` scripts would otherwise run in every hook).
 
 | Event                    | Hook event      | Source        | Purpose                                                                                                     |
 | ------------------------ | --------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| SessionStart             | `session-start` | `context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first fast-forwards the vault checkout to `origin/main` and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
+| SessionStart             | `session-start` | `session-context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first fast-forwards the vault checkout to `origin/main` and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
-| PreToolUse (Bash)        | `guard-bash`    | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
+| PreToolUse (Bash)        | `pre-tool-use` (the guard part) | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and sets the dirty flag for every vault note the tool wrote, stamped or not; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** the dirty flag is set, by this turn or by any other process: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 
 ## Hermes Agent
 
 Hermes Agent does not read `hooks/hooks.json`. The adapter plugin in
-`hermes/` (Python, standard library only) runs the same `dist/hooks.js`
-for each Hermes hook, sends the payload the bundle reads for Claude Code
+`hermes/` (Python, standard library only) runs the same bundles: `dist/pre-tool-use.js`
+or `dist/hooks.js` for each Hermes hook, sends the payload the bundle reads for Claude Code
 (Hermes tool names mapped to `Bash`, `Read`, `Grep`, `Write`, `Edit`, or
 `apply_patch`), and sets `PLUGIN_ROOT=~/.hermes/plugins/llmos` so the
 heartbeat names `hermes`. Each Hermes profile links

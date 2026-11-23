@@ -27,9 +27,21 @@ const cases: [string, unknown, string?][] = [
   ["session-start", { cwd: vault }],
   ["pre-tool-use", { tool_name: "Read", tool_input: { file_path: note } }],
   ["pre-tool-use", { tool_name: "Edit", tool_input: { file_path: note } }, "write"],
-  ["guard-bash", { tool_input: { command: "git status" }, cwd: vault }, "fast path"],
-  ["guard-bash", { tool_input: { command: "mv a.txt b.txt" }, cwd: vault }, "mv, not a note"],
-  ["guard-bash", { tool_input: { command: `mv ${note} x.md` }, cwd: vault }, "mv a note: deny"],
+  [
+    "pre-tool-use",
+    { tool_name: "Bash", tool_input: { command: "git status" }, cwd: vault },
+    "Bash, fast path",
+  ],
+  [
+    "pre-tool-use",
+    { tool_name: "Bash", tool_input: { command: "mv a.txt b.txt" }, cwd: vault },
+    "Bash, mv, not a note",
+  ],
+  [
+    "pre-tool-use",
+    { tool_name: "Bash", tool_input: { command: `mv ${note} x.md` }, cwd: vault },
+    "Bash, mv a note: deny",
+  ],
   ["post-tool-use", { session_id: "bench", tool_input: { file_path: note } }, "no .md reference"],
   [
     "post-tool-use",
@@ -80,7 +92,11 @@ const rows = cases.map(([event, payload, label]) => {
       process.execPath,
       "--no-env-file",
       "--config=/dev/null",
-      join(TOOLS, "dist", "hooks.js"),
+      join(
+        TOOLS,
+        "dist",
+        event === "pre-tool-use" || event === "guard-bash" ? "pre-tool-use.js" : "hooks.js",
+      ),
       event,
     ],
     payload,

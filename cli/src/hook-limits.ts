@@ -4,7 +4,7 @@
  * call loses time only in the last `HOOK_RESERVE_MS` before the harness kill:
  * the deadline gives that time to the output. The limit of a single call
  * stays what it was; near the deadline `run.ts` cuts a call to the time left,
- * and starts none once the time is gone. `hooks/main.ts` arms the deadline,
+ * and starts none once the time is gone. `runHook` in `hooks/runtime.ts` arms the deadline,
  * and `test/hooks/manifest.test.ts` checks `HOOK_TIMEOUT_MS` against
  * `hooks.json`.
  */

@@ -46,8 +46,8 @@ import {
 import { readConfig, validated } from "./root.ts";
 import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
-import { type Note, readSource, type VaultModel } from "./vault.ts";
-import { readText, realTarget, resolveInVault } from "./vault-file.ts";
+import { findNotePath, type Note, type NoteRecord, readSource, type VaultModel } from "./vault.ts";
+import { readText, readWalkedNote, realTarget, resolveInVault } from "./vault-file.ts";
 import {
   appendContent,
   appendThought,
@@ -182,15 +182,20 @@ function noteJson(model: VaultModel, note: Note): object {
   };
 }
 
-/** A note read straight from its file, printed as `noteJson` prints it. */
-function fileJson(root: string, relative: string): object {
-  const source = readSource(relative, readText(resolveInVault(root, relative)));
+/** A note's JSON, printed as `noteJson` prints it, from the text of its file. */
+function noteRecord(root: string, relative: string, text: string): NoteRecord {
+  const source = readSource(relative, text);
   return {
     name: basename(relative, ".md"),
     path: join(root, relative),
     properties: source.properties,
     body: source.body,
   };
+}
+
+/** A note read straight from its file (any path under the vault). */
+function fileJson(root: string, relative: string): NoteRecord {
+  return noteRecord(root, relative, readText(resolveInVault(root, relative)));
 }
 
 /** The context's today as a day number. */
@@ -284,12 +289,12 @@ the vault once instead of resolving names one at a time.`,
  "properties": {"topics": ["gardening"]}, "body": "# Alpha\\n..."}`,
   example: "llmos read alpha --vault llmos --section Results",
   run(values, context) {
-    const model = context.model(context.root(vaultName(values)));
-    const note = model.resolveNote(str(values, "note"));
-    const json = noteJson(model, note);
+    const root = context.root(vaultName(values));
+    const path = findNotePath(root, str(values, "note"));
+    const json = noteRecord(root, path, readWalkedNote(root, path));
     if (values.section === undefined) return { json: narrowed(json, values) };
     const heading = str(values, "section");
-    return { json: { ...json, section: heading, body: bodySection(note.body, heading) } };
+    return { json: { ...json, section: heading, body: bodySection(json.body, heading) } };
   },
 };
 

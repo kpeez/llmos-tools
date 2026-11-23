@@ -37,7 +37,9 @@
         "**/cli/src/hooks/**",
         "**/cli/src/mcp.ts",
         "**/cli/src/memory.ts",
-        "!**/cli/src/hooks/main.ts"
+        "!**/cli/src/hooks/main.ts",
+        "!**/cli/src/hooks/pre-tool-use.ts",
+        "!**/cli/src/hooks/runtime.ts"
       ]
     },
     {

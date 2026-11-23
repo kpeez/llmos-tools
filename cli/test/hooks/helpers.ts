@@ -12,8 +12,14 @@ import { flagPath } from "../../src/dirty.ts";
 
 export const CLI = join(import.meta.dir, "..", "..");
 export const TOOLS = join(CLI, "..");
-export const ENTRY = join(CLI, "src", "hooks", "main.ts");
+const HOT_EVENTS = new Set(["pre-tool-use", "guard-bash"]);
+/** The source entry point of an event: the hot events have their own. */
+export const entryOf = (event: string): string =>
+  join(CLI, "src", "hooks", HOT_EVENTS.has(event) ? "pre-tool-use.ts" : "main.ts");
+/** The committed bundle of the events that run once a session or rarely. */
 export const BUNDLE = join(TOOLS, "dist", "hooks.js");
+/** The committed bundle of `pre-tool-use` and `guard-bash`. */
+export const HOT_BUNDLE = join(TOOLS, "dist", "pre-tool-use.js");
 
 export interface HookResult {
   exitCode: number;
@@ -26,7 +32,7 @@ export interface RunOptions {
   root?: string;
   cwd?: string;
   env?: Record<string, string>;
-  /** Defaults to the source entry point. */
+  /** Defaults to the source entry point of the event. */
   script?: string;
 }
 
@@ -64,7 +70,13 @@ export function runHook(
     ...options.env,
   };
   const result = Bun.spawnSync({
-    cmd: [process.execPath, "--no-env-file", "--config=/dev/null", options.script ?? ENTRY, event],
+    cmd: [
+      process.execPath,
+      "--no-env-file",
+      "--config=/dev/null",
+      options.script ?? entryOf(event),
+      event,
+    ],
     stdin: Buffer.from(typeof payload === "string" ? payload : JSON.stringify(payload)),
     env,
     cwd: options.cwd ?? tmp,

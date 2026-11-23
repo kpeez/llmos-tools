@@ -13,6 +13,7 @@ import {
   BUNDLE,
   GIT_ENV,
   git,
+  HOT_BUNDLE,
   makeVault,
   removeTemporaryFolders,
   runHook,
@@ -530,8 +531,8 @@ describe("pre-tool-use", () => {
     // committed bundle is what the harnesses run.
     for (const [toolName, script] of [
       ["mcp__plugin_llmos_llmos__daily_append_thought", undefined],
-      ["mcp__llmos__set_property", BUNDLE],
-      ["mcp__plugin_llmos_llmos__file_inbox", BUNDLE],
+      ["mcp__llmos__set_property", HOT_BUNDLE],
+      ["mcp__plugin_llmos_llmos__file_inbox", HOT_BUNDLE],
     ] as const) {
       const payload = { tool_name: toolName, tool_input: { text: "A thought." }, cwd: tmp };
       const result = runHook("pre-tool-use", payload, tmp, { root: vault, script });
