@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
+  folder that is not a vault. It prints one context line that names the
+  folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
+  worked with no vault and no warning. An unset `LLMOS_ROOT` still prints
+  nothing.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into

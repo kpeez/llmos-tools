@@ -4,7 +4,8 @@
  * `hooks/hooks.json` runs `bun dist/hooks.js <event>` with the harness
  * payload on stdin. Each event keeps the output channel its harness reads:
  *
- * - `session-start`: plain stdout, which becomes session context. In a cloud
+ * - `session-start`: plain stdout, which becomes session context. When
+ *   `LLMOS_ROOT` is set but names no vault, it is one warning line. In a cloud
  *   session it first pulls the vault and links each attached repository
  *   (`src/hooks/cloud.ts`); in a local session it first pulls the vault's
  *   shared project memory (`src/hooks/sync.ts`). In every session it links the project's agent
@@ -23,6 +24,7 @@
 
 import { cloudAttachHint, cloudSetup } from "./cloud.ts";
 import {
+  brokenRootWarning,
   firstTruthy,
   isAntigravityPayload,
   pathFrom,
@@ -93,7 +95,10 @@ async function run(event: string | undefined): Promise<void> {
       try {
         syncNote = root === null ? null : syncOnStart(root, process.env);
       } catch {}
-      const cloud = root === null ? cloudAttachHint(process.env, Bun.main) : cloudSetup(root);
+      const cloud =
+        root === null
+          ? (cloudAttachHint(process.env, Bun.main) ?? brokenRootWarning())
+          : cloudSetup(root);
       const linked = root && project ? linkAgentDirs(project, root).join("\n") : null;
       // A cloud session's working folder holds several repositories, so the
       // vault context applies even when the cwd itself is not linked.

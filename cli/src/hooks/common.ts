@@ -216,6 +216,17 @@ export function resolvedRoot(): string | null {
   }
 }
 
+/**
+ * One context line when `LLMOS_ROOT` is set but names no vault, else `null`.
+ * Without it the session-start hook prints nothing and the agent works with
+ * no vault and no warning.
+ */
+export function brokenRootWarning(): string | null {
+  const root = process.env.LLMOS_ROOT;
+  if (!root || resolvedRoot() !== null) return null;
+  return `LLMOS_ROOT is ${root}, but that folder is not an llmOS vault (it needs .obsidian/ and AGENTS.md), so no vault context is loaded. Point LLMOS_ROOT at the vault folder, or run /setup-llmos.`;
+}
+
 /** Today's local date as `YYYY-MM-DD`. */
 export function localDate(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
