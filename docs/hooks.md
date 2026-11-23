@@ -194,7 +194,7 @@ vault notes. The session-start hook first fetches `origin main` into the vault
 checkout (3-second limit) and fast-forwards it there with `git merge
 --ff-only` (2-second limit). It never rebases: a checkout with commits that
 are not on `origin/main` is left as it is, and the context says so. Then it
-links up to eight repositories beside the vault checkout the same way. The context
+links each repository beside the vault checkout the same way. The context
 tells the agent the same safe flow: before it edits vault notes, `git fetch
 origin main` and `git merge --ff-only origin/main`; then commit and push to
 `main` (`git push origin HEAD:main`), not to the session branch. When the
@@ -227,8 +227,8 @@ without the work tree (`git merge-tree --write-tree` and `git commit-tree`) and
 moves `main` only with `git merge --ff-only`, which keeps unrelated edits and
 refuses, rather than overwrites, a file that an incoming change overlaps.
 
-The session-start hook fetches (3-second limit), then, when `HEAD` is behind
-`origin/main` and not ahead, runs `git merge --ff-only origin/main` (2-second
+The session-start hook fetches (4-second limit), then, when `HEAD` is behind
+`origin/main` and not ahead, runs `git merge --ff-only origin/main` (4-second
 limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
 failure adds one line to the context: a failed fetch, a fast-forward that
 refuses (with git's reason, without its `hint:` lines), or a rebase, merge, or
@@ -241,18 +241,19 @@ never uses the network. Otherwise it commits only the memory paths (other
 staged and unstaged edits stay) and fetches (5 seconds). When behind only, it
 fast-forwards. When ahead and behind,
 it merges the trees with `git merge-tree`, makes a merge commit with
-`git commit-tree`, and fast-forwards to it (3 seconds); a conflict names the
+`git commit-tree`, and fast-forwards to it (5 seconds); a conflict names the
 conflicted paths and changes nothing on disk. It reads `HEAD` and `origin/main` once and uses
 those commit IDs for every later step. Then it checks that each unpushed commit
 and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
-seconds; the qmd reindex before the sync gets 10 of them, shared between
-`llmos reindex` and its `qmd update` fallback, and a timed-out reindex keeps
-the dirty flag for the next Stop. Every local git call in a hook has a
-250-millisecond limit. `src/hook-limits.ts` holds these limits, and a test
-keeps the limits on the worst path of each hook under its `hooks.json`
-timeout.
+seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
+reindex keeps the dirty flag for the next Stop. Each hook also has a deadline
+for all its subprocesses together (8 seconds at session start, 28 at Stop;
+`src/hook-limits.ts`). Near the deadline a call gets only the time left, a
+fast-forward merge does not start unless its whole limit fits, and later calls
+are skipped. A cloud session start that runs out of time says how many
+repositories it did not link.
 
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is

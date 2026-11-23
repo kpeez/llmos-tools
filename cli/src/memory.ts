@@ -34,7 +34,7 @@ import {
 import { dirname, join, relative } from "node:path";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
-import { checkoutAt, LOOKUP_GIT_MS, projectSlug } from "./project.ts";
+import { checkoutAt, projectSlug } from "./project.ts";
 import { readText } from "./vault.ts";
 import { deleteNote, newTarget, realTarget, WriteRefused, writeNote } from "./write.ts";
 
@@ -94,12 +94,8 @@ export function projectScope(root: string, project: string): MemoryScope {
  * The memory scope of a session in `workspace`: the vault project of its Git
  * repository (the session-start hook's rule), else `personal`.
  */
-export function memoryScope(
-  root: string,
-  workspace: string | null,
-  gitMs: number = LOOKUP_GIT_MS,
-): MemoryScope {
-  const checkout = workspace === null ? null : checkoutAt(workspace, gitMs);
+export function memoryScope(root: string, workspace: string | null): MemoryScope {
+  const checkout = workspace === null ? null : checkoutAt(workspace);
   const slug = checkout === null ? null : projectSlug(checkout.main, root);
   return projectScope(root, slug ?? PERSONAL_PROJECT);
 }

@@ -10,7 +10,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { HOOK_PATHS } from "../../src/hook-limits.ts";
+import { HOOK_DEADLINE_MS, HOOK_RESERVE_MS } from "../../src/hook-limits.ts";
 import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/mcp-names.ts";
 import { TOOLS } from "./helpers.ts";
 
@@ -158,15 +158,20 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   expect(postMatcher.test("edit_file")).toBe(true);
 });
 
-test("the subprocess limits on the worst path of each hook stay under its timeout", () => {
+test("each hook command has a deadline that leaves the reserve under its timeout", () => {
   const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
-  expect(Object.keys(HOOK_PATHS).sort()).toEqual(Object.keys(hooks).sort());
-  for (const [event, groups] of Object.entries(hooks)) {
+  const seen: string[] = [];
+  for (const groups of Object.values(hooks)) {
     for (const hook of groups.flatMap((group) => group.hooks)) {
-      for (const [path, steps] of Object.entries(HOOK_PATHS[event] ?? {})) {
-        const totalMs = steps.reduce((sum, step) => sum + step.limitMs * step.calls, 0);
-        expect([event, path, totalMs < hook.timeout * 1000]).toEqual([event, path, true]);
-      }
+      const event = COMMAND.exec(hook.command)?.[1] ?? hook.command;
+      seen.push(event);
+      const deadline = HOOK_DEADLINE_MS[event];
+      expect([event, deadline !== undefined]).toEqual([event, true]);
+      expect([event, (deadline ?? Infinity) + HOOK_RESERVE_MS < hook.timeout * 1000]).toEqual([
+        event,
+        true,
+      ]);
     }
   }
+  expect(Object.keys(HOOK_DEADLINE_MS).sort()).toEqual([...new Set(seen)].sort());
 });

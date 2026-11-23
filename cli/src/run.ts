@@ -5,6 +5,12 @@
  * makes `timeoutMs` required. A hook adds the limits of its steps
  * (`hook-limits.ts`), and a test checks that they fit the hook's timeout.
  *
+ * A hook arms a deadline (`setDeadline`, from `hook-limits.ts`). Then `run`
+ * and `start` cut each call's limit to the time left, and `run` starts no
+ * call once the time is gone, so the calls of a hook together stay inside
+ * its timeout. A call with `whole: true` is one that a kill would leave half
+ * done (a fast-forward merge): it starts only when its full limit fits.
+ *
  * Pass a named constant that says why the limit fits. `UNBOUNDED` is for a
  * child that is the session's own server or a pass-through of the caller's
  * own command; name it at the call site.
@@ -13,6 +19,18 @@
 type Env = Record<string, string | undefined>;
 type Input = Bun.SpawnOptions.Writable;
 type Output = Bun.SpawnOptions.Readable;
+
+let deadline = Number.POSITIVE_INFINITY;
+
+/** Stop all subprocesses of this process at `epochMs`. */
+export function setDeadline(epochMs: number): void {
+  deadline = epochMs;
+}
+
+/** The ms left before the deadline; `Infinity` with none. */
+export function remainingMs(): number {
+  return deadline - Date.now();
+}
 
 /** No limit: the child lives as long as its caller wants it to. */
 export const UNBOUNDED = Number.POSITIVE_INFINITY;
@@ -30,6 +48,8 @@ export interface RunOptions<
   stdout?: Out;
   stderr?: Err;
   killSignal?: NodeJS.Signals;
+  /** Start only when the whole `timeoutMs` fits before the deadline. */
+  whole?: boolean;
 }
 
 export interface RunResult {
@@ -42,18 +62,37 @@ export interface RunResult {
 }
 
 function limit(timeoutMs: number): { timeout?: number } {
-  return Number.isFinite(timeoutMs) ? { timeout: timeoutMs } : {};
+  const ms = Math.floor(Math.min(timeoutMs, remainingMs()));
+  return Number.isFinite(ms) ? { timeout: ms } : {};
 }
+
+/** The deadline is past, or too near for a `whole` call. */
+function exhausted(options: { timeoutMs: number; whole?: boolean }): boolean {
+  const left = remainingMs();
+  return left <= MIN_START_MS || (options.whole === true && left < options.timeoutMs);
+}
+
+/** A call with less time than this left would only be killed at once. */
+const MIN_START_MS = 50;
 
 function spawnOptions<In extends Input, Out extends Output, Err extends Output>(
   options: RunOptions<In, Out, Err>,
 ) {
-  const { timeoutMs, env, ...rest } = options;
+  const { timeoutMs, env, whole: _whole, ...rest } = options;
   return { ...rest, ...(env ? { env: env as Record<string, string> } : {}), ...limit(timeoutMs) };
 }
 
 /** Run `cmd` to its end or its limit. Throws when the program cannot start. */
 export function run(cmd: string[], options: RunOptions): RunResult {
+  if (exhausted(options)) {
+    return {
+      exitCode: null,
+      signalCode: null,
+      stdout: Buffer.alloc(0),
+      stderr: Buffer.alloc(0),
+      timedOut: true,
+    };
+  }
   const result = Bun.spawnSync({ cmd, ...spawnOptions(options) });
   return {
     exitCode: result.exitCode,

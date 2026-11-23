@@ -63,9 +63,11 @@ git spawn anywhere else and on those words in any git argument list.
 Start subprocesses only through `src/run.ts` (`run`, `start`, `startDetached`).
 Its options require `timeoutMs`, and a Biome plugin (`lint/subprocess.grit`)
 fails on `Bun.spawn`, `Bun.spawnSync`, `Bun.$`, and `node:child_process` in any
-other file. A hook step takes its limit from `src/hook-limits.ts`; add the step
-to `HOOK_PATHS` there, and `test/hooks/manifest.test.ts` fails when the limits
-on a hook's worst path reach its `hooks.json` timeout.
+other file. A hook arms one deadline for all its subprocesses
+(`src/hook-limits.ts`, armed in `src/hooks/main.ts`); `run` cuts each call to
+the time left. `test/hooks/manifest.test.ts` fails when a hook's deadline plus
+its reserve reaches its `hooks.json` timeout. Never give a hook call a limit
+below the one it had before: the deadline is the bound.
 After a change to `src/git.ts`, the shared-memory sync, or anything else that
 runs git in the vault checkout (`src/hooks/sync.ts`, `pushNotes` in
 `src/digest.ts`), also run `just verify-memory-sync`. It model-checks with TLA+ the rules that

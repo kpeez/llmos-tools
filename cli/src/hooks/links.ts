@@ -28,7 +28,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import { LOCAL_GIT_MS } from "../hook-limits.ts";
 import { MEMORY_DIR } from "../layout.ts";
 import { type Checkout, checkoutAt, projectSlug } from "../project.ts";
 import {
@@ -90,7 +89,7 @@ const LINKS: LinkSpec[] = [
 
 /** The worktree containing `path`, or `null` outside a Git worktree or vault project. */
 function repositoryAt(path: string, root: string): Repository | null {
-  const checkout = checkoutAt(path, LOCAL_GIT_MS);
+  const checkout = checkoutAt(path);
   if (checkout === null) return null;
   const slug = projectSlug(checkout.main, root);
   if (slug === null) return null;

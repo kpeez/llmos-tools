@@ -9,6 +9,8 @@ import { readdirSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { locate } from "./git.ts";
 
+const GIT_TIMEOUT_MS = 5_000;
+
 export interface Checkout {
   /** The worktree's top level. */
   top: string;
@@ -50,12 +52,9 @@ export function projectSlug(main: string, root: string): string | null {
   return null;
 }
 
-/** The limit of a project lookup in the CLI and the MCP server, which no hook timeout bounds. */
-export const LOOKUP_GIT_MS = 5_000;
-
-/** The Git worktree containing `path`, or `null` outside one; `timeoutMs` limits the git call. */
-export function checkoutAt(path: string, timeoutMs: number): Checkout | null {
-  const repo = locate(path, process.env, timeoutMs);
+/** The Git worktree containing `path`, or `null` outside one. */
+export function checkoutAt(path: string): Checkout | null {
+  const repo = locate(path, process.env, GIT_TIMEOUT_MS);
   if (repo === null) return null;
   const { top, commonDir: common } = repo;
   // A worktree of a bare repository has no main checkout; name it by itself.

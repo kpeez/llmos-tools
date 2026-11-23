@@ -17,13 +17,19 @@ import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
 import { locate, update } from "../git.ts";
-import { LOCAL_GIT_MS, MAX_CLOUD_REPOSITORIES, START_GIT_MS } from "../hook-limits.ts";
 import { MEMORY_COLLECTION, MEMORY_PATTERN, qmdLocation } from "../qmd-location.ts";
-import { startDetached } from "../run.ts";
+import { remainingMs, startDetached } from "../run.ts";
 import { isDir, isFile, joinPath } from "./common.ts";
 import { linkAgentDirs } from "./links.ts";
 
 type Env = Record<string, string | undefined>;
+
+// The session-start hook's timeout is 10 s: fetch 3 s + fast-forward 2 s,
+// plus five local calls of 1 s at most (each takes milliseconds).
+const LOCAL_TIMEOUT_MS = 1_000;
+/** Time left that one more repository may need: its project lookup is one local git call. */
+const LINK_RESERVE_MS = 1_500;
+const UPDATE_TIMEOUTS = { fetch: 3_000, merge: 2_000 };
 
 /**
  * Fetch `origin main` into the vault checkout and fast-forward it there
@@ -31,9 +37,9 @@ type Env = Record<string, string | undefined>;
  * commits is left as it is.
  */
 function pull(repository: string, env: Env): string | null {
-  const repo = locate(repository, env, LOCAL_GIT_MS);
+  const repo = locate(repository, env, LOCAL_TIMEOUT_MS);
   if (repo === null) return "the vault is not a git checkout";
-  const updated = update(repo, START_GIT_MS);
+  const updated = update(repo, UPDATE_TIMEOUTS);
   if (!("failed" in updated)) return null;
   if (updated.failed === "diverged") {
     return "the checkout has commits that are not on origin/main, so it was left as it is";
@@ -118,7 +124,14 @@ export function cloudSetup(root: string, env: Env = process.env): string | null 
   const notes: string[] = [];
   const pullError = pull(root, env);
   if (pullError) notes.push(`The llmOS vault pull failed: ${pullError}`);
-  for (const repository of repositories(root).slice(0, MAX_CLOUD_REPOSITORIES)) {
+  const siblings = repositories(root);
+  for (const [index, repository] of siblings.entries()) {
+    if (remainingMs() < LINK_RESERVE_MS) {
+      notes.push(
+        `Linking stopped at the hook deadline: ${siblings.length - index} repositories were not linked.`,
+      );
+      break;
+    }
     notes.push(...linkAgentDirs(repository, root));
   }
   const indexNote = buildIndex(root, env);

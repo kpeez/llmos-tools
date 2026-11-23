@@ -21,29 +21,29 @@
  */
 
 import { clearDirty, dirtyToken } from "../dirty.ts";
-import { REINDEX_BUDGET_MS } from "../hook-limits.ts";
-import { run } from "../run.ts";
+import { run as runProcess } from "../run.ts";
 import { COLLECTION, resolvedRoot } from "./common.ts";
 
 export function warn(message: string): void {
   process.stderr.write(`llmos qmd hook: ${message}\n`);
 }
 
+/**
+ * One run gets 10 s; the hook deadline (`../run.ts`) cuts both runs and the
+ * memory sync (`sync.ts`) short together. A timed-out reindex keeps the
+ * dirty flag, and the next Stop retries it.
+ */
+const REINDEX_TIMEOUT_MS = 10_000;
 const TIMED_OUT = "timed out";
 
-/**
- * Run `command`, all its output on stderr, until `deadline` (ms since the epoch);
- * a description of the failure, or `null` on success.
- */
-function runBefore(label: string, command: string[], deadline: number): string | null {
-  const timeoutMs = deadline - Date.now();
-  if (timeoutMs <= 0) return `${label} ${TIMED_OUT}`;
+/** Run `command`, all its output on stderr; a description of the failure, or `null` on success. */
+function run(label: string, command: string[]): string | null {
   try {
-    const result = run(command, {
+    const result = runProcess(command, {
       stdin: "ignore",
       stdout: 2,
       stderr: "inherit",
-      timeoutMs,
+      timeoutMs: REINDEX_TIMEOUT_MS,
     });
     if (result.exitCode === 0) return null;
     if (result.timedOut) return `${label} ${TIMED_OUT}`;
@@ -58,11 +58,10 @@ export function stop(): void {
   if (root === null) return;
   const token = dirtyToken(root);
   if (token === null) return;
-  const deadline = Date.now() + REINDEX_BUDGET_MS;
   const failures: string[] = [];
   const cli = Bun.which("llmos");
   if (cli !== null) {
-    const failure = runBefore("llmos reindex --no-embed", [cli, "reindex", "--no-embed"], deadline);
+    const failure = run("llmos reindex --no-embed", [cli, "reindex", "--no-embed"]);
     if (failure === null) {
       clearDirty(root, token);
       return;
@@ -74,7 +73,7 @@ export function stop(): void {
       return;
     }
   }
-  const failure = runBefore("qmd update", ["qmd", "update", "-c", COLLECTION], deadline);
+  const failure = run("qmd update", ["qmd", "update", "-c", COLLECTION]);
   if (failure === null) {
     if (failures.length > 0) warn(`${failures[0]}; ran qmd update instead`);
     clearDirty(root, token);

@@ -12,7 +12,6 @@
  */
 
 import { basename, dirname } from "node:path";
-import { LOCAL_GIT_MS } from "../hook-limits.ts";
 import {
   AUTHORING_NOTE,
   DAILY_DIR,
@@ -135,7 +134,7 @@ function projectMemoryDir(
   if (linked === null) {
     if (cwd === null || isUnder(cwd, root)) return joinPath(root, "projects", "llmos", MEMORY_DIR);
     try {
-      return joinPath(root, memoryScope(root, cwd, LOCAL_GIT_MS).dir);
+      return joinPath(root, memoryScope(root, cwd).dir);
     } catch (error) {
       if (error instanceof MemoryRefused) return null;
       throw error;

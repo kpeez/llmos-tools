@@ -32,7 +32,7 @@ interface Result {
   timedOut: boolean;
 }
 
-function run(cwd: string, args: string[], env: Env, timeout: number): Result {
+function run(cwd: string, args: string[], env: Env, timeout: number, whole = false): Result {
   try {
     const result = runProcess(
       ["git", "-C", cwd, "-c", "core.quotePath=false", "-c", "diff.renames=false", ...args],
@@ -42,6 +42,7 @@ function run(cwd: string, args: string[], env: Env, timeout: number): Result {
         stdout: "pipe",
         stderr: "pipe",
         timeoutMs: timeout,
+        whole,
       },
     );
     return {
@@ -267,7 +268,9 @@ function fetchMain(repo: Repo, timeout: number): string | null {
  * reported when `HEAD` already reached the target.
  */
 function fastForward(repo: Repo, target: string, timeout: number): string | null {
-  const merged = run(repo.top, ["merge", "--ff-only", "--quiet", target], repo.env, timeout);
+  // A kill in the middle of the merge leaves a half-updated work tree, so
+  // it starts only when the hook deadline leaves its whole limit.
+  const merged = run(repo.top, ["merge", "--ff-only", "--quiet", target], repo.env, timeout, true);
   if (merged.ok) return null;
   if (merged.timedOut && revParse(repo, "HEAD") === target) return null;
   return failure(merged);

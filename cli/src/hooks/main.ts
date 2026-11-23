@@ -21,6 +21,7 @@
  * nothing.
  */
 
+import { armHookDeadline } from "../hook-limits.ts";
 import { cloudAttachHint, cloudSetup } from "./cloud.ts";
 import {
   firstTruthy,
@@ -154,6 +155,7 @@ async function run(event: string | undefined): Promise<void> {
 }
 
 try {
+  armHookDeadline(process.argv[2]);
   await run(process.argv[2]);
 } catch {
   // A hook failure must never block the tool call.

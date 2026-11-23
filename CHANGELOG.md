@@ -6,19 +6,21 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
-- Every subprocess in the CLI now has a time limit. `src/run.ts` is the one
-  module that starts a child, and its options require `timeoutMs`; a Biome
-  plugin (`cli/lint/subprocess.grit`) fails on `Bun.spawn`, `Bun.spawnSync`,
-  `Bun.$`, and `node:child_process` anywhere else. `llmos` commands that call
-  `gh` (60 s), `obsidian-cli` (30 s), or MinerU (30 min) no longer hang for
-  ever. The hook limits live in `src/hook-limits.ts`, and a test checks that
-  the limits on the worst path of each hook stay under its `hooks.json`
-  timeout. The worst Stop path could reach 35 s of subprocess limits
-  (two 10 s reindex runs, then fetch, merge, and push at 5 s each) against a
-  30 s timeout; the reindex run and its `qmd update` fallback now share 10 s,
-  and the worst path is 27 s. A cloud session links at most eight
-  repositories beside the vault, and every local git call in a session-start
-  hook has a 250 ms limit.
+- Every subprocess in the CLI now has a time limit, except children that
+  outlive their caller (`startDetached`) and the three pass-through launchers
+  (`UNBOUNDED`: `bin/llmos.ts`, `bin/qmd.ts`, the MCP launcher). `src/run.ts`
+  is the one module that starts a child, and its options require `timeoutMs`;
+  a Biome plugin (`cli/lint/subprocess.grit`) fails on `Bun.spawn`,
+  `Bun.spawnSync`, `Bun.$`, and `node:child_process` anywhere else. New limits:
+  `gh` 60 s, `obsidian-cli` 30 s (before, none), MinerU 30 min, `unzip` 60 s,
+  `bun install` 10 min in `install.ts`, and 20 min per model check. Each hook
+  also has a deadline for all its subprocesses together: 8 s at session start
+  and 28 s at Stop, under the 10 s and 30 s hook timeouts. Before, the worst
+  Stop path could reach 35 s of limits (two 10 s reindex runs, then fetch,
+  merge, and push at 5 s each). Near the deadline a call gets the time left,
+  a fast-forward merge starts only when its whole limit fits, and later calls
+  are skipped; a cloud session start says how many repositories it did not
+  link. The single-call limits of the hooks are as before.
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`
