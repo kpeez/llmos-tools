@@ -56,9 +56,13 @@ verify-daily-digest`. It model-checks with TLA+ that the digest never deletes
 text written to a note during its model call. The `verify-daily-digest`
 skill (`../.agents/skills/verify-daily-digest/`) says what the model
 covers and how to read a failure.
-After a change to the shared-memory sync or anything else that runs git in
-the vault checkout (`src/hooks/sync.ts`, `pushNotes` in `src/digest.ts`),
-also run `just verify-memory-sync`. It model-checks with TLA+ the rules that
+Run git only through `src/git.ts`. It sets a timeout and path-safe options
+on every call and offers no `rebase`, `stash`, `reset`, or `pull`, which can
+drop a commit that another writer made. Two Biome plugins in `lint/` fail on a
+git spawn anywhere else and on those words in any git argument list.
+After a change to `src/git.ts`, the shared-memory sync, or anything else that
+runs git in the vault checkout (`src/hooks/sync.ts`, `pushNotes` in
+`src/digest.ts`), also run `just verify-memory-sync`. It model-checks with TLA+ the rules that
 the sync never reverts remote or local work, never pushes a private note,
 and lets one run at a time hold its lock. The `verify-memory-sync` skill
 (`../.agents/skills/verify-memory-sync/`) lists the known findings it

@@ -101,10 +101,15 @@ keep prompts for training, and the prompts hold private-repository PR text.
 The digest writes notes on the timer host only, and Obsidian Git commits nothing on
 its own (every interval is 0). The timer therefore passes `--push`: after a
 successful run, the digest commits only the notes it wrote and the run
-record, with the message `daily activity: <dates>`. It then runs `git pull
---rebase --autostash` and `git push` in the timer host's checkout. Other edits in
-that checkout stay uncommitted. A rebase conflict aborts the rebase and fails
-the run, and a failed push fails it too. The next night's run pushes again.
+record, with the message `daily activity: <dates>`. It then publishes them
+the way the shared-memory sync does: it fetches `origin main`, merges without
+touching the work tree when the remote moved, and pushes that one checked
+commit to `main`. The checkout must be on `main` with an `origin`. Other edits
+in that checkout stay uncommitted. The push refuses while an unpushed commit
+touches anything but daily notes, the run record, and shared project memory,
+so a note committed by hand stays local until you push it. A merge conflict
+fails the run and changes nothing, and a failed push fails it too. The next
+night's run pushes again.
 The push uses the `gh` credential helper of the checkout's HTTPS remote, so
 it needs no SSH agent.
 

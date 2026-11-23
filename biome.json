@@ -13,5 +13,12 @@
       "cli/*.json"
     ]
   },
-  "formatter": { "indentStyle": "space", "lineWidth": 100 }
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "plugins": [
+    {
+      "path": "./cli/lint/git-spawn.grit",
+      "includes": ["**/cli/src/**", "**/cli/bin/**", "**/cli/scripts/**", "!**/cli/src/git.ts"]
+    },
+    "./cli/lint/git-words.grit"
+  ]
 }

@@ -59,8 +59,9 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.ts";
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
+import { add, commit, hasStaged, mainCheckout, publish } from "./git.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
-import { DAILY_DIR, TEMPLATES_DIR } from "./layout.ts";
+import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH, TEMPLATES_DIR } from "./layout.ts";
 import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
 import { readText } from "./vault.ts";
 import { recordRun } from "./write.ts";
@@ -651,37 +652,55 @@ export function summarize(grouped: Grouped, day: Day, opencodeBin = "opencode"):
 
 // --- Publishing -----------------------------------------------------------------------
 
-/** One `git` call in `cwd`. Throws a `DigestError` with git's stderr when it fails. */
-function git(cwd: string, args: string[]): void {
-  const result = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
-  if (result.exitCode !== 0) {
-    const stderr = result.stderr.toString().trim().slice(0, 500);
-    throw new DigestError(`git ${args[0]} failed: ${stderr}`);
-  }
+// The digest runs from a timer, not a hook, so its git calls may take longer.
+const GIT_LOCAL_TIMEOUT_MS = 30_000;
+const GIT_TIMEOUTS = { fetch: 60_000, merge: 60_000, push: 60_000 };
+const MERGE_MESSAGE = "daily activity: merge the remote main";
+
+/** What the digest may push: daily notes, its run note, and shared project memory. */
+function pushable(path: string): boolean {
+  return DAILY_NOTE.test(path) || path === DIGEST_NOTE || SHARED_MEMORY_PATH.test(path);
 }
 
 /**
- * Commit `paths` (vault-relative) and push the checkout's branch. Only those
- * paths are committed, so other edits in the checkout stay as they are. The
- * branch is rebased on its upstream first; a conflict aborts the rebase and
- * fails the run. With no change in `paths`, it only pulls and pushes, so a
- * push that failed on an earlier night is retried.
+ * Commit `paths` (vault-relative) and publish them to `origin/main` with
+ * git.ts `publish`, the same flow as the memory sync: fetch, fast-forward or
+ * merge without the work tree, then push the one commit it checked. Only
+ * `paths` are committed, so other edits in the checkout stay as they are.
+ * The push refuses while an unpushed commit touches anything but daily
+ * notes, the run note, and shared memory, so a private note the user
+ * committed stays local. A conflict with the remote fails the run and changes
+ * nothing. With no change in `paths`, it still publishes, so a push that
+ * failed on an earlier night is retried. It takes no sync lock: the
+ * `verify-memory-sync` model shows that the sync's rules hold with the
+ * digest running beside it.
  */
 export function pushNotes(root: string, paths: string[], message: string): void {
-  if (paths.length > 0) {
-    git(root, ["add", "--", ...paths]);
-    const staged = Bun.spawnSync(["git", "diff", "--cached", "--quiet", "--", ...paths], {
-      cwd: root,
-    });
-    if (staged.exitCode !== 0) git(root, ["commit", "--quiet", "-m", message, "--", ...paths]);
+  const opened = mainCheckout(root, process.env, GIT_LOCAL_TIMEOUT_MS);
+  if (!opened.ok) throw new DigestError(`cannot push the vault: ${opened.reason}`);
+  const { checkout } = opened;
+  const inRepo = paths.map((path) =>
+    checkout.vaultRel === "." ? path : `${checkout.vaultRel}/${path}`,
+  );
+  if (inRepo.length > 0) {
+    const addError = add(checkout, inRepo);
+    if (addError) throw new DigestError(`git add failed: ${addError}`);
+    const staged = hasStaged(checkout, inRepo);
+    if (typeof staged === "object") throw new DigestError(`git diff failed: ${staged.error}`);
+    const commitError = staged ? commit(checkout, inRepo, message) : null;
+    if (commitError) throw new DigestError(`git commit failed: ${commitError}`);
   }
-  try {
-    git(root, ["pull", "--quiet", "--rebase", "--autostash"]);
-  } catch (error) {
-    Bun.spawnSync(["git", "rebase", "--abort"], { cwd: root, stdout: "ignore", stderr: "ignore" });
-    throw error;
+  const published = publish(checkout, {
+    allowed: pushable,
+    mergeMessage: MERGE_MESSAGE,
+    timeouts: GIT_TIMEOUTS,
+  });
+  if (!("failed" in published)) return;
+  if (published.failed === "check") {
+    const others = published.paths.slice(0, 3).join(", ");
+    throw new DigestError(`not pushing: unpushed commits also touch ${others}; push them by hand`);
   }
-  git(root, ["push", "--quiet"]);
+  throw new DigestError(`${published.failed} failed, the notes stay local: ${published.reason}`);
 }
 
 // --- The note ----------------------------------------------------------------------------

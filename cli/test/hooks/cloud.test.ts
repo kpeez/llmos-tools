@@ -1,7 +1,8 @@
 /**
  * The session-start hook in a cloud session (`CLAUDE_CODE_REMOTE=true`)
- * pulls `main` into the attached vault checkout and links the repositories
- * beside it to their project notes. Outside the cloud it does neither.
+ * fast-forwards the attached vault checkout to `origin/main` and links the
+ * repositories beside it to their project notes. Outside the cloud it does
+ * neither.
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
@@ -143,6 +144,32 @@ describe("session-start in a cloud session", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("The llmOS vault pull failed:");
     expect(existsSync(join(fixture.project, ".agents", "docs"))).toBe(true);
+  });
+
+  test("leaves a checkout with its own commits as it is, with no rebase in progress", () => {
+    const fixture = cloudFixture();
+    // The session committed its own version of the note that main also adds.
+    const note = writeFile(
+      join(fixture.root, "projects", "my-repo", "notes", "new.md"),
+      "# mine\n",
+    );
+    git(fixture.root, "add", ".");
+    git(fixture.root, "commit", "--quiet", "-m", "session note");
+    const head = () =>
+      Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: fixture.root }).stdout.toString();
+    const before = head();
+
+    const result = runCloud(fixture);
+
+    expect(result.exitCode).toBe(0);
+    for (const marker of ["rebase-merge", "rebase-apply"]) {
+      expect(existsSync(join(fixture.root, ".git", marker))).toBe(false);
+    }
+    expect(head()).toBe(before);
+    expect(readFileSync(note, "utf8")).toBe("# mine\n");
+    expect(result.stdout).toContain(
+      "The llmOS vault pull failed: the checkout has commits that are not on origin/main",
+    );
   });
 
   test("a session at the workspace root loads personal memory, not llmos memory", () => {

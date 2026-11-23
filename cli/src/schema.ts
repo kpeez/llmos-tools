@@ -13,8 +13,11 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { PropertyValue } from "./frontmatter.ts";
+import { untracked } from "./git.ts";
 import { DAILY_DIR, isMemoryNote, TEMPLATES_DIR } from "./layout.ts";
 import { type BrokenLink, comparePaths, type Note, readText, type VaultModel } from "./vault.ts";
+
+const GIT_TIMEOUT_MS = 30_000;
 
 export const STATUSES = new Set([
   "draft",
@@ -48,17 +51,8 @@ export function projectAlias(root: string, slug: string): string {
  * non-ASCII name is not lost to git's quoting.
  */
 export function untrackedMarkdown(root: string): Set<string> {
-  const result = Bun.spawnSync(
-    ["git", "-C", root, "ls-files", "-z", "--others", "--exclude-standard"],
-    { stdout: "pipe", stderr: "pipe" },
-  );
-  if (result.exitCode !== 0) return new Set();
-  return new Set(
-    result.stdout
-      .toString()
-      .split("\0")
-      .filter((path) => path.endsWith(".md")),
-  );
+  const paths = untracked(root, process.env, GIT_TIMEOUT_MS) ?? [];
+  return new Set(paths.filter((path) => path.endsWith(".md")));
 }
 
 function isEmpty(value: PropertyValue | undefined): boolean {
