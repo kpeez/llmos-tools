@@ -67,4 +67,9 @@ verify-models:
 verify-memory-sync:
     @bun ../.agents/skills/verify-memory-sync/scripts/check.ts
 
+# Model-check with TLA+ that concurrent service starts, stops, and crashes
+# leave one reachable service (the verify-llmos-service skill).
+verify-llmos-service:
+    @bun ../.agents/skills/verify-llmos-service/scripts/check.ts
+
 check: drift types lint test hooks-drift

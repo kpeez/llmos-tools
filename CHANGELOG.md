@@ -10,6 +10,14 @@ Newest first. Versions are the `version` field shared by
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
   `.claude/skills`; the repository now commits one link per skill.
+- Concurrent `llmos service serve` starts can no longer leave two services
+  running. The start lock was a pid file that a rival could read empty, judge
+  dead, and remove while its creator still held it. Both starters then bound,
+  and the orphaned service later deleted the live service's socket when it
+  stopped. The start lock is now an exclusive SQLite transaction on
+  `service.lock.db`, which the kernel releases when its holder exits or
+  crashes, and `close()` no longer removes the socket path a second time.
+  `just verify-llmos-service` model-checks the start rules with TLA+.
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
