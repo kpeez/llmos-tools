@@ -1,8 +1,10 @@
-"""Hermes Agent adapter for the llmOS plugin hooks (`../dist/hooks.js`).
+"""Hermes Agent adapter for the llmOS plugin hooks (`../dist/`).
 
 Hermes loads this folder as the `llmos` plugin from `~/.hermes/plugins/llmos`,
 a symbolic link to it. Each Hermes hook builds the payload the bundle reads
-for Claude Code, runs `bun dist/hooks.js <event>`, and maps the output back:
+for Claude Code, runs `bun dist/<bundle>.js <event>`, and maps the output back
+(`pre-tool-use` and `guard-bash` run from `pre-tool-use.js`, the other events from
+`hooks.js`):
 
 - `pre_llm_call` on a session's first turn runs `session-start`; its stdout
   becomes context for that turn.
@@ -40,7 +42,9 @@ LOG = logging.getLogger(__name__)
 
 # The plugin root the heartbeat records; `llmos doctor` looks for the plugin here.
 PLUGIN_ROOT = Path.home() / ".hermes" / "plugins" / "llmos"
-BUNDLE = Path(__file__).resolve().parent.parent / "dist" / "hooks.js"
+DIST = Path(__file__).resolve().parent.parent / "dist"
+# The hooks that run on every tool call have their own small bundle.
+HOT_EVENTS = {"pre-tool-use", "guard-bash"}
 CONFIG = Path.home() / ".config" / "llmos" / "config.json"
 # Under Hermes's 30 s plugin-callback limit, past which pre_tool_call fails closed.
 TIMEOUT_SECONDS = 10
@@ -125,9 +129,10 @@ def _payload(
 
 def _command(event: str) -> list[str] | None:
     bun = _bun()
-    if bun is None or not BUNDLE.is_file():
+    bundle = DIST / ("pre-tool-use.js" if event in HOT_EVENTS else "hooks.js")
+    if bun is None or not bundle.is_file():
         return None
-    return [bun, "--no-env-file", "--config=/dev/null", str(BUNDLE), event]
+    return [bun, "--no-env-file", "--config=/dev/null", str(bundle), event]
 
 
 def _env() -> dict[str, str]:

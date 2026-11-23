@@ -1,6 +1,6 @@
 ---
 name: verify-llmos
-description: Verify the llmOS tools by driving the real `llmos` CLI, its MCP server (`llmos mcp`, stdio), and the hook bundle (`dist/hooks.js`) on a scratch copy of a fixture vault. Use after a change to the CLI, the MCP server, or the hooks to see it work, or to audit the feature map.
+description: Verify the llmOS tools by driving the real `llmos` CLI, its MCP server (`llmos mcp`, stdio), and the hook bundles (`dist/hooks.js` and `dist/pre-tool-use.js`) on a scratch copy of a fixture vault. Use after a change to the CLI, the MCP server, or the hooks to see it work, or to audit the feature map.
 ---
 
 # Verify the llmOS tools
@@ -22,7 +22,7 @@ It exits 0 when every check passes.
 
 - CLI: `cli/bin/llmos.ts`. This is the main surface.
 - MCP server: `llmos mcp`, JSON-RPC on stdio.
-- Hooks: `bun dist/hooks.js <event>`, with the hook JSON on stdin.
+- Hooks: `bun dist/pre-tool-use.js <event>` for `pre-tool-use` and `guard-bash`, and `bun dist/hooks.js <event>` for the other events, with the hook JSON on stdin.
 
 ## Launch
 
@@ -55,7 +55,7 @@ Ready means: launch printed `launched:`, and `doctor` prints `DOCTOR OK`.
 bun scripts/verify.ts doctor
 ```
 
-Doctor is read-only. It checks the Bun version (1.4.x), the fixtures, `dist/hooks.js`,
+Doctor is read-only. It checks the Bun version (1.4.x), the fixtures, `dist/hooks.js`, `dist/pre-tool-use.js`,
 `cli/node_modules`, that the scratch vault is not the real vault, that qmd is isolated,
 that `git status -- llmOS` has not changed since launch, and that `llmos read` works.
 Run it first, and again after any failed drive. `drive` runs it before each feature.

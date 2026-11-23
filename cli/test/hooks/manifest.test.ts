@@ -14,7 +14,21 @@ import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/
 import { TOOLS } from "./helpers.ts";
 
 const COMMAND =
-  /^bun --no-env-file --config=\/dev\/null "\$CLAUDE_PLUGIN_ROOT"\/dist\/hooks\.js ([a-z-]+)$/;
+  /^bun --no-env-file --config=\/dev\/null "\$CLAUDE_PLUGIN_ROOT"\/dist\/([a-z-]+\.js) ([a-z-]+)$/;
+
+/** The bundle that serves each event: the hot events have their own. */
+const BUNDLE_OF: Record<string, string> = {
+  "session-start": "hooks.js",
+  "pre-tool-use": "pre-tool-use.js",
+  "post-tool-use": "hooks.js",
+  stop: "hooks.js",
+};
+
+/** `bundle event` of a command, or the command itself when it is not a bundle command. */
+function bundleEvent(command: string, pattern: RegExp): string {
+  const match = pattern.exec(command);
+  return match ? `${match[1]} ${match[2]}` : command;
+}
 
 function json(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(TOOLS, path), "utf8"));
@@ -27,14 +41,16 @@ test("each hook command runs the bundle with a known event", () => {
   const events: Record<string, string[]> = {};
   for (const [name, groups] of Object.entries(hooks)) {
     events[name] = groups.flatMap((group) =>
-      group.hooks.map((hook) => COMMAND.exec(hook.command)?.[1] ?? hook.command),
+      group.hooks.map((hook) => bundleEvent(hook.command, COMMAND)),
     );
   }
+  const of = (event: string) => `${BUNDLE_OF[event]} ${event}`;
+  // One process answers a Bash call: the context hook runs the guard as well.
   expect(events).toEqual({
-    SessionStart: ["session-start"],
-    PreToolUse: ["pre-tool-use", "pre-tool-use", "guard-bash"],
-    PostToolUse: ["post-tool-use"],
-    Stop: ["stop"],
+    SessionStart: [of("session-start")],
+    PreToolUse: [of("pre-tool-use"), of("pre-tool-use")],
+    PostToolUse: [of("post-tool-use")],
+    Stop: [of("stop")],
   });
 });
 
@@ -121,21 +137,23 @@ test("the plugin root holds no package.json for Claude Code to install", () => {
 });
 
 test("Antigravity root hooks.json runs the bundle with valid events and matchers", () => {
-  const agyCommand = /^bun --no-env-file --config=\/dev\/null \.\/dist\/hooks\.js ([a-z-]+)$/;
+  const agyCommand = /^bun --no-env-file --config=\/dev\/null \.\/dist\/([a-z-]+\.js) ([a-z-]+)$/;
+  const of = (event: string) => `${BUNDLE_OF[event]} ${event}`;
+  const run = (command: string) => bundleEvent(command, agyCommand);
   const hooks = json("hooks.json").llmos as Record<string, unknown>;
   const sessionStart = hooks.SessionStart as { command: string }[];
   const preToolUse = hooks.PreToolUse as Groups;
   const postToolUse = hooks.PostToolUse as Groups;
   const stop = hooks.Stop as { command: string }[];
 
-  expect(sessionStart.map((h) => agyCommand.exec(h.command)?.[1])).toEqual(["session-start"]);
-  expect(stop.map((h) => agyCommand.exec(h.command)?.[1])).toEqual(["stop"]);
-  expect(
-    preToolUse.flatMap((group) => group.hooks.map((h) => agyCommand.exec(h.command)?.[1])),
-  ).toEqual(["pre-tool-use", "guard-bash"]);
-  expect(
-    postToolUse.flatMap((group) => group.hooks.map((h) => agyCommand.exec(h.command)?.[1])),
-  ).toEqual(["post-tool-use"]);
+  expect(sessionStart.map((h) => run(h.command))).toEqual([of("session-start")]);
+  expect(stop.map((h) => run(h.command))).toEqual([of("stop")]);
+  expect(preToolUse.flatMap((group) => group.hooks.map((h) => run(h.command)))).toEqual([
+    of("pre-tool-use"),
+  ]);
+  expect(postToolUse.flatMap((group) => group.hooks.map((h) => run(h.command)))).toEqual([
+    of("post-tool-use"),
+  ]);
 
   const preMatcher = new RegExp(`^(?:${preToolUse[0]?.matcher})$`);
   for (const tool of [
@@ -150,8 +168,6 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   ]) {
     expect(preMatcher.test(tool)).toBe(true);
   }
-  const guardMatcher = new RegExp(`^(?:${preToolUse[1]?.matcher})$`);
-  expect(guardMatcher.test("run_command")).toBe(true);
   const postMatcher = new RegExp(`^(?:${postToolUse[0]?.matcher})$`);
   expect(postMatcher.test("write_file")).toBe(true);
   expect(postMatcher.test("edit_file")).toBe(true);

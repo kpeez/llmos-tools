@@ -11,6 +11,7 @@ build/
 # Only the committed hook and MCP launcher bundles belong in dist/.
 dist/*
 !dist/hooks.js
+!dist/pre-tool-use.js
 !dist/mcp.js
 .DS_Store
 artifacts

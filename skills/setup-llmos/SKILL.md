@@ -107,7 +107,9 @@ Advanced → Command line interface).
 
 ## Hooks need `bun` on the hook `PATH`
 
-The plugin hooks run `bun "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>`. The
+The plugin hooks run `bun "$CLAUDE_PLUGIN_ROOT"/dist/pre-tool-use.js <event>` (for
+`pre-tool-use`) or `bun "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>` (for the other
+events). The
 harness, not your interactive shell, must find `bun`: Claude Code runs hooks
 with its own environment, and Codex runs them through the login shell. When
 `bun` is missing, every hook fails without blocking anything, and the session
@@ -233,8 +235,8 @@ its uncommitted files.
   paragraphs of the default profile's `SOUL.md`, and keep the words
   "llmOS vault": the doctor looks for them.
 
-The adapter (`hermes/__init__.py`) runs `dist/hooks.js` for each
-Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
+The adapter (`hermes/__init__.py`) runs `dist/pre-tool-use.js` or
+`dist/hooks.js` for each Hermes hook; [hooks.md](../../docs/hooks.md) lists the mapping. The doctor
 checks `hooks-hermes` when `~/.hermes/plugins/llmos` exists, and fails it
 when that link points at a folder that is gone. Once any profile
 links the plugin, it also checks each profile (`hermes-profile-<name>`) and names
