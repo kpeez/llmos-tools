@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
 - The shared-memory sync merges a rename on one side with an edit on the
   other side again. Since the change that turned off rename detection in every
   git call, `git merge-tree` refused such a pair as a modify/delete conflict.
