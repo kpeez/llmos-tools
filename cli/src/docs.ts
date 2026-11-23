@@ -4,7 +4,13 @@
  * again and compares, so the committed files never drift from `--help`.
  */
 
+import { readFileSync } from "node:fs";
 import { type Command, renderHelp } from "./cli.ts";
+
+/** The text of the skill file at `path`, a file of this tools folder and not a vault note. */
+export function readSkillFile(path: string): string {
+  return readFileSync(path, "utf8");
+}
 
 export const SKILL_TABLE_START = "<!-- BEGIN GENERATED VERB TABLE -->";
 export const SKILL_TABLE_END = "<!-- END GENERATED VERB TABLE -->";

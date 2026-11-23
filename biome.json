@@ -35,6 +35,22 @@
         "**/cli/src/memory.ts",
         "!**/cli/src/hooks/main.ts"
       ]
+    },
+    {
+      "path": "./cli/lint/vault-reads.grit",
+      "includes": [
+        "**/cli/src/vault.ts",
+        "**/cli/src/write.ts",
+        "**/cli/src/memory.ts",
+        "**/cli/src/schema.ts",
+        "**/cli/src/digest.ts",
+        "**/cli/src/daily.ts",
+        "**/cli/src/authoring.ts",
+        "**/cli/src/health.ts",
+        "**/cli/src/mcp.ts",
+        "**/cli/src/commands.ts",
+        "**/cli/src/hooks/context.ts"
+      ]
     }
   ],
   "overrides": [
@@ -49,7 +65,8 @@
         "**/cli/src/authoring.ts",
         "**/cli/src/health.ts",
         "**/cli/src/mcp.ts",
-        "**/cli/src/commands.ts"
+        "**/cli/src/commands.ts",
+        "**/cli/src/hooks/context.ts"
       ],
       "linter": {
         "rules": {
@@ -59,12 +76,18 @@
               "options": {
                 "paths": {
                   "node:fs": {
-                    "importNames": ["readFileSync", "readFile"],
-                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw readFileSync follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
+                    "importNames": ["readFileSync", "readFile", "promises", "default", "*"],
+                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw fs read follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
                   },
                   "fs": {
-                    "importNames": ["readFileSync", "readFile"],
-                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw readFileSync follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
+                    "importNames": ["readFileSync", "readFile", "promises", "default", "*"],
+                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw fs read follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
+                  },
+                  "node:fs/promises": {
+                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw fs read follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
+                  },
+                  "fs/promises": {
+                    "message": "Read a vault note with readText(resolveInVault(root, relative)) from cli/src/vault-file.ts. A raw fs read follows symbolic links and '..' out of the vault (see the memory-index escape, fc6f60a)."
                   }
                 }
               }

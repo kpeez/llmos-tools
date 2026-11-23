@@ -889,7 +889,11 @@ export function runDigest(options: { root?: string; date?: Day; push?: boolean }
     }
     return { lines };
   } catch (error) {
-    if (error instanceof DigestError || error instanceof VaultRootError) {
+    if (
+      error instanceof DigestError ||
+      error instanceof VaultRootError ||
+      error instanceof WriteRefused
+    ) {
       return { lines, error: `llmos daily activity: ${error.message}` };
     }
     return {

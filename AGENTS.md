@@ -128,17 +128,28 @@ the real path of a regular file inside the real vault root, with no dot
 folder (`.trash/`, `.obsidian/`) in its path. It refuses `..`, an absolute
 path, a link that leaves the vault, a link to a missing file, and a folder.
 `readText` takes only a `VaultFile`, and the note writes of `write.ts` take
-one from `resolveInVault`. A Biome rule (`noRestrictedImports` in
-`../biome.json`) bans `readFileSync` and `readFile` from `node:fs` and `fs` in
+one from `resolveInVault`. Two Biome checks (`../biome.json`) guard the door in
 `vault.ts`, `write.ts`, `memory.ts`, `schema.ts`, `digest.ts`, `daily.ts`,
-`authoring.ts`, `health.ts`, `mcp.ts`, and `commands.ts`. Other modules read
-files that are not vault notes (config, state, install, sources, the hooks)
-and are outside the rule; `Bun.file` is not covered. Two reads still take a raw
-path: `readWalkedNote`, for a note that `walkVault` listed, which follows a
-link out of the vault as Obsidian does (the `read` command contract), and the
-PostToolUse hook (`src/hooks/stamp.ts`), which checks the files a tool just
-wrote. The Hermes provider (`hermes/`, Python) keeps its own containment
-code.
+`authoring.ts`, `health.ts`, `mcp.ts`, `commands.ts`, and `src/hooks/context.ts`.
+`noRestrictedImports` bans `readFileSync`, `readFile`, `promises`, and a
+default or namespace import of `node:fs` and `fs`, and all of `node:fs/promises`
+and `fs/promises`. The `lint/vault-reads.grit` plugin bans `Bun.file`,
+`require("fs")` and `require("node:fs")` (with or without `/promises`), and
+the cast `as VaultFile`. Not covered:
+
+- Every module outside that list. They read files that are not vault notes
+  (config, state, install, the other hooks) or take outside paths on purpose.
+  `sources.ts` is one: its capture of a URL note goes through `resolveInVault`,
+  but the module also reads outside files, so nothing stops a new raw read there.
+- Dynamic `import("node:fs")`, `process.binding`, and a path built to pass a
+  `VaultFile`-typed parameter from another type (`any`, `unknown`).
+- `readWalkedNote(root, relative)`: it refuses `..` and an absolute path, but it
+  follows a symbolic link out of the vault, as Obsidian does (the `read`
+  command contract). It is for paths that `walkVault` listed.
+- The PostToolUse hook (`src/hooks/stamp.ts`), which checks the files a tool
+  just wrote wherever they are.
+
+The Hermes provider (`hermes/`, Python) keeps its own containment code.
 
 The MCP server (`src/mcp.ts`, `llmos mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside

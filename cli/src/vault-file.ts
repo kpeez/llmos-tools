@@ -11,7 +11,7 @@
  */
 
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { isAbsolute, join, relative as relativePath, resolve, sep } from "node:path";
+import { isAbsolute, relative as relativePath, resolve, sep } from "node:path";
 
 /** A write or read the caller asked for cannot be done; nothing was done. */
 export class WriteRefused extends Error {
@@ -110,9 +110,10 @@ export function decodeText(bytes: Uint8Array): string {
  * (`walkVault`) listed. It follows a symbolic link wherever it points, as
  * Obsidian shows the note, so it is the one read that may leave the vault:
  * use it only for a path from the walk, and `resolveInVault` for any other.
+ * A path with `..` or an absolute path is refused.
  */
 export function readWalkedNote(root: string, relative: string): string {
-  return decodeText(readFileSync(join(root, relative)));
+  return decodeText(readFileSync(insideVault(root, relative)));
 }
 
 /** The text of a checked vault file (see `decodeText`). */

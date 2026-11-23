@@ -38,15 +38,7 @@ import {
   unlinkSync,
   writeSync,
 } from "node:fs";
-import {
-  basename,
-  dirname,
-  isAbsolute,
-  join,
-  relative as relativePath,
-  resolve,
-  sep,
-} from "node:path";
+import { basename, dirname, join, relative as relativePath } from "node:path";
 import { bodyWithThought } from "./daily.ts";
 import { markDirty } from "./dirty.ts";
 import { Frontmatter, MissingFrontmatter } from "./frontmatter.ts";

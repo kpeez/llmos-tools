@@ -3,7 +3,7 @@
 import { expect, test } from "bun:test";
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { readText, resolveInVault, WriteRefused } from "../src/vault-file.ts";
+import { readText, readWalkedNote, resolveInVault, WriteRefused } from "../src/vault-file.ts";
 import { makeVault, scratch, writeFiles } from "./helpers.ts";
 
 function vaultWithHostileEntries(): string {
@@ -49,4 +49,11 @@ test.each([
 test("a missing file is the OS error, not a refusal", () => {
   const root = vaultWithHostileEntries();
   expect(() => resolveInVault(root, "notes/none.md")).toThrow(/ENOENT/);
+});
+
+test("a walked note follows a link but never a '..' or an absolute path", () => {
+  const root = vaultWithHostileEntries();
+  expect(readWalkedNote(root, "notes/out.md")).toBe("secret\n");
+  expect(() => readWalkedNote(root, "../outside.md")).toThrow(WriteRefused);
+  expect(() => readWalkedNote(root, "/etc/hosts")).toThrow(WriteRefused);
 });
