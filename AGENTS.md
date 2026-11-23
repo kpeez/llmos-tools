@@ -141,8 +141,12 @@ the cast `as VaultFile`. Not covered:
   (config, state, install, the other hooks) or take outside paths on purpose.
   `sources.ts` is one: its capture of a URL note goes through `resolveInVault`,
   but the module also reads outside files, so nothing stops a new raw read there.
-- Dynamic `import("node:fs")`, `process.binding`, and a path built to pass a
-  `VaultFile`-typed parameter from another type (`any`, `unknown`).
+- Other ways to read or to forge a `VaultFile`: named `openSync`, `readSync`,
+  and `createReadStream` imports from `node:fs`; `Bun.mmap`; an alias such as
+  `const B = Bun; B.file(p)`; the angle-bracket cast `<VaultFile>p`; and a
+  value of type `any` passed as a `VaultFile`.
+- `readSkillFile` in `src/docs.ts`: an exported raw read of any path, kept for
+  the `docs` command and outside the rule.
 - `readWalkedNote(root, relative)`: it refuses `..` and an absolute path, but it
   follows a symbolic link out of the vault, as Obsidian does (the `read`
   command contract). It is for paths that `walkVault` listed.
