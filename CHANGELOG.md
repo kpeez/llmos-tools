@@ -6,6 +6,12 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos source add` now cleans up after a killed capture. Its hidden staging
+  folder in `raw/` is named `.<slug>-<pid>-<random>`, and the next capture
+  removes each staging folder whose process has exited. It never removes the
+  staging folder of a running capture, a link, or a folder without the staging
+  name.
+
 ## 2.14.0 — 2026-11-23
 
 - The Bash guard now parses the command with a real shell grammar (`unbash`

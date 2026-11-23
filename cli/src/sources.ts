@@ -551,6 +551,34 @@ function writeSynced(path: string, data: string | Uint8Array): void {
   }
 }
 
+/** `.<slug>-<pid>-<random>`: the staging folder of a capture, named for the process that writes it. */
+const STAGING_FOLDER = /^\.(.+)-(\d+)-[A-Za-z0-9]{6}$/;
+
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+}
+
+/**
+ * Remove the staging folders that dead captures left in `sources`: a kill
+ * cannot run the capture's own cleanup. A staging folder belongs to a live
+ * capture while the process in its name runs. Only real folders that match
+ * the staging name go; a link or a source folder (no leading dot) never does.
+ */
+function removeDeadStaging(sources: string): void {
+  for (const entry of readdirSync(sources, { withFileTypes: true })) {
+    const owner = STAGING_FOLDER.exec(entry.name)?.[2];
+    if (!entry.isDirectory() || owner === undefined || processExists(Number(owner))) continue;
+    try {
+      rmSync(join(sources, entry.name), { recursive: true, force: true });
+    } catch {}
+  }
+}
+
 function syncFolder(folder: string): void {
   const fd = openSync(folder, "r");
   try {
@@ -979,7 +1007,8 @@ export async function captureSource(
   }
   const madeSources = !existsSync(sources);
   mkdirSync(sources, { recursive: true });
-  const staging = mkdtempSync(join(sources, `.${slug}-`));
+  removeDeadStaging(sources);
+  const staging = mkdtempSync(join(sources, `.${slug}-${process.pid}-`));
   try {
     chmodSync(staging, 0o755); // mkdtemp makes it private; the folder is shared vault content
     mkdirSync(join(staging, "assets"));

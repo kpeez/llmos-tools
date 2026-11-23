@@ -1046,7 +1046,11 @@ file). A figure image from a non-public host, with a failing status, or of a
 non-image type is skipped and named in the output. A source already
 captured is not fetched, converted, or changed: the command says so and exits 0. An ID without a version counts any captured version of
 that paper as captured; ask for `<id>vN` to capture a newer one. No agent
-edits a source folder afterwards. When MinerU is missing or fails, this exits
+edits a source folder afterwards. A capture writes into a hidden staging
+folder (`raw/.<slug>-<pid>-<random>`) and renames it into place, so a source
+folder is complete or absent. A capture that is killed leaves its staging
+folder; the next capture removes every staging folder whose process has
+exited. When MinerU is missing or fails, this exits
 1 and writes nothing.
 
 Arguments:
