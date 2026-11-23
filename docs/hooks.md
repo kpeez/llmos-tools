@@ -17,7 +17,9 @@ sessions may retain their previous plugin definitions.
 `dist/hooks.js`, which `bun build` bundles from `cli/src/hooks/`. It runs from
 the plugin cache with no install step and needs only `bun` on the hook
 `PATH`. The same command serves Claude and Codex: each entry names its event
-on the command line, and the JSON payload arrives on stdin.
+on the command line, and the JSON payload arrives on stdin. The `hooks.json`
+at the repository root is the Antigravity copy: it holds the same command
+under Antigravity's tool names, and Antigravity finds it at the plugin root.
 
 ```sh
 bun --no-env-file --config=/dev/null "$CLAUDE_PLUGIN_ROOT"/dist/hooks.js <event>
@@ -192,7 +194,7 @@ vault notes. The session-start hook first fetches `origin main` into the vault
 checkout (3-second limit) and fast-forwards it there with `git merge
 --ff-only` (2-second limit). It never rebases: a checkout with commits that
 are not on `origin/main` is left as it is, and the context says so. Then it
-links each repository beside the vault checkout the same way. The context
+links up to eight repositories beside the vault checkout the same way. The context
 tells the agent the same safe flow: before it edits vault notes, `git fetch
 origin main` and `git merge --ff-only origin/main`; then commit and push to
 `main` (`git push origin HEAD:main`), not to the session branch. When the
@@ -225,8 +227,8 @@ without the work tree (`git merge-tree --write-tree` and `git commit-tree`) and
 moves `main` only with `git merge --ff-only`, which keeps unrelated edits and
 refuses, rather than overwrites, a file that an incoming change overlaps.
 
-The session-start hook fetches (4-second limit), then, when `HEAD` is behind
-`origin/main` and not ahead, runs `git merge --ff-only origin/main` (4-second
+The session-start hook fetches (3-second limit), then, when `HEAD` is behind
+`origin/main` and not ahead, runs `git merge --ff-only origin/main` (2-second
 limit) before it builds the context, so the injected `MEMORY.md` is fresh. Each
 failure adds one line to the context: a failed fetch, a fast-forward that
 refuses (with git's reason, without its `hint:` lines), or a rebase, merge, or
@@ -239,14 +241,18 @@ never uses the network. Otherwise it commits only the memory paths (other
 staged and unstaged edits stay) and fetches (5 seconds). When behind only, it
 fast-forwards. When ahead and behind,
 it merges the trees with `git merge-tree`, makes a merge commit with
-`git commit-tree`, and fast-forwards to it (5 seconds); a conflict names the
+`git commit-tree`, and fast-forwards to it (3 seconds); a conflict names the
 conflicted paths and changes nothing on disk. It reads `HEAD` and `origin/main` once and uses
 those commit IDs for every later step. Then it checks that each unpushed commit
 and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
-seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
-reindex keeps the dirty flag for the next Stop.
+seconds; the qmd reindex before the sync gets 10 of them, shared between
+`llmos reindex` and its `qmd update` fallback, and a timed-out reindex keeps
+the dirty flag for the next Stop. Every local git call in a hook has a
+250-millisecond limit. `src/hook-limits.ts` holds these limits, and a test
+keeps the limits on the worst path of each hook under its `hooks.json`
+timeout.
 
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is
@@ -254,6 +260,12 @@ cloud session, the vault is in a Git work tree with an `origin`, the branch is
 `<git-common-dir>/llmos-sync.lock`; a run that finds a fresh lock skips, and a
 lock older than 60 seconds is taken over by an atomic rename, and a run
 removes the lock only while it still holds that run's token. Set `LLMOS_NO_GIT_SYNC=1` to opt out.
+
+Session start also provisions shared project memory for a vault project
+(`provisionMemory` in `links.ts`). It creates `projects/<slug>/memory/` in the
+vault and rewrites the project's `.claude/settings.local.json` to set
+`autoMemoryDirectory` to that folder. It keeps the file's other keys, skips a
+file that is not a JSON object, and keeps the file out of Git.
 
 Because a hook that cannot start fails silently, the session-start hook
 records a heartbeat per agent in `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`

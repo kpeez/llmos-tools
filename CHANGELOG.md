@@ -16,8 +16,15 @@ Newest first. Versions are the `version` field shared by
   timeout. The worst Stop path could reach 35 s of subprocess limits
   (two 10 s reindex runs, then fetch, merge, and push at 5 s each) against a
   30 s timeout; the reindex run and its `qmd update` fallback now share 10 s,
-  and the worst path is 27 s. A cloud session links at most eight repositories beside the vault, and
-  every local git call in a session-start hook has a 250 ms limit.
+  and the worst path is 27 s. A cloud session links at most eight
+  repositories beside the vault, and every local git call in a session-start
+  hook has a 250 ms limit.
+- `llmos daily activity --push` help no longer says the merge leaves the work
+  tree alone: its fast-forward merge updates it. A new test fails when agent
+  prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`
+  command that does not exist. The docs now name the root `hooks.json`, the
+  `provisionMemory` settings rewrite, all four heartbeat agents, and the
+  doctor checks for the service, the memory collection, and Hermes.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
@@ -67,7 +74,6 @@ Newest first. Versions are the `version` field shared by
   context says so. The context no longer tells the agent to run `git pull
   --rebase`: it says to fetch and fast-forward before editing, push to
   `main`, and stop and report when either refuses.
-
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
