@@ -6,6 +6,11 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The shared-memory sync merges a rename on one side with an edit on the
+  other side again. Since the change that turned off rename detection in every
+  git call, `git merge-tree` refused such a pair as a modify/delete conflict.
+  The merge call now turns rename detection on. The name lists that check for
+  private paths still never detect renames.
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`
