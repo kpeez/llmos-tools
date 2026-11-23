@@ -338,6 +338,7 @@ function otherAheadPaths(gate: Syncing, env: Env, base: string, tip: string): st
       "log",
       "--format=",
       "--name-only",
+      "--no-renames",
       "--no-merges",
       `${base}..${tip}`,
     ],
@@ -346,7 +347,7 @@ function otherAheadPaths(gate: Syncing, env: Env, base: string, tip: string): st
   );
   const net = git(
     gate.top,
-    ["-c", "core.quotePath=false", "diff", "--name-only", base, tip],
+    ["-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", base, tip],
     env,
     LOCAL_TIMEOUT_MS,
   );

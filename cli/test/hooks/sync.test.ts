@@ -382,6 +382,23 @@ test("stop never pushes an unpushed commit that touches more than memory", () =>
   expect(git(a.repo, "log", "--format=%s", "-1")).toBe("memory: sync shared project memory");
 });
 
+test("stop never pushes a commit that moves a note into memory", () => {
+  const { tmp, origin, a } = setup();
+  writeFile(join(a.vault, "projects/demo/secret.md"), "secret line one\nsecret line two\n");
+  git(a.repo, "add", "-A");
+  git(a.repo, "commit", "--quiet", "-m", "secret note");
+  git(a.repo, "push", "--quiet", "origin", "main");
+  const before = originHead(origin);
+  git(a.repo, "mv", "vault/projects/demo/secret.md", "vault/projects/demo/memory/secret.md");
+  git(a.repo, "commit", "--quiet", "-m", "move the note into memory");
+
+  const result = stop(tmp, a);
+
+  expect(result.stderr).toContain("not pushing");
+  expect(result.stderr).toContain("vault/projects/demo/secret.md");
+  expect(originHead(origin)).toBe(before);
+});
+
 test("a hand-made non-memory commit still blocks the push after a merge commit is made on top", () => {
   const { tmp, origin, a, clone } = setup();
   const b = clone("host-b");
