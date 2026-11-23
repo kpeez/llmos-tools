@@ -8,8 +8,8 @@
  * A hook arms a deadline (`setDeadline`, from `hook-limits.ts`). Then `run`
  * and `start` cut each call's limit to the time left, and `run` starts no
  * call once the time is gone, so the calls of a hook together stay inside
- * its timeout. A call with `whole: true` is one that a kill would leave half
- * done (a fast-forward merge): it starts only when its full limit fits.
+ * its timeout. The deadline is the hook's timeout less a small reserve, so a
+ * call it cuts is one that the harness would have killed too.
  *
  * Pass a named constant that says why the limit fits. `UNBOUNDED` is for a
  * child that is the session's own server or a pass-through of the caller's
@@ -48,8 +48,6 @@ export interface RunOptions<
   stdout?: Out;
   stderr?: Err;
   killSignal?: NodeJS.Signals;
-  /** Start only when the whole `timeoutMs` fits before the deadline. */
-  whole?: boolean;
 }
 
 export interface RunResult {
@@ -68,10 +66,9 @@ function limit(timeoutMs: number): { timeout?: number } {
   return Number.isFinite(ms) ? { timeout: ms } : {};
 }
 
-/** The deadline is past, or too near for a `whole` call. */
-function exhausted(options: { timeoutMs: number; whole?: boolean }): boolean {
-  const left = remainingMs();
-  return left <= MIN_START_MS || (options.whole === true && left < options.timeoutMs);
+/** The deadline is past, or too near for a call to do anything. */
+function exhausted(): boolean {
+  return remainingMs() <= MIN_START_MS;
 }
 
 /** A call with less time than this left would only be killed at once. */
@@ -80,13 +77,13 @@ const MIN_START_MS = 50;
 function spawnOptions<In extends Input, Out extends Output, Err extends Output>(
   options: RunOptions<In, Out, Err>,
 ) {
-  const { timeoutMs, env, whole: _whole, ...rest } = options;
+  const { timeoutMs, env, ...rest } = options;
   return { ...rest, ...(env ? { env: env as Record<string, string> } : {}), ...limit(timeoutMs) };
 }
 
 /** Run `cmd` to its end or its limit. Throws when the program cannot start. */
 export function run(cmd: string[], options: RunOptions): RunResult {
-  if (exhausted(options)) {
+  if (exhausted()) {
     return {
       exitCode: null,
       signalCode: null,

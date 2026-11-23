@@ -18,9 +18,10 @@ Newest first. Versions are the `version` field shared by
   timeout less 0.5 s. Before, the worst
   Stop path could reach 35 s of limits (two 10 s reindex runs, then fetch,
   merge, and push at 5 s each). Near the deadline a call gets the time left,
-  a fast-forward merge starts only when its whole limit fits, and later calls
+  and later calls
   are skipped (the message says so, not "timed out"); a cloud session start says how many repositories it did not
-  link. The single-call limits of the hooks are as before.
+  link. A cut call is one that the harness would have killed at the same
+  moment. The single-call limits of the hooks are as before.
 - A hook can write its output only through one `emit()` in
   `cli/src/hooks/main.ts`. A `HookResult` type names the result of each event,
   and `emit()` gives it the envelope that its harness reads. A Biome lint

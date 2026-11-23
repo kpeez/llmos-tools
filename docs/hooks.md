@@ -255,8 +255,7 @@ the next Stop retries because the branch is ahead. The Stop timeout is 30
 seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
 reindex keeps the dirty flag for the next Stop. Each hook also has a deadline
 for all its subprocesses together: its `hooks.json` timeout less half a
-second (`src/hook-limits.ts`). Near the deadline a call gets only the time left, a
-fast-forward merge does not start unless its whole limit fits, and later calls
+second (`src/hook-limits.ts`). Near the deadline a call gets only the time left, and later calls
 are skipped. A cloud session start that runs out of time says how many
 repositories it did not link.
 

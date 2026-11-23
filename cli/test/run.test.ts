@@ -42,13 +42,6 @@ test("a deadline that is not a whole number of ms still runs a call", () => {
   expect(result.stdout.toString()).toBe("ran\n");
 });
 
-test("a whole call does not start when its full limit does not fit", () => {
-  setDeadline(Date.now() + 5_000);
-  const result = run(["echo", "ran"], { timeoutMs: 20_000, whole: true, stdout: "pipe" });
-  expect(result.skipped).toBe(true);
-  expect(result.stdout.toString()).toBe("");
-});
-
 test("a cloud session start with a hung git stops linking at the hook deadline", () => {
   const tmp = temporaryFolder();
   const parent = join(tmp, "work");
