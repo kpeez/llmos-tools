@@ -2,8 +2,10 @@
  * A port of Python's `shlex` lexer in POSIX mode with `whitespace_split`.
  * It is not a shell parser.
  *
- * One change from Python: with operators on, an unquoted newline is an
- * operator token, because the shell runs the text after it as a new command.
+ * Two changes from Python, with operators on, to match the shell: an unquoted
+ * newline is an operator token, because the shell runs the text after it as a
+ * new command; and an unquoted backslash-newline is dropped, because the
+ * shell joins the two lines into one command.
  */
 
 const WHITESPACE = " \t\r\n";
@@ -85,6 +87,10 @@ function tokens(input: string, options: Options): string[] {
         }
       } else if (has(ESCAPE, state)) {
         if (!char) throw new ShlexError("No escaped character");
+        if (punctuation && char === "\n" && !has(QUOTES, escapedState)) {
+          state = token || quoted ? "a" : " ";
+          continue;
+        }
         // Inside quotes only the quote itself or the escape can be escaped.
         if (has(QUOTES, escapedState) && char !== state && char !== escapedState) {
           token += state;

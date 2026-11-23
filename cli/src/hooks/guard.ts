@@ -5,9 +5,10 @@
  * It runs on every Bash call, so a cheap word-boundary pre-filter runs
  * before any tokenizing, and vault roots are read only once an actual
  * `mv`/`git mv`/`rm`/`git rm` invocation is found. Tokenizing keeps shell
- * operators (`&&`, `;`, `|`, redirections) as their own tokens even when
- * glued to a word (`hi&&rm`), while respecting quotes. A redirection and its
- * operand are never treated as command arguments.
+ * operators (`&&`, `;`, `|`, `&`, parentheses, newlines, redirections) as
+ * their own tokens even when glued to a word (`hi&&rm`), while respecting
+ * quotes. Every operator token except a redirection starts a new subcommand.
+ * A redirection and its operand are never treated as command arguments.
  *
  * Two rules deny the call (exit code 2, message on stderr):
  *

@@ -151,6 +151,33 @@ describe("raw mv and rm on vault notes", () => {
     }
   });
 
+  test("joins a backslash-newline line continuation as the shell does", () => {
+    const tmp = temporaryFolder();
+    const vault = makeVault(join(tmp, "vault"));
+    const note = writeFile(join(vault, "note.md"), "# note\n");
+    const other = join(vault, "other.md");
+
+    const denied = [
+      `mv \\\n  ${note} \\\n  ${other}`,
+      `rm -f \\\n  ${note}`,
+      `git mv \\\n  ${note} ${other}`,
+      `echo hi \\\n&& rm ${note}`,
+    ];
+    for (const command of denied) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 2 });
+    }
+
+    const approved = [
+      "obsidian-cli move \\\n  file=note \\\n  to=archive",
+      "obsidian-cli read \\\n  file=note",
+    ];
+    for (const command of approved) {
+      const result = guard(command, tmp, { root: vault });
+      expect({ command, exitCode: result.exitCode }).toEqual({ command, exitCode: 0 });
+    }
+  });
+
   test("approves a note path that is only quoted text, even across a newline", () => {
     const tmp = temporaryFolder();
     const vault = makeVault(join(tmp, "vault"));
