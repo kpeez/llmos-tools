@@ -6,6 +6,20 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- Two agents that write one note at the same time no longer lose a change.
+  `daily_append_thought`, `set_property`, `llmos set-property`,
+  `llmos remove-property`, `llmos daily append-thought`, the property
+  stamps, the PostToolUse stamp, the run records of `discover` and the
+  nightly digest, and the digest's replace of the daily note's block now read,
+  change, and write a note under one lock per vault. The lock is a kernel
+  lock in the git common dir of the vault (the llmOS state folder when the
+  vault is not a git checkout, or `git rev-parse` fails). Before, a probe with
+  12 processes that appended 10 thoughts each kept 20 to 54 of 120. The
+  digest's existence check of the note now runs inside the lock too. The
+  PostToolUse stamp takes the lock once for all its notes and waits at most
+  3 s; when the lock stays busy it skips the stamps and says so in its
+  output. Obsidian takes no lock, so a save from Obsidian in the microseconds
+  between the digest's second read and its rename is still lost.
 - The memory project lock, the memory-sync lock, and the service start lock
   are now one lock: an exclusive SQLite transaction on a lock file
   (`cli/src/lock.ts`). The kernel gives it to one process and drops it when
