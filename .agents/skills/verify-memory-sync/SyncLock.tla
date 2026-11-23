@@ -1,27 +1,40 @@
 ------------------------------ MODULE SyncLock ------------------------------
 (***************************************************************************)
-(* The lock file `llmos-sync.lock` in the git common dir, which            *)
-(* `withLock` in cli/src/hooks/sync.ts takes around every sync run.        *)
+(* The lock of `withLock` in cli/src/hooks/sync.ts, which takes it around  *)
+(* every sync run. The memory project lock in cli/src/memory.ts and the    *)
+(* service start lock in cli/src/service.ts take the same lock             *)
+(* (cli/src/lock.ts), so this model covers them too.                       *)
 (*                                                                         *)
-(* Each action is one file-system call in the code:                        *)
-(*   Create      `create`: `openSync(path, "wx")` and `writeSync(token)`   *)
-(*   Stat        `acquire`: `statSafe(path)`, fresh lock -> return null    *)
-(*   Rename      `acquire`: `renameSync(path, taken)`                      *)
-(*   StatTaken   `acquire`: `statSafe(taken)`                              *)
-(*   LinkBack    `acquire`: `linkSync(taken, path)` (live lock taken)      *)
-(*   RmTaken     `acquire`: `rmSync(taken)`                                *)
-(*   ReadOwn     `release`: `readFileSync(path) === token`                 *)
-(*   RmPath      `release`: `rmSync(path)`                                 *)
+(* Lock = "kernel" is the code: `tryLock` in cli/src/lock.ts, an exclusive *)
+(* SQLite transaction on `llmos-sync.lock.db`. The kernel grants it to one *)
+(* process and drops it when that process ends or crashes.                 *)
+(*   Create    `tryLock`: `BEGIN EXCLUSIVE`; SQLITE_BUSY -> skip           *)
+(*   Release   `held.release()`: `db.close()`                              *)
+(*   Crash     the holder dies; the kernel drops the lock                  *)
 (*                                                                         *)
-(* Lock = "token" is the code. Lock = "rm" is the lock before the fix that *)
-(* introduced tokens (kept as a mutant): a stale lock is removed with      *)
+(* Lock = "token" is the lock before the kernel lock, kept as a mutant:    *)
+(* a lock file `llmos-sync.lock`, one file-system call per action:         *)
+(*   Create      `openSync(path, "wx")` and `writeSync(token)`             *)
+(*   Stat        `statSafe(path)`, fresh lock -> return null               *)
+(*   Rename      `renameSync(path, taken)`                                 *)
+(*   StatTaken   `statSafe(taken)`                                         *)
+(*   LinkBack    `linkSync(taken, path)` (live lock taken)                 *)
+(*   RmTaken     `rmSync(taken)`                                           *)
+(*   ReadOwn     `readFileSync(path) === token`                            *)
+(*   RmPath      `rmSync(path)`                                            *)
+(* Lock = "rm" is the lock before tokens: a stale lock is removed with     *)
 (* `rmSync(path)` without a check that it is still the stale file, and     *)
 (* release removes the lock file whoever owns it.                          *)
 (*                                                                         *)
 (* Assumptions:                                                            *)
-(*   - A lock file is stale only when its run is gone (killed by the hook  *)
-(*     timeout). Hooks run at most 30 s, the stale age is 60 s, so a live  *)
-(*     run's lock is always fresh. The killed run's lock is "orphan".      *)
+(*   - The kernel grants an exclusive SQLite lock to one process at a      *)
+(*     time, also to a process that stalls, and drops it at process end.   *)
+(*     A crashed holder's lock is gone, so "kernel" has no orphan.         *)
+(*     The lock file must be on a local file system.                       *)
+(*   - For the mutants, a lock file is stale only when its run is gone     *)
+(*     (killed by the hook timeout). Hooks run at most 30 s, the stale age *)
+(*     is 60 s, so a live run's lock is always fresh. The killed run's     *)
+(*     lock is "orphan".                                                   *)
 (*   - `create` is one step. `openSync` sets the mtime, and only `release` *)
 (*     reads the content, comparing it with its own token, so an empty     *)
 (*     file between open and write cannot match.                           *)
@@ -42,7 +55,7 @@ VARIABLES path,     \* the file at `llmos-sync.lock`, or NoFile
 
 vars == <<path, taken, pc, attempt>>
 
-Init == /\ path \in {NoFile, "orphan"}
+Init == /\ path \in IF Lock = "kernel" THEN {NoFile} ELSE {NoFile, "orphan"}
         /\ taken = [r \in Runs |-> NoFile]
         /\ pc = [r \in Runs |-> "create"]
         /\ attempt = [r \in Runs |-> 0]
@@ -59,7 +72,7 @@ Create(r) ==
   /\ pc[r] = "create"
   /\ IF path = NoFile
      THEN path' = r /\ Goto(r, "hold")
-     ELSE UNCHANGED path /\ Goto(r, "stat")
+     ELSE UNCHANGED path /\ Goto(r, IF Lock = "kernel" THEN "done" ELSE "stat")
   /\ UNCHANGED <<taken, attempt>>
 
 Stat(r) ==
@@ -109,7 +122,9 @@ RmTakenStale(r) ==
 \* The work under the lock is done; release starts.
 Work(r) ==
   /\ pc[r] = "hold"
-  /\ Goto(r, IF Lock = "token" THEN "readOwn" ELSE "rmPath")
+  /\ Goto(r, CASE Lock = "kernel" -> "release"
+              [] Lock = "token"  -> "readOwn"
+              [] OTHER           -> "rmPath")
   /\ UNCHANGED <<path, taken, attempt>>
 
 ReadOwn(r) ==
@@ -123,11 +138,27 @@ RmPath(r) ==
   /\ Goto(r, "done")
   /\ UNCHANGED <<taken, attempt>>
 
+\* Lock = "kernel": `db.close()` frees the lock.
+Release(r) ==
+  /\ pc[r] = "release"
+  /\ path' = NoFile
+  /\ Goto(r, "done")
+  /\ UNCHANGED <<taken, attempt>>
+
+\* Lock = "kernel": a holder dies; the kernel drops its lock.
+Crash(r) ==
+  /\ Lock = "kernel"
+  /\ pc[r] = "hold"
+  /\ path' = NoFile
+  /\ Goto(r, "done")
+  /\ UNCHANGED <<taken, attempt>>
+
 Finished == \A r \in Runs : pc[r] = "done"
 
 Next == \/ \E r \in Runs : \/ Create(r) \/ Stat(r) \/ RmStale(r) \/ Rename(r)
                            \/ StatTaken(r) \/ LinkBack(r) \/ RmTakenLive(r)
                            \/ RmTakenStale(r) \/ Work(r) \/ ReadOwn(r) \/ RmPath(r)
+                           \/ Release(r) \/ Crash(r)
         \/ (Finished /\ UNCHANGED vars)
 
 Spec == Init /\ [][Next]_vars
