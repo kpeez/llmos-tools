@@ -16,6 +16,8 @@
  * channel), never prompts for credentials, and reads paths unquoted. Name
  * lists never detect renames: a rename lists only its new path, so a commit
  * that moves a private note into shared memory would pass the path check.
+ * `merge-tree` is the one call that detects renames, because `merge.renames`
+ * would otherwise follow `diff.renames` and refuse a rename plus an edit.
  */
 
 import { statSync } from "node:fs";
@@ -315,7 +317,7 @@ function mergeDiverged(
 ): { id: string } | { error: string } {
   const tree = run(
     repo.top,
-    ["merge-tree", "--write-tree", "--name-only", origin, head],
+    ["-c", "merge.renames=true", "merge-tree", "--write-tree", "--name-only", origin, head],
     repo.env,
     repo.local,
   );

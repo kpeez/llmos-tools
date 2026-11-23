@@ -14,6 +14,22 @@ Newest first. Versions are the `version` field shared by
   heading for it, and in CI when a version change is in a pull request not
   titled `chore(release): ...`. It warns when shipped files changed since the
   last release and the version stayed the same.
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
+- The shared-memory sync merges a rename on one side with an edit on the
+  other side again. Since the change that turned off rename detection in every
+  git call, `git merge-tree` refused such a pair as a modify/delete conflict.
+  The merge call now turns rename detection on. The name lists that check for
+  private paths still never detect renames.
+- `llmos daily activity --push` help no longer says the merge leaves the work
+  tree alone: its fast-forward merge updates it. A new test fails when agent
+  prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`
+  command that does not exist. The docs now name the root `hooks.json`, the
+  `provisionMemory` settings rewrite, all four heartbeat agents, and the
+  doctor checks for the service, the memory collection, and Hermes.
 - CI runs the TLA+ model checks in a new `models` job. `just verify-models`
   runs the same checks locally: each `.agents/skills/verify-*` skill that
   holds a `.tla` file. `bootstrap.sh` no longer links `.agents/skills` into
@@ -63,7 +79,6 @@ Newest first. Versions are the `version` field shared by
   context says so. The context no longer tells the agent to run `git pull
   --rebase`: it says to fetch and fast-forward before editing, push to
   `main`, and stop and report when either refuses.
-
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in
   the vault and links the repositories beside it. It scanned and pulled from
