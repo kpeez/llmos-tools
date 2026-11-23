@@ -38,6 +38,7 @@ import {
   qmdLocation,
   unembeddedIn,
 } from "./qmd.ts";
+import { run as runProcess } from "./run.ts";
 import { serviceDisabled, servicePaths, serviceStatus } from "./service-client.ts";
 
 export type Env = Record<string, string | undefined>;
@@ -113,13 +114,13 @@ function configuredRoot(env: Env): string | null {
 
 function run(argv: string[], env: Env): { code: number; output: string } {
   const seconds = Number(env.LLMOS_DOCTOR_TIMEOUT ?? "30");
-  const result = Bun.spawnSync(argv, {
-    env: env as Record<string, string>,
+  const result = runProcess(argv, {
+    env,
     stdout: "pipe",
     stderr: "pipe",
-    timeout: seconds * 1000,
+    timeoutMs: seconds * 1000,
   });
-  if (result.exitedDueToTimeout) {
+  if (result.timedOut) {
     return { code: 124, output: `${basename(argv[0] as string)} timed out after ${seconds}s` };
   }
   const output = `${result.stdout.toString()}${result.stderr.toString()}`.replace(/\n+$/, "");

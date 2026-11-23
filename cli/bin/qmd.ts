@@ -3,10 +3,15 @@
 // run under Bun, so the qmd on PATH is the version the CLI imports.
 import { constants } from "node:os";
 import { resolve } from "node:path";
+import { start, UNBOUNDED } from "../src/run.ts";
 
 const launcher = resolve(import.meta.dir, "../node_modules/@tobilu/qmd/bin/qmd");
-const child = Bun.spawn([process.execPath, launcher, ...process.argv.slice(2)], {
-  stdio: ["inherit", "inherit", "inherit"],
+const child = start([process.execPath, launcher, ...process.argv.slice(2)], {
+  stdin: "inherit",
+  stdout: "inherit",
+  stderr: "inherit",
+  // The caller's own qmd command, which has no limit of its own.
+  timeoutMs: UNBOUNDED,
 });
 const code = await child.exited;
 const signal = child.signalCode;

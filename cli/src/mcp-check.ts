@@ -10,17 +10,22 @@
 import { dirname } from "node:path";
 import { installedServer, SAFE_BUN_FLAGS } from "./mcp-launcher.ts";
 import { MEMORY_TOOLS, READ_TOOLS, WRITE_TOOLS } from "./mcp-names.ts";
+import { start } from "./run.ts";
+
+/** The child limit follows the caller's timeout by this much, so the caller's own message wins. */
+const KILL_GRACE_MS = 1_000;
 
 type Env = Record<string, string | undefined>;
 
 /** The tool names a server at `entry` lists, or why it could not list them. */
 async function listTools(entry: string, env: Env, timeoutMs: number): Promise<string[]> {
-  const child = Bun.spawn([process.execPath, ...SAFE_BUN_FLAGS, entry, "mcp"], {
+  const child = start([process.execPath, ...SAFE_BUN_FLAGS, entry, "mcp"], {
     cwd: dirname(dirname(entry)),
-    env: { ...env, GGML_METAL_NO_RESIDENCY: "1" } as Record<string, string>,
+    env: { ...env, GGML_METAL_NO_RESIDENCY: "1" },
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
+    timeoutMs: timeoutMs + KILL_GRACE_MS,
   });
   const send = (message: object): void => {
     child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`);

@@ -253,7 +253,11 @@ and the net change touch only memory, and pushes that exact commit to `main`
 (5 seconds). A skip or failure warns on stderr and leaves the commits local;
 the next Stop retries because the branch is ahead. The Stop timeout is 30
 seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
-reindex keeps the dirty flag for the next Stop.
+reindex keeps the dirty flag for the next Stop. Each hook also has a deadline
+for all its subprocesses together: its `hooks.json` timeout less half a
+second (`src/hook-limits.ts`). Near the deadline a call gets only the time left, and later calls
+are skipped. A cloud session start that runs out of time says how many
+repositories it did not link.
 
 A checkout syncs only when `LLMOS_NO_GIT_SYNC` is not `1`, the session is not a
 cloud session, the vault is in a Git work tree with an `origin`, the branch is
