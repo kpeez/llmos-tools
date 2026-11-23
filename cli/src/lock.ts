@@ -12,7 +12,16 @@
  */
 
 import { Database } from "bun:sqlite";
-import { closeSync, constants, lstatSync, openSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { closeSync, constants, lstatSync, mkdirSync, openSync } from "node:fs";
+import { join } from "node:path";
+import { locate } from "./git.ts";
+import { stateDir } from "./heartbeat.ts";
+
+type Env = Record<string, string | undefined>;
+
+/** The timeout of the one git call that finds the git common dir. */
+const LOCAL_GIT_MS = 5_000;
 
 /** The lock path is a symbolic link or not a regular file; nothing was opened. */
 export class LockRefused extends Error {
@@ -65,4 +74,23 @@ export function waitLock(path: string, waitMs: number): HeldLock | null {
     if (held !== null || Date.now() >= deadline) return held;
     Bun.sleepSync(5);
   }
+}
+
+/**
+ * The lock file `name` of the vault at `root` (a hash of `subject` tells the
+ * locks of one kind apart), outside the work tree so no link in the vault can
+ * redirect it and no sync sees it. When the vault is a git checkout it sits in
+ * the git common dir (beside the sync lock), so every writer of that vault
+ * finds it, whatever its home or state folder. Otherwise it sits in the
+ * llmOS state folder, and only writers that share that folder exclude each
+ * other. A writer whose `git rev-parse` fails also falls back to the state
+ * folder.
+ */
+export function vaultLockPath(root: string, name: string, subject: string, env: Env): string {
+  const key = createHash("sha256").update(subject).digest("hex").slice(0, 16);
+  const repo = locate(root, env, LOCAL_GIT_MS);
+  if (repo !== null) return join(repo.commonDir, `llmos-${name}-${key}.lock.db`);
+  const folder = join(stateDir(env), "locks");
+  mkdirSync(folder, { recursive: true, mode: 0o700 });
+  return join(folder, `${name}-${key}.db`);
 }

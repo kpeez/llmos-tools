@@ -20,6 +20,7 @@ import { markDirty } from "../dirty.ts";
 import { Frontmatter } from "../frontmatter.ts";
 import { isMemoryNote, MEMORY_INDEX } from "../layout.ts";
 import { type Note, type NoteSource, readSource, readText, VaultModel } from "../vault.ts";
+import { withNoteLock } from "../write.ts";
 import {
   firstTruthy,
   isFile,
@@ -35,6 +36,8 @@ import {
 } from "./common.ts";
 import { targetPaths } from "./context.ts";
 
+/** The hook runs under a 10 s timeout, so it waits less for the note lock than a write does. */
+const STAMP_LOCK_WAIT_MS = 2_000;
 const MAX_FINDINGS = 8;
 const MAX_LINE = 240;
 
@@ -43,19 +46,23 @@ const MAX_LINE = 240;
  * `false` means it was left unchanged because it has no frontmatter block,
  * the serializer refused to rewrite it, or it is not valid UTF-8.
  */
-export function stampNote(path: string, date = localDate()): boolean {
-  let text: string;
-  let stamped: string;
+export function stampNote(root: string, path: string, date = localDate()): boolean {
   try {
-    text = readText(path);
-    stamped = Frontmatter.parse(text).setScalar("updated", date).toString();
+    return withNoteLock(
+      root,
+      () => {
+        const text = readText(path);
+        const stamped = Frontmatter.parse(text).setScalar("updated", date).toString();
+        // In place, like the Python hook: a replacing rename would drop the file's
+        // birth time (Obsidian's created time), extended attributes, and hard links.
+        if (stamped !== text) writeFileSync(path, stamped);
+        return true;
+      },
+      STAMP_LOCK_WAIT_MS,
+    );
   } catch {
     return false;
   }
-  // In place, like the Python hook: a replacing rename would drop the file's
-  // birth time (Obsidian's created time), extended attributes, and hard links.
-  if (stamped !== text) writeFileSync(path, stamped);
-  return true;
 }
 
 /**
@@ -65,15 +72,21 @@ export function stampNote(path: string, date = localDate()): boolean {
  * a note with any `metadata.node_type`, a note whose `metadata` is not a map,
  * and a note the serializer refuses stay unchanged.
  */
-export function stampMemoryNote(path: string): void {
+export function stampMemoryNote(root: string, path: string): void {
   if (basename(path) === MEMORY_INDEX) return;
   try {
-    const text = readText(path);
-    const frontmatter = Frontmatter.parse(text);
-    const metadata = frontmatter.properties.metadata;
-    if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
-    const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
-    if (stamped !== text) writeFileSync(path, stamped);
+    withNoteLock(
+      root,
+      () => {
+        const text = readText(path);
+        const frontmatter = Frontmatter.parse(text);
+        const metadata = frontmatter.properties.metadata;
+        if (metadata && typeof metadata === "object" && "node_type" in metadata) return;
+        const stamped = frontmatter.setInMap("metadata", "node_type", "memory").toString();
+        if (stamped !== text) writeFileSync(path, stamped);
+      },
+      STAMP_LOCK_WAIT_MS,
+    );
   } catch {}
 }
 
@@ -247,8 +260,8 @@ export async function postToolUse(data: Payload): Promise<string | null> {
   const listing = durableTargets.some(mentionsNotePath)
     ? listNotes(root).catch(() => null)
     : Promise.resolve<Listed[]>([]);
-  for (const target of durableTargets) stampNote(target);
-  for (const target of memoryTargets) stampMemoryNote(target);
+  for (const target of durableTargets) stampNote(root, target);
+  for (const target of memoryTargets) stampMemoryNote(root, target);
   const lines = memoryLines(root, memoryTargets);
   if (durableTargets.length > 0) {
     const listed = await listing;

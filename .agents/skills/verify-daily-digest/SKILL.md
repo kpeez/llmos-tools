@@ -41,17 +41,22 @@ seconds.
 | Model | Code |
 | --- | --- |
 | `DigestReadsNote` | `processDay`: `const text = existsSync(notePath) ? readText(notePath) : "";`, before `completeSummary` |
-| `DigestWritesNote` | `processDay`: `atomicWrite(notePath, replaceBlock(readText(notePath), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
+| `DigestWritesNote` | `processDay`, inside `withNoteLock`: `atomicWrite(notePath, replaceBlock(readText(notePath), block))` when the note exists, else `atomicWrite(notePath, newNoteText(...))` |
 | `WriterCreatesNote` | Kyle creates the note in Obsidian, or `daily append-thought` creates it (`ensureDaily` in `commands.ts`) |
 | `WriterAddsThought` | Kyle in Obsidian, or `daily_append_thought` (`bodyWithThought` in `daily.ts`, written by `write.ts`) |
 
 Assumptions, which the check does not cover:
 
 - `DigestWritesNote` is one step. In the code, the second `readText` and the
-  rename in `atomicWrite` are two calls with no lock. A save in that window,
-  a few microseconds, is still lost. The model covers the model-call window,
-  which is seconds to minutes. Only a lock that every writer takes closes the
-  last window, and Obsidian takes no lock.
+  rename in `atomicWrite` are two calls, which run under the vault note lock
+  (`withNoteLock` in `cli/src/write.ts`, a kernel lock from `cli/src/lock.ts`).
+  Every other writer of a note takes the same lock around its read, change,
+  and write: `appendThought`, `setProperty`, `recordRun`, `removeProperty`,
+  `appendContent`, `stampNote`, and `stampProperties` in `write.ts`, and the
+  PostToolUse stamp in `cli/src/hooks/stamp.ts`. So no tool of llmOS saves in
+  that window. Obsidian takes no lock, so a save from Obsidian in that
+  window, a few microseconds, is still lost. The lock is never held across the
+  model call; the model covers that window, which is seconds to minutes.
 - One digest run at a time: the systemd timer starts one service.
 - `--push` (`pushNotes`) and Git merges between hosts are not modeled.
 
