@@ -29,7 +29,8 @@ test("the deadline cuts a call short and starts no call after it", () => {
   expect(remainingMs()).toBeLessThanOrEqual(0);
   const second = Date.now();
   const skipped = run(["echo", "ran"], { timeoutMs: 60_000, stdout: "pipe" });
-  expect(skipped.timedOut).toBe(true);
+  expect(skipped.skipped).toBe(true);
+  expect(skipped.timedOut).toBe(false);
   expect(skipped.stdout.toString()).toBe("");
   expect(Date.now() - second).toBeLessThan(100);
 });
@@ -44,7 +45,7 @@ test("a deadline that is not a whole number of ms still runs a call", () => {
 test("a whole call does not start when its full limit does not fit", () => {
   setDeadline(Date.now() + 5_000);
   const result = run(["echo", "ran"], { timeoutMs: 20_000, whole: true, stdout: "pipe" });
-  expect(result.timedOut).toBe(true);
+  expect(result.skipped).toBe(true);
   expect(result.stdout.toString()).toBe("");
 });
 

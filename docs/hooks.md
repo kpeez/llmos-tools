@@ -218,6 +218,11 @@ The second run gives the vault context and starts the index build. Only an
 attached repository accepts a push through the cloud's GitHub proxy, so the
 agent attaches the vault instead of cloning it with a token.
 
+When `LLMOS_ROOT` is set but its folder is not a vault (it lacks `.obsidian/`
+or `AGENTS.md`), and the attach case above does not apply, the hook prints one
+context line. The line names the folder and says to point `LLMOS_ROOT` at the
+vault or run `/setup-llmos`. With `LLMOS_ROOT` unset, the hook stays silent.
+
 In a local session, `sync.ts` keeps `projects/<project>/memory/` the same on every host through the
 vault's Git remote. Like every git call in the hooks and the CLI, it runs git
 through `cli/src/git.ts`, which offers no `rebase`, `stash`, `reset`, or
@@ -249,8 +254,8 @@ and the net change touch only memory, and pushes that exact commit to `main`
 the next Stop retries because the branch is ahead. The Stop timeout is 30
 seconds; the qmd reindex before the sync gets 10 of them, and a timed-out
 reindex keeps the dirty flag for the next Stop. Each hook also has a deadline
-for all its subprocesses together (8 seconds at session start, 28 at Stop;
-`src/hook-limits.ts`). Near the deadline a call gets only the time left, a
+for all its subprocesses together: its `hooks.json` timeout less half a
+second (`src/hook-limits.ts`). Near the deadline a call gets only the time left, a
 fast-forward merge does not start unless its whole limit fits, and later calls
 are skipped. A cloud session start that runs out of time says how many
 repositories it did not link.

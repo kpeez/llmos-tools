@@ -59,6 +59,8 @@ export interface RunResult {
   stdout: Buffer;
   stderr: Buffer;
   timedOut: boolean;
+  /** The deadline left no time, so the child never started. */
+  skipped: boolean;
 }
 
 function limit(timeoutMs: number): { timeout?: number } {
@@ -90,7 +92,8 @@ export function run(cmd: string[], options: RunOptions): RunResult {
       signalCode: null,
       stdout: Buffer.alloc(0),
       stderr: Buffer.alloc(0),
-      timedOut: true,
+      timedOut: false,
+      skipped: true,
     };
   }
   const result = Bun.spawnSync({ cmd, ...spawnOptions(options) });
@@ -100,6 +103,7 @@ export function run(cmd: string[], options: RunOptions): RunResult {
     stdout: result.stdout ?? Buffer.alloc(0),
     stderr: result.stderr ?? Buffer.alloc(0),
     timedOut: result.exitedDueToTimeout === true,
+    skipped: false,
   };
 }
 

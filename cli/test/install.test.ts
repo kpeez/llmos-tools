@@ -36,7 +36,7 @@ const LOCKFILE = `{
 const STUB = '#!/usr/bin/env bun\nconsole.log("ok");\n';
 
 /** A plugin root of the given version whose `cli/scripts/install.ts` is the real script. */
-function pluginRoot(version: string): string {
+function pluginRoot(version: string, llmos = STUB): string {
   const root = scratch("install-plugin");
   mkdirSync(join(root, ".claude-plugin"), { recursive: true });
   writeFileSync(join(root, ".claude-plugin", "plugin.json"), JSON.stringify({ version }));
@@ -50,7 +50,7 @@ function pluginRoot(version: string): string {
   );
   writeFileSync(join(root, "cli", "bun.lock"), LOCKFILE);
   for (const entry of ["bin/llmos.ts", "bin/qmd.ts"]) {
-    writeFileSync(join(root, "cli", entry), STUB);
+    writeFileSync(join(root, "cli", entry), entry === "bin/llmos.ts" ? llmos : STUB);
     chmodSync(join(root, "cli", entry), 0o755);
   }
   copyFileSync(join(CLI, "scripts", "install.ts"), join(root, "cli", "scripts", "install.ts"));
@@ -79,6 +79,20 @@ describe("install.ts current link", () => {
     expect(install(pluginRoot("1.1.0"), home)).toEqual({ code: 0, stderr: "" });
     expect(readlinkSync(join(data, "current"))).toBe(join(data, "1.1.0"));
     expect(existsSync(join(data, "current", "hermes"))).toBe(true);
+  });
+
+  test("a version that fails its smoke test leaves every entry point on the earlier version", () => {
+    const home = scratch("install-home");
+    const data = join(home, ".local", "share", "llmos");
+    const bin = join(home, ".local", "bin");
+    expect(install(pluginRoot("1.0.0"), home).code).toBe(0);
+
+    const broken = install(pluginRoot("2.0.0", "#!/usr/bin/env bun\nprocess.exit(1);\n"), home);
+
+    expect(broken.code).toBe(1);
+    expect(readlinkSync(join(data, "current"))).toBe(join(data, "1.0.0"));
+    expect(readlinkSync(join(bin, "llmos"))).toBe(join(data, "1.0.0", "cli", "bin", "llmos.ts"));
+    expect(readlinkSync(join(bin, "qmd"))).toBe(join(data, "1.0.0", "cli", "bin", "qmd.ts"));
   });
 
   test("a current that is a real folder stops the install before anything changes", () => {

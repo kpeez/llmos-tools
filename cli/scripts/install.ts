@@ -15,8 +15,9 @@
  * and the symbolic links in `node_modules/.bin/` then stop Claude Desktop from
  * copying the plugin to an SSH host.
  *
- * As its last step it points `~/.local/share/llmos/current` at the new version
- * folder, so a failed install leaves `current` on the earlier version. Hermes
+ * It smoke-tests the new copy in place. Only then does it link `llmos` and
+ * `qmd` and point `~/.local/share/llmos/current` at the new version folder, so
+ * a failed install leaves every entry point on the earlier version. Hermes
  * Agent links its plugin and skills through `current`.
  *
  * An existing `~/.local/bin` entry or `current` is replaced only when it is a
@@ -119,16 +120,9 @@ if (existsSync(target)) renameSync(target, previous);
 renameSync(staging, target);
 rmSync(previous, { recursive: true, force: true });
 
-mkdirSync(binDir, { recursive: true });
-for (const name of COMMANDS) {
-  const link = join(binDir, name);
-  rmSync(link, { force: true });
-  symlinkSync(join(target, "cli", `bin/${name}.ts`), link);
-}
-
 for (const argv of [
-  [join(binDir, "llmos"), "--help"],
-  [join(binDir, "qmd"), "--version"],
+  [join(target, "cli", "bin", "llmos.ts"), "--help"],
+  [join(target, "cli", "bin", "qmd.ts"), "--version"],
 ]) {
   const result = run(argv, { stdout: "pipe", stderr: "pipe", timeoutMs: SMOKE_TIMEOUT_MS });
   if (result.exitCode !== 0) {
@@ -136,6 +130,13 @@ for (const argv of [
     process.exit(1);
   }
 }
+mkdirSync(binDir, { recursive: true });
+for (const name of COMMANDS) {
+  const link = join(binDir, name);
+  rmSync(link, { force: true });
+  symlinkSync(join(target, "cli", `bin/${name}.ts`), link);
+}
+
 const pending = `${current}.new-${process.pid}`;
 rmSync(pending, { force: true });
 symlinkSync(target, pending);

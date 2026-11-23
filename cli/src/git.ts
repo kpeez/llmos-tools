@@ -16,6 +16,8 @@
  * channel), never prompts for credentials, and reads paths unquoted. Name
  * lists never detect renames: a rename lists only its new path, so a commit
  * that moves a private note into shared memory would pass the path check.
+ * `merge-tree` is the one call that detects renames, because `merge.renames`
+ * would otherwise follow `diff.renames` and refuse a rename plus an edit.
  */
 
 import { statSync } from "node:fs";
@@ -30,6 +32,7 @@ interface Result {
   stdout: string;
   stderr: string;
   timedOut: boolean;
+  skipped: boolean;
 }
 
 function run(cwd: string, args: string[], env: Env, timeout: number, whole = false): Result {
@@ -51,13 +54,22 @@ function run(cwd: string, args: string[], env: Env, timeout: number, whole = fal
       stdout: result.stdout.toString(),
       stderr: result.stderr.toString(),
       timedOut: result.timedOut,
+      skipped: result.skipped,
     };
   } catch (error) {
-    return { ok: false, code: null, stdout: "", stderr: String(error), timedOut: false };
+    return {
+      ok: false,
+      code: null,
+      stdout: "",
+      stderr: String(error),
+      timedOut: false,
+      skipped: false,
+    };
   }
 }
 
 function failure(result: Result): string {
+  if (result.skipped) return "git skipped: no time left before the hook deadline";
   if (result.timedOut) return "git timed out";
   // Git often names the files on the lines after the first, so keep up to three.
   const lines = result.stderr
@@ -293,13 +305,14 @@ function mergeDiverged(
 ): { id: string } | { error: string } {
   const tree = run(
     repo.top,
-    ["merge-tree", "--write-tree", "--name-only", origin, head],
+    ["-c", "merge.renames=true", "merge-tree", "--write-tree", "--name-only", origin, head],
     repo.env,
     repo.local,
   );
   const lines = tree.stdout.split("\n");
   if (!tree.ok) {
-    if (tree.timedOut || !lines[0]) return { error: `merge failed: ${failure(tree)}` };
+    if (tree.timedOut || tree.skipped || !lines[0])
+      return { error: `merge failed: ${failure(tree)}` };
     const blank = lines.indexOf("");
     const paths = lines.slice(1, blank === -1 ? undefined : blank).slice(0, 3);
     return { error: `merge conflict in ${paths.join(", ") || "the vault"}` };

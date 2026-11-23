@@ -14,13 +14,28 @@ Newest first. Versions are the `version` field shared by
   `Bun.spawnSync`, `Bun.$`, and `node:child_process` anywhere else. New limits:
   `gh` 60 s, `obsidian-cli` 30 s (before, none), MinerU 30 min, `unzip` 60 s,
   `bun install` 10 min in `install.ts`, and 20 min per model check. Each hook
-  also has a deadline for all its subprocesses together: 8 s at session start
-  and 28 s at Stop, under the 10 s and 30 s hook timeouts. Before, the worst
+  also has a deadline for all its subprocesses together: its `hooks.json`
+  timeout less 0.5 s. Before, the worst
   Stop path could reach 35 s of limits (two 10 s reindex runs, then fetch,
   merge, and push at 5 s each). Near the deadline a call gets the time left,
   a fast-forward merge starts only when its whole limit fits, and later calls
-  are skipped; a cloud session start says how many repositories it did not
+  are skipped (the message says so, not "timed out"); a cloud session start says how many repositories it did not
   link. The single-call limits of the hooks are as before.
+- The session-start hook no longer stays silent when `LLMOS_ROOT` is set to a
+  folder that is not a vault. It prints one context line that names the
+  folder and says to fix `LLMOS_ROOT` or run `/setup-llmos`. Before, the agent
+  worked with no vault and no warning. An unset `LLMOS_ROOT` still prints
+  nothing.
+- A failed `install.ts` no longer takes over `llmos` and `qmd`. The script
+  linked `~/.local/bin/llmos` and `qmd` to the new copy before its smoke test,
+  so a broken version left them on the broken copy while `current` stayed on
+  the earlier version. The script now tests the new copy in place and links
+  the commands only after it passes.
+- The shared-memory sync merges a rename on one side with an edit on the
+  other side again. Since the change that turned off rename detection in every
+  git call, `git merge-tree` refused such a pair as a modify/delete conflict.
+  The merge call now turns rename detection on. The name lists that check for
+  private paths still never detect renames.
 - `llmos daily activity --push` help no longer says the merge leaves the work
   tree alone: its fast-forward merge updates it. A new test fails when agent
   prose (docs, skills, `AGENTS.md`, hook text) names a repo path or an `llmos`

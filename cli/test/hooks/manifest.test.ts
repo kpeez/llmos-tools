@@ -10,7 +10,7 @@
 import { expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { HOOK_DEADLINE_MS, HOOK_RESERVE_MS } from "../../src/hook-limits.ts";
+import { HOOK_RESERVE_MS, HOOK_TIMEOUT_MS } from "../../src/hook-limits.ts";
 import { MCP_WRITE_TOOL, READ_TOOLS, SERVER_NAME, WRITE_TOOLS } from "../../src/mcp-names.ts";
 import { TOOLS } from "./helpers.ts";
 
@@ -158,20 +158,14 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   expect(postMatcher.test("edit_file")).toBe(true);
 });
 
-test("each hook command has a deadline that leaves the reserve under its timeout", () => {
+test("the hook timeouts in hook-limits.ts match hooks.json, one per command", () => {
   const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
-  const seen: string[] = [];
+  const found: Record<string, number> = {};
   for (const groups of Object.values(hooks)) {
     for (const hook of groups.flatMap((group) => group.hooks)) {
-      const event = COMMAND.exec(hook.command)?.[1] ?? hook.command;
-      seen.push(event);
-      const deadline = HOOK_DEADLINE_MS[event];
-      expect([event, deadline !== undefined]).toEqual([event, true]);
-      expect([event, (deadline ?? Infinity) + HOOK_RESERVE_MS < hook.timeout * 1000]).toEqual([
-        event,
-        true,
-      ]);
+      found[COMMAND.exec(hook.command)?.[1] ?? hook.command] = hook.timeout * 1000;
     }
   }
-  expect(Object.keys(HOOK_DEADLINE_MS).sort()).toEqual([...new Set(seen)].sort());
+  expect(HOOK_TIMEOUT_MS).toEqual(found);
+  expect(HOOK_RESERVE_MS).toBeLessThan(1_000);
 });

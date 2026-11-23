@@ -27,8 +27,8 @@ type Env = Record<string, string | undefined>;
 // The session-start hook's timeout is 10 s: fetch 3 s + fast-forward 2 s,
 // plus five local calls of 1 s at most (each takes milliseconds).
 const LOCAL_TIMEOUT_MS = 1_000;
-/** Time left that one more repository may need: its project lookup is one local git call. */
-const LINK_RESERVE_MS = 1_500;
+/** Time left that one more repository needs: its project lookup is one local git call, which takes milliseconds. */
+const LINK_RESERVE_MS = 100;
 const UPDATE_TIMEOUTS = { fetch: 3_000, merge: 2_000 };
 
 /**

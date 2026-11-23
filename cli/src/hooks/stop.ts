@@ -46,6 +46,7 @@ function run(label: string, command: string[]): string | null {
       timeoutMs: REINDEX_TIMEOUT_MS,
     });
     if (result.exitCode === 0) return null;
+    if (result.skipped) return `${label} skipped: no time left before the hook deadline`;
     if (result.timedOut) return `${label} ${TIMED_OUT}`;
     return `${label} exited ${result.exitCode ?? result.signalCode}`;
   } catch (error) {
