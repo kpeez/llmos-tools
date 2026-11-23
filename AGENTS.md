@@ -69,6 +69,12 @@ skill that holds a `.tla` file runs its `scripts/check.ts`. CI runs it in the
 Claude Code finds each repository skill through its committed link
 `../.claude/skills/<skill>` (to `../../.agents/skills/<skill>`). A new skill
 commits its own link.
+After a change to how the llmOS service starts or stops (`withStartLock`,
+`serveService`, or `close()` in `src/service.ts`, or `servicePaths` in
+`src/service-client.ts`), also run `just verify-llmos-service`. It
+model-checks with TLA+ that concurrent starts, stops, and crashes leave one
+reachable service. The `verify-llmos-service` skill
+(`../.agents/skills/verify-llmos-service/`) says what the model covers.
 
 Preserve unrelated working-tree changes. Changes here go through a pull
 request so CI runs. Tests use the fixture vaults in `test/fixtures/`, never
