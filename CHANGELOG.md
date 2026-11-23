@@ -52,7 +52,9 @@ Newest first. Versions are the `version` field shared by
 - The cloud session-start hook no longer runs `git pull --rebase
   --autostash`, which left a rebase in progress on a conflict. It fetches and
   fast-forwards; a checkout with its own commits is left as it is, and the
-  context says so.
+  context says so. The context no longer tells the agent to run `git pull
+  --rebase`: it says to fetch and fast-forward before editing, push to
+  `main`, and stop and report when either refuses.
 
 - The cloud session-start hook finds the vault checkout in the split layout.
   The vault root is now its own repository root, so the hook pulls `main` in

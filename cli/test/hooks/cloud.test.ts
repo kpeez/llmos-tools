@@ -118,7 +118,13 @@ describe("session-start in a cloud session", () => {
     expect(excluded.split("\n")).toContain("/.agents/docs");
     expect(result.stdout).toContain(`llmOS root: ${fixture.root}.`);
     expect(result.stdout).toContain(`${docs} links to`);
-    expect(result.stdout).toContain("git push origin HEAD:main");
+    expect(result.stdout).toContain(
+      "run git fetch origin main, then git merge --ff-only origin/main; if it refuses, stop and report why.",
+    );
+    expect(result.stdout).toContain(
+      "git push origin HEAD:main; if the push is refused, stop and report.",
+    );
+    expect(result.stdout).not.toContain("pull --rebase");
   });
 
   test("leaves a repository with no vault project folder alone, without a note", () => {

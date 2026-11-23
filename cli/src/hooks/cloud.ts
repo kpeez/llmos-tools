@@ -132,8 +132,10 @@ export function cloudSetup(root: string, env: Env = process.env): string | null 
   const indexNote = buildIndex(root, env);
   if (indexNote) notes.push(indexNote);
   notes.push(
-    `This cloud session's vault checkout is ${root}. Commit vault changes there, ` +
-      "run git pull --rebase origin main, then git push origin HEAD:main. " +
+    `This cloud session's vault checkout is ${root}. Before you edit vault notes, ` +
+      "run git fetch origin main, then git merge --ff-only origin/main; if it refuses, stop and report why. " +
+      "Commit vault changes there, then git push origin HEAD:main; if the push is refused, stop and report. " +
+      "Never rebase, stash, or reset the vault checkout: those can drop commits. " +
       "Vault notes go to main, not to the session branch.",
   );
   return notes.join("\n");

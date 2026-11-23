@@ -193,8 +193,11 @@ checkout (3-second limit) and fast-forwards it there with `git merge
 --ff-only` (2-second limit). It never rebases: a checkout with commits that
 are not on `origin/main` is left as it is, and the context says so. Then it
 links each repository beside the vault checkout the same way. The context
-tells the agent to push vault notes to `main` (`git push origin HEAD:main`),
-not to the session branch. A failed fetch or fast-forward is reported in the
+tells the agent the same safe flow: before it edits vault notes, `git fetch
+origin main` and `git merge --ff-only origin/main`; then commit and push to
+`main` (`git push origin HEAD:main`), not to the session branch. When the
+fast-forward or the push refuses, the agent stops and reports instead of
+rebasing. A failed fetch or fast-forward is reported in the
 context. A fresh checkout has no qmd
 index, so the hook also starts a detached build when the index file is missing:
 it adds the `llmos` and `memory` collections with `qmd collection add`, then
