@@ -37,7 +37,7 @@ jobs:
         run: |
           bun run build:hooks
           bun run build:mcp
-          git diff --exit-code ../dist/hooks.js ../dist/pre-tool-use.js ../dist/mcp.js
+          git diff --exit-code ../dist/hooks.js ../dist/pre-tool-use.js ../dist/shell-grammar.js ../dist/mcp.js
       - name: Smoke the CLI and its subcommands
         run: |
           bun bin/llmos.ts --help >/dev/null

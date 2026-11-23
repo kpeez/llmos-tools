@@ -122,8 +122,8 @@ Before declaring a change complete, run the relevant `just` recipes. The full
 local gate is `just check` (after `bun install --frozen-lockfile`); it runs the
 marketplace drift check, the type check, Biome, and `bun test` (with the
 contract snapshot tests), and it fails when a committed bundle
-(`../dist/hooks.js`, `../dist/pre-tool-use.js`, or the MCP launcher
-`../dist/mcp.js`) is stale. It does
+(`../dist/hooks.js`, `../dist/pre-tool-use.js`, `../dist/shell-grammar.js`, or
+the MCP launcher `../dist/mcp.js`) is stale. It does
 not run the model checks; CI runs them (`just verify-models`). After changing
 `src/hooks/`, `src/mcp-launcher.ts`, or core code they import, run `just
 hooks` and commit the rebuilt bundles. The hooks that run on every tool call

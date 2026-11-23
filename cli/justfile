@@ -37,7 +37,7 @@ bun-version:
     @test "$(bun --version)" = "$(sed -n 's/^bun //p' .tool-versions)" || { echo "bun $(bun --version) is not the pinned $(sed -n 's/^bun //p' .tool-versions) in cli/.tool-versions; run mise install from cli/" >&2; exit 1; }
 
 # Rebuild the committed plugin bundles: the hooks that run on every tool call
-# (../dist/pre-tool-use.js, from src/hooks/pre-tool-use.ts), the other hooks
+# (../dist/pre-tool-use.js, from src/hooks/pre-tool-use.ts, with the grammar check beside it in ../dist/shell-grammar.js), the other hooks
 # (../dist/hooks.js, from src/hooks/main.ts), and the MCP launcher
 # (../dist/mcp.js, from src/mcp-launcher.ts).
 hooks: bun-version
@@ -46,7 +46,7 @@ hooks: bun-version
 
 # Fail when a committed bundle differs from a fresh build.
 hooks-drift: hooks
-    git diff --exit-code ../dist/hooks.js ../dist/pre-tool-use.js ../dist/mcp.js
+    git diff --exit-code ../dist/hooks.js ../dist/pre-tool-use.js ../dist/shell-grammar.js ../dist/mcp.js
 
 # Drive the real CLI, MCP server, and hooks on a scratch fixture vault.
 # Evidence goes to ../artifacts/verify-llmos/; feature names limit the run.

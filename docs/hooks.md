@@ -25,6 +25,16 @@ and Antigravity finds it at the plugin root.
   `guard-bash`. Both run on almost every tool call, so the bundle holds only
   the path resolution and the guard: no YAML, memory, or vault-model code.
   Bun loads a bundle before it runs, so a small bundle starts faster.
+  `dist/shell-grammar.js` holds the shell parser (`unbash`) and its check. The
+  guard loads it only when a command names `mv`, `rm`, `find`, or
+  `obsidian-cli`. When that
+  bundle fails to load, the guard falls back to its older token check. The
+  grammar check reads at most 20,000 entries of a folder; a larger folder counts
+  as holding a note, so the guard denies the call (it fails closed). It skips
+  dot folders (`.trash`) and `node_modules`, and it approves a plain `rm`, `mv`, or
+  `git rm` of a symbolic link to the vault when the path has no trailing slash,
+  because that removes only the link. `find` and a command that lists paths for
+  `xargs` follow the link, so the guard denies them.
 - `dist/hooks.js` (from `main.ts`) serves `session-start`, `post-tool-use`,
   and `stop`.
 
@@ -48,7 +58,7 @@ The two flags stop Bun from loading the session's project `.env` and
 | SessionStart             | `session-start` | `session-context.ts`, `cloud.ts`, `links.ts` | Links a vault project's agent folders, then supplies vault context inside the vault and repositories with linked vault docs; in a cloud session, first fast-forwards the vault checkout to `origin/main` and links each attached repository; in a local session, first fetches and fast-forwards the vault's shared memory (`sync.ts`) |
 | PreToolUse (reads/edits) | `pre-tool-use`  | `context.ts`  | Resolves target paths, supplies retrieval context on reads and the authoring contract before writes          |
 | PreToolUse (MCP writes)  | `pre-tool-use`  | `context.ts`  | Supplies the schema and authoring contract before `daily_append_thought`, `file_inbox`, and `set_property` |
-| PreToolUse (Bash)        | `pre-tool-use` (the guard part) | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm` of vault notes (exit 2, reason on stderr) |
+| PreToolUse (Bash)        | `pre-tool-use` (the guard part) | `guard.ts`    | Denies `obsidian-cli` note verbs without `file=`/`path=` and raw `mv`/`rm`/`find -delete` of vault notes, also inside wrappers, `bash -c`, and `$( )` (exit 2, reason on stderr) |
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and sets the dirty flag for every vault note the tool wrote, stamped or not; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** the dirty flag is set, by this turn or by any other process: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 

@@ -14,7 +14,7 @@ llmos-tools/
 │   ├── setup-llmos/       # machine access diagnosis + vault-root config
 │   └── vault-cli/         # routing table for the llmos CLI
 ├── hooks/                 # hooks.json: session/tool lifecycle hooks (see below)
-├── dist/                  # committed bundles: hooks.js, pre-tool-use.js, and the MCP launcher mcp.js
+├── dist/                  # committed bundles: hooks.js, pre-tool-use.js, shell-grammar.js, and the MCP launcher mcp.js
 ├── .mcp.json              # the MCP server for Claude Code (.codex-mcp.json for Codex, mcp_config.json for agy)
 └── cli/                   # the CLI's Bun project: package.json, bun.lock, justfile
     ├── src/               # TypeScript core and the CLI's command registry
@@ -55,7 +55,7 @@ plugin hooks, and the MCP server.
 - `digest.ts` is the `llmos daily activity` command. Its block hash and markers
   match the blocks already in daily notes. A PR merged in one repository does not hide a PR with the
   same number opened in another.
-- `hooks/` holds the plugin hooks, bundled into `dist/hooks.js` and `dist/pre-tool-use.js` (see
+- `hooks/` holds the plugin hooks, bundled into `dist/hooks.js`, `dist/pre-tool-use.js`, and `dist/shell-grammar.js` (see
   [hooks](hooks.md)).
 - `mcp.ts` is the `llmos mcp` server, `mcp-launcher.ts` the launcher
   bundled into `dist/mcp.js`, `mcp-check.ts` the doctor's server check, and
