@@ -28,7 +28,10 @@ import { isUnder, joinPath, realpath, suffix, truthy } from "./common.ts";
 import { ShlexError, splitWithOperators } from "./shlex.ts";
 
 // A superset pre-filter: anything it lets through is tokenized and checked.
+// It reads the command without quotes, escapes, and line continuations, which
+// the shell splices out of a word (`r"m"`, `r\m`, `r\<newline>m` all run rm).
 const FAST_REJECT = /\b(?:obsidian-cli|mv|rm)\b/;
+const SPLICED = /\\\n|["'\\]/g;
 const SEPARATOR = /^[();|&\n]+$/;
 const REDIRECT_OPERATORS = new Set([">", ">>", "<", "<<", "&>", "&>>", ">&", "<&"]);
 
@@ -170,7 +173,7 @@ function checkVaultMvRm(
 
 /** The deny message for `command`, or `null` to approve. */
 export function checkCommand(command: string, cwd: unknown): string | null {
-  if (!FAST_REJECT.test(command)) return null;
+  if (!FAST_REJECT.test(command.replace(SPLICED, ""))) return null;
   let tokens: string[];
   try {
     tokens = splitWithOperators(command);

@@ -162,6 +162,9 @@ describe("raw mv and rm on vault notes", () => {
       `rm -f \\\n  ${note}`,
       `git mv \\\n  ${note} ${other}`,
       `echo hi \\\n&& rm ${note}`,
+      `r\\\nm ${note}`,
+      `r"m" ${note}`,
+      `rm "${note.slice(0, -3)}\\\n.md"`,
     ];
     for (const command of denied) {
       const result = guard(command, tmp, { root: vault });
