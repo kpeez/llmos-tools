@@ -25,7 +25,6 @@ import type { ServiceStatus } from "./service.ts";
 
 export type Env = Record<string, string | undefined>;
 
-/** The collections the service answers for: the llmOS vault's. */
 export const SERVICE_COLLECTIONS = ["llmos", MEMORY_COLLECTION] as const;
 /** A Unix socket path must fit `sockaddr_un` (104 bytes on macOS). */
 export const MAX_SOCKET_PATH = 100;
@@ -46,18 +45,13 @@ export function serviceDisabled(env: Env): boolean {
   return env.LLMOS_SERVICE === "off";
 }
 
-/** What a call to the service came to. */
 export type Reply =
-  /** The service answered. */
   | { kind: "ok"; result: unknown }
-  /** The service refused or failed the request. */
   | { kind: "error"; code: string; message: string }
-  /** Nothing listens on the socket. */
   | { kind: "down" }
   /** The service did not answer in time, or answered something unreadable. */
   | { kind: "failed"; message: string };
 
-/** Send one request line and read one response line. */
 function exchange(socketPath: string, line: string, timeoutMs: number): Promise<Reply> {
   return new Promise((resolve) => {
     let buffer = "";
@@ -157,9 +151,7 @@ export function startService(env: Env): void {
         env: { ...env, GGML_METAL_NO_RESIDENCY: "1" },
       },
     );
-  } catch {
-    // The caller runs the work itself.
-  }
+  } catch {}
 }
 
 /**

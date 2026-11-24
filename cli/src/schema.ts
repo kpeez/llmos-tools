@@ -3,8 +3,7 @@
  * the schema-violations section of the health report. A plain vault, any
  * other `--vault`, has no schema layer and never calls this module.
  *
- * The rules are those of the retired Python schema module; a message
- * quotes a property value as JSON (Python wrote its `repr`). Nested values,
+ * A message quotes a property value as JSON. Nested values,
  * which only the TypeScript reader accepts, are checked by the same rules: a
  * map is empty when it has no keys, and anything that is not a string fails
  * a string rule.
@@ -94,7 +93,6 @@ export function isValidCategory(value: PropertyValue, hubs: ReadonlySet<string>)
   return name !== undefined && hubs.has(name);
 }
 
-/** The schema-violation messages for one note's properties. */
 function noteErrors(
   relative: string,
   note: Note,

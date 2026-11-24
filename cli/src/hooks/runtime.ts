@@ -30,7 +30,6 @@ export type HookEvent = HookResult["event"];
 
 export type ResultOf<E extends HookEvent> = Extract<HookResult, { event: E }>;
 
-/** The payload as the harness sent it, and with `cwd` resolved (see `sessionPayload`). */
 export interface HookInput {
   raw: Payload;
   data: Payload;
@@ -131,7 +130,6 @@ function sessionPayload(event: HookEvent, data: Payload): Payload {
   return event === "session-start" ? data : { ...data, cwd: here };
 }
 
-/** Run the handler of `event`, and write its result. */
 export async function runHook<E extends HookEvent>(
   event: string | undefined,
   handlers: Handlers<E>,

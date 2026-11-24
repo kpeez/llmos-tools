@@ -65,7 +65,6 @@ function warn(message: string): void {
   process.stderr.write(`llmos sync: ${message}\n`);
 }
 
-/** The one decision whether this vault checkout syncs. */
 export function syncGate(root: string, env: Env): Gate {
   if (env.LLMOS_NO_GIT_SYNC === "1") return { sync: false, reason: "LLMOS_NO_GIT_SYNC=1" };
   if (env.CLAUDE_CODE_REMOTE === "true") return { sync: false, reason: "cloud session" };
@@ -111,7 +110,6 @@ export function syncOnStart(root: string, env: Env): string | null {
   });
 }
 
-/** The changed memory paths, repository-relative, from `git status -z` (renames list both paths). */
 function changedMemoryPaths(gate: Syncing): string[] {
   const projects = gate.vaultRel === "." ? "projects" : `${gate.vaultRel}/projects`;
   return changedPaths(gate, projects).filter((path) => {

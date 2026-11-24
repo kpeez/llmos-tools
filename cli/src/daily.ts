@@ -18,7 +18,6 @@ const DAY_MS = 86_400_000;
 /** A calendar day as a count of days since 1970-01-01. */
 export type Day = number;
 
-/** A day as `YYYY-MM-DD`. */
 export function isoDate(day: Day): string {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
 }
@@ -37,7 +36,6 @@ export const MARKER_START = "<!-- llmos-activity:start";
 export const MARKER_END = "<!-- llmos-activity:end -->";
 export const THOUGHTS_HEADING = "## Thoughts";
 
-/** A write would land inside the machine-owned `llmos-activity` block. */
 export class MachineOwnedBlock extends Error {
   override name = "MachineOwnedBlock";
 }

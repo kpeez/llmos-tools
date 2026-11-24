@@ -119,7 +119,6 @@ const tableWikilinkPipe: Rule = {
   },
 };
 
-/** Markdown correctness findings for a note's full text (frontmatter included), by file line. */
 export function markdownFindings(text: string): MarkdownFinding[] {
   const results = lint({
     strings: { note: text },

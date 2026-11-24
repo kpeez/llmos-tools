@@ -159,8 +159,8 @@ function isSymlink(path: string): boolean {
 }
 
 /**
- * Resolve symlinks and `..` component by component, as Python's
- * `os.path.realpath` does. Unlike the native call, it keeps the letter case
+ * Resolve symlinks and `..` component by component. Unlike the native
+ * `realpath`, it keeps the letter case
  * the caller gave, so a case-insensitive file system cannot change a match.
  */
 export function realpath(path: string): string {
@@ -244,8 +244,8 @@ function countNewlines(text: string): number {
  * Check explicit note references in one note and separate prose links from
  * property links. Findings ask for review; they never rewrite notes.
  *
- * Like the Python checker, it works on the resolved file: a symlinked note
- * is checked as its target, and a target outside the vault throws.
+ * It works on the resolved file: a symlinked note is checked as its target,
+ * and a target outside the vault throws.
  */
 export function checkNote(model: VaultModel, linked: Note): NoteCheck {
   const root = realpath(model.root);

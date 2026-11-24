@@ -2,9 +2,7 @@
  * The `llmos` command line: a registry of commands and the one entry
  * point that turns their results and errors into output and exit codes.
  *
- * Each command declares its name, a one-line summary, its help text, its
- * arguments, its `node:util` `parseArgs` options, and a handler. `--help`,
- * `skills/vault-cli/references/commands.md`, and the verb table in
+ * `--help`, `skills/vault-cli/references/commands.md`, and the verb table in
  * `skills/vault-cli/SKILL.md` all render from the registry (`docs`), so
  * help text has one source. Handlers take parsed values and a `Context` and
  * return an `Outcome`; they never print or exit, so other front ends (the
@@ -33,24 +31,18 @@ export interface Context {
   env: Env;
   /** The root folder of a `--vault` name. Throws `VaultRootError`. */
   root(vault: string): string;
-  /** The vault model of a root. */
   model(root: string): VaultModel;
-  /** Today as `YYYY-MM-DD`, in local time. */
   today(): string;
   obsidian: ObsidianRunner;
-  /** The network, for verbs that capture web pages. */
   fetch: Fetcher;
-  /** The PDF converter of `source add`. */
   convertPdf: PdfConverter;
 }
 
-/** Today's local date as `YYYY-MM-DD`. */
 export function localDate(now: Date = new Date()): string {
   const pad = (n: number): string => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-/** The context of a real run: the process environment, the clock, and obsidian-cli. */
 export function defaultContext(env: Env = process.env): Context {
   const home = env.HOME || homedir();
   return {
@@ -94,7 +86,6 @@ export type Values = Record<string, string | string[] | number | boolean | undef
 export interface Outcome {
   json?: unknown;
   text?: string;
-  /** Printed on stderr, after the output. */
   stderr?: string;
   exitCode?: number;
 }
@@ -103,7 +94,6 @@ export interface Command {
   /** One word, or a group and a word (`daily recent`). */
   name: string;
   summary: string;
-  /** When to use it and when not, as paragraphs. */
   description: string;
   arguments: ArgumentSpec[];
   options: Record<string, OptionSpec>;
@@ -138,7 +128,6 @@ function table(rows: [string, string][]): string[] {
   return rows.map(([left, right]) => `  ${left.padEnd(width)}  ${right}`);
 }
 
-/** A command's full help, as `--help` prints it and the reference shows it. */
 export function renderHelp(command: Command): string {
   const lines = [`Usage: ${usage(command)}`, "", command.summary, "", command.description];
   if (command.arguments.length > 0) {
@@ -178,7 +167,6 @@ function indent(text: string): string {
     .join("\n");
 }
 
-/** The list of commands, as `llmos --help` prints it. */
 export function renderOverview(commands: readonly Command[], group?: string): string {
   const shown = group ? commands.filter((c) => c.name.startsWith(`${group} `)) : commands;
   return [
@@ -305,7 +293,6 @@ export function exitCodeFor(error: unknown): number {
   return 1;
 }
 
-/** Run one command line and collect what it prints and its exit code. */
 export async function runCli(
   argv: string[],
   commands: readonly Command[],
@@ -352,7 +339,6 @@ export async function runCli(
   }
 }
 
-/** The process entry point: run `argv`, print, and exit. */
 export async function main(argv: string[], commands: readonly Command[]): Promise<never> {
   const result = await runCli(argv, commands, defaultContext());
   // `Bun.write` resolves once a large output has reached a pipe in full.

@@ -61,7 +61,6 @@ export class SourceRefused extends Error {
 /** A URL the capture will not request: not http(s), or aimed at a local or private address. */
 export class BlockedUrl extends SourceRefused {}
 
-/** The IP addresses a host name resolves to. */
 export type Lookup = (host: string) => Promise<string[]>;
 
 const resolveHost: Lookup = async (host) =>
@@ -148,7 +147,6 @@ export async function assertPublicUrl(url: string, lookup: Lookup): Promise<void
   }
 }
 
-/** The largest response body a capture accepts. */
 export const MAX_BODY_BYTES = 50 * 1024 * 1024;
 
 /** Read a response body, refusing one over `max` bytes by its header or while streaming. */
@@ -232,13 +230,11 @@ export function networkFetcher(
   };
 }
 
-/** The real network fetch. */
 export const httpFetch: Fetcher = networkFetcher();
 
 export interface CaptureResult {
   /** `captured` wrote a new folder; `unchanged` found the source already there. */
   status: "captured" | "unchanged";
-  /** Vault-relative folder. */
   folder: string;
   sourceId: string;
   figures: number;
@@ -285,7 +281,6 @@ type Located = {
   raw: Uint8Array;
 } & ({ format: "html"; html: string } | { format: "pdf" });
 
-/** The converted text of a source and the files that go beside it. */
 interface Converted {
   text: string;
   converter: string;
@@ -448,7 +443,7 @@ function decodePage(bytes: Uint8Array, contentType: string): string {
     /<meta[^>]+charset\s*=\s*["']?([\w.:-]+)/i.exec(head)?.[1] ??
     "utf-8";
   try {
-    return new TextDecoder(label as "utf-8").decode(bytes); // an unknown label throws
+    return new TextDecoder(label as "utf-8").decode(bytes);
   } catch {
     return new TextDecoder("utf-8").decode(bytes);
   }
@@ -515,7 +510,6 @@ function webLicence(html: string, base: string): string {
   return "not stated";
 }
 
-/** The licence link of an arXiv abstract page. */
 function arxivLicence(page: string, base: string): string {
   const { document } = parseHTML(page);
   const href = document.querySelector(".abs-license a")?.getAttribute("href");
@@ -537,7 +531,6 @@ export function uniqueName(name: string, taken: Set<string>): string {
   return unique;
 }
 
-/** A file name for the image at `url`. */
 function assetName(url: string, taken: Set<string>): string {
   return uniqueName(new URL(url).pathname.split("/").pop() || "figure", taken);
 }
@@ -894,7 +887,6 @@ async function pageText(
   return { ...first, converter: converterName(), warnings: [warning] };
 }
 
-/** The defuddle text of a page, with the images of its captioned figures fetched. */
 async function convertPage(
   html: string,
   origin: string,

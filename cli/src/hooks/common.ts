@@ -61,7 +61,6 @@ export function readText(path: string): string {
 
 export type Payload = Record<string, unknown>;
 
-/** The collection the stop hook reindexes. */
 export const COLLECTION = "llmos";
 
 export function isDict(value: unknown): value is Payload {
@@ -78,7 +77,6 @@ export function truthy(value: unknown): boolean {
   return true;
 }
 
-/** The first set value, else `fallback`. */
 export function firstTruthy(values: unknown[], fallback: unknown): unknown {
   for (const value of values) if (truthy(value)) return value;
   return fallback;
@@ -94,7 +92,6 @@ export async function readPayload(): Promise<Payload> {
   }
 }
 
-/** Whether `data` or `env` indicates an Antigravity (`agy`) hook invocation. */
 export function isAntigravityPayload(
   data: Payload,
   env: Record<string, string | undefined> = process.env,
@@ -106,19 +103,16 @@ export function isAntigravityPayload(
   );
 }
 
-/** The first `workspacePaths` entry in an Antigravity payload, if present. */
 export function workspacePath(data: Payload): string | undefined {
   return Array.isArray(data.workspacePaths) && typeof data.workspacePaths[0] === "string"
     ? data.workspacePaths[0]
     : undefined;
 }
 
-/** Resolved working directory from `cwd` or `workspacePaths[0]`. */
 export function payloadCwd(data: Payload): string | null {
   return pathFrom(data.cwd) ?? pathFrom(workspacePath(data));
 }
 
-/** The payload's tool name (`tool_name`, `name`, or Antigravity `toolCall.name`). */
 export function toolNameOf(data: Payload): string {
   const callName = isDict(data.toolCall) ? data.toolCall.name : undefined;
   const name = firstTruthy([data.tool_name, data.name, callName], "");
@@ -132,7 +126,6 @@ export function toolInputOf(data: Payload): Payload | null {
   return isDict(toolInput) ? toolInput : null;
 }
 
-/** `~` and `~/...` expanded with `$HOME`. */
 export function expandUser(path: string): string {
   const home = (process.env.HOME ?? homedir()).replace(/\/+$/, "");
   if (path === "~") return home || "/";
@@ -150,12 +143,10 @@ export function joinPath(base: string, ...names: string[]): string {
   return path;
 }
 
-/** The lower-case extension of a path (".md"), or "". */
 export function suffix(path: string): string {
   return extname(path).toLowerCase();
 }
 
-/** Whether `path` is `root` or inside it; both resolved and absolute. */
 export function isUnder(path: string, root: string): boolean {
   return path === root || path.startsWith(root.endsWith("/") ? root : `${root}/`);
 }
@@ -242,7 +233,6 @@ export function brokenRootWarning(): string | null {
   return `${named}, ${problem}, so no vault context is loaded. Point LLMOS_ROOT at the vault folder, or run /setup-llmos.`;
 }
 
-/** Today's local date as `YYYY-MM-DD`. */
 export function localDate(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;

@@ -21,9 +21,7 @@ import { dirname, isAbsolute, join } from "node:path";
 export type Env = Record<string, string | undefined>;
 
 export interface Heartbeat {
-  /** When the session-start hook last ran, as an ISO timestamp. */
   time: string;
-  /** The Bun version that ran it. */
   bun: string;
   /** SHA-256 of the hook bundle that ran, to compare with the installed one. */
   bundleSha256: string;
@@ -40,7 +38,6 @@ export function stateDir(env: Env): string {
   return join(base, "llmos");
 }
 
-/** Where the heartbeat lives for this environment. */
 export function heartbeatPath(env: Env): string {
   return join(stateDir(env), "hooks.json");
 }
@@ -68,7 +65,6 @@ export function readHeartbeats(env: Env): Heartbeats {
   return found;
 }
 
-/** SHA-256 of a file, as lower-case hex. */
 export function fileSha256(path: string): string {
   return new Bun.CryptoHasher("sha256").update(readFileSync(path)).digest("hex");
 }

@@ -36,7 +36,6 @@ const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g;
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 
-/** One note file as read from disk. */
 export interface NoteSource {
   /** Vault-relative path with `/` separators, including `.md`. */
   readonly path: string;
@@ -44,20 +43,17 @@ export interface NoteSource {
   readonly text: string;
   readonly properties: Properties;
   readonly body: string;
-  /** Whether the text starts with a closed `---` frontmatter block. */
   readonly hasFrontmatter: boolean;
   /** Why the frontmatter block could not be read, when it exists but is unsupported. */
   readonly frontmatterError?: UnsupportedFrontmatter;
 }
 
 export interface Note extends NoteSource {
-  /** The file name without `.md`. */
   readonly name: string;
   /** Raw wikilink targets: body links first, then property links in property order. */
   readonly targets: readonly string[];
 }
 
-/** A `.md` symbolic link whose target does not exist. */
 export interface BrokenLink {
   readonly path: string;
   readonly target: string;
@@ -88,7 +84,6 @@ export interface Subgraph {
 }
 
 export interface UnresolvedLink {
-  /** Vault-relative path of the linking note, with `.md`. */
   referrer: string;
   target: string;
 }
@@ -162,7 +157,6 @@ function* strings(value: PropertyValue): Generator<string> {
   else for (const item of Object.values(value)) yield* strings(item);
 }
 
-/** Every wikilink target inside property values (nested ones too), in property order. */
 export function propertyLinks(properties: Properties): string[] {
   const found: string[] = [];
   for (const value of Object.values(properties)) {
@@ -252,7 +246,6 @@ function topicsOf(note: Note): Set<string> {
 export class NoteIndex {
   private readonly paths: ReadonlySet<string>;
   private readonly byStem = new Map<string, string[]>();
-  /** The root with one trailing `/`, the prefix of an absolute note path. */
   private readonly rootPrefix: string;
 
   constructor(
@@ -338,7 +331,6 @@ export class VaultModel {
    * unresolved, null when it names a non-note file.
    */
   private readonly resolved = new Map<Note, (Note | null | undefined)[]>();
-  /** Per note: the other notes whose links resolve to it. */
   private readonly linkedFrom = new Map<Note, Set<Note>>();
   private readonly topics = new Map<Note, Set<string>>();
   private readonly notesByTopic = new Map<string, Note[]>();
@@ -399,7 +391,6 @@ export class VaultModel {
     return VaultModel.fromSources(root, sources, broken, files);
   }
 
-  /** Build the model from notes already read, in path order. */
   static fromSources(
     root: string,
     sources: readonly NoteSource[],
@@ -416,7 +407,6 @@ export class VaultModel {
     return new VaultModel(root, notes, brokenLinks, files);
   }
 
-  /** The note's path joined to the vault root. */
   absolutePath(note: Note): string {
     return join(this.root, note.path);
   }
@@ -496,7 +486,6 @@ export class VaultModel {
     return this.record(note);
   }
 
-  /** Every note in path order; an unsupported block reads as no properties. */
   list(): NoteRecord[] {
     return this.notes.map((note) => this.record(note));
   }
@@ -513,7 +502,6 @@ export class VaultModel {
     };
   }
 
-  /** The neighborhood out to `depth` hops over links, backlinks, and shared topics. */
   subgraph(name: string, depth = 1): Subgraph {
     const root = this.resolveNote(name);
     const visited = new Set<Note>([root]);

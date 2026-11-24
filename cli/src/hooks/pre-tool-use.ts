@@ -56,7 +56,6 @@ function firstDenial(command: string, folders: (string | null)[]): string | null
   return null;
 }
 
-/** The reason the guard denies the shell command of the raw payload, else null. */
 function guardDenial(raw: Payload): string | null {
   const toolInput = toolInputOf(raw);
   const command = toolInput
