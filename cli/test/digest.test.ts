@@ -22,6 +22,7 @@ import {
   type Gh,
   type Grouped,
   githubOwners,
+  MODEL,
   OPENCODE_AGENT,
   parseGhJson,
   processDay,
@@ -266,12 +267,22 @@ describe("summarize", () => {
     return bin;
   }
 
-  test("uses the pinned opencode argv and passes the prompt on stdin", () => {
+  test("runs opencode with the digest agent and passes the prompt on stdin", () => {
     const bin = fakeOpencode(textEvent("### Alpha Project"));
     expect(summarize(grouped(), DAY, bin)).toBe("### Alpha Project");
     const dir = dirname(bin);
     expect(readFileSync(join(dir, "argv"), "utf8")).toBe(
-      "run\n--standalone\n--agent\nllmos-digest\n--format\njson\n--model\ngithub-copilot/claude-haiku-5.5\n",
+      [
+        "run",
+        "--standalone",
+        "--agent",
+        OPENCODE_AGENT,
+        "--format",
+        "json",
+        "--model",
+        MODEL,
+        "",
+      ].join("\n"),
     );
     const stdin = readFileSync(join(dir, "stdin"), "utf8");
     expect(stdin).toStartWith(`${TRANSFORM_INSTRUCTIONS}\n\n`);
