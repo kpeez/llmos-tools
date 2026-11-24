@@ -9,6 +9,7 @@ Newest first. Versions are the `version` field shared by
 - The git spawn lint (`cli/lint/git-spawn.grit`) also fails on the string
   `"git"` bound to a variable or an object property outside `cli/src/git.ts`,
   such as `const GIT = "git"; run([GIT, "pull"])`. Before, the alias passed.
+- `llmos doctor` no longer checks agent configs for the command and plugin names that 2.11.0 removed.
 
 ## 2.14.1 — 2026-11-23
 

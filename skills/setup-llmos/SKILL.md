@@ -51,10 +51,7 @@ index holds and returns the vault's `llmOS.md`. Its `mcp-server` check starts
 the MCP server the plugin's launcher would start (the install that
 `~/.local/bin/llmos` links to) and passes only when it lists every
 tool. For each agent with the plugin installed, it also checks that the
-agent's hooks have run (see "Verify the hooks" below). Its `old-names` check
-reads the Claude, Codex, and Hermes configs and the `llmos-*` scheduler units.
-It fails with `<file>:<line>` on any line that still names a removed command
-or the old plugin ID, and it does not flag the vault repository name.
+agent's hooks have run (see "Verify the hooks" below).
 
 The plugin's Stop hook keeps qmd's keyword index current after each turn
 that changed the vault (`llmos reindex --no-embed`). It never embeds,
