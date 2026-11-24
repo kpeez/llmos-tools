@@ -1,6 +1,6 @@
 ---
 name: setup-llmos
-description: Set up and verify llmOS access, agent-plugin activation, and hook coverage on a Mac or Linux host. Use when installing the llmOS integration for Codex, Claude, or Hermes Agent, repairing missing vault guidance through project symlinks, or checking the vault root, Obsidian CLI, and qmd retrieval.
+description: Set up and verify llmOS access, agent-plugin activation, and hook coverage on a Mac or Linux host. Use when installing the llmOS integration for Codex, Claude, Hermes Agent, or OpenCode, repairing missing vault guidance through project symlinks, or checking the vault root, Obsidian CLI, and qmd retrieval.
 ---
 
 # Setup llmOS
@@ -117,13 +117,13 @@ not prove the hooks can see it; the heartbeat check below does.
 
 Every time the session-start hook runs, it records a heartbeat in
 `${XDG_STATE_HOME:-~/.local/state}/llmos/hooks.json`, keyed by agent
-(`claude`, `codex`, `agy`, `hermes`): the time, the Bun version, the SHA-256 of the hook
+(`claude`, `codex`, `agy`, `hermes`, `opencode`): the time, the Bun version, the SHA-256 of the hook
 bundle that ran, and the plugin root. `llmos doctor` finds the installed
 plugin for each agent (Claude's `~/.claude/plugins/installed_plugins.json`, or
 the claude.ai account sync's `~/.claude/plugins/synced/<bucket>/` folder,
 Codex's `[plugins."llmos@llmos-tools"]` in `~/.codex/config.toml` and its
 plugin cache, Antigravity's `~/.gemini/config/plugins/llmos`, Hermes Agent's
-`~/.hermes/plugins/llmos` link) and checks the heartbeat against it:
+`~/.hermes/plugins/llmos` link, OpenCode's `~/.config/opencode/plugins/llmos.ts`) and checks the heartbeat against it:
 
 - `PASS hooks-<agent>`: the installed hooks have run.
 - `FAIL hooks-<agent>`: no heartbeat, or the last one ran another bundle than
@@ -243,6 +243,32 @@ profile whose plugin link or skills folder resolves outside
 `memory.provider: llmos`, and a profile whose `llmos` MCP server still shows
 its memory tools. Start one new
 Hermes session (`hermes chat --oneshot -Q -q ok`) to record its heartbeat.
+
+## OpenCode
+
+OpenCode 2 has no plugin marketplace for llmOS. It gets the llmOS skills
+from your own skill bridge, so this section adds the hooks and the MCP server.
+Both run the installed copy at `~/.local/share/llmos/current/` (made by
+`install.ts`, above), never a checkout.
+
+- Hooks: copy the adapter into OpenCode's global plugin folder as a real file.
+  OpenCode skips a plugin file that is a symbolic link, so `ln -s` does not
+  work. Run the copy again after each `install.ts` run that changes
+  `opencode/llmos.ts`:
+  `cp ~/.local/share/llmos/current/opencode/llmos.ts ~/.config/opencode/plugins/llmos.ts`
+  (use `$XDG_CONFIG_HOME/opencode` when that is set).
+- MCP: `opencode mcp add llmos --global -- bun --no-install --no-env-file
+  --config=/dev/null ~/.local/share/llmos/current/dist/mcp.js` (the path
+  written out in full). The command keeps the comments and the other settings
+  of your OpenCode config. Check with `opencode mcp list`. The server needs
+  `llmos` in `~/.local/bin` (`install.ts` links it).
+- Verify: start a new OpenCode session, then run `llmos doctor`. It checks
+  `hooks-opencode` when `~/.config/opencode/plugins/llmos.ts` exists.
+
+The adapter (`opencode/llmos.ts`) runs `dist/pre-tool-use.js` and
+`dist/hooks.js` for each OpenCode hook; [hooks.md](../../docs/hooks.md) lists
+the mapping. The hooks need `bun`: the adapter looks on `PATH`, then in the
+mise shims and `~/.bun/bin`.
 
 ## Activate and verify each agent and host
 

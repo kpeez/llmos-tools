@@ -173,6 +173,8 @@ the cast `as VaultFile`. Not covered:
   just wrote wherever they are.
 
 The Hermes provider (`hermes/`, Python) keeps its own containment code.
+The OpenCode adapter (`opencode/llmos.ts`) runs the committed hook bundles
+and is outside `cli/src`, so the lints above do not cover it.
 
 The MCP server (`src/mcp.ts`, `llmos mcp`) takes its arguments from a
 model: keep every tool's arguments checked in its handler, every path inside
