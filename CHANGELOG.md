@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos doctor` no longer checks agent configs for the command and plugin names that 2.11.0 removed.
+
 ## 2.14.1 — 2026-11-23
 
 - `install.ts` smoke-tests the new copy before it replaces the install folder.
