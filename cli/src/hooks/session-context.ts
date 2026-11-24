@@ -29,7 +29,6 @@ import {
 import { hookAgent } from "./heartbeat.ts";
 import { hasAutoMemoryDir } from "./links.ts";
 
-/** `cwd`, then each parent up to `/`. */
 function* ancestors(path: string): Generator<string> {
   let current = path;
   for (;;) {
@@ -40,7 +39,6 @@ function* ancestors(path: string): Generator<string> {
   }
 }
 
-/** The linked docs folder and its target, for a cwd inside a project repository. */
 function linkedProjectDocs(cwd: string, root: string): [string, string] | null {
   for (const ancestor of ancestors(cwd)) {
     for (const dotDirectory of [".agents", ".agent"]) {

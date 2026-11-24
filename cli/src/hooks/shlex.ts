@@ -14,15 +14,12 @@ const ESCAPE = "\\";
 const ESCAPED_QUOTES = '"';
 const PUNCTUATION = "();<>|&";
 
-/** An unterminated quote or a trailing escape, as Python's `ValueError`. */
 export class ShlexError extends Error {
   override name = "ShlexError";
 }
 
 interface Options {
-  /** Split shell operators into their own tokens (`punctuation_chars=True`). */
   punctuation: boolean;
-  /** Characters that start a comment to the end of the line. */
   commenters: string;
   /** Read newlines and backslash-newlines as the shell does (operators only). */
   shellLines: boolean;

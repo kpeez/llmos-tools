@@ -12,7 +12,6 @@ import { locate } from "./git.ts";
 const GIT_TIMEOUT_MS = 5_000;
 
 export interface Checkout {
-  /** The worktree's top level. */
   top: string;
   /** The main checkout: the parent of the shared Git directory. */
   main: string;

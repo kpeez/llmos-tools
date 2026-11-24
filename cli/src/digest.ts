@@ -13,19 +13,16 @@
  * so `llmos health` reports the digest when it stops running. With
  * `--push` it then commits the notes it wrote and pushes them (`pushNotes`).
  *
- * It replaced the retired Python digest and keeps its contract: the markers
- * from `daily.ts`, the block hash (`blockHash`; the same `gh` output gives
- * the same hash), the rule that a failed day writes nothing, and the
- * daily-note format. `test/contract/digest.test.ts` pins this contract with
- * a snapshot. Two differences from the Python digest are intended:
+ * Its contract: the markers from `daily.ts`, the block hash (`blockHash`; the
+ * same `gh` output gives the same hash), the rule that a failed day writes
+ * nothing, and the daily-note format. `test/contract/digest.test.ts` pins it
+ * with a snapshot. Two rules keep repositories apart:
  *
- * - a PR merged in one repository no longer hides a PR with the same number
- *   opened in another (`fetchActivity`), so on such a day the block and its
- *   hash differ from the Python digest's;
+ * - a PR merged in one repository does not hide a PR with the same number
+ *   opened in another (`fetchActivity`);
  * - the summary must link each PR and issue with its repository and number
- *   (its GitHub URL), where Python accepted any `#N`, so one `#N` no longer
- *   counts for two repositories (`checkCompleteness`). This is internal: the
- *   block hash is unchanged.
+ *   (its GitHub URL), so one `#N` does not count for two repositories
+ *   (`checkCompleteness`).
  *
  * Untrusted text: PR and issue titles and bodies come from GitHub and reach
  * the model, so:
@@ -119,8 +116,6 @@ export type Activity = Record<ActivityKind, Item[]>;
 export type Grouped = Map<string, { title: string; repos: Map<string, Map<string, Item[]>> }>;
 export type Summarizer = (grouped: Grouped, day: Day) => string;
 
-// --- Days -----------------------------------------------------------------------
-
 const LOCAL_DATE = new Intl.DateTimeFormat("en-CA", {
   timeZone: LOCAL_TZ,
   year: "numeric",
@@ -185,8 +180,6 @@ function onDay(timestamp: unknown, day: Day): boolean {
   }
   return localDate(ms) === isoDate(day);
 }
-
-// --- The block hash ---------------------------------------------------------------
 
 type Reviver = (key: string, value: unknown, context?: { source?: string }) => unknown;
 
@@ -273,8 +266,6 @@ export function blockHash(grouped: Grouped, unseen: Project[]): string {
   const payload = { activity: grouped, unseen: unseen.map((project) => project.slug) };
   return createHash("sha256").update(canonicalJson(payload)).digest("hex");
 }
-
-// --- Fetch and group ------------------------------------------------------------------
 
 function items(value: unknown, what: string): Item[] {
   if (!Array.isArray(value)) throw new DigestError(`gh ${what} did not return a JSON list`);
@@ -433,7 +424,6 @@ function fetchActivity(day: Day, repos: string[], gh: Gh = runGh): Activity {
   const commits = search("commits", "--author-date", "sha,commit,repository,url");
   // A PR is identified by its repository and number: a PR merged in one
   // repository must not hide a PR with the same number opened in another.
-  // (The Python digest compared numbers alone.)
   const prKey = (pr: Item): string =>
     JSON.stringify([
       (pr.repository as Item | undefined)?.nameWithOwner ?? null,
@@ -479,7 +469,6 @@ export function groupByProject(activity: Activity, projects: Project[]): Grouped
   return grouped;
 }
 
-/** A PR or issue the summary must cite. */
 export interface Reference {
   /** `owner/repo#number`, which names it across repositories. */
   name: string;
@@ -522,8 +511,6 @@ function cites(prose: string, ref: Reference): boolean {
   return new RegExp(url, "i").test(prose);
 }
 
-// --- The model call -------------------------------------------------------------------
-
 function plain(value: unknown): unknown {
   if (value instanceof Map) {
     return Object.fromEntries([...value].map(([key, item]) => [key, plain(item)]));
@@ -535,7 +522,6 @@ function plain(value: unknown): unknown {
   return value;
 }
 
-/** The prompt for the one model call. */
 export function summaryPrompt(grouped: Grouped, day: Day): string {
   const required = expectedReferences(grouped)
     .map((ref) => `[#${ref.number}](${ref.url})`)
@@ -660,8 +646,6 @@ export function summarize(grouped: Grouped, day: Day, opencodeBin = "opencode"):
   }
 }
 
-// --- Publishing -----------------------------------------------------------------------
-
 // The digest runs from a timer, not a hook, so its git calls may take longer.
 const GIT_LOCAL_TIMEOUT_MS = 30_000;
 const GIT_TIMEOUTS = { fetch: 60_000, merge: 60_000, push: 60_000 };
@@ -712,8 +696,6 @@ export function pushNotes(root: string, paths: string[], message: string): void 
   }
   throw new DigestError(`${published.failed} failed, the notes stay local: ${published.reason}`);
 }
-
-// --- The note ----------------------------------------------------------------------------
 
 /** Write `<!--` as `&lt;!--`, so the text can hold no marker and no HTML comment. */
 export function neutralize(text: string): string {
@@ -816,11 +798,9 @@ function atomicWrite(path: string, content: string): void {
 }
 
 export interface ProcessOptions {
-  /** The GitHub owners whose repositories are monitored (`githubOwners`). */
   owners: readonly string[];
   gh?: Gh;
   opencodeBin?: string;
-  /** Replaces the model call (tests). */
   summarize?: Summarizer;
 }
 
@@ -862,7 +842,6 @@ export function processDay(day: Day, root: string, options: ProcessOptions): str
 export interface DigestRun {
   /** One `<date>: <outcome>` line per processed day, also for the days before a failure. */
   lines: string[];
-  /** What the run prints on stderr when it fails. */
   error?: string;
 }
 

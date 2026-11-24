@@ -33,7 +33,6 @@ export function isInboxDrop(path: string): boolean {
   return path.startsWith(`${RAW_DIR}/`) && !CAPTURE_NOTE.test(path);
 }
 
-/** Whether a vault-relative path is a shared project memory note. */
 export function isMemoryNote(path: string): boolean {
   return MEMORY_NOTE.test(path);
 }

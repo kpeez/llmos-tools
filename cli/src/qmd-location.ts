@@ -14,12 +14,10 @@ export type Env = Record<string, string | undefined>;
  */
 export const MEMORY_COLLECTION = "memory";
 
-/** The pattern of `MEMORY_COLLECTION`. */
 export const MEMORY_PATTERN = "projects/*/memory/*.md";
 
 export interface QmdLocation {
   dbPath: string;
-  /** qmd's YAML config, when it exists. */
   configPath?: string;
 }
 
@@ -27,7 +25,6 @@ function home(env: Env): string {
   return env.HOME || homedir();
 }
 
-/** Where the `qmd` command keeps its index and config, for this environment. */
 export function qmdLocation(env: Env): QmdLocation {
   const dbPath =
     env.INDEX_PATH || join(env.XDG_CACHE_HOME || join(home(env), ".cache"), "qmd", "index.sqlite");

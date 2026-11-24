@@ -86,9 +86,7 @@ export function whichAll(name: string, path: string | undefined): string[] {
     try {
       accessSync(candidate, constants.X_OK);
       if (statSync(candidate).isFile()) found.push(candidate);
-    } catch {
-      // Not here.
-    }
+    } catch {}
   }
   return found;
 }
@@ -102,9 +100,7 @@ function configuredRoot(env: Env): string | null {
       const data: unknown = JSON.parse(readFileSync(config, "utf8"));
       const value = (data as { vault_root?: unknown } | null)?.vault_root;
       if (typeof value === "string") given = value;
-    } catch {
-      // No usable config.
-    }
+    } catch {}
   }
   if (!given) return null;
   const home = env.HOME || homedir();
@@ -127,7 +123,6 @@ function run(argv: string[], env: Env): { code: number; output: string } {
   return { code: result.exitCode ?? 1, output };
 }
 
-/** Run every check; returns the printed lines and the exit code. */
 export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: number }> {
   const lines: string[] = [];
   let failures = 0;
@@ -154,7 +149,6 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
     ? 'brew install --cask obsidian && ln -sfh "/Applications/Obsidian.app/Contents/MacOS/obsidian-cli" "$(brew --prefix)/bin/obsidian-cli"'
     : 'sudo snap install obsidian --classic && mkdir -p "$HOME/.local/bin" && ln -sf /snap/obsidian/current/app/obsidian-cli "$HOME/.local/bin/obsidian-cli"';
 
-  // vault-root
   const root = configuredRoot(env);
   let rootValid = false;
   if (root === null) {
@@ -170,7 +164,6 @@ export async function doctor(env: Env): Promise<{ lines: string[]; exitCode: num
       ? readFileSync(join(root, "llmOS.md"), "utf8")
       : null;
 
-  // obsidian-cli and obsidian-vault
   const obsidianCli = whichAll("obsidian-cli", env.PATH)[0];
   if (obsidianCli) pass("obsidian-cli", obsidianCli);
   else fail("obsidian-cli", "command not found", obsidianRepair);
@@ -504,7 +497,6 @@ export function hermesProfileChecks(env: Env): { lines: string[]; failures: numb
   return { lines, failures };
 }
 
-/** A Codex hook-trust record of the old plugin ID. */
 const TRUST_RECORD = /^\s*\[hooks\.state\."llmos@llmos-vault:/;
 /** A plugin or marketplace record: the plugin ID, a Codex marketplace table, or a Claude marketplace key. */
 const PLUGIN_RECORD = /llmos@llmos-vault|marketplaces\.llmos-vault|"llmos-vault"\s*:/;

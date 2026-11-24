@@ -56,7 +56,6 @@ function isRepository(path: string): boolean {
   return isDir(joinPath(path, ".git")) || isFile(joinPath(path, ".git"));
 }
 
-/** Each repository beside the vault checkout. */
 function repositories(vaultRepository: string): string[] {
   const found: string[] = [];
   const parent = dirname(vaultRepository);
