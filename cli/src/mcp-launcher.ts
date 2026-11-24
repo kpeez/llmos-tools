@@ -46,7 +46,6 @@ export const SETUP_TEXT =
   "skill (it installs the CLI with cli/scripts/install.ts), then start a new session. Until " +
   "then, read and edit vault notes with the ordinary file tools.";
 
-/** Serve the single `setup` tool until stdin closes. */
 async function serveSetup(reason: string): Promise<void> {
   const text = SETUP_TEXT.replace("REASON", reason);
   // Loaded only here, so the usual path never evaluates the SDK.
@@ -93,7 +92,6 @@ export function sessionFolder(cwd: string, pluginRoot: string): string | null {
   return real === pluginRoot || real.startsWith(`${pluginRoot}/`) ? null : real;
 }
 
-/** Run the installed server as a child that shares this process's stdio. */
 async function runServer(entry: string): Promise<number> {
   const argv = [process.execPath, ...SAFE_BUN_FLAGS, entry, "mcp"];
   const folder = process.env.LLMOS_SESSION_CWD ?? sessionFolder(process.cwd(), PLUGIN_ROOT_DIR);

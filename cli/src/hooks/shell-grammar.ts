@@ -17,12 +17,9 @@ interface Node {
   [key: string]: unknown;
 }
 
-/** One simple command after its wrappers are removed. */
 export interface Invocation {
   words: string[];
-  /** The words of the commands that feed this one through a pipe. */
   feeders: string[][];
-  /** The operand of `< file`. */
   stdinFile: string | null;
   /** The command runs under `xargs`, so its last arguments come from stdin. */
   viaXargs: boolean;
@@ -41,7 +38,6 @@ const RECURSIVE = /^-[A-Za-z]*[rR]/;
 const FIND_PREDICATE_START = new Set(["(", ")", "!", ","]);
 const FIND_EXEC = new Set(["-exec", "-execdir", "-ok", "-okdir"]);
 
-/** Wrapper programs, each with the options that take a separate argument. */
 const WRAPPERS: Record<string, Set<string>> = {
   sudo: new Set(["-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-U", "-r", "-t"]),
   doas: new Set(["-u", "-C"]),

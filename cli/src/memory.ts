@@ -21,6 +21,7 @@
 
 import { lstatSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
+import { controlCharacters } from "./control-characters.ts";
 import { type Properties, parse, serialize } from "./frontmatter.ts";
 import { MEMORY_DIR, MEMORY_INDEX } from "./layout.ts";
 import { type HeldLock, LockRefused, vaultLockPath, waitLock } from "./lock.ts";
@@ -42,15 +43,12 @@ export type MemoryType = (typeof MEMORY_TYPES)[number];
 const INDEX_HEADER = "# Memory index\n";
 const NAME = /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/;
 const PROJECT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it rejects.
-const CONTROL = /[\u0000-\u001f\u007f]/;
+const CONTROL = controlCharacters();
 
-/** A memory request is invalid; nothing was written. */
 export class MemoryRefused extends Error {
   override name = "MemoryRefused";
 }
 
-/** One project's memory folder and index, as vault-relative paths. */
 export interface MemoryScope {
   project: string;
   dir: string;
@@ -127,7 +125,6 @@ export function readMemoryIndex(root: string, path: string): string | null {
   return truncated ? `${trimmed}\n[${MEMORY_INDEX} truncated]` : trimmed;
 }
 
-/** Whether index line `line` links to the note of memory `name`. */
 function linksTo(line: string, name: string): boolean {
   return line.includes(`](${name}.md)`);
 }
@@ -285,7 +282,6 @@ export function saveMemory(
   });
 }
 
-/** Delete memory `name`: its topic note and its index line. */
 export function forgetMemory(
   root: string,
   scope: MemoryScope,

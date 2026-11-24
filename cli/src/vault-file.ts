@@ -116,7 +116,6 @@ export function readWalkedNote(root: string, relative: string): string {
   return decodeText(readFileSync(insideVault(root, relative)));
 }
 
-/** The text of a checked vault file (see `decodeText`). */
 export function readText(file: VaultFile): string {
   return decodeText(readFileSync(file));
 }

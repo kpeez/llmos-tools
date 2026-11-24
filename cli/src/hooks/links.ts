@@ -43,16 +43,13 @@ import {
 
 interface Repository extends Checkout {
   root: string;
-  /** The matching folder name under `<root>/projects/`. */
   slug: string;
 }
 
 interface LinkSpec {
-  /** The link's path, relative to the worktree's top level. */
   path: string;
   /** The default target, or `null` to make no link. */
   target: (repository: Repository) => string | null;
-  /** Create the target folder when it is missing. */
   makeTarget: boolean;
   /**
    * Replace a dangling link with one to the target the hook would link now,
@@ -87,7 +84,6 @@ const LINKS: LinkSpec[] = [
   },
 ];
 
-/** The worktree containing `path`, or `null` outside a Git worktree or vault project. */
 function repositoryAt(path: string, root: string): Repository | null {
   const checkout = checkoutAt(path);
   if (checkout === null) return null;
@@ -105,7 +101,6 @@ function exists(path: string): boolean {
   }
 }
 
-/** The main checkout's symlink target for `path`, absolute, or `null`. */
 function mainTarget(repository: Repository, path: string): string | null {
   if (repository.main === repository.top) return null;
   const link = joinPath(repository.main, path);
@@ -117,7 +112,6 @@ function mainTarget(repository: Repository, path: string): string | null {
   }
 }
 
-/** Add `/<path>` to the shared exclude file once. */
 function exclude(repository: Repository, path: string): void {
   const line = `/${path}`;
   const file = joinPath(repository.common, "info", "exclude");
@@ -139,10 +133,6 @@ function readJsonObject(path: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * Whether `<main>/.claude/settings.local.json` already points `autoMemoryDirectory`
- * at `<root>/projects/<slug>/memory` before `linkAgentDirs` runs.
- */
 export function hasAutoMemoryDir(projectPath: string, root: string): boolean {
   const repository = repositoryAt(projectPath, root);
   if (repository === null) return false;

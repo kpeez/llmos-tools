@@ -37,7 +37,6 @@ export type FindingCode =
 export interface ClaimFinding {
   path: string;
   line: number;
-  /** The block ID of the callout, or null when it has none. */
   claim: string | null;
   code: FindingCode;
   message: string;
@@ -56,7 +55,6 @@ export interface ClaimsReport {
   notes: string[];
   facts: number;
   conflicts: number;
-  /** Fact counts by status: drafted, checked, verified, superseded, flagged. */
   by_status: Record<string, number>;
   /** Drafted, checked, and verified facts that passed every check. Flagged and superseded facts never count. */
   fully_checked: number;
@@ -91,8 +89,6 @@ const ELISION = /\[\s*(?:\.{3}|…)\s*\]|…|\.{3}/;
 const ALNUM = /[\p{L}\p{N}]/u;
 const DIGIT = /\d/;
 const LETTER = /\p{L}/u;
-
-// Text normalization -------------------------------------------------------
 
 const INVISIBLE = /[\u00AD\u200B-\u200D\u2060\uFEFF]/g;
 const CURLY_SINGLE = /[‘’‚‛]/g;
@@ -241,8 +237,6 @@ function containsInOrder(text: string, segments: readonly string[]): boolean {
   return true;
 }
 
-// Source sections ----------------------------------------------------------
-
 interface Heading {
   level: number;
   key: string;
@@ -311,7 +305,6 @@ function headingsOf(lines: readonly string[]): Heading[] {
 interface SourceText {
   lines: string[];
   headings: Heading[];
-  /** The whole body, normalized. */
   all: string;
   /** What is wrong with the source's manifest, or null. */
   integrity: string | null;
@@ -378,18 +371,13 @@ function manifestProblem(note: Note): string | null {
     : `its sha256_text (${hash.slice(0, 12)}...) does not match the text (${actual.slice(0, 12)}...)`;
 }
 
-// Numbers ------------------------------------------------------------------
-
 interface NumberToken {
   /** The digits and decimal point without thousands separators, plus any exponent (`59e-9`, `10^4`). */
   value: string;
-  /** A `%` or the word `percent` follows the number. */
   percent: boolean;
-  /** A `±` precedes the number. */
   plusMinus: boolean;
   /** A minus sign (`-`, `−`, or `–`) directly precedes the number, with no letter or digit before it. */
   negative: boolean;
-  /** Where the number starts in the text. */
   index: number;
 }
 
@@ -552,13 +540,9 @@ function checkNumbers(factText: string, quoteText: string): NumberCheck {
   return result;
 }
 
-// Callouts -----------------------------------------------------------------
-
 interface Callout {
   kind: "fact" | "conflict";
-  /** The title, which is the status. */
   title: string;
-  /** Index of the callout's first line. */
   at: number;
   /** The callout's lines without their `>` marker. */
   inner: string[];
@@ -675,8 +659,6 @@ function statementText(text: string): string {
     }),
   );
 }
-
-// The lint -----------------------------------------------------------------
 
 /** Lint the fact and conflict callouts of `notes`, each note once. */
 export function lintClaims(model: VaultModel, notes: readonly Note[]): ClaimsReport {

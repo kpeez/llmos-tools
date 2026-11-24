@@ -65,7 +65,7 @@ export function stampNote(path: string, date = localDate()): boolean {
   } catch {
     return false;
   }
-  // In place, like the Python hook: a replacing rename would drop the file's
+  // In place: a replacing rename would drop the file's
   // birth time (Obsidian's created time), extended attributes, and hard links.
   if (stamped !== text) writeFileSync(path, stamped);
   return true;

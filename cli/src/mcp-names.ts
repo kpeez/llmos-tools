@@ -3,7 +3,6 @@
  * (`mcp.ts`) and the hooks, which must not import the MCP SDK.
  */
 
-/** The server name in the plugin's `.mcp.json`. */
 export const SERVER_NAME = "llmos";
 
 export const READ_TOOLS = [
@@ -32,7 +31,6 @@ export const MCP_WRITE_TOOL = new RegExp(
   `^mcp__(?:plugin_llmos_)?${SERVER_NAME}__(?:${WRITE_TOOLS.join("|")})$`,
 );
 
-/** Antigravity direct tool name for an llmOS MCP write tool. */
 export const AGY_MCP_WRITE_TOOL = new RegExp(
   `^mcp_${SERVER_NAME}_(?:${SERVER_NAME}_)?(?:${WRITE_TOOLS.join("|")})$`,
 );

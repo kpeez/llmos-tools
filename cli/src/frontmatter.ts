@@ -13,7 +13,7 @@
  *
  * - top-level keys sorted by code point, with no blank lines between them;
  * - a property whose value is a single-line string, or a list of non-empty
- *   single-line strings, written the way the retired Python serializer wrote it:
+ *   single-line strings, written in the canonical simple form:
  *   `key:` for an empty string, `key: []` for an empty list, block-style list
  *   items, and a value double-quoted only when bare YAML would read it
  *   differently (so wikilinks are always quoted). A value that was quoted in
@@ -52,6 +52,7 @@ import {
   YAMLMap,
   type YAMLSeq,
 } from "yaml";
+import { anyOf, controlCharacters } from "./control-characters.ts";
 
 export type PropertyValue = string | PropertyValue[] | { [key: string]: PropertyValue };
 export type Properties = Record<string, PropertyValue>;
@@ -61,7 +62,6 @@ export interface Parsed {
   body: string;
 }
 
-/** The text has no `---`-delimited frontmatter block at all. */
 export class MissingFrontmatter extends Error {
   override name = "MissingFrontmatter";
 }
@@ -90,9 +90,16 @@ export class InvalidYamlFrontmatter extends UnsupportedFrontmatter {
   }
 }
 
-/** A change to a property that must never change (`created`). */
 export class ImmutableProperty extends Error {
   override name = "ImmutableProperty";
+}
+
+const IMMUTABLE_KEYS: readonly string[] = ["created"];
+
+function assertMutable(key: string): void {
+  if (IMMUTABLE_KEYS.includes(key)) {
+    throw new ImmutableProperty(`${key} is immutable and is never rewritten`);
+  }
 }
 
 const OPEN = "---\n";
@@ -109,8 +116,7 @@ const STRINGIFY_OPTIONS = {
 // A plain scalar may not start with a YAML indicator, and ": " or " #"
 // inside one ends it early. Such a value is written double-quoted.
 const YAML_INDICATORS = "[]{}&*!|>'\"%@`#,?:";
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point.
-const UNREPRESENTABLE = /[\x00-\x1f\x7f\x85\u2028\u2029]/;
+const UNREPRESENTABLE = controlCharacters("", "\x85\u2028\u2029");
 // Text that bare YAML (1.2 core, or 1.1 as PyYAML reads it) would read as a
 // null, a bool, or a number. Dates are left alone: YAML 1.2 reads a bare date
 // as a string.
@@ -123,27 +129,27 @@ const TYPED_LOOKING = new RegExp(
     "|[-+]?\\.(inf|Inf|INF)|\\.(nan|NaN|NAN))$",
 );
 
-// The canonical form is an on-disk contract that the Python serializer
-// defined, so its text rules keep Python's character sets rather than
-// JavaScript's: whitespace as `str.strip` sees it (with \x1c-\x1f and \x85,
-// without U+FEFF, unlike `trim`), the line breaks `str.splitlines` splits
-// on, and key order by code point (not UTF-16 code unit).
-const WHITESPACE = new Set(
+// The canonical form is an on-disk contract. Its text rules use Python's
+// character sets, not JavaScript's: `str.strip` whitespace (with \x1c-\x1f and
+// \x85, without U+FEFF), the `str.splitlines` breaks, and key order by code
+// point, not UTF-16 code unit.
+const PYTHON_WHITESPACE = new Set(
   "\t\n\v\f\r\x1c\x1d\x1e\x1f \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005" +
     "\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000",
 );
-// biome-ignore lint/suspicious/noControlCharactersInRegex: these control characters are line breaks.
-const LINE_BREAK = /\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/;
+const PYTHON_LINE_BREAK = new RegExp(
+  `${/\r\n/.source}|${anyOf("\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029").source}`,
+);
 
 function rstrip(value: string): string {
   let end = value.length;
-  while (end > 0 && WHITESPACE.has(value[end - 1] as string)) end--;
+  while (end > 0 && PYTHON_WHITESPACE.has(value[end - 1] as string)) end--;
   return value.slice(0, end);
 }
 
 function strip(value: string): string {
   let start = 0;
-  while (start < value.length && WHITESPACE.has(value[start] as string)) start++;
+  while (start < value.length && PYTHON_WHITESPACE.has(value[start] as string)) start++;
   return rstrip(value.slice(start));
 }
 
@@ -194,7 +200,7 @@ function isSimpleScalar(node: unknown): node is Scalar<string> {
   );
 }
 
-/** A key the Python serializer could write bare. A comment above it is written separately. */
+/** A key the canonical form writes bare. A comment above it is written separately. */
 function isSimpleKey(node: unknown): node is Scalar<string> {
   if (!isScalar(node)) return false;
   const { commentBefore } = node;
@@ -211,14 +217,14 @@ function isSimpleKey(node: unknown): node is Scalar<string> {
   }
 }
 
-/** Write a string scalar the way the Python serializer did, keeping quotes that carry a type. */
+/** Write a string scalar in the canonical form, keeping quotes that carry a type. */
 function renderScalar(node: Scalar<string>): string {
   const value = node.value;
   if (isQuoted(node) && (value === "" || TYPED_LOOKING.test(value))) return doubleQuoted(value);
   return needsQuotes(value) ? doubleQuoted(value) : value;
 }
 
-/** Lines for a property the Python serializer could write, or null if it could not. */
+/** Lines for a property in the canonical simple form, or null if it has none. */
 function simpleLines(pair: Pair): string[] | null {
   const { key, value } = pair;
   if (!isSimpleKey(key)) return null;
@@ -326,7 +332,6 @@ function blockLines(doc: Document, source: string | null, changed: ReadonlySet<s
   return lines;
 }
 
-/** Every comment line in a document, as written, in sorted order. */
 function comments(doc: Document): string[] {
   const found = [...commentLines(doc.commentBefore), ...commentLines(doc.comment)];
   visit(doc, (_key, node) => {
@@ -358,7 +363,6 @@ function invalidValue(value: unknown): string | null {
   return null;
 }
 
-/** Every comment in a node and its children, removed from them. */
 function detachComments(node: unknown): string[] {
   const found: string[] = [];
   const take = (item: unknown): void => {
@@ -393,12 +397,10 @@ function addCommentBefore(node: Scalar, comments: string[]): void {
   node.commentBefore = all.length > 0 ? all.join("\n") : undefined;
 }
 
-/** The document's properties as plain values. */
 function toProperties(doc: Document): Properties {
   return (doc.toJS({ maxAliasCount: -1 }) ?? {}) as Properties;
 }
 
-/** Parse a frontmatter block, or throw `UnsupportedFrontmatter`. */
 function parseBlock(source: string): Document.Parsed {
   const doc = parseDocument(source, PARSE_OPTIONS);
   const problem = doc.errors[0] ?? doc.warnings[0];
@@ -431,8 +433,7 @@ function parseBlock(source: string): Document.Parsed {
 /**
  * Split off the frontmatter block, or throw `MissingFrontmatter`. An empty
  * block (`---` then `---`) counts as a block, so the canonical form of a note
- * with no properties reads back as frontmatter. (The Python reader saw no
- * block there, so normalizing such a note twice failed.)
+ * with no properties reads back as frontmatter.
  */
 function split(text: string): { block: string; body: string } {
   if (!text.startsWith(OPEN)) {
@@ -459,19 +460,14 @@ function bodyLine(line: string): string {
   return content + (/ {2,}$/.exec(line)?.[0] ?? "");
 }
 
-/** The canonical note text for frontmatter lines and a body. */
 function assemble(lines: string[], body: string): string {
-  const bodyLines = body.split(LINE_BREAK).map(bodyLine);
+  const bodyLines = body.split(PYTHON_LINE_BREAK).map(bodyLine);
   while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1] === "") bodyLines.pop();
   // Reading drops leading blank lines, so writing one would not be idempotent.
   while (bodyLines.length > 0 && bodyLines[0] === "") bodyLines.shift();
   return `${["---", ...lines, "---", "", ...bodyLines].join("\n")}\n`;
 }
 
-/**
- * A note's parsed frontmatter and body, for reading properties and for
- * writing the note back in canonical form.
- */
 export class Frontmatter {
   private readonly changed = new Set<string>();
   private readonly original: Properties;
@@ -480,7 +476,6 @@ export class Frontmatter {
   private constructor(
     private readonly doc: Document,
     private readonly source: string | null,
-    /** The note text after the frontmatter block, without leading blank lines. */
     public body: string,
   ) {
     this.original = toProperties(doc);
@@ -494,13 +489,11 @@ export class Frontmatter {
     return new Frontmatter(parseBlock(source), source, body);
   }
 
-  /** A new note from plain properties and a body. */
   static create(properties: Properties, body: string): Frontmatter {
     const doc = new Document(properties, PARSE_OPTIONS);
     return new Frontmatter(doc, null, body);
   }
 
-  /** The properties as plain values: strings, lists, and maps. */
   get properties(): Properties {
     return toProperties(this.doc);
   }
@@ -514,11 +507,8 @@ export class Frontmatter {
     return (this.map().items as Pair[]).find((pair) => keyOf(pair) === key);
   }
 
-  /** Set a property to a string. `created` never changes. */
   setScalar(key: string, value: string): this {
-    if (key === "created") {
-      throw new ImmutableProperty("created is immutable and is never rewritten");
-    }
+    assertMutable(key);
     const pair = this.pair(key);
     assertNoAnchor(key, pair?.value);
     const scalar = new Scalar(value);
@@ -545,9 +535,7 @@ export class Frontmatter {
    * `UnsupportedFrontmatter` when `parent` holds something other than a map.
    */
   setInMap(parent: string, key: string, value: string): this {
-    if (parent === "created") {
-      throw new ImmutableProperty("created is immutable and is never rewritten");
-    }
+    assertMutable(parent);
     const pair = this.pair(parent);
     if (pair === undefined) {
       this.map().items.push(new Pair(new Scalar(parent), this.doc.createNode({ [key]: value })));
@@ -573,9 +561,7 @@ export class Frontmatter {
    * counts as no value.
    */
   appendUnique(key: string, value: string): this {
-    if (key === "created") {
-      throw new ImmutableProperty("created is immutable and is never rewritten");
-    }
+    assertMutable(key);
     const pair = this.pair(key);
     if (pair === undefined) {
       this.map().items.push(new Pair(new Scalar(key), this.doc.createNode([value])));
@@ -597,13 +583,11 @@ export class Frontmatter {
   }
 
   /**
-   * Remove a property. `created` never changes. Comments on the removed
+   * Remove a property. Comments on the removed
    * property move above the next property. Returns whether it existed.
    */
   delete(key: string): boolean {
-    if (key === "created") {
-      throw new ImmutableProperty("created is immutable and is never rewritten");
-    }
+    assertMutable(key);
     const map = this.map();
     const index = (map.items as Pair[]).findIndex((pair) => keyOf(pair) === key);
     if (index === -1) return false;
@@ -697,7 +681,6 @@ export function normalize(text: string): string {
   return Frontmatter.parse(text).toString();
 }
 
-/** Render plain properties and a body as a canonical note. */
 export function serialize(properties: Properties, body: string): string {
   return Frontmatter.create(properties, body).toString();
 }

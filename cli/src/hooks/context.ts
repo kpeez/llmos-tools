@@ -116,7 +116,6 @@ function simpleShellPaths(command: string, root: string): string[] {
   return positional;
 }
 
-/** Explicit target paths of a harness payload, resolved through symlinks. */
 export function targetPaths(
   toolInput: Payload,
   options: { cwd?: unknown; toolName?: string; root?: string | null },
@@ -255,7 +254,6 @@ export function preToolUse(data: Payload): string | null {
   return memoryTargets.length > 0 ? `${body}\n\n${memoryWriteContext()}` : body;
 }
 
-/** `context` after the vault's note schema, when the schema file can be read. */
 function withSchema(root: string, context: string): string {
   const schema = joinPath(root, SCHEMA_NOTE);
   if (!isFile(schema)) return context;

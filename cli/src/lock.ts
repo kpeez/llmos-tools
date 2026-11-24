@@ -22,7 +22,6 @@ import { stateDir } from "./heartbeat.ts";
 
 type Env = Record<string, string | undefined>;
 
-/** The timeout of the one git call that finds the git common dir. */
 const LOCAL_GIT_MS = 5_000;
 
 /** The lock path is a symbolic link or not a regular file; nothing was opened. */

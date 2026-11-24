@@ -153,7 +153,6 @@ export function deleteNote(root: string, relative: string): void {
   markDirty(root);
 }
 
-/** How long a read-change-write waits for another one to finish. */
 const NOTE_LOCK_WAIT_MS = 10_000;
 
 /**
@@ -214,7 +213,7 @@ const LIST_PROPERTIES = new Set<string>(LINK_FIELDS);
 /**
  * Set property `key` to `value`. The schema's list properties (the link
  * fields) are append-only: the value is added to the list unless it
- * is already there. `created` never changes.
+ * is already there.
  */
 export function setProperty(root: string, relative: string, key: string, value: string): void {
   withNoteLock(root, () => {
@@ -262,7 +261,6 @@ export function removeProperty(root: string, relative: string, key: string): boo
   });
 }
 
-/** Append `content` to the end of the note, on a new line. */
 export function appendContent(root: string, relative: string, content: string): void {
   editBody(root, relative, (body) =>
     body === "" ? content : `${body.replace(/\n+$/, "")}\n${content}`,
