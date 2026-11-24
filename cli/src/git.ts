@@ -87,7 +87,6 @@ function nulList(text: string): string[] {
 export interface Repo {
   top: string;
   env: Env;
-  /** The limit of each local call, in ms. */
   local: number;
 }
 
@@ -206,7 +205,6 @@ export function add(repo: Repo, paths: string[]): string | null {
   return result.ok ? null : failure(result);
 }
 
-/** Whether the index differs from `HEAD` in `paths`. */
 export function hasStaged(repo: Repo, paths: string[]): boolean | { error: string } {
   const result = run(
     repo.top,
@@ -281,7 +279,6 @@ export function changedSince(repo: Repo, ref: string, dirs: string[]): string[] 
   return result.ok ? nulList(result.stdout) : null;
 }
 
-/** Whether `from..to` holds a commit. */
 function ahead(repo: Repo, from: string, to: string): boolean {
   const result = run(repo.top, ["rev-list", "--count", `${from}..${to}`], repo.env, repo.local);
   return result.ok && (Number(result.stdout.trim()) || 0) > 0;
@@ -378,7 +375,6 @@ function changedBetween(repo: Repo, base: string, tip: string): string[] | null 
   return [...new Set([...nulList(log.stdout), ...nulList(net.stdout)])];
 }
 
-/** The limits of the network and merge calls of `update` and `publish`, in ms. */
 export interface Timeouts {
   fetch: number;
   merge: number;

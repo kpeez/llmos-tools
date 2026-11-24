@@ -1,6 +1,5 @@
 /**
- * The `llmos` commands. Each one keeps the command name and JSON
- * output shape of the retired Python CLI. Reads answer from one vault
+ * The `llmos` commands. Reads answer from one vault
  * model; writes are headless file writes (`write.ts`), except `move` and
  * `create --template`, which need the running Obsidian app.
  */
@@ -11,6 +10,7 @@ import { basename, dirname, join, normalize, relative, resolve } from "node:path
 import { checkNote, invalidFrontmatter } from "./authoring.ts";
 import { bodySection, summary as claimsSummary, lintClaims } from "./claims-lint.ts";
 import { type Command, type Context, type OptionSpec, UsageError, type Values } from "./cli.ts";
+import { controlCharacters } from "./control-characters.ts";
 import { type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
 import { readSkillFile, renderReference, renderSkill } from "./docs.ts";
@@ -76,14 +76,12 @@ function vaultOption(help: string): Record<string, OptionSpec> {
 // Handlers are also called without the command line (the MCP server), so
 // they check their values themselves instead of trusting `parseValues`.
 
-/** A string value. */
 function str(values: Values, name: string): string {
   const value = values[name];
   if (typeof value !== "string") throw new UsageError(`${name} must be a string`);
   return value;
 }
 
-/** A string value that may be absent. */
 function optionalStr(values: Values, name: string): string | undefined {
   return values[name] === undefined ? undefined : str(values, name);
 }
@@ -118,8 +116,7 @@ function count(values: Values, name: string, min: number): number {
   return value;
 }
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it rejects.
-const CONTROL = /[\u0000-\u0008\u000a-\u001f\u007f]/;
+const CONTROL = controlCharacters("\t");
 
 /** A property name: not empty, no surrounding spaces, no control characters. */
 function propertyKey(values: Values): string {
@@ -198,7 +195,6 @@ function fileJson(root: string, relative: string): NoteRecord {
   return noteRecord(root, relative, readText(resolveInVault(root, relative)));
 }
 
-/** The context's today as a day number. */
 function today(context: Context): Day {
   const day = parseDay(context.today());
   if (day === null) throw new Error(`today is not a date: '${context.today()}'`);
@@ -250,14 +246,12 @@ async function qmdIndexState(
   }
 }
 
-/** Options that narrow a note's JSON to what the caller needs. */
 const PROPERTIES_ONLY: OptionSpec = {
   type: "boolean",
   default: false,
   help: "Leave out the body: print only the name, path, and properties.",
 };
 
-/** A note's JSON with its body left out when `--properties-only` is set. */
 function narrowed(json: object, values: Values): object {
   if (values["properties-only"] !== true) return json;
   const { body: _body, ...rest } = json as { body?: string };
@@ -1562,7 +1556,6 @@ Do NOT use when you only want to read the help -- run \`<command> --help\`.`,
   },
 };
 
-/** Every `llmos` command. */
 export const COMMANDS: readonly Command[] = [
   read,
   list,

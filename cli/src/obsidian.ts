@@ -15,7 +15,6 @@ import { run as runProcess } from "./run.ts";
 /** A move or a template create in a running app takes seconds; a hung app must not hold the CLI. */
 const OBSIDIAN_TIMEOUT_MS = 30_000;
 
-/** The exit code for "Obsidian is not running", kept from the Python CLI. */
 export const EXIT_OBSIDIAN_NOT_RUNNING = 3;
 
 // The closed-app message seen in a live test (2026-07-17) was "The CLI is
@@ -31,12 +30,10 @@ const NOT_RUNNING_SIGNALS = [
   "no vault is open",
 ];
 
-/** obsidian-cli could not reach a running Obsidian app. */
 export class ObsidianNotRunning extends Error {
   override name = "ObsidianNotRunning";
 }
 
-/** obsidian-cli ran and failed for another reason. */
 export class ObsidianCliError extends Error {
   override name = "ObsidianCliError";
 }

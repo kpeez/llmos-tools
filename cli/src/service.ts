@@ -47,6 +47,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { QMDStore } from "@tobilu/qmd";
 import * as z from "zod";
+import { controlCharacters } from "./control-characters.ts";
 import { tryLock } from "./lock.ts";
 import {
   isEmbedLockBusy,
@@ -67,15 +68,12 @@ import {
 export type Env = Record<string, string | undefined>;
 
 export const DEFAULT_IDLE_MS = 30 * 60 * 1000;
-/** The longest request line the service reads. */
 export const MAX_LINE_BYTES = 16 * 1024;
-/** The idle limit in milliseconds. */
 export function idleLimit(env: Env): number {
   const given = Number(env.LLMOS_SERVICE_IDLE_MS);
   return Number.isFinite(given) && given > 0 ? given : DEFAULT_IDLE_MS;
 }
 
-/** Another live service already holds the socket. */
 export class ServiceInUse extends Error {
   override name = "ServiceInUse";
 }
@@ -91,8 +89,7 @@ export class ServiceError extends Error {
   }
 }
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it rejects.
-const CONTROL = /[\u0000-\u001f\u007f]/;
+const CONTROL = controlCharacters();
 const index = z.string().min(1).max(4096).optional();
 const searchParams = z.strictObject({
   query: z
@@ -121,7 +118,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Whether a process listens on the socket at `path`. */
 export function socketLive(path: string, timeoutMs = 1000): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.connect(path);
@@ -157,7 +153,6 @@ async function withStartLock<T>(paths: ServicePaths, work: () => Promise<T>): Pr
 
 export interface ServiceOptions {
   env: Env;
-  /** Replaces the idle limit of `env`. */
   idleMs?: number;
   /** Replaces opening the real qmd store; tests pass a stand-in. */
   openStore?: (location: QmdLocation) => Promise<QMDStore>;
@@ -167,22 +162,17 @@ export interface ServiceOptions {
 
 export interface RunningService {
   socket: string;
-  /** Resolves when the service has stopped. */
   done: Promise<void>;
-  /** Stop now: close the socket and the store. */
   close(): Promise<void>;
 }
 
-/** What `status` answers. */
 export interface ServiceStatus {
   pid: number;
   started_at: string;
   index: string;
   requests: number;
   idle_stop_ms: number;
-  /** Which qmd models are in memory now. */
   models: { embed: boolean; rerank: boolean; generate: boolean };
-  /** Whether a background embed runs now. */
   embedding: boolean;
 }
 
@@ -327,7 +317,6 @@ class Service {
     }
   }
 
-  /** Embed each requested collection in turn, one embed at a time. */
   private async drainEmbeds(): Promise<void> {
     if (this.embedding) return;
     this.embedding = true;
@@ -374,7 +363,6 @@ class Service {
   }
 }
 
-/** One response line for one request line. */
 async function respond(service: Service, line: string): Promise<string> {
   let parsed: unknown;
   try {

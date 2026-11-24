@@ -40,7 +40,6 @@ export async function openQmd(location: QmdLocation, syncConfig: boolean): Promi
   );
 }
 
-/** A qmd collection that the store does not have. */
 export class QmdCollectionMissing extends Error {
   override name = "QmdCollectionMissing";
 }
@@ -204,7 +203,6 @@ export type Searcher = (
   options: { collection: string; limit: number; mode: SearchMode },
 ) => Promise<SearchHit[]>;
 
-/** The searcher of an open store. */
 export function storeSearcher(store: QMDStore): Searcher {
   return (query, options) => search(store, query, options);
 }

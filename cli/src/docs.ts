@@ -19,13 +19,11 @@ function sorted(commands: readonly Command[]): Command[] {
   return [...commands].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
-/** One row per command: its name and one-line summary. */
 export function renderVerbTable(commands: readonly Command[]): string {
   const rows = sorted(commands).map((command) => `| \`${command.name}\` | ${command.summary} |`);
   return ["| verb | summary |", "| --- | --- |", ...rows].join("\n");
 }
 
-/** The full reference: the verb table, then each command's `--help` text. */
 export function renderReference(commands: readonly Command[]): string {
   const lines = [
     "# llmos command reference",

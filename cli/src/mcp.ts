@@ -35,6 +35,7 @@ import type { QMDStore } from "@tobilu/qmd";
 import * as z from "zod";
 import type { Command, Context, Outcome, Values } from "./cli.ts";
 import { COMMANDS, searchMode } from "./commands.ts";
+import { controlCharacters } from "./control-characters.ts";
 import { DAILY_DIR } from "./layout.ts";
 import { SERVER_NAME } from "./mcp-names.ts";
 import {
@@ -53,16 +54,12 @@ import { VaultModel, walkVault } from "./vault.ts";
 import { realTarget, WriteRefused } from "./vault-file.ts";
 import { stampNote } from "./write.ts";
 
-/** The one vault and qmd collection this server serves. */
 const VAULT = "llmos";
 const COLLECTION = "llmos";
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it rejects.
-const ANY_CONTROL = /[\u0000-\u001f\u007f]/;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it rejects.
-const CONTROL_EXCEPT_LINES = /[\u0000-\u0008\u000b-\u001f\u007f]/;
+const ANY_CONTROL = controlCharacters();
+const CONTROL_EXCEPT_LINES = controlCharacters("\t\n");
 
-/** One line of at most `max` characters, without control characters. */
 function line(max: number) {
   return z
     .string()
@@ -88,14 +85,12 @@ const MEMORY_NOTE =
   "(the client's first root, else the folder the agent started the server in), and the " +
   "call fails when the client names none.";
 
-/** The registry command a tool runs. */
 function command(name: string): Command {
   const found = COMMANDS.find((entry) => entry.name === name);
   if (found === undefined) throw new Error(`no llmos command named '${name}'`);
   return found;
 }
 
-/** The help of a command's argument or option. */
 function help(source: Command, name: string): string {
   const argument = source.arguments.find((entry) => entry.name === name);
   const text = argument?.help ?? source.options[name]?.help;
@@ -121,12 +116,10 @@ interface Tool {
   command: Command;
   schema: z.ZodObject;
   annotations: ToolAnnotations;
-  /** Extra description for behavior that differs from the command line. */
   note?: string;
   call(args: Record<string, unknown>, state: CallState): Promise<Outcome> | Outcome;
 }
 
-/** The llmOS root of this call. */
 function rootOf(state: CallState): string {
   return state.context.root(VAULT);
 }
@@ -154,7 +147,6 @@ function run(source: Command, values: Values, state: CallState): Promise<Outcome
   return source.run({ ...values, vault: VAULT }, state.context);
 }
 
-/** Stamp each changed note with today's date. */
 function stamp(state: CallState, root: string, paths: string[]): void {
   for (const path of paths) stampNote(root, path, state.context.today());
 }
@@ -481,7 +473,6 @@ function tools(): Tool[] {
   ];
 }
 
-/** A tool's description: the command's summary and help, plus what differs here. */
 function describe(tool: Tool): string {
   const parts = [tool.command.summary, tool.command.description];
   if (tool.note) parts.push(tool.note);
@@ -541,14 +532,12 @@ function result(outcome: Outcome): { content: { type: "text"; text: string }[] }
   return { content: [{ type: "text", text }] };
 }
 
-/** The shared state of one server process. */
 export class ServerState {
   readonly vault = new WarmVault();
   private store: Promise<QMDStore> | null = null;
 
   constructor(readonly context: Context) {}
 
-  /** The handler context, with the warm vault model. */
   handlerContext(): Context {
     return { ...this.context, model: (root) => this.vault.model(root) };
   }
@@ -605,7 +594,6 @@ async function clientRoots(server: McpServer): Promise<string[]> {
   }
 }
 
-/** Build the MCP server and its tools over `state`. */
 export function createServer(state: ServerState): McpServer {
   const server = new McpServer(
     { name: SERVER_NAME, version: "1" },

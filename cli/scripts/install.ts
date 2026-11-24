@@ -48,8 +48,7 @@ const BUN_INSTALL_TIMEOUT_MS = 10 * 60_000;
 const SMOKE_TIMEOUT_MS = 30_000;
 
 const COMMANDS = ["llmos", "qmd"];
-// Never copied: dependencies, and the caches of the retired Python package,
-// which older checkouts may still hold.
+// Never copied: dependencies, and Python caches that older checkouts may hold.
 const SKIPPED = new Set([
   "node_modules",
   ".venv",
@@ -76,7 +75,7 @@ function replaceable(link: string): boolean {
   try {
     stat = lstatSync(link);
   } catch {
-    return true; // Nothing there.
+    return true;
   }
   if (!stat.isSymbolicLink()) return false;
   const points = resolve(join(link, ".."), readlinkSync(link));

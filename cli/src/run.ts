@@ -22,7 +22,6 @@ type Output = Bun.SpawnOptions.Readable;
 
 let deadline = Number.POSITIVE_INFINITY;
 
-/** Stop all subprocesses of this process at `epochMs`. */
 export function setDeadline(epochMs: number): void {
   deadline = epochMs;
 }
@@ -66,7 +65,6 @@ function limit(timeoutMs: number): { timeout?: number } {
   return Number.isFinite(ms) ? { timeout: ms } : {};
 }
 
-/** The deadline is past, or too near for a call to do anything. */
 function exhausted(): boolean {
   return remainingMs() <= MIN_START_MS;
 }

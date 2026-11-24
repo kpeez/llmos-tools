@@ -38,7 +38,6 @@ import { realpath } from "./hooks/common.ts";
 
 type Env = Record<string, string | undefined>;
 
-/** The flag of the vault at `root`. */
 export function flagPath(root: string, env: Env = process.env): string {
   const key = createHash("sha256").update(realpath(root)).digest("hex").slice(0, 16);
   return join(stateDir(env), "dirty", key);
@@ -60,7 +59,6 @@ function missing(error: unknown): boolean {
   return (error as { code?: unknown }).code === "ENOENT";
 }
 
-/** The text of the file at `path`, read without following a symbolic link. */
 function readNoFollow(path: string): string {
   const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {

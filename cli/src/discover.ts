@@ -46,7 +46,6 @@ import { documentVectors, openQmd, qmdLocation } from "./qmd.ts";
 import { extractWikilinks, type Note, type VaultModel } from "./vault.ts";
 import { recordRun } from "./write.ts";
 
-/** Folders whose notes are never candidates. */
 export const EXCLUDED_FOLDERS = ["knowledge/", `${DAILY_DIR}/`, "categories/"];
 /** The vault's own rules, at its root, are never candidates. */
 const RULE_NOTES = new Set([SCHEMA_NOTE, AUTHORING_NOTE, INGEST_CONTRACT_NOTE]);
@@ -74,9 +73,6 @@ export const MIN_CLUSTER_NOTES = 3;
 export const SIMILAR_NEIGHBORS = 5;
 
 type Env = Record<string, string | undefined>;
-
-// ---------------------------------------------------------------------------
-// Identifiers
 
 const ARXIV_NEW = String.raw`(\d{2})(\d{2})\.(\d{4,5})`;
 const ARXIV_PATTERNS = [
@@ -166,9 +162,6 @@ export function extractIds(text: string, now: Date = new Date()): string[] {
   return [...found].sort();
 }
 
-// ---------------------------------------------------------------------------
-// The pure core
-
 export interface SimilarPair {
   a: string;
   b: string;
@@ -178,7 +171,6 @@ export interface SimilarPair {
 export interface Cluster {
   rank: number;
   score: number;
-  /** Vault-relative paths, in path order. */
   notes: string[];
   /** The `knowledge/` note that at least half of the notes link; null when none. */
   covered_by: string | null;
@@ -287,7 +279,6 @@ export function findClusters(model: VaultModel, similar: readonly SimilarPair[] 
     }
   }
 
-  // Connected components of the counted edges.
   const parent = candidates.map((_, i) => i);
   const root = (i: number): number => {
     let at = i;
@@ -402,9 +393,6 @@ export function similarPairs(
   });
   return pairs;
 }
-
-// ---------------------------------------------------------------------------
-// The command's work
 
 /** `path` with the real path of its nearest existing folder, so a link cannot hide a target. */
 function realPath(path: string): string {

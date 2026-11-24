@@ -160,7 +160,6 @@ export function pdfFigures(structured: StructuredContent): PdfFigure[] {
 }
 
 export interface PdfText {
-  /** `source.md`'s body. */
   text: string;
   figures: number;
   /** The images the text shows, under the file names they get in `assets/`. */

@@ -69,7 +69,6 @@ export const DIGEST_MAX_AGE_DAYS = 3;
  */
 export const RUN_RECORD_CLOCK_SKEW_DAYS = 1;
 
-/** A job whose last successful run is a date property on one note. */
 export interface RunRecord {
   job: string;
   /** The only command that may set the property. */
@@ -187,7 +186,6 @@ function overdueJobs(model: VaultModel, profile: Profile, today: Day): OverdueJo
   });
 }
 
-/** Aggregate vault hygiene into one report. */
 export function vaultHealth(model: VaultModel, options: HealthOptions): VaultHealth {
   const llmos = (options.profile ?? "llmos") === "llmos";
   const hubs = categoryHubs(model);
@@ -247,7 +245,6 @@ export function isClean(report: VaultHealth & QmdSection): boolean {
   );
 }
 
-/** The readable report: one line per section with its count. */
 export function summary(report: VaultHealth & QmdSection): string {
   const list = (items: string[]): string => items.join(", ") || "none";
   const lines = [

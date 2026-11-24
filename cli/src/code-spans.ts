@@ -9,13 +9,9 @@ const ESCAPABLE = /[!-/:-@[-`{-~]/;
 /** A blank line: the end of a paragraph, where a code span cannot continue. */
 const BLANK_LINE_AT = /\n[ \t]*\n/y;
 
-/** One inline code span: its offsets and the text between its backtick runs. */
 export interface CodeSpan {
-  /** Offset of the opening backtick run. */
   readonly start: number;
-  /** Offset just past the closing backtick run. */
   readonly end: number;
-  /** The text between the two runs, as written. */
   readonly content: string;
 }
 
