@@ -24,12 +24,17 @@ import { linkAgentDirs } from "./links.ts";
 
 type Env = Record<string, string | undefined>;
 
-// The session-start hook's timeout is 10 s: fetch 3 s + fast-forward 2 s,
-// plus five local calls of 1 s at most (each takes milliseconds).
 const LOCAL_TIMEOUT_MS = 1_000;
 /** Time left that one more repository needs: its project lookup is one local git call, which takes milliseconds. */
 const LINK_RESERVE_MS = 100;
-const UPDATE_TIMEOUTS = { fetch: 3_000, merge: 2_000 };
+/**
+ * The fetch gets the 6 s that the one `pull` had before the split into
+ * fetch and fast-forward. Together with the fast-forward it stays within the
+ * session-start deadline (`HOOK_TIMEOUT_MS` less `HOOK_RESERVE_MS`), which
+ * leaves 1.5 s for the local calls (each takes milliseconds); a slow fetch
+ * is cut by the deadline, never by the harness. `cloud.test.ts` pins both.
+ */
+export const UPDATE_TIMEOUTS = { fetch: 6_000, merge: 2_000 };
 
 /**
  * Fetch `origin main` into the vault checkout and fast-forward it there
@@ -139,7 +144,9 @@ export function cloudSetup(root: string, env: Env = process.env): string | null 
   notes.push(
     `This cloud session's vault checkout is ${root}. Before you edit vault notes, ` +
       "run git fetch origin main, then git merge --ff-only origin/main; if it refuses, stop and report why. " +
-      "Commit vault changes there, then git push origin HEAD:main; if the push is refused, stop and report. " +
+      "Commit vault changes there, then git push origin HEAD:main. " +
+      "If the push is refused, run git fetch origin main, then git merge --no-edit origin/main, then push again once. " +
+      "If that merge conflicts, run git merge --abort. After a conflict or a second refusal, stop and report. " +
       "Never rebase, stash, or reset the vault checkout: those can drop commits. " +
       "Vault notes go to main, not to the session branch.",
   );
