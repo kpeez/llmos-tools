@@ -17,6 +17,7 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
@@ -26,6 +27,7 @@ import {
   rmdirSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { isIP } from "node:net";
@@ -551,6 +553,51 @@ function writeSynced(path: string, data: string | Uint8Array): void {
   }
 }
 
+/** `.<slug>-<pid>-<random>`: the staging folder of a capture, named for the process that writes it. */
+const STAGING_FOLDER = /^\.(.+)-(\d+)-[A-Za-z0-9]{6}$/;
+
+/** The empty file that proves a folder is a capture's staging; the capture removes it before the rename. */
+const STAGING_MARKER = ".llmos-staging";
+
+function isMarked(folder: string): boolean {
+  try {
+    return lstatSync(join(folder, STAGING_MARKER)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+}
+
+/**
+ * Remove the staging folders that dead captures left in `sources`: a kill
+ * cannot run the capture's own cleanup. A staging folder belongs to a live
+ * capture while the process in its name runs. Only a real folder that matches
+ * the staging name and holds the marker goes; a link, a source folder, and a
+ * folder someone made by hand never do. An unmarked folder goes only while it
+ * is empty, which covers a kill between the folder and its marker. A kill
+ * between the marker's removal and the rename leaves a complete, unmarked
+ * folder that stays.
+ */
+function removeDeadStaging(sources: string): void {
+  for (const entry of readdirSync(sources, { withFileTypes: true })) {
+    const owner = STAGING_FOLDER.exec(entry.name)?.[2];
+    if (!entry.isDirectory() || owner === undefined || processExists(Number(owner))) continue;
+    const folder = join(sources, entry.name);
+    try {
+      if (isMarked(folder)) rmSync(folder, { recursive: true, force: true });
+      else rmdirSync(folder);
+    } catch {}
+  }
+}
+
 function syncFolder(folder: string): void {
   const fd = openSync(folder, "r");
   try {
@@ -979,15 +1026,18 @@ export async function captureSource(
   }
   const madeSources = !existsSync(sources);
   mkdirSync(sources, { recursive: true });
-  const staging = mkdtempSync(join(sources, `.${slug}-`));
+  removeDeadStaging(sources);
+  const staging = mkdtempSync(join(sources, `.${slug}-${process.pid}-`));
   try {
     chmodSync(staging, 0o755); // mkdtemp makes it private; the folder is shared vault content
+    writeSynced(join(staging, STAGING_MARKER), "");
     mkdirSync(join(staging, "assets"));
     writeSynced(join(staging, `raw.${located.format}`), located.raw);
     for (const asset of converted.assets)
       writeSynced(join(staging, "assets", asset.name), asset.bytes);
     writeSynced(join(staging, "source.md"), note);
     syncFolder(join(staging, "assets"));
+    unlinkSync(join(staging, STAGING_MARKER));
     syncFolder(staging);
     renameSync(staging, folder);
   } catch (error) {

@@ -26,6 +26,12 @@ Newest first. Versions are the `version` field shared by
   `git merge --no-edit origin/main`, and push once more. It stops and reports
   after a merge conflict or a second refusal. It never rebases, stashes, or
   resets. Before, it said only to stop and report.
+- `llmos source add` now cleans up after a killed capture. Its hidden staging
+  folder in `raw/` is named `.<slug>-<pid>-<random>`, and the next capture
+  removes each staging folder whose process has exited. A staging folder holds
+  a marker file (`.llmos-staging`) until the rename, and only a marked or an
+  empty folder goes. The capture never removes the staging folder of a running
+  capture, a link, or a folder that someone made by hand.
 
 ## 2.14.0 — 2026-11-23
 
