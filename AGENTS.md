@@ -74,7 +74,11 @@ covers and how to read a failure.
 Run git only through `src/git.ts`. It sets a timeout and path-safe options
 on every call and offers no `rebase`, `stash`, `reset`, or `pull`, which can
 drop a commit that another writer made. Two Biome plugins in `lint/` fail on a
-git spawn anywhere else and on those words in any git argument list.
+git spawn anywhere else and on those words in any git argument list. The spawn
+plugin also fails on the string `"git"` bound to a variable or an object
+property (`const GIT = "git"`), which hides it from the argument check. It does
+not catch a plain template string such as `` `git` ``, a name built at run time
+(`["gi", "t"].join("")`), or a name read from a function call or an import.
 Start subprocesses only through `src/run.ts` (`run`, `start`, `startDetached`).
 Its options require `timeoutMs`, and a Biome plugin (`lint/subprocess.grit`)
 fails on `Bun.spawn`, `Bun.spawnSync`, `Bun.$`, and `node:child_process` in any
