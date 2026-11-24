@@ -115,7 +115,8 @@ a commit that another writer made.
 Start subprocesses only through `run`, `start`, or `startDetached` in
 `src/run.ts`. Their options require `timeoutMs`. `lint/subprocess.grit` fails
 on `Bun.spawn`, `Bun.spawnSync`, `Bun.$`, and `node:child_process` in any
-other file.
+other file. The OpenCode adapter (`opencode/llmos.ts`) is outside `cli/src`:
+it spawns the committed hook bundles itself, and no lint covers it.
 
 A hook arms one deadline for all its subprocesses (`src/hook-limits.ts`,
 armed in `runHook` in `src/hooks/runtime.ts`), and `run` cuts each call to the
@@ -174,8 +175,6 @@ Not caught:
   just wrote wherever they are.
 
 The Hermes provider (`hermes/`, Python) keeps its own containment code.
-The OpenCode adapter (`opencode/llmos.ts`) runs the committed hook bundles
-and is outside `cli/src`, so the lints above do not cover it.
 
 ### Hook output: `emit()` in `src/hooks/runtime.ts`
 
