@@ -1,13 +1,34 @@
 // Only cli/src/git.ts runs git (biome.json scopes this plugin to the code
 // outside it). A git spawn elsewhere skips its timeout, its unquoted paths,
 // its no-prompt setting, and its safe verbs. A tagged template such as
-// Bun.$`git ...` counts; a plain template string does not.
+// Bun.$`git ...` counts; a plain template string does not. A "git" bound to
+// a variable or an object property counts too, because `run([GIT, ...])`
+// hides it from the array check. `as`, `satisfies`, and parentheses around
+// the "git" do not hide it.
 language js
+
+pattern bare_git() {
+  or {
+    JsStringLiteralExpression() as $lit where $lit <: r"^[\"']git[\"']$",
+    TsAsExpression(expression=bare_git()),
+    TsSatisfiesExpression(expression=bare_git()),
+    JsParenthesizedExpression(expression=bare_git())
+  }
+}
 
 or {
   JsStringLiteralExpression() as $git where {
     $git <: r"^[\"']git[\"']$",
     $git <: or { within JsArrayExpression(), within JsCallArguments() },
+    register_diagnostic(
+      span=$git,
+      message="Run git only through cli/src/git.ts: it sets a timeout and path-safe options, and offers no rebase, stash, reset, or pull, which drop commits (see the verify-memory-sync skill).",
+      severity="error"
+    )
+  },
+  or { JsInitializerClause(expression=$value), JsPropertyObjectMember(value=$value) } where {
+    $value <: bare_git(),
+    $git = $value,
     register_diagnostic(
       span=$git,
       message="Run git only through cli/src/git.ts: it sets a timeout and path-safe options, and offers no rebase, stash, reset, or pull, which drop commits (see the verify-memory-sync skill).",
