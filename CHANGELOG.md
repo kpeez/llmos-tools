@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.14.3 — 2026-11-24
+
 - OpenCode 2 runs the llmOS hooks and MCP server. The adapter plugin
   `opencode/llmos.ts` runs the committed bundles: the vault guard (it denies a
   raw `rm` or `mv` of a note on the `shell` tool), the session context, the
