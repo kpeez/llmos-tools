@@ -186,8 +186,8 @@ Assumptions, which the check does not cover:
   notes broke `OnlyCheckedPush` through `Dg`'s own steps, so these cases do
   reach the digest's push.
 
-Sync commit: `d27b851` (perf(hooks): give pre-tool-use its own bundle, one
-process per Bash call, and read one note without the vault (#53)). At
+Sync commit: `f3f8658` (chore(comments): delete comments that restate code
+and encode the constraints they carried (#62)). At
 that commit, the models describe the code.
 
 ## When a change touches the covered code

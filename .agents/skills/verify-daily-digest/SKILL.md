@@ -60,8 +60,8 @@ Assumptions, which the check does not cover:
 - One digest run at a time: the systemd timer starts one service.
 - `--push` (`pushNotes`) and Git merges between hosts are not modeled.
 
-Sync commit: `d27b851` (perf(hooks): give pre-tool-use its own bundle, one
-process per Bash call, and read one note without the vault (#53)). At
+Sync commit: `f3f8658` (chore(comments): delete comments that restate code
+and encode the constraints they carried (#62)). At
 that commit, the model describes the code.
 
 ## When a change touches the covered code
