@@ -45,7 +45,7 @@ function vaultOf(tmp: string): string {
 
 function setFlag(tmp: string, root = vaultOf(tmp)): string {
   const flag = dirtyFlag(tmp, root);
-  mkdirSync(dirname(flag), { recursive: true });
+  mkdirSync(dirname(flag), { recursive: true, mode: 0o700 });
   writeFileSync(flag, "token\n");
   return flag;
 }
