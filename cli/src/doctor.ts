@@ -498,7 +498,7 @@ const WARN_AFTER_DAYS = 7;
 const DAY_MS = 86_400_000;
 
 interface Agent {
-  key: "claude" | "codex" | "agy" | "hermes";
+  key: "claude" | "codex" | "agy" | "hermes" | "opencode";
   name: string;
   /** The installed plugin folder; `undefined` when the plugin is not installed. */
   installPath: string | null | undefined;
@@ -623,6 +623,19 @@ function hermesInstall(env: Env): string | null | undefined {
 }
 
 /**
+ * OpenCode's install record: the adapter file `plugins/llmos.ts` in its config
+ * folder. The bundles are in the installed plugin it runs, `current` (or
+ * `$LLMOS_PLUGIN_ROOT`). `null` when that folder is gone.
+ */
+function opencodeInstall(env: Env): string | null | undefined {
+  const home = env.HOME || homedir();
+  const config = env.XDG_CONFIG_HOME || join(home, ".config");
+  if (!isFile(join(config, "opencode", "plugins", "llmos.ts"))) return undefined;
+  const root = env.LLMOS_PLUGIN_ROOT || join(home, ".local", "share", "llmos", "current");
+  return isDirectory(root) ? realOrSelf(root) : null;
+}
+
+/**
  * The hook heartbeat checks, one per agent: the hooks must have run (the
  * session-start hook records each run, `src/heartbeat.ts`) with the bundle
  * that is installed now. A missing or older heartbeat means the hooks cannot
@@ -678,6 +691,18 @@ export function hookChecks(env: Env, now = Date.now()): { lines: string[]; failu
         "Link ~/.hermes/plugins/llmos (and plugins/llmos in each profile) to the installed " +
         "plugin: ln -sfn ~/.local/share/llmos/current/hermes ~/.hermes/plugins/llmos. If " +
         "~/.local/share/llmos/current is missing, rerun cli/scripts/install.ts first.",
+    },
+    {
+      key: "opencode",
+      name: "OpenCode",
+      installPath: opencodeInstall(env),
+      repair:
+        "Start a fresh OpenCode session, then rerun llmos doctor. If it still fails, the " +
+        "plugin file is not loaded or bun is not on the PATH OpenCode gives hooks " +
+        "(setup-llmos, OpenCode).",
+      update:
+        "Install llmOS with cli/scripts/install.ts, then copy the adapter: cp " +
+        "~/.local/share/llmos/current/opencode/llmos.ts ~/.config/opencode/plugins/llmos.ts",
     },
   ];
 

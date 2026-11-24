@@ -62,6 +62,32 @@ The two flags stop Bun from loading the session's project `.env` and
 | PostToolUse (Write/Edit) | `post-tool-use` | `stamp.ts`    | Normalizes and stamps frontmatter, reports authoring findings, and sets the dirty flag for every vault note the tool wrote, stamped or not; gives a shared memory topic note `metadata.node_type: memory` when it lacks it, and leaves memory notes otherwise unstamped and unchecked, except that every vault note, memory notes included, gets a finding when its frontmatter is not valid YAML |
 | Stop                     | `stop`          | `stop.ts`, `sync.ts` | Updates the keyword index **iff** the dirty flag is set, by this turn or by any other process: `llmos reindex --no-embed` (the `llmos` collection, and `memory` when it exists), else `qmd update -c llmos` (qmd scans every collection); never embeds. Then commits changed shared project memory and pushes it |
 
+## OpenCode
+
+OpenCode 2 does not read `hooks/hooks.json`. The adapter plugin in
+`opencode/llmos.ts` (TypeScript, installed as a real file in
+`~/.config/opencode/plugins/`) runs the same bundles from the installed plugin
+(`~/.local/share/llmos/current/dist/`, or `$LLMOS_PLUGIN_ROOT`). It sends the
+payload the bundles read for Claude Code (OpenCode tools `shell`, `read`,
+`grep`, `glob`, `write`, and `edit` mapped to `Bash`, `Read`, `Grep`, `Glob`,
+`Write`, and `Edit`) and sets `PLUGIN_ROOT=~/.config/opencode/plugins/llmos`,
+so the heartbeat names `opencode`. Setup is in `setup-llmos` ("OpenCode").
+
+| OpenCode hook | Hook event | When |
+| --- | --- | --- |
+| `session.hook("context")` | `session-start` | First model request of each session; the text is cached and added to the system prompt of every request |
+| `tool.hook("execute.before")` | `pre-tool-use` | The six tools above; a guard denial (exit 2) throws, so the call fails with the guard message |
+| `tool.hook("execute.after")` | `post-tool-use` for `write` and `edit` | Stamps the note; the context from `pre-tool-use` and the stamp findings go into the tool result |
+| `session.execution.succeeded` event | `stop` | End of every turn; runs detached, so it outlives a short `opencode run` |
+
+Every adapter failure lets the tool call run. The guard does not see MCP
+write tools: OpenCode names them differently, so they get no authoring
+context before a write. The adapter sends the guard an absolute folder:
+the call's `workdir` resolved against the session folder (a relative
+`workdir` such as `notes` means `<session folder>/notes`; `~` and `~/rest`
+mean the home folder, as in OpenCode), or the session folder when the call
+has no `workdir`.
+
 ## Hermes Agent
 
 Hermes Agent does not read `hooks/hooks.json`. The adapter plugin in

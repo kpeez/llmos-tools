@@ -6,6 +6,13 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- OpenCode 2 runs the llmOS hooks and MCP server. The adapter plugin
+  `opencode/llmos.ts` runs the committed bundles: the vault guard (it denies a
+  raw `rm` or `mv` of a note on the `shell` tool), the session context, the
+  stamp after a `write` or `edit`, and the reindex when a turn ends.
+  `llmos doctor` reports `hooks-opencode`. Setup is in `setup-llmos`
+  ("OpenCode"). Before, OpenCode had no guard.
+
 ## 2.14.2 — 2026-11-23
 
 - The git spawn lint (`cli/lint/git-spawn.grit`) also fails on the string

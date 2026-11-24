@@ -11,7 +11,8 @@ import { isAntigravityPayload, type Payload } from "./common.ts";
  * The agent running this hook. The plugin root comes first: each agent
  * installs plugins under its own folder (`~/.claude/plugins`,
  * `~/.codex/plugins`, `~/.gemini/config/plugins`; the Hermes adapter in
- * `hermes/` sets `~/.hermes/plugins/llmos`), and it cannot be inherited
+ * `hermes/` sets `~/.hermes/plugins/llmos`, and the OpenCode adapter in
+ * `opencode/` sets `~/.config/opencode/plugins/llmos`), and it cannot be inherited
  * by a nested agent the way environment markers can (a Codex started from a
  * Claude shell still has `CLAUDECODE`). Then the environment markers, then
  * the transcript path.
@@ -22,6 +23,7 @@ export function hookAgent(env: Env, data: Payload): string {
   if (root.includes("/.gemini/")) return "agy";
   if (root.includes("/.hermes/")) return "hermes";
   if (root.includes("/.claude/")) return "claude";
+  if (root.includes("/opencode/")) return "opencode";
   if (env.ANTIGRAVITY_CLI) return "agy";
   const marked = detectProvider(env);
   if (marked) return marked;

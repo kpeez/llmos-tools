@@ -37,6 +37,10 @@ In Hermes Agent, link `hermes/` into each profile's `plugins/` folder and
 enable it; the `setup-llmos` skill lists every step (MCP server, skills,
 `SOUL.md`).
 
+In OpenCode 2, copy `opencode/llmos.ts` into `~/.config/opencode/plugins/` and
+add the MCP server with `opencode mcp add`; the `setup-llmos` skill lists the
+commands.
+
 To install the CLI by hand, see [CLI and scripts](docs/cli.md#install).
 
 ## Quick start

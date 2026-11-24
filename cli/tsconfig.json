@@ -14,5 +14,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "test", "bin", "scripts", "../.agents/skills/verify-llmos/scripts"]
+  "include": [
+    "src",
+    "test",
+    "bin",
+    "scripts",
+    "../opencode",
+    "../.agents/skills/verify-llmos/scripts"
+  ]
 }

@@ -272,6 +272,25 @@ describe("llmos doctor hook checks", () => {
     expect(passing.lines.join("\n")).toContain("PASS hooks-hermes: hooks ran");
   });
 
+  test("checks hooks-opencode against the bundle of the installed plugin the adapter runs", () => {
+    const h = host({ claude: false, codex: false });
+    const installed = join(h.env.HOME, ".local", "share", "llmos", "current");
+    mkdirSync(join(installed, "dist"), { recursive: true });
+    writeFileSync(join(installed, "dist", "hooks.js"), "opencode bundle");
+    expect(hookChecks(h.env, NOW).lines.join("\n")).toContain("NOTE hooks-opencode:");
+
+    mkdirSync(join(h.env.HOME, ".config", "opencode", "plugins"), { recursive: true });
+    writeFileSync(join(h.env.HOME, ".config", "opencode", "plugins", "llmos.ts"), "");
+    const missing = hookChecks(h.env, NOW);
+    expect(missing.failures).toBe(1);
+    expect(missing.lines.join("\n")).toContain("FAIL hooks-opencode: no heartbeat");
+
+    beatFor(h, "opencode", join(installed, "dist", "hooks.js"));
+    const passing = hookChecks(h.env, NOW);
+    expect(passing.failures).toBe(0);
+    expect(passing.lines.join("\n")).toContain("PASS hooks-opencode: hooks ran");
+  });
+
   test("fails hooks-hermes when the plugin link points at a missing folder", () => {
     const h = host({ claude: false, codex: false });
     mkdirSync(join(h.env.HOME, ".hermes", "plugins"), { recursive: true });
@@ -287,6 +306,12 @@ describe("llmos doctor hook checks", () => {
 });
 
 describe("hookAgent", () => {
+  test("names the agent from the plugin root the OpenCode adapter sets", () => {
+    expect(hookAgent({ PLUGIN_ROOT: "/Users/k/.config/opencode/plugins/llmos" }, {})).toBe(
+      "opencode",
+    );
+  });
+
   test("names the agent from the plugin root the Hermes adapter sets", () => {
     expect(hookAgent({ PLUGIN_ROOT: "/Users/k/.hermes/plugins/llmos" }, {})).toBe("hermes");
     expect(hookAgent({ CLAUDE_PLUGIN_ROOT: "/Users/k/.claude/plugins/cache/x" }, {})).toBe(
