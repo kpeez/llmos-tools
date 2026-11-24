@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.14.1 — 2026-11-23
+
 - `install.ts` smoke-tests the new copy before it replaces the install folder.
   Before, a reinstall of the same version that failed the smoke test had
   already replaced the working copy, so `current` and the `~/.local/bin` links
