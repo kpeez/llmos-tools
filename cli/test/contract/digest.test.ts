@@ -23,15 +23,13 @@ test("the snapshot covers the edge days in order, with the outcomes they exist f
   for (const day of snapshot.days) {
     if (day.exit === 0) expect(day.again).toMatch(NO_OP);
   }
-  const used = new Set(snapshot.days.flatMap((day) => day.differs_from_python));
-  expect(Object.keys(snapshot.allowlist).sort()).toEqual([...used].sort());
 });
 
 test(
   "every edge day matches the snapshot, and a second run is a no-op",
   () => {
     const observed = runEdgeDays(snapshot.days.map((day) => day.day));
-    for (const [index, { differs_from_python: _, ...recorded }] of snapshot.days.entries()) {
+    for (const [index, recorded] of snapshot.days.entries()) {
       const { againChangedFiles, ...day } = observed[index] as (typeof observed)[number];
       expect(day).toEqual(recorded);
       expect(againChangedFiles).toBe(false);

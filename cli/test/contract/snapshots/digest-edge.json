@@ -1,9 +1,5 @@
 {
-  "about": "Outcomes, gh calls, required references, block hashes, markers, and notes of the TypeScript activity digest on the digest edge days, run in order on one vault copy; see test/contract/snapshot.ts. A day's differs_from_python names the allowlist entries that described how the retired Python digest's result differed.",
-  "allowlist": {
-    "opened-pr-keying": "Python hid an opened PR when a PR with the same number merged that day in any repository; TypeScript hides only the PR that itself merged (same repository and number), so it lists the other PR, and the day's block and hash differ.",
-    "repository-qualified-links": "The TypeScript prompt requires each PR and issue as a link with its repository and number (`[#N](https://github.com/OWNER/REPO/pull/N)`), and the completeness check accepts only that link; Python required `#N`, which one mention satisfied for two repositories. The required references reduce to the same numbers; the note does not change."
-  },
+  "about": "Outcomes, gh calls, required references, block hashes, markers, and notes of the activity digest on the digest edge days, run in order on one vault copy; see test/contract/snapshot.ts.",
   "days": [
     {
       "day": "2026-07-16",
@@ -109,10 +105,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-07-16: unchanged (hash match, no model call)\n",
-      "differs_from_python": [
-        "repository-qualified-links"
-      ]
+      "again": "2026-07-16: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-07-17",
@@ -218,10 +211,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-07-17: unchanged (hash match, no model call)\n",
-      "differs_from_python": [
-        "repository-qualified-links"
-      ]
+      "again": "2026-07-17: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-07-18",
@@ -327,8 +317,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-07-18: unchanged (hash match, no model call)\n",
-      "differs_from_python": []
+      "again": "2026-07-18: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-07-19",
@@ -429,8 +418,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-07-19: silent (no note created)\n",
-      "differs_from_python": []
+      "again": "2026-07-19: silent (no note created)\n"
     },
     {
       "day": "2026-03-08",
@@ -537,10 +525,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-03-08: unchanged (hash match, no model call)\n",
-      "differs_from_python": [
-        "repository-qualified-links"
-      ]
+      "again": "2026-03-08: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-11-01",
@@ -648,10 +633,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-11-01: unchanged (hash match, no model call)\n",
-      "differs_from_python": [
-        "repository-qualified-links"
-      ]
+      "again": "2026-11-01: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-07-21",
@@ -760,11 +742,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "2026-07-21: unchanged (hash match, no model call)\n",
-      "differs_from_python": [
-        "opened-pr-keying",
-        "repository-qualified-links"
-      ]
+      "again": "2026-07-21: unchanged (hash match, no model call)\n"
     },
     {
       "day": "2026-07-20",
@@ -868,8 +846,7 @@
         "projects/gamma/gamma.md": "29822c7d2409fa52ad115dfc330e67f384a51eee8a278c951ebb71a72bb146d0",
         "projects/theta/notes.md": "a21c56b89db1172b2d52383d004b7ced757dd73699af662c44504552b2b0c390"
       },
-      "again": "",
-      "differs_from_python": []
+      "again": ""
     }
   ]
 }

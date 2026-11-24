@@ -64,43 +64,40 @@ describe("health: wikilinks in code", () => {
   });
 });
 
-describe("health: code spans follow CommonMark", () => {
-  const targets = async (body: string): Promise<string[]> =>
-    (await health({ "notes/a.md": `${FRONT}${body}\n` })).unresolved_links.map(
-      (link) => link.target,
+describe("health: code spans and fences follow CommonMark", () => {
+  // One health run over one note per case: a link inside code is hidden, so only `[[Real]]` may stay unresolved.
+  const cases: [name: string, body: string][] = [
+    ["a backslash-escaped backtick opens no span", "Escaped \\`not code [[Real]] and `x`."],
+    [
+      "a stray backtick before a fence hides nothing after it",
+      "Use ` here.\n```\n[[Hidden]]\n```\n[[Real]] and `x`.",
+    ],
+    ["a double-backtick span may hold a single backtick", "``x ` [[Hidden]] ``, then [[Real]]."],
+    ["a span may cross a single newline", "`first\n[[Hidden]] line` then [[Real]]."],
+    [
+      "a heading ends the paragraph, so a stray backtick above it hides nothing below",
+      "Stray `tick\n# Heading\nSee [[Real]] and `x`.",
+    ],
+    ["a longer closing fence closes the block", "```\n[[Hidden]]\n````\n[[Real]]"],
+    ["a shorter inner fence does not close the block", "````\n```\n[[Hidden]]\n````\n[[Real]]"],
+    [
+      "a fence of the other character does not close the block",
+      "```\n~~~\n[[Hidden]]\n```\n[[Real]]",
+    ],
+  ];
+
+  test("every case hides the link inside the code and keeps the one outside", async () => {
+    const files = Object.fromEntries(
+      cases.map(([, body], i) => [`notes/case-${i}.md`, `${FRONT}${body}\n`]),
     );
-
-  test("a backslash-escaped backtick opens no span, so a link after it is seen", async () => {
-    expect(await targets("Escaped \\`not code [[Real]] and `x`.")).toEqual(["Real"]);
-  });
-
-  test("a stray backtick before a fence hides nothing after the fence", async () => {
-    expect(await targets("Use ` here.\n```\n[[Hidden]]\n```\n[[Real]] and `x`.")).toEqual(["Real"]);
-  });
-
-  test("a double-backtick span may hold a single backtick and hides its link", async () => {
-    expect(await targets("``x ` [[Hidden]] ``, then [[Real]].")).toEqual(["Real"]);
-  });
-
-  test("a span may cross a single newline, so the link inside it is hidden", async () => {
-    expect(await targets("`first\n[[Hidden]] line` then [[Real]].")).toEqual(["Real"]);
-  });
-
-  test("a heading ends the paragraph, so a stray backtick above it does not hide a link below", async () => {
-    expect(await targets("Stray `tick\n# Heading\nSee [[Real]] and `x`.")).toEqual(["Real"]);
-  });
-});
-
-describe("health: fence closing rules", () => {
-  const targets = async (body: string): Promise<string[]> =>
-    (await health({ "notes/a.md": `${FRONT}${body}\n` })).unresolved_links.map(
-      (link) => link.target,
-    );
-
-  test("only a fence of the same character and at least the same length closes the block", async () => {
-    expect(await targets("```\n[[Hidden]]\n````\n[[Real]]")).toEqual(["Real"]);
-    expect(await targets("````\n```\n[[Hidden]]\n````\n[[Real]]")).toEqual(["Real"]);
-    expect(await targets("```\n~~~\n[[Hidden]]\n```\n[[Real]]")).toEqual(["Real"]);
+    const report = await health(files);
+    const leftOver = cases.map(([name], i) => [
+      name,
+      report.unresolved_links
+        .filter((l) => l.referrer === `notes/case-${i}.md`)
+        .map((l) => l.target),
+    ]);
+    expect(leftOver).toEqual(cases.map(([name]) => [name, ["Real"]]));
   });
 });
 

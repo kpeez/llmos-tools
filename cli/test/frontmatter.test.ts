@@ -8,6 +8,9 @@ import {
   serialize,
   UnsupportedFrontmatter,
 } from "../src/frontmatter.ts";
+import { VaultModel } from "../src/vault.ts";
+import { checkInvariants } from "./contract/invariants.ts";
+import { makeVault } from "./helpers.ts";
 
 const note = (block: string, body = "# Body\n"): string => `---\n${block}---\n${body}`;
 
@@ -151,5 +154,88 @@ describe("property changes", () => {
     expect(serialize({ topics: ["[[A]]"], status: "active", none: [] }, "# T\n")).toBe(
       '---\nnone: []\nstatus: active\ntopics:\n  - "[[A]]"\n---\n\n# T\n',
     );
+  });
+});
+
+describe("generated frontmatter blocks", () => {
+  // A seeded generator, so a failure replays: the same 300 blocks on every run.
+  function random(seed: number): () => number {
+    let state = seed;
+    return () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const VALUES = [
+    "word",
+    "42",
+    "3.50",
+    "true",
+    "null",
+    "2026-07-17",
+    "'quoted: with colon'",
+    '"hash # inside"',
+    "'  leading space'",
+    '"[[Some Note]]"',
+    "'[[Other]] and text'",
+    "[b, a, '[[A]]']",
+    "[]",
+    "{x: 1}",
+    "caf\u00e9 \u0665\u0660 \u{1f600}",
+    "plain text   with  gaps # and a comment",
+    "'it''s'",
+    '"tab\\there"',
+    "|\n  literal [[Link]]  \n  second line\n",
+    "&anchor shared",
+    "\n  - one\n  - 'two: 2'\n  - '[[Three]]'",
+  ];
+  const INVALID = [
+    "dup: a\ndup: b\n",
+    "- not\n- a map\n",
+    "key: [unclosed\n",
+    "key: 'unterminated\n",
+    "list:\n  -\n  - x\n",
+    "a: b: c\n",
+    "\tkey: tab indent\n",
+  ];
+
+  test("normalize keeps every value, is idempotent, and refuses exactly the invalid blocks", () => {
+    const next = random(20261123);
+    const pick = <T>(items: T[]): T => items[Math.floor(next() * items.length)] as T;
+    const files: Record<string, string> = {};
+    const invalid = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+      const lines: string[] = [];
+      const count = 1 + Math.floor(next() * 6);
+      for (let k = 0; k < count; k++) {
+        const value = pick(VALUES);
+        const comment = next() < 0.2 ? " # trailing" : "";
+        lines.push(`key${k}: ${value}${value.endsWith("\n") ? "" : `${comment}\n`}`);
+      }
+      let block = lines.join("").replace(/^key(\d+): &anchor shared/gm, "key$1: shared");
+      const path = `notes/n${i}.md`;
+      if (i % 5 === 0) {
+        block += pick(INVALID);
+        invalid.add(path);
+      }
+      files[path] = `---\n${block}---\n\n# Note ${i}\n\nBody with [[Link]] \n`;
+    }
+    const model = VaultModel.load(makeVault(files));
+    const report = checkInvariants(model);
+    expect(report.violations).toEqual([]);
+    const refused = Object.keys(report.refused).filter((path) => path.startsWith("notes/"));
+    expect(new Set(refused)).toEqual(invalid);
+    const rewritten = [...invalid].filter((path) => {
+      try {
+        normalize(files[path] as string);
+        return true;
+      } catch (error) {
+        return !(error instanceof UnsupportedFrontmatter);
+      }
+    });
+    expect(rewritten).toEqual([]);
   });
 });

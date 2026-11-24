@@ -295,6 +295,45 @@ function gitRepo(name: string): string {
   return repo;
 }
 
+const TEMPLATE_HASHES = `
+import importlib.util, json, sys, hashlib
+stub, provider_file = sys.argv[1], sys.argv[2]
+sys.path.insert(0, stub)
+spec = importlib.util.spec_from_file_location("llmos_memory_provider", provider_file)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+names = ["STATE", "INSTRUCTIONS", "HELPFUL", "NOISE"]
+print(json.dumps({n: hashlib.sha256(getattr(module, n).encode("utf-8")).hexdigest() for n in names}))
+`;
+
+describe.skipIf(python() === null)("the judge request templates", () => {
+  // The judge's scores, and so the thresholds, were measured with these exact texts
+  // (see JUDGE_THRESHOLDS): a changed character changes recall. Change a template only
+  // after a new offline evaluation, then record the new hash here.
+  test("keep the text of the offline evaluation", () => {
+    const { stub } = setup();
+    const result = Bun.spawnSync({
+      cmd: [
+        python() as string,
+        "-I",
+        "-c",
+        TEMPLATE_HASHES,
+        stub,
+        join(TOOLS, "hermes", "memory_provider.py"),
+      ],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(result.stderr.toString()).toBe("");
+    expect(JSON.parse(result.stdout.toString())).toEqual({
+      STATE: "4cedbf79f38d049c14fbd3ba2b6e728d02c6b05b917df46d42f42d5686ef2580",
+      INSTRUCTIONS: "50c1e6e94a7124dccb74908b1e4fed2bf521853d92dac989ffd8f2937a40261e",
+      HELPFUL: "d73d07fd70f1a79a7fd071b082a60fcdfebef1e993062fac284d8d9e4b809031",
+      NOISE: "2063d58adaede3b770da711f598ccc8e8a312dccebb6955bdc9fd5289a3763c7",
+    });
+  });
+});
+
 describe.skipIf(python() === null)("Hermes memory provider", () => {
   test("a chat in a vault project's repository gets its index and saves there", async () => {
     const setupResult = setup();

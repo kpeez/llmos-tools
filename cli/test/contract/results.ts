@@ -1,7 +1,6 @@
 /**
  * The external contract results of the CLI on one vault: what `llmos`
- * prints for `list` (without its exit code, as the Python oracle recorded
- * it), and what it prints and its exit code for `daily recent --n 2`; for every
+ * prints for `list` (without its exit code), and what it prints and its exit code for `daily recent --n 2`; for every
  * note `read`, `neighbors`, `subgraph` at depth 1 (and depth 2 where
  * `depth2` says so), and `check`; `read` by every note name; and `health
  * --json`. `normalize` and the schema audit (what `llmos audit` reports) have

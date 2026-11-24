@@ -5,18 +5,8 @@
  * and the activity digest's outcomes, block hash, markers, and notes on the
  * digest edge days (`digest.test.ts`).
  *
- * The snapshots were first recorded while the retired Python package was
- * still the reference: the differential harness and the
- * digest parity check required the TypeScript output to equal the Python
- * output apart from the intended differences on their allowlists, and only
- * then wrote the TypeScript output. Where the two differed, the snapshot
- * holds the TypeScript output, and `differs_from_python` names the allowlist
- * entries that described the difference (`allowlist` gives their reasons).
- *
- * TypeScript is now the reference. After an intended contract change, record
- * again with `just contract-record` (`record.ts`), which keeps those
- * annotations, and review the diff: every changed result is a contract
- * change.
+ * After an intended contract change, record again with `just contract-record`
+ * (`record.ts`) and review the diff: every changed result is a contract change.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -34,16 +24,9 @@ export const SNAPSHOT_DAY = "2026-10-07";
 export const SNAPSHOT_VAULTS = ["vault", "health_vault", "edge_vault"] as const;
 export type SnapshotVault = (typeof SNAPSHOT_VAULTS)[number];
 
-interface Annotated {
+export interface CliSnapshot {
   about: string;
-  /** Reason of each allowlist entry named in `differs_from_python`. */
-  allowlist: Record<string, string>;
-}
-
-export interface CliSnapshot extends Annotated {
   today: string;
-  /** Result name -> the allowlist entries that described how Python's result differed. */
-  differs_from_python: Record<string, string[]>;
   /** Result name (see `flatten` in `results.ts`) -> the TypeScript result. */
   results: Record<string, unknown>;
 }
@@ -65,24 +48,20 @@ export interface DigestDay {
   note: string | null;
   /** SHA-256 of every file in the vault after the first run. */
   files: Record<string, string>;
-  /** The allowlist entries that described how the Python digest's result for this day differed. */
-  differs_from_python: string[];
 }
 
-export interface DigestSnapshot extends Annotated {
+export interface DigestSnapshot {
+  about: string;
   days: DigestDay[];
 }
 
 export const CLI_ABOUT =
-  "Contract results of the TypeScript CLI on this vault, read on `today`; see " +
-  "test/contract/snapshot.ts. A key in differs_from_python is a result where the retired " +
-  "Python CLI gave something else, for the reasons of the named allowlist entries.";
+  "Contract results of the CLI on this vault, read on `today`; see test/contract/snapshot.ts.";
 
 export const DIGEST_ABOUT =
   "Outcomes, gh calls, required references, block hashes, markers, and notes of the " +
-  "TypeScript activity digest on the digest edge days, run in order on one vault copy; see " +
-  "test/contract/snapshot.ts. A day's differs_from_python names the allowlist entries that " +
-  "described how the retired Python digest's result differed.";
+  "activity digest on the digest edge days, run in order on one vault copy; see " +
+  "test/contract/snapshot.ts.";
 
 export function cliSnapshotPath(vault: SnapshotVault): string {
   return join(SNAPSHOT_DIR, `cli-${vault}.json`);

@@ -1,21 +1,6 @@
 {
-  "about": "Contract results of the TypeScript CLI on this vault, read on `today`; see test/contract/snapshot.ts. A key in differs_from_python is a result where the retired Python CLI gave something else, for the reasons of the named allowlist entries.",
+  "about": "Contract results of the CLI on this vault, read on `today`; see test/contract/snapshot.ts.",
   "today": "2026-10-07",
-  "allowlist": {
-    "health-qmd-unembedded": "health gained qmd_unembedded (documents still needing embedding) when the Stop hook stopped embedding; the Python health has no such field. It is null without qmd.",
-    "message-quotes-json": "Finding and schema messages quote a value as JSON, not as a Python `repr` (message wording is not contract); the quoted values and all other text must be equal."
-  },
-  "differs_from_python": {
-    "health.qmd_unembedded": [
-      "health-qmd-unembedded"
-    ],
-    "health.schema_violations": [
-      "message-quotes-json"
-    ],
-    "schema.errors": [
-      "message-quotes-json"
-    ]
-  },
   "results": {
     "list": [
       {

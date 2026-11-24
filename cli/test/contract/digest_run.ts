@@ -34,7 +34,7 @@ interface DigestRun {
 }
 
 /** What a day's runs did: the snapshot fields, and whether the second run changed any file. */
-export type ObservedDay = Omit<DigestDay, "differs_from_python"> & { againChangedFiles: boolean };
+export type ObservedDay = DigestDay & { againChangedFiles: boolean };
 
 function sha256(data: string | Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");

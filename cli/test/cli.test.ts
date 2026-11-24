@@ -36,30 +36,6 @@ describe("docs", () => {
     expect(renderSkill(skill, COMMANDS)).toBe(skill);
   });
 
-  test("every command name of the retired Python CLI is still registered", () => {
-    const names = COMMANDS.map((command) => command.name);
-    for (const name of [
-      "read",
-      "list",
-      "check",
-      "neighbors",
-      "subgraph",
-      "health",
-      "create",
-      "move",
-      "append",
-      "set-property",
-      "remove-property",
-      "file-inbox",
-      "daily get-or-create",
-      "daily append-thought",
-      "daily recent",
-      "docs",
-    ]) {
-      expect(names).toContain(name);
-    }
-  });
-
   test("--help prints the same text the reference shows", async () => {
     const result = await cli(makeVault(), ["daily", "append-thought", "--help"]);
     const command = COMMANDS.find((c) => c.name === "daily append-thought");
