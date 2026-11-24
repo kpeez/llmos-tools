@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.14.2 — 2026-11-23
+
 - The git spawn lint (`cli/lint/git-spawn.grit`) also fails on the string
   `"git"` bound to a variable or an object property outside `cli/src/git.ts`,
   such as `const GIT = "git"; run([GIT, "pull"])`. Before, the alias passed.
