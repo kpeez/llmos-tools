@@ -5,8 +5,7 @@
  * and a failing day. The activity carries non-ASCII, astral, and
  * lone-surrogate text, a raw U+2028, quotes, nested and non-ASCII keys, a PR
  * merged on the day it was opened, a PR opened in one repository on the day
- * a PR with the same number merged in another (which the retired Python
- * digest hid), and gh's year-1 `closedAt` for open issues. Special
+ * a PR with the same number merged in another, and gh's year-1 `closedAt` for open issues. Special
  * characters are built from code points so the source stays ASCII.
  */
 
@@ -169,8 +168,7 @@ const DAYS: Record<string, Day> = {
     ],
   },
   // alpha #40 merged today and was opened today, so it is not listed as
-  // opened. Beta's own #40, opened today and still open, is listed (the
-  // retired Python digest hid it because the numbers match).
+  // opened. Beta's own #40, opened today and still open, is listed.
   "2026-07-21": {
     ...empty(),
     merged: [pr("kpeez/alpha", 40, "Merge same day", "Opened and merged.")],

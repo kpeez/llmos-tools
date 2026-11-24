@@ -18,19 +18,9 @@ describe.each([...SNAPSHOT_VAULTS])("%s", (vault) => {
     const names = [...new Set([...Object.keys(snapshot.results), ...Object.keys(results)])];
     const mismatches = names
       .filter((name) => !isDeepStrictEqual(results[name], snapshot.results[name]))
-      .map((name) => ({ name, snapshot: snapshot.results[name], typescript: results[name] }));
+      .map((name) => ({ name, snapshot: snapshot.results[name], actual: results[name] }));
     // Record again with `just contract-record` only for an intended contract change.
     expect(mismatches).toEqual([]);
-  });
-
-  test("every annotation names a result and an allowlist entry it explains", () => {
-    for (const [name, ids] of Object.entries(snapshot.differs_from_python)) {
-      expect(snapshot.results).toHaveProperty([name]);
-      expect(ids.length).toBeGreaterThan(0);
-      for (const id of ids) expect(snapshot.allowlist).toHaveProperty([id]);
-    }
-    const used = new Set(Object.values(snapshot.differs_from_python).flat());
-    expect(Object.keys(snapshot.allowlist).filter((id) => !used.has(id))).toEqual([]);
   });
 
   test("normalize keeps values, is idempotent, and refuses only invalid YAML", async () => {

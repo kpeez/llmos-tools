@@ -83,8 +83,7 @@ const NOTES: Record<string, string> = {
   "fm/no-frontmatter.md": "# No frontmatter [[alpha]]\n",
   "fm/bom.md": `${c(0xfeff)}---\ncreated: 2026-07-01\n---\n\n# BOM\n`,
 
-  // Frontmatter shapes the retired Python parser refused. The TypeScript
-  // reader takes the valid YAML among them (and its property links) and
+  // Unusual frontmatter shapes. The reader takes the valid YAML among them (and its property links) and
   // refuses the rest, whose links in the block must not count.
   "fm/block-scalar.md": note("method: |\n  see [[alpha]]\n", "# Block [[beta]]\n"),
   "fm/comment.md": note("status: active # revisit\n", "# Comment\n"),
