@@ -840,8 +840,8 @@ that paper as captured; ask for \`<id>vN\` to capture a newer one. No agent
 edits a source folder afterwards. A capture writes into a hidden staging
 folder (\`raw/.<slug>-<pid>-<random>\`) and renames it into place, so a source
 folder is complete or absent. A capture that is killed leaves its staging
-folder; the next capture removes every staging folder whose process has
-exited. When MinerU is missing or fails, this exits
+folder, which holds a marker file until the rename; the next capture removes
+every marked or empty staging folder whose process has exited. When MinerU is missing or fails, this exits
 1 and writes nothing.`,
   arguments: [
     {

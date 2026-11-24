@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { PdfConversion, PdfConverter } from "../src/pdf.ts";
 import { CLI, cli, executable, isolatedEnv, makeVault, scratch } from "./helpers.ts";
@@ -81,7 +88,7 @@ describe("source add staging", () => {
     expect(rawFolders(root)).toHaveLength(1);
   }, 60_000);
 
-  test("a capture removes the staging of dead captures only", async () => {
+  test("a capture removes the marked staging of dead captures only", async () => {
     const root = makeVault({ "raw/small.pdf": "%PDF-1.4 small" });
     const sources = join(root, "raw");
     const live = Bun.spawn(["sleep", "60"]);
@@ -93,7 +100,11 @@ describe("source add staging", () => {
       for (const name of [staging(dead), staging(live.pid)]) {
         mkdirSync(join(sources, name, "assets"), { recursive: true });
         writeFileSync(join(sources, name, "source.md"), "partial");
+        writeFileSync(join(sources, name, ".llmos-staging"), "");
       }
+      mkdirSync(join(sources, `.hand-${dead}-abcdef`));
+      writeFileSync(join(sources, `.hand-${dead}-abcdef`, "u.txt"), "mine");
+      mkdirSync(join(sources, `.empty-${dead}-abcdef`));
       mkdirSync(join(sources, ".notes"));
       mkdirSync(join(sources, `paper-${dead}-abc123`));
       symlinkSync(outside, join(sources, `.linked-${dead}-abc123`));
@@ -103,9 +114,12 @@ describe("source add staging", () => {
       const left = rawFolders(root);
       expect(left).toContain(staging(live.pid));
       expect(left).toContain(".notes");
+      expect(left).toContain(`.hand-${dead}-abcdef`);
+      expect(readFileSync(join(sources, `.hand-${dead}-abcdef`, "u.txt"), "utf8")).toBe("mine");
       expect(left).toContain(`paper-${dead}-abc123`);
       expect(left).toContain(`.linked-${dead}-abc123`);
       expect(left).not.toContain(staging(dead));
+      expect(left).not.toContain(`.empty-${dead}-abcdef`);
       expect(existsSync(join(outside, "keep.txt"))).toBe(true);
     } finally {
       live.kill();

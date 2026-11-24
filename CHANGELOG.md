@@ -8,9 +8,10 @@ Newest first. Versions are the `version` field shared by
 
 - `llmos source add` now cleans up after a killed capture. Its hidden staging
   folder in `raw/` is named `.<slug>-<pid>-<random>`, and the next capture
-  removes each staging folder whose process has exited. It never removes the
-  staging folder of a running capture, a link, or a folder without the staging
-  name.
+  removes each staging folder whose process has exited. A staging folder holds
+  a marker file (`.llmos-staging`) until the rename, and only a marked or an
+  empty folder goes. The capture never removes the staging folder of a running capture, a
+  link, or a folder that someone made by hand.
 
 ## 2.14.0 — 2026-11-23
 
