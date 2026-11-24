@@ -6,7 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { isolatedEnv, makeVault, read } from "./helpers.ts";
 
 type Hook = (event: Record<string, unknown>) => Promise<void>;
@@ -14,6 +14,7 @@ type Hook = (event: Record<string, unknown>) => Promise<void>;
 const TOOLS = join(import.meta.dir, "..", "..");
 const SESSION = "ses_test";
 const ROOT_SESSION = "ses_vault_root";
+const OUTSIDE_SESSION = "ses_outside";
 const NOTE = "---\ncreated: 2026-07-01\n---\n# A note\n\nBody.\n";
 
 let vault: string;
@@ -24,14 +25,21 @@ const saved = { ...process.env };
 beforeAll(async () => {
   vault = makeVault({ "notes/n.md": NOTE, "notes/alpha.md": NOTE });
   folder = join(vault, "notes");
-  Object.assign(process.env, isolatedEnv({ LLMOS_ROOT: vault, LLMOS_PLUGIN_ROOT: TOOLS }));
+  Object.assign(process.env, isolatedEnv({ LLMOS_ROOT: vault, LLMOS_PLUGIN_ROOT: TOOLS }), {
+    HOME: dirname(vault),
+  });
   const adapter = (await import("../../opencode/llmos.ts")).default;
   const ctx = {
     location: { directory: folder },
     session: {
       hook: (name: string, fn: Hook) => hooks.set(`session.${name}`, fn),
       get: async ({ sessionID }: { sessionID: string }) => ({
-        directory: sessionID === ROOT_SESSION ? vault : folder,
+        directory:
+          sessionID === ROOT_SESSION
+            ? vault
+            : sessionID === OUTSIDE_SESSION
+              ? process.cwd()
+              : folder,
       }),
     },
     tool: { hook: (name: string, fn: Hook) => hooks.set(`tool.${name}`, fn) },
@@ -71,6 +79,17 @@ describe("the vault guard in OpenCode", () => {
         id: "call_relative",
         sessionID: ROOT_SESSION,
         input: { command: "rm alpha.md", workdir: "notes" },
+      }),
+    ).rejects.toThrow(/orphans any wikilinks/);
+  });
+
+  test("denies rm through a workdir that starts with ~", async () => {
+    await expect(
+      hooks.get("tool.execute.before")?.({
+        tool: "shell",
+        id: "call_home",
+        sessionID: OUTSIDE_SESSION,
+        input: { command: "rm alpha.md", workdir: `~/${basename(vault)}/notes` },
       }),
     ).rejects.toThrow(/orphans any wikilinks/);
   });

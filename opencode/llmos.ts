@@ -71,6 +71,12 @@ interface Ran {
   stderr: string;
 }
 
+/** OpenCode expands `~` and `~/…` in a shell `workdir`; `~user` stays a plain relative name. */
+function withHome(path: string): string {
+  if (path === "~") return HOME;
+  return path.startsWith("~/") ? join(HOME, path.slice(2)) : path;
+}
+
 function bun(): string {
   const found = (process.env.PATH ?? "").split(":").map((dir) => join(dir, "bun"));
   return [...found, ...BUN_FALLBACKS].find((path) => existsSync(path)) ?? "bun";
@@ -148,7 +154,7 @@ function setup(ctx: Context) {
     const workdir = typeof input.workdir === "string" && input.workdir ? input.workdir : null;
     return {
       session_id: e.sessionID,
-      cwd: workdir ? resolve(folder, workdir) : folder,
+      cwd: workdir ? resolve(folder, withHome(workdir)) : folder,
       tool_name: e.tool ? CLAUDE_TOOLS[e.tool] : undefined,
       tool_input: input,
     };
