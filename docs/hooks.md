@@ -82,8 +82,10 @@ so the heartbeat names `opencode`. Setup is in `setup-llmos` ("OpenCode").
 
 Every adapter failure lets the tool call run. The guard does not see MCP
 write tools: OpenCode names them differently, so they get no authoring
-context before a write. Relative paths resolve against the call's `workdir`,
-then the session folder.
+context before a write. The adapter sends the guard an absolute folder:
+the call's `workdir` resolved against the session folder (a relative
+`workdir` such as `notes` means `<session folder>/notes`), or the session
+folder when the call has no `workdir`.
 
 ## Hermes Agent
 

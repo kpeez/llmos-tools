@@ -12,7 +12,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const HOME = process.env.HOME || homedir();
 const PLUGIN_ROOT =
@@ -144,10 +144,11 @@ function setup(ctx: Context) {
     tool?: string;
   }) => {
     const input = e.input ?? {};
-    const workdir = typeof input.workdir === "string" ? input.workdir : null;
+    const folder = await folderOf(e.sessionID);
+    const workdir = typeof input.workdir === "string" && input.workdir ? input.workdir : null;
     return {
       session_id: e.sessionID,
-      cwd: workdir ?? (await folderOf(e.sessionID)),
+      cwd: workdir ? resolve(folder, workdir) : folder,
       tool_name: e.tool ? CLAUDE_TOOLS[e.tool] : undefined,
       tool_input: input,
     };

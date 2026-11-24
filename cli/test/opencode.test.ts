@@ -13,6 +13,7 @@ type Hook = (event: Record<string, unknown>) => Promise<void>;
 
 const TOOLS = join(import.meta.dir, "..", "..");
 const SESSION = "ses_test";
+const ROOT_SESSION = "ses_vault_root";
 const NOTE = "---\ncreated: 2026-07-01\n---\n# A note\n\nBody.\n";
 
 let vault: string;
@@ -21,7 +22,7 @@ const hooks = new Map<string, Hook>();
 const saved = { ...process.env };
 
 beforeAll(async () => {
-  vault = makeVault({ "notes/n.md": NOTE });
+  vault = makeVault({ "notes/n.md": NOTE, "notes/alpha.md": NOTE });
   folder = join(vault, "notes");
   Object.assign(process.env, isolatedEnv({ LLMOS_ROOT: vault, LLMOS_PLUGIN_ROOT: TOOLS }));
   const adapter = (await import("../../opencode/llmos.ts")).default;
@@ -29,7 +30,9 @@ beforeAll(async () => {
     location: { directory: folder },
     session: {
       hook: (name: string, fn: Hook) => hooks.set(`session.${name}`, fn),
-      get: async () => ({ directory: folder }),
+      get: async ({ sessionID }: { sessionID: string }) => ({
+        directory: sessionID === ROOT_SESSION ? vault : folder,
+      }),
     },
     tool: { hook: (name: string, fn: Hook) => hooks.set(`tool.${name}`, fn) },
     event: { subscribe: () => (async function* () {})() },
@@ -58,6 +61,18 @@ describe("the vault guard in OpenCode", () => {
     await expect(before("shell", { command: "rm notes/n.md", workdir: vault })).rejects.toThrow(
       /orphans any wikilinks/,
     );
+  });
+
+  test("denies rm through a relative workdir, with the bundle running outside the vault", async () => {
+    expect(process.cwd().startsWith(vault)).toBe(false);
+    await expect(
+      hooks.get("tool.execute.before")?.({
+        tool: "shell",
+        id: "call_relative",
+        sessionID: ROOT_SESSION,
+        input: { command: "rm alpha.md", workdir: "notes" },
+      }),
+    ).rejects.toThrow(/orphans any wikilinks/);
   });
 
   test.each([
