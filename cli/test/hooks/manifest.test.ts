@@ -174,6 +174,14 @@ test("Antigravity root hooks.json runs the bundle with valid events and matchers
   expect(postMatcher.test("edit_file")).toBe(true);
 });
 
+test("the Hermes hook timeout stays under Hermes's 30 s plugin-callback limit", () => {
+  const HERMES_CALLBACK_LIMIT_SECONDS = 30;
+  const hermes = readFileSync(join(TOOLS, "hermes/__init__.py"), "utf8");
+  const seconds = Number(/^TIMEOUT_SECONDS = (\d+)$/m.exec(hermes)?.[1]);
+  expect(seconds).toBeGreaterThan(0);
+  expect(seconds).toBeLessThan(HERMES_CALLBACK_LIMIT_SECONDS);
+});
+
 test("the hook timeouts in hook-limits.ts match hooks.json, and guard-bash matches Hermes", () => {
   const hooks = json("hooks/hooks.json").hooks as Record<string, Groups>;
   const found: Record<string, number> = {};
