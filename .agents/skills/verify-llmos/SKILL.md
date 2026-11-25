@@ -93,9 +93,7 @@ These need a running Obsidian app with its command line interface on. Without it
 This host has no Obsidian, so they are `verified-unreachable`. The harness records the exit 3.
 
 - `llmos move`
-- `llmos create --template`
 - `llmos file-inbox` and the MCP tool `file_inbox`
-- `llmos daily get-or-create`, and `daily append-thought` / MCP `daily_append_thought` when today's daily note is missing (Obsidian creates it from the template)
 
 Also not driven in a proof run, because they download models: `search --semantic`,
 `search --hybrid`, and a full `reindex` (embedding). So the `service` drive cannot show

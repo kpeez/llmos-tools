@@ -28,7 +28,7 @@ Read this index, then use the feature file as the recipe.
 ## Features
 
 - [Read and search notes](./read-search.md): `read`, `list`, `neighbors`, `health`, `reindex --no-embed`, keyword `search`.
-- [Write notes safely](./writes.md): `create`, `append`, `set-property`, `remove-property`, vault confinement. `move` and `create --template` are verified-unreachable (Obsidian).
+- [Write notes safely](./writes.md): `create`, `append`, `set-property`, `remove-property`, vault confinement. `move` is verified-unreachable (Obsidian).
 - [Lint claims](./claims-lint.md): `claims lint` on the fact and conflict callouts.
 - [Capture a source](./source-capture.md): `source add` on recorded pages. Real network capture is not driven.
 - [Hooks](./hooks.md): session-start context, pre-tool-use context, the Bash guard, the post-tool-use stamp.

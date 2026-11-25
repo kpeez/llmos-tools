@@ -89,7 +89,7 @@ function childEnv(state: State): Record<string, string> {
   const home = join(state.scratch, "home");
   return {
     HOME: home,
-    // Only bun and the system tools: no obsidian-cli, so Obsidian verbs exit 3.
+    // Only bun and the system tools: no obsidian-cli, so `move` exits 3.
     PATH: `${join(state.scratch, "bin")}:/usr/bin:/bin`,
     TMPDIR: join(state.scratch, "tmp"),
     TZ: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -362,16 +362,18 @@ const writes: Feature = (state) => {
     move.code === 3,
     `exit ${move.code}`,
   );
+  mkdirSync(join(state.vault, "categories", "templates"), { recursive: true });
+  writeFileSync(join(state.vault, "categories", "templates", "project.md"), "# {{title}}\n");
   const tpl = record(
     state,
     f,
-    "create-template-needs-obsidian",
+    "create-from-template",
     vault("create", "notes/t", "--template", "project"),
   );
   check(
     f,
-    "create --template exits 3 without Obsidian (verified-unreachable)",
-    tpl.code === 3,
+    "create --template writes the expanded note with Obsidian closed",
+    tpl.code === 0 && readFileSync(join(state.vault, "notes", "t.md"), "utf8") === "# t\n",
     `exit ${tpl.code}`,
   );
 };
@@ -611,11 +613,16 @@ const mcp: Feature = async (state) => {
       "set_property writes and stamps updated",
       !set.isError && beta.includes("status: active") && /updated: \d{4}/.test(beta),
     );
+    mkdirSync(join(state.vault, "categories", "templates"), { recursive: true });
+    writeFileSync(
+      join(state.vault, "categories", "templates", "daily-note.md"),
+      "# {{date:YYYY-MM-DD}}\n\n## Thoughts\n\n## Projects\n\n<!-- llmos-activity:start -->\n<!-- llmos-activity:end -->\n",
+    );
     const thought = await call("daily_append_thought", { text: "Verified the thought tool." });
     check(
       f,
-      "daily_append_thought errors without Obsidian (verified-unreachable)",
-      thought.isError && thought.text.includes("obsidian-cli"),
+      "daily_append_thought creates the daily note from the template with Obsidian closed",
+      !thought.isError && thought.text.startsWith("Appended to: daily/"),
       thought.text.slice(0, 120),
     );
     const outsideVault = await call("read", { note: "../../etc/passwd" });

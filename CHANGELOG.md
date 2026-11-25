@@ -6,6 +6,16 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos create --template` and the creation of a missing daily note (`daily
+  get-or-create`, `daily append-thought`, MCP `daily_append_thought`) no longer
+  need Obsidian. They expand the template themselves, as the core Templates
+  plugin does: `{{title}}`, `{{date}}`, `{{time}}`, and `{{date:FORMAT}}` and
+  `{{time:FORMAT}}` with a moment.js format. Other `{{...}}` text stays. They
+  read the vault's `.obsidian/templates.json` (folder and default formats) and
+  `.obsidian/daily-notes.json` (template). With `--content`, the content
+  follows the expanded template. The activity digest uses the same expansion for
+  a new daily note. Only `move` still needs the app (exit 3).
+
 - New `llmos fmt [paths...] [--check]` formats notes with the rules of the
   Obsidian Linter plugin and the vault's own Linter settings, so notes the CLI
   writes can match what lint-on-save writes. It skips `raw/` and dot folders,
