@@ -17,7 +17,7 @@
     "linkedom": "0.18.13",
     "markdownlint": "0.41.1",
     "moment": "2.29.4",
-    "obsidian-linter": "github:platers/obsidian-linter#4a73414",
+    "obsidian-linter": "github:platers/obsidian-linter#46e6bfa03b6aab189780d5ca4b69e77f4676d6ac",
     "turndown": "7.2.0",
     "unbash": "6.0.5",
     "yaml": "2.9.1",

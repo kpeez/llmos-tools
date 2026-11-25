@@ -4,8 +4,9 @@
  * Linter settings, so a note the CLI formats matches what lint-on-save would
  * write in Obsidian.
  *
- * The plugin is the `obsidian-linter` GitHub dependency pinned to one commit
- * (`package.json`). Its rules are plain TypeScript, but they import the
+ * The plugin is the `obsidian-linter` GitHub dependency pinned to the commit of one
+ * release (`package.json`). `fmt` refuses to run when the vault's Obsidian has
+ * another Linter release installed (`checkLinterVersion`). Its rules are plain TypeScript, but they import the
  * `obsidian` package, which exists only inside the app. `loadLinter` registers
  * a stub for that import and then loads the rules at run time, so the linter
  * is in no committed bundle (the hooks and the MCP launcher never reach this
@@ -26,6 +27,9 @@ import { rewriteNote } from "./write.ts";
 
 /** Where the Linter plugin keeps its settings, relative to the vault root. */
 export const LINTER_SETTINGS = ".obsidian/plugins/obsidian-linter/data.json";
+
+/** Where the installed Linter plugin names its release, relative to the vault root. */
+export const LINTER_MANIFEST = ".obsidian/plugins/obsidian-linter/manifest.json";
 
 /** Notes under this folder are captured sources, which no agent edits. */
 const FROZEN_FOLDER = "raw/";
@@ -73,11 +77,8 @@ interface LinterSettings {
   filesToIgnore?: { match?: string; flags?: string }[];
 }
 
-/** The options of one run of the plugin's rule runner. */
-interface RunOptions {
-  disabledRules: string[];
-  skipFile: boolean;
-}
+/** The options of one run of the plugin's rule runner (opaque to `fmt`). */
+type RunOptions = object;
 
 /** The slice of the plugin's rule runner that `fmt` calls. */
 export interface Linter {
@@ -139,8 +140,8 @@ async function importLinter(): Promise<Linter> {
   );
   // The plugin finds its rules with a bundler glob; load each file instead.
   for (const file of new Bun.Glob("src/rules/*.ts").scanSync(root)) await load(file);
-  const { lintText, createRunLinterRulesOptions } = await load<{
-    lintText(options: RunOptions): string;
+  const { RulesRunner, createRunLinterRulesOptions } = await load<{
+    RulesRunner: new () => { lintText(options: RunOptions): string };
     createRunLinterRulesOptions(
       text: string,
       file: null,
@@ -148,9 +149,8 @@ async function importLinter(): Promise<Linter> {
       settings: Record<string, unknown>,
       misspellings: Map<string, string>,
     ): RunOptions;
-  }>("src/rules-runner/rules-runner.ts");
-  const { getDisabledRules, rules } = await load<{
-    getDisabledRules(text: string): [string[], boolean];
+  }>("src/rules-runner.ts");
+  const { rules } = await load<{
     rules: { alias: string; getDefaultOptions(): Record<string, unknown> }[];
   }>("src/rules.ts");
   return {
@@ -158,10 +158,42 @@ async function importLinter(): Promise<Linter> {
     ruleDefaults: Object.fromEntries(rules.map((rule) => [rule.alias, rule.getDefaultOptions()])),
     lint(text, settings) {
       const options = createRunLinterRulesOptions(text, null, "en", settings, new Map());
-      [options.disabledRules, options.skipFile] = getDisabledRules(text);
-      return options.skipFile ? text : lintText(options);
+      return new RulesRunner().lintText(options);
     },
   };
+}
+
+function manifestVersion(path: string): string {
+  const data = JSON.parse(readFileSync(path, "utf8")) as { version?: unknown };
+  if (typeof data.version !== "string" || data.version === "") throw new Error("no version");
+  return data.version;
+}
+
+/**
+ * Throws unless the Linter release in the vault's Obsidian is the release that
+ * `fmt` runs. Another release can format differently, so the CLI and
+ * lint-on-save would drift apart.
+ */
+export function checkLinterVersion(root: string): void {
+  const ours = manifestVersion(
+    join(
+      dirname(Bun.resolveSync("obsidian-linter/package.json", import.meta.dir)),
+      "manifest.json",
+    ),
+  );
+  let theirs: string;
+  try {
+    theirs = manifestVersion(join(root, LINTER_MANIFEST));
+  } catch {
+    throw new Error(
+      `cannot read the Linter version from ${LINTER_MANIFEST}, so llmos fmt cannot tell whether Obsidian has Linter ${ours}: install Linter ${ours} in Obsidian`,
+    );
+  }
+  if (theirs !== ours) {
+    throw new Error(
+      `Obsidian has Linter ${theirs} but llmos fmt has ${ours}: pin cli/package.json to the matching release commit, or install Linter ${ours} in Obsidian`,
+    );
+  }
 }
 
 /** The vault's Linter settings on top of the plugin's defaults. Throws when the vault has none. */
@@ -236,6 +268,7 @@ export async function formatNotes(
   given: string[],
   check: boolean,
 ): Promise<FmtReport> {
+  checkLinterVersion(root);
   const data = readSettings(root);
   const { defaults, ruleDefaults, lint } = await loadLinter();
   const settings = { ...defaults, ...data };
