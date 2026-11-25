@@ -96,7 +96,7 @@ export interface RecordedObsidian {
 
 /**
  * An obsidian-cli stand-in that records every call and does what the app
- * would: `move` renames the file and `create` expands the daily template.
+ * would: `move` renames the file.
  * With `notRunning`, it fails the way obsidian-cli does when the app is closed.
  */
 export function recordedObsidian(root: string, notRunning = false): RecordedObsidian {
@@ -119,12 +119,6 @@ export function recordedObsidian(root: string, notRunning = false): RecordedObsi
       mkdirSync(dirname(join(root, params.to as string)), { recursive: true });
       renameSync(join(root, path), join(root, params.to as string));
       return { exitCode: 0, stdout: `Moved: ${path} -> ${params.to}\n`, stderr: "" };
-    }
-    if (argv[1] === "create" && params.template !== undefined) {
-      const template = read(root, `categories/templates/${params.template}.md`);
-      const day = path.slice(path.lastIndexOf("/") + 1, -3);
-      writeFiles(root, { [path]: template.replaceAll("{{date:YYYY-MM-DD}}", day) });
-      return { exitCode: 0, stdout: `Created: ${path}\n`, stderr: "" };
     }
     return { exitCode: 1, stdout: "", stderr: `unexpected call: ${argv.join(" ")}` };
   };

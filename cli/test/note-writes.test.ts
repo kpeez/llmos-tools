@@ -60,7 +60,8 @@ async function mcpWriter(env: Record<string, string>, index: number): Promise<st
 
 test("thoughts and properties written at once by CLI and MCP processes are all kept", async () => {
   const root = makeVault({ [DAILY]: NOTE });
-  const env = isolatedEnv({ LLMOS_ROOT: root });
+  // `bun test` runs in UTC: give the processes the same clock, or they find another day's note.
+  const env = isolatedEnv({ LLMOS_ROOT: root, TZ: process.env.TZ ?? "UTC" });
   const expected: string[] = [];
   const procs = Array.from({ length: CLI_WRITERS }, (_, i) => {
     expected.push(`cli-${i}`);

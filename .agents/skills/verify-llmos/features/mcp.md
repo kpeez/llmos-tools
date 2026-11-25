@@ -24,7 +24,7 @@ Preconditions: launch and doctor passed. `drive read-search` ran first, so the q
 - **Read.** `tools/call read {"note":"notes/alpha.md"}`. Not an error. The text holds `gardening`.
 - **Search.** `tools/call search {"query":"gardening"}`. Not an error. The text names `notes/beta.md`.
 - **Write.** `tools/call set_property {"note":"notes/beta.md","key":"status","value":"active"}`. `notes/beta.md` holds `status: active` and `updated`.
-- **Thought (verified-unreachable).** `tools/call daily_append_thought {"text":"..."}` is an error: no `obsidian-cli`. Today's daily note does not exist in the fixture, and Obsidian creates it from the template.
+- **Thought (verified-unreachable).** `tools/call daily_append_thought {"text":"..."}` creates today's daily note from the template, with no `obsidian-cli`.
 - **Outside the vault.** `read {"note":"../../etc/passwd"}` is an error. `set_property` on `notes/link.md` is an error.
 - **Memory.** `memory_save {"name":"tank-heater",...,"project":"verify"}` writes `projects/verify/memory/tank-heater.md`; `memory_forget` deletes it. `memory_save` with `"project":".."` is an error. Prerequisite: `drive memory` made `projects/verify/`.
 - **Unknown argument.** `read {"note":"notes/alpha.md","shell":"id"}` is an error.

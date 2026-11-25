@@ -1,14 +1,14 @@
 # Write notes safely
 
-A user or agent creates a note, appends text, and sets or removes a property. Every write stays inside the vault. Obsidian-only writes exit 3.
+A user or agent creates a note, appends text, and sets or removes a property. Every write stays inside the vault. `move` needs Obsidian and exits 3 without it.
 
 ## Sub-features
 
-- `create` writes a new note directly (no template).
+- `create` writes a new note directly, from a template when given `--template`.
 - `append` adds text to the end of a note.
 - `set-property` and `remove-property` edit one frontmatter key.
 - `confinement` refuses a path outside the vault, a link out of the vault, and an immutable key.
-- `obsidian-writes` are `move` and `create --template`. Both need Obsidian.
+- `obsidian-writes` is `move`. It needs Obsidian.
 
 ## How to get to it (user POV)
 
@@ -27,7 +27,8 @@ Preconditions: launch and doctor passed. `notes/new.md` does not exist.
 - **Append.** `llmos append notes/new "tail line"`. Exit 0. The file ends with `tail line`.
 - **Remove property.** `llmos remove-property notes/new status`. Exit 0. The key is gone.
 - **Link out of the vault.** The harness links `notes/link.md` to a file outside the vault. `set-property notes/link status pwned` exits not 0. The outside file is unchanged.
-- **Obsidian verbs (verified-unreachable).** `llmos move alpha notes/z.md` and `llmos create notes/t --template project` exit 3: "obsidian-cli is not on PATH". Prerequisite: the Obsidian app running with its CLI on. A run on a host with Obsidian also checks that backlinks are rewritten.
+- **Create from a template.** `llmos create notes/t --template project` (the fixture vault has no templates folder, so the harness writes `categories/templates/project.md` first). Exit 0. `notes/t.md` holds the expanded `{{title}}`.
+- **Obsidian verb (verified-unreachable).** `llmos move alpha notes/z.md` exits 3: "obsidian-cli is not on PATH". Prerequisite: the Obsidian app running with its CLI on. A run on a host with Obsidian also checks that backlinks are rewritten.
 - Run: `bun scripts/verify.ts drive writes`. Evidence goes to `writes/`.
 
 ## Gotchas

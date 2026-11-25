@@ -37,9 +37,8 @@ tells you which verb to run, `llmos <cmd> --help` tells you everything
 else.
 
 Reads and content or property writes work with Obsidian closed: writes are
-atomic file writes in the canonical frontmatter form. Only `move` and
-`create --template` need the running app; they exit 3 when it is not
-running. `search` and `reindex` use qmd's index through its SDK.
+atomic file writes in the canonical frontmatter form. Only `move` needs the running
+app; it exits 3 when the app is not running. `search` and `reindex` use qmd's index through its SDK.
 
 Keyword search stays current on its own: after each turn that changed the
 vault, the plugin's Stop hook runs `llmos reindex --no-embed`. Vectors
@@ -58,7 +57,7 @@ health` reports the count of documents that still need embedding as
 | `check` | Review one note for unlinked references and Markdown that renders wrongly; with no note, list notes whose frontmatter does not parse. |
 | `claims lint` | Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote. |
 | `config set-root` | Validate a vault root and write it to the llmOS config file. |
-| `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
+| `create` | Create a new note, optionally from a vault template. |
 | `daily activity` | Write the machine-owned `## Projects` block of daily notes from GitHub activity. |
 | `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading. |
 | `daily get-or-create` | Print today's daily note as JSON, creating it from the daily template if it is missing. |

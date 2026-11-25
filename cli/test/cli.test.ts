@@ -218,23 +218,22 @@ describe("headless writes", () => {
     expect(existsSync(join(root, DAILY))).toBe(false);
   });
 
-  test("a missing daily note is created from the template through Obsidian", async () => {
+  test("a missing daily note is created from the template with Obsidian closed", async () => {
     const root = makeVault();
-    const obsidian = recordedObsidian(root);
+    const obsidian = recordedObsidian(root, true);
     const result = await cli(root, ["daily", "append-thought", "First."], {
       obsidian: obsidian.runner,
     });
     expect(result.exitCode).toBe(0);
-    expect(obsidian.calls).toEqual([
-      ["vault=llmOS", "create", `path=${DAILY}`, "template=daily-note"],
-    ]);
-    expect(read(root, DAILY)).toContain("## Thoughts\n\nFirst.\n\n## Projects");
+    expect(obsidian.calls).toEqual([]);
+    expect(read(root, DAILY)).toContain(`# ${TODAY}\n\n## Thoughts\n\nFirst.\n\n## Projects`);
 
-    const closed = makeVault();
-    const refused = await cli(closed, ["daily", "get-or-create"], {
-      obsidian: recordedObsidian(closed, true).runner,
+    const other = makeVault({
+      ".obsidian/daily-notes.json": '{"template": "tpl/day"}',
+      "tpl/day.md": "# {{title}} at {{date:YYYY}}\n",
     });
-    expect(refused.exitCode).toBe(3);
+    expect((await cli(other, ["daily", "get-or-create"])).exitCode).toBe(0);
+    expect(read(other, DAILY)).toBe(`# ${TODAY} at ${TODAY.slice(0, 4)}\n`);
   });
 
   test("create writes a new note headlessly and refuses to overwrite or leave the vault", async () => {
@@ -249,8 +248,45 @@ describe("headless writes", () => {
     expect((await run(["create", "../outside"])).exitCode).toBe(1);
     expect(obsidian.calls).toEqual([]);
     expect(read(root, "notes/new.md")).toBe("# New\n");
-    // A template needs the app.
-    expect((await run(["create", "notes/t", "--template", "project"])).exitCode).toBe(3);
+  });
+
+  describe("create --template with Obsidian closed", () => {
+    const files = {
+      "categories/templates/project.md": "# {{title}}\n\nOn {{date:YYYY}} {{unknown}}\n",
+      "tpl/meeting.md": "Meeting {{title}}\n",
+      "outside.md": "secret\n",
+    };
+    const run = (root: string, argv: string[]) =>
+      cli(root, argv, { obsidian: recordedObsidian(root, true).runner });
+
+    test("writes the expanded note, with --content after it", async () => {
+      const root = makeVault(files);
+      const year = String(new Date().getFullYear());
+      expect((await run(root, ["create", "projects/demo", "--template", "project"])).stdout).toBe(
+        "Created: projects/demo.md\n",
+      );
+      expect(read(root, "projects/demo.md")).toBe(`# demo\n\nOn ${year} {{unknown}}\n`);
+      await run(root, ["create", "projects/more", "--template", "project", "--content", "Tail"]);
+      expect(read(root, "projects/more.md")).toBe(`# more\n\nOn ${year} {{unknown}}\nTail\n`);
+    });
+
+    test("reads the templates folder from the vault's Obsidian config", async () => {
+      const root = makeVault({ ...files, ".obsidian/templates.json": '{"folder": "tpl/"}' });
+      await run(root, ["create", "notes/m", "--template", "meeting"]);
+      expect(read(root, "notes/m.md")).toBe("Meeting m\n");
+    });
+
+    test("refuses a name outside the templates folder, a missing template, and an existing note", async () => {
+      const root = makeVault({ ...files, "notes/there.md": "kept\n" });
+      for (const name of ["../../outside", "../outside", "/outside", "nope"]) {
+        expect((await run(root, ["create", "notes/x", "--template", name])).exitCode).not.toBe(0);
+      }
+      expect(existsSync(join(root, "notes/x.md"))).toBe(false);
+      expect((await run(root, ["create", "notes/there", "--template", "project"])).exitCode).toBe(
+        1,
+      );
+      expect(read(root, "notes/there.md")).toBe("kept\n");
+    });
   });
 
   test("move goes through obsidian-cli and exits 3 when Obsidian is not running", async () => {

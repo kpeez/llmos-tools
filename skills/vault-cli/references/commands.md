@@ -12,7 +12,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `check` | Review one note for unlinked references and Markdown that renders wrongly; with no note, list notes whose frontmatter does not parse. |
 | `claims lint` | Check the fact and conflict callouts of notes: each quote occurs in its source section, and each number of a fact occurs in its quote. |
 | `config set-root` | Validate a vault root and write it to the llmOS config file. |
-| `create` | Create a new note; with --template, Obsidian creates it from a vault template. |
+| `create` | Create a new note, optionally from a vault template. |
 | `daily activity` | Write the machine-owned `## Projects` block of daily notes from GitHub activity. |
 | `daily append-thought` | Append `text` under today's daily note's `## Thoughts` heading. |
 | `daily get-or-create` | Print today's daily note as JSON, creating it from the daily template if it is missing. |
@@ -229,12 +229,17 @@ Example:
 ```text
 Usage: llmos create <name> [--vault NAME] [--content TEXT] [--template NAME]
 
-Create a new note; with --template, Obsidian creates it from a vault template.
+Create a new note, optionally from a vault template.
 
 Use when an agent needs a brand-new note on disk -- e.g. filing a new
-project note. Without --template the note is written directly (works with
-Obsidian closed). With --template the running Obsidian app creates it, so
-the template is expanded; this exits 3 when Obsidian is not running.
+project note. The note is written directly, so it works with Obsidian
+closed. With --template the template is read from the vault's templates
+folder (`.obsidian/templates.json`, else categories/templates) and
+expanded as Obsidian's Templates plugin does: {{title}} is the note's name,
+{{date}} and {{time}} are now (default formats YYYY-MM-DD and HH:mm, or the
+plugin's), and {{date:FORMAT}} and {{time:FORMAT}} take a moment.js format.
+Any other {{...}} text stays. With --content too, the content follows the
+expanded template.
 Do NOT use when the note already exists -- this refuses to overwrite a
 file; edit the note instead. In the llmos vault it refuses content that
 sets a run record (`discovered` on categories/Knowledge.md, `digested` on
@@ -246,7 +251,7 @@ Arguments:
 Options:
   --vault     Which registered vault to create the note in. Default: llmos.
   --content   Initial content.
-  --template  Name of a vault template to apply.
+  --template  Template in the templates folder (`.md` optional).
 
 Example output:
   Created: projects/agent-toolbox.md
@@ -294,8 +299,7 @@ Append `text` under today's daily note's `## Thoughts` heading.
 
 Use when an agent has a lesson, an open question, or a decision to record
 for the day. Writes the file directly (atomically), so it works with
-Obsidian closed when today's note exists; a missing note is first created
-from the daily template, which needs the running app (exit 3 otherwise).
+Obsidian closed; a missing note is first created from the daily template.
 Do NOT use when writing the `## Projects` block -- that section is
 machine-owned; this command refuses (non-zero exit) rather than touch it,
 whether `text` contains marker syntax or the note has no marker.
@@ -322,8 +326,9 @@ Print today's daily note as JSON, creating it from the daily template if it is m
 
 Use when an agent needs today's daily note before appending a thought --
 idempotent, so calling this repeatedly in one day never recreates it.
-Requires Obsidian to be running only when the note is missing (the app
-expands the template); exits 3 then if it is not.
+A missing note is written from the daily template (`template` in
+`.obsidian/daily-notes.json`, else categories/templates/daily-note), so it
+works with Obsidian closed.
 Do NOT use when you want the last several days' notes -- use `recent`.
 
 Options:

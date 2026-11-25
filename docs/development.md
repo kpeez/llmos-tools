@@ -49,8 +49,9 @@ plugin hooks, and the MCP server.
 - `schema.ts`, `authoring.ts`, `health.ts`, `daily.ts`, and `inbox.ts` port the
   llmOS-profile reads and computations.
 - `cli.ts` and `commands.ts` are the `llmos` command registry and entry
-  point; `write.ts` does the headless writes, `obsidian.ts` the two
-  obsidian-cli writes (`move`, `create --template`), `qmd.ts` search and
+  point; `write.ts` does the headless writes, `obsidian.ts` the one
+  obsidian-cli write (`move`), `template.ts` the headless template expansion
+  of `create --template` and the daily note, `qmd.ts` search and
   reindex through the qmd SDK, and `doctor.ts` the `llmos doctor` checks.
 - `digest.ts` is the `llmos daily activity` command. Its block hash and markers
   match the blocks already in daily notes. A PR merged in one repository does not hide a PR with the
