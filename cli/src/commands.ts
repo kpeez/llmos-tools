@@ -14,6 +14,7 @@ import { controlCharacters } from "./control-characters.ts";
 import { type Day, parseDay, readRecentDailies, refuseMarkerSyntax } from "./daily.ts";
 import { discover } from "./discover.ts";
 import { readSkillFile, renderReference, renderSkill } from "./docs.ts";
+import { formatNotes } from "./fmt.ts";
 import { isClean, qmdSection, RUN_RECORDS, summary, vaultHealth } from "./health.ts";
 import { destinationProperties } from "./inbox.ts";
 import { DAILY_DIR } from "./layout.ts";
@@ -948,6 +949,54 @@ Do NOT use to check a source's own text -- no agent edits a captured source.`,
   },
 };
 
+const fmt: Command = {
+  name: "fmt",
+  summary: "Format notes with the vault's Obsidian Linter rules and settings.",
+  description: `Use before you commit notes you wrote, or to see which notes drift from the
+vault's style. It runs the rules of the Obsidian Linter plugin (pinned to one
+release of its source) with the settings that the vault's own plugin saved in
+\`.obsidian/plugins/obsidian-linter/data.json\`, so the result is what
+Obsidian's lint-on-save would write once it settles: one pass of the rules is
+not always final, so \`fmt\` runs them until a pass changes nothing (at most 5
+passes; a note that does not settle is listed under \`failed\` and not written). A vault without that file fails: \`fmt\`
+invents no defaults.
+With no paths it formats every note in the vault. A path is a note (the \`.md\`
+is optional) or a folder of notes. It never touches \`raw/\` (captured sources
+are frozen) or a dot folder, and it honors the Linter's folders and files to
+ignore and a note's own \`disabled rules\` frontmatter.
+With \`--check\` nothing is written: it lists the notes that would change and
+exits 1 when any would. Without it, it rewrites each changed note under the
+note lock. A note that a rule or a write refuses is listed under \`failed\` and
+exits 1. Works with Obsidian closed.
+Do NOT use on a captured source, and do NOT use to set properties -- use
+\`set-property\`.`,
+  arguments: [
+    {
+      name: "paths",
+      variadic: true,
+      optional: true,
+      help: "Notes or folders, vault-relative. Default: the whole vault.",
+    },
+  ],
+  options: {
+    ...vaultOption("Which registered vault to format."),
+    check: {
+      type: "boolean",
+      help: "Write nothing; list the notes that would change and exit 1 when any would.",
+    },
+  },
+  exampleOutput: `{"check": true, "linted": 42, "changed": ["knowledge/macaquefaces.md"],
+ "skipped": 3, "failed": []}`,
+  example: "llmos fmt knowledge --check",
+  async run(values, context) {
+    const given = values.paths;
+    if (!Array.isArray(given)) throw new UsageError("paths must be a list of notes");
+    const report = await formatNotes(context.root(vaultName(values)), given, values.check === true);
+    const dirty = report.check && report.changed.length > 0;
+    return { json: report, exitCode: dirty || report.failed.length > 0 ? 1 : 0 };
+  },
+};
+
 const dailyGetOrCreate: Command = {
   name: "daily get-or-create",
   summary:
@@ -1572,6 +1621,7 @@ export const COMMANDS: readonly Command[] = [
   fileInbox,
   sourceAdd,
   claimsLint,
+  fmt,
   dailyGetOrCreate,
   dailyAppendThought,
   dailyRecent,

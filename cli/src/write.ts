@@ -189,6 +189,25 @@ function frontmatterOf(text: string): Frontmatter {
   }
 }
 
+/**
+ * Replace the note's whole text with `rewrite(text)` under the note lock.
+ * Writes only when the text changes; returns whether it wrote.
+ */
+export function rewriteNote(
+  root: string,
+  relative: string,
+  rewrite: (text: string) => string,
+): boolean {
+  return withNoteLock(root, () => {
+    const real = resolveInVault(root, relative);
+    const text = readText(real);
+    const rewritten = rewrite(text);
+    if (rewritten === text) return false;
+    atomicReplace(root, real, rewritten);
+    return true;
+  });
+}
+
 /** Rewrite a note with its body changed by `edit`; a note without a block stays without one. */
 function editBody(root: string, relative: string, edit: (body: string) => string): void {
   withNoteLock(root, () => {

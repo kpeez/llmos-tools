@@ -21,6 +21,7 @@ do not hand-edit it. Each section is the command's `--help` text.
 | `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
 | `doctor` | Check this host's llmOS prerequisites (read-only). |
 | `file-inbox` | File an inbox note: move it via obsidian-cli and stamp its destination properties. |
+| `fmt` | Format notes with the vault's Obsidian Linter rules and settings. |
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |
@@ -482,6 +483,47 @@ Example output:
 
 Example:
   llmos file-inbox capture-1 knowledge/some-note.md
+```
+
+## `fmt`
+
+```text
+Usage: llmos fmt [paths...] [--vault NAME] [--check]
+
+Format notes with the vault's Obsidian Linter rules and settings.
+
+Use before you commit notes you wrote, or to see which notes drift from the
+vault's style. It runs the rules of the Obsidian Linter plugin (pinned to one
+release of its source) with the settings that the vault's own plugin saved in
+`.obsidian/plugins/obsidian-linter/data.json`, so the result is what
+Obsidian's lint-on-save would write once it settles: one pass of the rules is
+not always final, so `fmt` runs them until a pass changes nothing (at most 5
+passes; a note that does not settle is listed under `failed` and not written). A vault without that file fails: `fmt`
+invents no defaults.
+With no paths it formats every note in the vault. A path is a note (the `.md`
+is optional) or a folder of notes. It never touches `raw/` (captured sources
+are frozen) or a dot folder, and it honors the Linter's folders and files to
+ignore and a note's own `disabled rules` frontmatter.
+With `--check` nothing is written: it lists the notes that would change and
+exits 1 when any would. Without it, it rewrites each changed note under the
+note lock. A note that a rule or a write refuses is listed under `failed` and
+exits 1. Works with Obsidian closed.
+Do NOT use on a captured source, and do NOT use to set properties -- use
+`set-property`.
+
+Arguments:
+  paths  Notes or folders, vault-relative. Default: the whole vault.
+
+Options:
+  --vault  Which registered vault to format. Default: llmos.
+  --check  Write nothing; list the notes that would change and exit 1 when any would.
+
+Example output:
+  {"check": true, "linted": 42, "changed": ["knowledge/macaquefaces.md"],
+   "skipped": 3, "failed": []}
+
+Example:
+  llmos fmt knowledge --check
 ```
 
 ## `health`

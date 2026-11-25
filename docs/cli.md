@@ -46,6 +46,18 @@ hooks, and the MCP server share, so they agree on where the vault is.
   not running, or running with its loaded models), and each Hermes profile
   (`hermes-profile-<name>`: wired to llmOS or not).
 - **`llmos audit`** — audits frontmatter contracts across the vault; read-only.
+- **`llmos fmt [paths...] [--check]`** — formats notes with the rules of the
+  [Obsidian Linter](https://github.com/platers/obsidian-linter) plugin and the
+  vault's own Linter settings (`.obsidian/plugins/obsidian-linter/data.json`),
+  so the result matches Obsidian's lint-on-save. It runs the rules again until
+  a pass changes nothing (at most 5 passes; else the note is `failed`). It skips `raw/`, dot folders,
+  and the Linter's ignored folders and files, and it fails when the vault has
+  no Linter settings. `--check` writes nothing and exits 1 when a note would
+  change. The plugin is the `obsidian-linter` GitHub dependency, pinned to one
+  commit in `cli/package.json`. `cli/src/fmt.ts` loads its rules at run time
+  behind a stub of the `obsidian` module, so no committed bundle holds it.
+  Bump the pin with `bun add github:platers/obsidian-linter#<commit>`, then
+  run `bun test test/fmt.test.ts`.
 - **`llmos daily activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
   call → verify → write. It runs the model as an opencode agent with every
