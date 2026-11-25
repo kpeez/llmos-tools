@@ -87,6 +87,26 @@ export interface Linter {
   lint(text: string, settings: Record<string, unknown>): string;
 }
 
+/** The most passes of the rules over one note. */
+const MAX_PASSES = 5;
+
+/**
+ * The note text after the rules run again and again until a pass changes
+ * nothing. One pass of the plugin is not idempotent: a rule can create what an
+ * earlier rule in the same pass would have fixed. Obsidian's next lint-on-save
+ * finishes the job, so `fmt` finishes it now. Throws when the text still
+ * changes after `MAX_PASSES` passes.
+ */
+export function settle(text: string, pass: (text: string) => string): string {
+  let current = text;
+  for (let i = 0; i < MAX_PASSES; i++) {
+    const next = pass(current);
+    if (next === current) return current;
+    current = next;
+  }
+  throw new Error(`Linter output did not settle after ${MAX_PASSES} passes`);
+}
+
 let linter: Promise<Linter> | undefined;
 
 /** The plugin's rule runner and default settings, loaded once. */
@@ -237,8 +257,8 @@ export async function formatNotes(
     try {
       if (check) {
         const text = readText(resolveInVault(root, path));
-        if (lint(text, settings) !== text) report.changed.push(path);
-      } else if (rewriteNote(root, path, (text) => lint(text, settings))) {
+        if (settle(text, (t) => lint(t, settings)) !== text) report.changed.push(path);
+      } else if (rewriteNote(root, path, (text) => settle(text, (t) => lint(t, settings)))) {
         report.changed.push(path);
       }
     } catch (error) {

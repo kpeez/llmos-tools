@@ -49,7 +49,8 @@ hooks, and the MCP server share, so they agree on where the vault is.
 - **`llmos fmt [paths...] [--check]`** — formats notes with the rules of the
   [Obsidian Linter](https://github.com/platers/obsidian-linter) plugin and the
   vault's own Linter settings (`.obsidian/plugins/obsidian-linter/data.json`),
-  so the result matches Obsidian's lint-on-save. It skips `raw/`, dot folders,
+  so the result matches Obsidian's lint-on-save. It runs the rules again until
+  a pass changes nothing (at most 5 passes; else the note is `failed`). It skips `raw/`, dot folders,
   and the Linter's ignored folders and files, and it fails when the vault has
   no Linter settings. `--check` writes nothing and exits 1 when a note would
   change. The plugin is the `obsidian-linter` GitHub dependency, pinned to one

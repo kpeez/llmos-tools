@@ -9,7 +9,8 @@ Newest first. Versions are the `version` field shared by
 - New `llmos fmt [paths...] [--check]` formats notes with the rules of the
   Obsidian Linter plugin and the vault's own Linter settings, so notes the CLI
   writes can match what lint-on-save writes. It skips `raw/` and dot folders,
-  honors the Linter's folders and files to ignore, and fails when the vault has
+  honors the Linter's folders and files to ignore, runs the rules again until a
+  pass changes nothing (at most 5 passes), and fails when the vault has
   no Linter settings. `--check` writes nothing and exits 1 when a note would
   change. It is a command only: no write path, MCP tool, or hook runs it.
 

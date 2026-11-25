@@ -956,7 +956,9 @@ const fmt: Command = {
 vault's style. It runs the rules of the Obsidian Linter plugin (pinned to one
 release of its source) with the settings that the vault's own plugin saved in
 \`.obsidian/plugins/obsidian-linter/data.json\`, so the result is what
-Obsidian's lint-on-save would write. A vault without that file fails: \`fmt\`
+Obsidian's lint-on-save would write once it settles: one pass of the rules is
+not always final, so \`fmt\` runs them until a pass changes nothing (at most 5
+passes; a note that does not settle is listed under \`failed\` and not written). A vault without that file fails: \`fmt\`
 invents no defaults.
 With no paths it formats every note in the vault. A path is a note (the \`.md\`
 is optional) or a folder of notes. It never touches \`raw/\` (captured sources

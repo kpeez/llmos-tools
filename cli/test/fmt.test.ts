@@ -1,19 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { type FmtReport, loadLinter } from "../src/fmt.ts";
+import { type FmtReport, loadLinter, settle } from "../src/fmt.ts";
 import { cli, makeVault, read } from "./helpers.ts";
 
 const MESSY = "# Title\n\nline with trailing spaces   \n\n\n\nsecond paragraph\n";
 
-/** A saved Linter settings file: every rule's options, as the plugin writes them, with two rules on. */
-async function savedSettings(): Promise<unknown> {
+/** A saved Linter settings file: every rule's options, as the plugin writes them, with the rules in `on` enabled. */
+async function savedSettings(
+  on = ["trailing-spaces", "consecutive-blank-lines"],
+): Promise<unknown> {
   const { defaults, ruleDefaults: rules } = await loadLinter();
   return {
     ...defaults,
-    ruleConfigs: {
-      ...rules,
-      "trailing-spaces": { ...rules["trailing-spaces"], enabled: true },
-      "consecutive-blank-lines": { ...rules["consecutive-blank-lines"], enabled: true },
-    },
+    ruleConfigs: Object.fromEntries(
+      Object.entries(rules).map(([alias, options]) => [
+        alias,
+        on.includes(alias) ? { ...options, enabled: true } : options,
+      ]),
+    ),
     foldersToIgnore: ["drafts"],
   };
 }
@@ -65,6 +68,32 @@ describe("fmt", () => {
     expect((await fmt(root, "raw/source.md")).report.changed).toEqual([]);
     expect(read(root, "raw/source.md")).toBe(MESSY);
     expect((await fmt(root, "notes")).report.changed).toEqual(["notes/messy.md"]);
+  });
+
+  test("one run leaves --check clean when one pass of the rules is not enough", async () => {
+    // The two math-block rules, run together, break this list item over two passes.
+    const text = "1. x\n   $$\n   a\n   $$\n   y\n";
+    const on = ["empty-line-around-math-blocks", "move-math-block-indicators-to-their-own-line"];
+    const settings = await savedSettings(on);
+    const { lint } = await loadLinter();
+    const once = lint(text, settings as Record<string, unknown>);
+    expect(lint(once, settings as Record<string, unknown>)).not.toBe(once);
+    const root = makeVault({
+      ".obsidian/plugins/obsidian-linter/data.json": JSON.stringify(settings),
+      "notes/math.md": text,
+    });
+    expect((await fmt(root)).report.changed).toEqual(["notes/math.md"]);
+    const after = await fmt(root, "--check");
+    expect(after.exitCode).toBe(0);
+    expect(after.report.changed).toEqual([]);
+  });
+
+  test("a note that never settles is refused after five passes", () => {
+    let passes = 0;
+    expect(() => settle("a", (text) => `${text}${++passes}`)).toThrow(
+      "did not settle after 5 passes",
+    );
+    expect(passes).toBe(5);
   });
 
   test("a vault without Linter settings fails and writes nothing", async () => {
