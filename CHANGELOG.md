@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.14.4 — 2026-11-25
+
 - `llmos fmt` runs the Linter release that Obsidian has installed. It pins
   `obsidian-linter` to the commit of release 1.35.0 (before, a later commit),
   and it fails before it reads any note when the vault's Linter
