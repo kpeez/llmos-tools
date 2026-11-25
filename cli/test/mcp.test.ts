@@ -224,7 +224,7 @@ describe("write tools stamp updated", () => {
       '## Thoughts\n\nA lesson with `code`, "quotes", and $dollars.\nSecond line.\n',
     );
     expect(properties(root, DAILY)).toMatchObject({ updated: TODAY });
-    expect(obsidian.calls).toHaveLength(1);
+    expect(obsidian.calls).toEqual([]);
   });
 
   test("set_property stamps the note", async () => {

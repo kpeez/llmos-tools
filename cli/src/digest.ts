@@ -58,9 +58,10 @@ import { type Day, isoDate, MARKER_END, MARKER_START, parseDay } from "./daily.t
 import { MissingFrontmatter, parse, UnsupportedFrontmatter } from "./frontmatter.ts";
 import { add, commit, hasStaged, mainCheckout, publish } from "./git.ts";
 import { DIGEST_NOTE, DIGEST_PROPERTY } from "./health.ts";
-import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH, TEMPLATES_DIR } from "./layout.ts";
+import { DAILY_DIR, DAILY_NOTE, SHARED_MEMORY_PATH } from "./layout.ts";
 import { DEFAULT_CONFIG_PATH, readConfig, VaultRootError, vaultRoot } from "./root.ts";
 import { run } from "./run.ts";
+import { expandDailyTemplate } from "./template.ts";
 import { readText, resolveInVault, WriteRefused } from "./vault-file.ts";
 import { recordRun, withNoteLock } from "./write.ts";
 
@@ -777,8 +778,7 @@ export function replaceBlock(text: string, block: string): string {
 }
 
 export function newNoteText(day: Day, root: string, block: string): string {
-  const template = readText(resolveInVault(root, `${TEMPLATES_DIR}/daily-note.md`));
-  return replaceBlock(template.replaceAll("{{date:YYYY-MM-DD}}", isoDate(day)), block);
+  return replaceBlock(expandDailyTemplate(root, isoDate(day)), block);
 }
 
 /** Write through a temporary file in the same folder and rename it into place. */

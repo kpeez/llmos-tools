@@ -47,8 +47,15 @@ import {
 import { readConfig, validated } from "./root.ts";
 import { afterMemoryWrite, servicePaths, serviceStatus, viaService } from "./service-client.ts";
 import { captureSource } from "./sources.ts";
+import { expandDailyTemplate, expandNamedTemplate } from "./template.ts";
 import { findNotePath, type Note, type NoteRecord, readSource, type VaultModel } from "./vault.ts";
-import { readText, readWalkedNote, realTarget, resolveInVault } from "./vault-file.ts";
+import {
+  readText,
+  readWalkedNote,
+  realTarget,
+  resolveInVault,
+  WriteRefused,
+} from "./vault-file.ts";
 import {
   appendContent,
   appendThought,
@@ -68,7 +75,6 @@ export const DEFAULT_REFERENCE_PATH = join(
   "commands.md",
 );
 export const DEFAULT_SKILL_PATH = join(TOOLS, "skills", "vault-cli", "SKILL.md");
-const DAILY_TEMPLATE = "daily-note";
 
 function vaultOption(help: string): Record<string, OptionSpec> {
   return { vault: { type: "string", default: "llmos", metavar: "NAME", help } };
@@ -212,13 +218,18 @@ function llmosOnly(vault: string, context: Context): string {
   return context.root(vault);
 }
 
-/** Today's daily note, created from the vault's daily template (through Obsidian) when missing. */
+/** Today's daily note, created from the vault's daily template when missing. */
 function ensureDaily(root: string, context: Context): string {
   const day = context.today();
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) throw new Error(`today is not a date: '${day}'`);
   const relative = `${DAILY_DIR}/${day}.md`;
   if (!existsSync(newTarget(root, relative))) {
-    runObsidian(root, "create", relative, { template: DAILY_TEMPLATE }, context.obsidian);
+    try {
+      createNote(root, relative, expandDailyTemplate(root, day));
+    } catch (error) {
+      // Another writer created the note first: the note exists, as wanted.
+      if (!(error instanceof WriteRefused) || !existsSync(newTarget(root, relative))) throw error;
+    }
   }
   return relative;
 }
@@ -586,11 +597,16 @@ Do NOT use when you only want to search -- use \`search\`.`,
 
 const create: Command = {
   name: "create",
-  summary: "Create a new note; with --template, Obsidian creates it from a vault template.",
+  summary: "Create a new note, optionally from a vault template.",
   description: `Use when an agent needs a brand-new note on disk -- e.g. filing a new
-project note. Without --template the note is written directly (works with
-Obsidian closed). With --template the running Obsidian app creates it, so
-the template is expanded; this exits 3 when Obsidian is not running.
+project note. The note is written directly, so it works with Obsidian
+closed. With --template the template is read from the vault's templates
+folder (\`.obsidian/templates.json\`, else categories/templates) and
+expanded as Obsidian's Templates plugin does: {{title}} is the note's name,
+{{date}} and {{time}} are now (default formats YYYY-MM-DD and HH:mm, or the
+plugin's), and {{date:FORMAT}} and {{time:FORMAT}} take a moment.js format.
+Any other {{...}} text stays. With --content too, the content follows the
+expanded template.
 Do NOT use when the note already exists -- this refuses to overwrite a
 file; edit the note instead. In the llmos vault it refuses content that
 sets a run record (\`discovered\` on categories/Knowledge.md, \`digested\` on
@@ -599,7 +615,11 @@ categories/Reviews.md): only its job sets it.`,
   options: {
     ...vaultOption("Which registered vault to create the note in."),
     content: { type: "string", metavar: "TEXT", help: "Initial content." },
-    template: { type: "string", metavar: "NAME", help: "Name of a vault template to apply." },
+    template: {
+      type: "string",
+      metavar: "NAME",
+      help: "Template in the templates folder (`.md` optional).",
+    },
   },
   exampleOutput: "Created: projects/agent-toolbox.md",
   example: "llmos create projects/agent-toolbox --template project --vault llmos",
@@ -609,27 +629,26 @@ categories/Reviews.md): only its job sets it.`,
     const name = str(values, "name");
     const target = name.endsWith(".md") ? name : `${name}.md`;
     const content = values.content as string | undefined;
+    newTarget(root, target); // the new note must stay inside the vault
+    const template = values.template === undefined ? undefined : templateName(values);
+    // Obsidian's own rule for template plus content is unknown: the content follows the template.
+    const expanded =
+      template === undefined ? "" : expandNamedTemplate(root, template, basename(target, ".md"));
+    const body = content === undefined ? "" : content;
+    const joined =
+      expanded === "" || body === "" || expanded.endsWith("\n")
+        ? expanded + body
+        : `${expanded}\n${body}`;
     const record = RUN_RECORDS.find((entry) => entry.note === normalize(target));
     if (
       vault === "llmos" &&
       record !== undefined &&
-      content !== undefined &&
       // Line endings as the vault model reads them, so CRLF cannot hide the block.
-      record.property in readSource(target, content.replace(/\r\n?/g, "\n")).properties
+      record.property in readSource(target, joined.replace(/\r\n?/g, "\n")).properties
     ) {
       throw new Error(runRecordRefusal(record));
     }
-    const template = values.template === undefined ? undefined : templateName(values);
-    newTarget(root, target); // both branches: the new note must stay inside the vault
-    if (template !== undefined) {
-      const params: Record<string, string> = { template };
-      if (content !== undefined) params.content = content;
-      return {
-        text: withoutFinalNewline(runObsidian(root, "create", target, params, context.obsidian)),
-      };
-    }
-    const text = content ?? "";
-    createNote(root, target, text === "" || text.endsWith("\n") ? text : `${text}\n`);
+    createNote(root, target, joined === "" || joined.endsWith("\n") ? joined : `${joined}\n`);
     return { text: `Created: ${target}` };
   },
 };
@@ -1003,8 +1022,9 @@ const dailyGetOrCreate: Command = {
     "Print today's daily note as JSON, creating it from the daily template if it is missing.",
   description: `Use when an agent needs today's daily note before appending a thought --
 idempotent, so calling this repeatedly in one day never recreates it.
-Requires Obsidian to be running only when the note is missing (the app
-expands the template); exits 3 then if it is not.
+A missing note is written from the daily template (\`template\` in
+\`.obsidian/daily-notes.json\`, else categories/templates/daily-note), so it
+works with Obsidian closed.
 Do NOT use when you want the last several days' notes -- use \`recent\`.`,
   arguments: [],
   options: vaultOption('Must be "llmos" -- daily helpers are an llmOS-profile feature.'),
@@ -1022,8 +1042,7 @@ const dailyAppendThought: Command = {
   summary: "Append `text` under today's daily note's `## Thoughts` heading.",
   description: `Use when an agent has a lesson, an open question, or a decision to record
 for the day. Writes the file directly (atomically), so it works with
-Obsidian closed when today's note exists; a missing note is first created
-from the daily template, which needs the running app (exit 3 otherwise).
+Obsidian closed; a missing note is first created from the daily template.
 Do NOT use when writing the \`## Projects\` block -- that section is
 machine-owned; this command refuses (non-zero exit) rather than touch it,
 whether \`text\` contains marker syntax or the note has no marker.`,
