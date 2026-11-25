@@ -6,6 +6,12 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- `llmos fmt` runs the Linter release that Obsidian has installed. It pins
+  `obsidian-linter` to the commit of release 1.35.0 (before, a later commit),
+  and it fails before it reads any note when the vault's Linter
+  `manifest.json` is missing, unreadable, or names another version. The error
+  names both versions and the fix. `--check` does the same.
+
 - `llmos create --template` and the creation of a missing daily note (`daily
   get-or-create`, `daily append-thought`, MCP `daily_append_thought`) no longer
   need Obsidian. They expand the template themselves, as the core Templates

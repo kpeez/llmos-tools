@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { type FmtReport, loadLinter, settle } from "../src/fmt.ts";
 import { cli, makeVault, read } from "./helpers.ts";
+
+/** The release of the Linter that `fmt` runs, read from the dependency. */
+const LINTER_VERSION = (
+  JSON.parse(
+    readFileSync(Bun.resolveSync("obsidian-linter/manifest.json", import.meta.dir), "utf8"),
+  ) as { version: string }
+).version;
+const manifest = (version: string): string => JSON.stringify({ id: "obsidian-linter", version });
+const MANIFEST_PATH = ".obsidian/plugins/obsidian-linter/manifest.json";
 
 const MESSY = "# Title\n\nline with trailing spaces   \n\n\n\nsecond paragraph\n";
 
@@ -24,6 +34,7 @@ const CLEAN = "# Title\n\nline with trailing spaces\n\nsecond paragraph\n";
 
 async function vault(): Promise<string> {
   return makeVault({
+    [MANIFEST_PATH]: manifest(LINTER_VERSION),
     ".obsidian/plugins/obsidian-linter/data.json": JSON.stringify(await savedSettings()),
     "notes/messy.md": MESSY,
     "notes/clean.md": CLEAN,
@@ -79,6 +90,7 @@ describe("fmt", () => {
     const once = lint(text, settings as Record<string, unknown>);
     expect(lint(once, settings as Record<string, unknown>)).not.toBe(once);
     const root = makeVault({
+      [MANIFEST_PATH]: manifest(LINTER_VERSION),
       ".obsidian/plugins/obsidian-linter/data.json": JSON.stringify(settings),
       "notes/math.md": text,
     });
@@ -97,7 +109,7 @@ describe("fmt", () => {
   });
 
   test("a vault without Linter settings fails and writes nothing", async () => {
-    const root = makeVault({ "notes/messy.md": MESSY });
+    const root = makeVault({ [MANIFEST_PATH]: manifest(LINTER_VERSION), "notes/messy.md": MESSY });
     const result = await cli(root, ["fmt"]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("no Obsidian Linter settings");
@@ -106,12 +118,35 @@ describe("fmt", () => {
 
   test("a settings file that lacks a rule's options fails instead of using invented defaults", async () => {
     const root = makeVault({
+      [MANIFEST_PATH]: manifest(LINTER_VERSION),
       ".obsidian/plugins/obsidian-linter/data.json": JSON.stringify({ ruleConfigs: {} }),
       "notes/messy.md": MESSY,
     });
     const result = await cli(root, ["fmt"]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("has no options for");
+    expect(read(root, "notes/messy.md")).toBe(MESSY);
+  });
+
+  test("another Linter release in Obsidian fails, names both versions, and writes nothing", async () => {
+    const root = await vault();
+    await Bun.write(`${root}/${MANIFEST_PATH}`, manifest("0.0.1"));
+    for (const args of [[], ["--check"]]) {
+      const result = await cli(root, ["fmt", ...args]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain(
+        `Obsidian has Linter 0.0.1 but llmos fmt has ${LINTER_VERSION}`,
+      );
+      expect(read(root, "notes/messy.md")).toBe(MESSY);
+    }
+  });
+
+  test("a vault without a Linter manifest fails and writes nothing", async () => {
+    const root = await vault();
+    await Bun.file(`${root}/${MANIFEST_PATH}`).delete();
+    const result = await cli(root, ["fmt"]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("cannot read the Linter version");
     expect(read(root, "notes/messy.md")).toBe(MESSY);
   });
 });

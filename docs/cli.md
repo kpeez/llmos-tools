@@ -52,12 +52,15 @@ hooks, and the MCP server share, so they agree on where the vault is.
   so the result matches Obsidian's lint-on-save. It runs the rules again until
   a pass changes nothing (at most 5 passes; else the note is `failed`). It skips `raw/`, dot folders,
   and the Linter's ignored folders and files, and it fails when the vault has
-  no Linter settings. `--check` writes nothing and exits 1 when a note would
-  change. The plugin is the `obsidian-linter` GitHub dependency, pinned to one
-  commit in `cli/package.json`. `cli/src/fmt.ts` loads its rules at run time
+  no Linter settings. It also fails, before it reads a note, when the vault's
+  `.obsidian/plugins/obsidian-linter/manifest.json` is missing or names another
+  Linter version than the dependency. `--check` writes nothing and exits 1 when a note would
+  change. The plugin is the `obsidian-linter` GitHub dependency, pinned to the
+  commit of one release in `cli/package.json`, the release the vault's Obsidian
+  has installed. `cli/src/fmt.ts` loads its rules at run time
   behind a stub of the `obsidian` module, so no committed bundle holds it.
-  Bump the pin with `bun add github:platers/obsidian-linter#<commit>`, then
-  run `bun test test/fmt.test.ts`.
+  Bump the pin with `bun add github:platers/obsidian-linter#<full commit ID>`
+  (the commit of the release tag, not the tag name), then run `bun test test/fmt.test.ts`.
 - **`llmos daily activity`** — writes the machine-owned `## Projects` block of
   daily notes from GitHub activity. Deterministic: fetch → hash → one model
   call → verify → write. It runs the model as an opencode agent with every
