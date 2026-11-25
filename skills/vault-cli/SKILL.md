@@ -67,6 +67,7 @@ health` reports the count of documents that still need embedding as
 | `docs` | Regenerate the vault-cli skill's command reference and verb table from this CLI. |
 | `doctor` | Check this host's llmOS prerequisites (read-only). |
 | `file-inbox` | File an inbox note: move it via obsidian-cli and stamp its destination properties. |
+| `fmt` | Format notes with the vault's Obsidian Linter rules and settings. |
 | `health` | Report vault hygiene: orphans, dead-ends, unresolved wikilinks, schema violations, stale inbox items, overdue jobs, and qmd index gaps. |
 | `list` | Print every note in the vault with its frontmatter and body as JSON. |
 | `mcp` | Serve the llmOS vault tools to an agent over MCP on stdin and stdout. |

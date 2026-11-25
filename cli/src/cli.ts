@@ -76,7 +76,7 @@ export interface ArgumentSpec {
   help: string;
   /** Takes one or more values, as a string list. Only the last argument may be variadic. */
   variadic?: boolean;
-  /** May be left out. Only the last argument may be optional, and not a variadic one. */
+  /** May be left out. Only the last argument may be optional; a variadic one then takes zero or more values. */
   optional?: boolean;
 }
 
@@ -110,8 +110,8 @@ export class UsageError extends Error {
 const PROGRAM = "llmos";
 
 function placeholder(arg: ArgumentSpec): string {
-  if (arg.variadic) return `<${arg.name}...>`;
-  return arg.optional ? `[${arg.name}]` : `<${arg.name}>`;
+  const name = arg.variadic ? `${arg.name}...` : arg.name;
+  return arg.optional ? `[${name}]` : `<${name}>`;
 }
 
 function usage(command: Command): string {
@@ -228,7 +228,8 @@ export function parseValues(command: Command, tokens: string[]): Values | "help"
   const variadic = command.arguments.at(-1)?.variadic === true;
   const fixed = command.arguments.length - (variadic ? 1 : 0);
   const required = command.arguments.filter((arg) => !arg.optional && !arg.variadic).length;
-  const tooFew = variadic ? given <= fixed : given < required;
+  const last = command.arguments.at(-1);
+  const tooFew = variadic ? given < fixed + (last?.optional ? 0 : 1) : given < required;
   if (tooFew || (!variadic && given > fixed)) {
     const expected = command.arguments.map(placeholder).join(" ") || "no arguments";
     throw new UsageError(`expected ${expected}, got ${given} argument(s)`);
