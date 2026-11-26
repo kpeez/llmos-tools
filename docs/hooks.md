@@ -213,21 +213,25 @@ repository links to the same folders:
 | Link | Default target |
 | --- | --- |
 | `.agents/docs` | `<root>/projects/<repo>` |
-| `.agents/scratch` | `~/agent-scratch/<repo>/`, agent scratch that outlives the worktree |
 | `artifacts` | `~/artifacts/<repo>/`, durable run output |
 
 When the main checkout already has one of these paths as a symlink, a
-worktree reuses its target. The hook creates a missing scratch or artifacts
-target folder. It never replaces a path that exists, with one exception: a
+worktree reuses its target. The hook creates a missing artifacts target
+folder. It never replaces a path that exists, with one exception: a
 dangling `.agents/docs` link (a symlink whose target is gone, as after the
 vault moves) is replaced when its new target folder exists, and the context
 says so. The new target is the one the hook would link now: in a worktree,
 the main checkout's target when that target exists, else
 `<root>/projects/<repo>`. A worktree does not reuse a main checkout target
-that is gone. The hook never redirects a dangling scratch or artifacts link,
+that is gone. The hook never redirects a dangling artifacts link,
 because its disk may be unmounted. It adds each link it makes or repairs to
 `<git-common-dir>/info/exclude`, which all worktrees share, not to the
-repository's `.gitignore`. The vault's own repository gets no
+repository's `.gitignore`. The hook does not link `.agents/scratch`. Scratch
+is a real folder inside each worktree, so `wt remove` deletes it with the
+worktree. The agent makes the folder itself (`mkdir -p .agents/scratch`), and
+the hook adds `/.agents/scratch` to the same exclude file at every session
+start, so Git ignores it. The hook never deletes or changes an existing
+`.agents/scratch` link or its target. The vault's own repository gets no
 `.agents/docs`. The context names each link made; a session that makes none
 adds nothing. A link that fails adds one note that names the link and the
 error, and the other links are still made.

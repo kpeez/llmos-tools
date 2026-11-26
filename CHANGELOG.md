@@ -6,6 +6,14 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+- The session-start hook no longer links `.agents/scratch` to
+  `~/agent-scratch/<repo>/` and no longer makes that target folder. Scratch is
+  a real folder in each worktree, so `wt remove` deletes it. Before, the link
+  kept the data after the worktree went, and it piled up. The hook still adds
+  `/.agents/scratch` to `<git-common-dir>/info/exclude`, and it leaves an
+  existing scratch link and its target alone. The `.agents/docs` and
+  `artifacts` links are unchanged.
+
 ## 2.14.4 — 2026-11-25
 
 - `llmos fmt` runs the Linter release that Obsidian has installed. It pins
@@ -32,6 +40,7 @@ Newest first. Versions are the `version` field shared by
   no Linter settings. `--check` writes nothing and exits 1 when a note would
   change. It is a command only: no write path, MCP tool, or hook runs it.
 
+||||||| parent of e9d25f2 (fix(hooks): stop linking .agents/scratch to ~/agent-scratch)
 ## 2.14.3 — 2026-11-24
 
 - OpenCode 2 runs the llmOS hooks and MCP server. The adapter plugin

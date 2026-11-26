@@ -29,7 +29,7 @@ import {
 
 afterEach(removeTemporaryFolders);
 
-test("a worktree gets links named from the main checkout, once", () => {
+test("a worktree gets docs and artifacts links named from the main checkout, once; scratch is never linked", () => {
   const tmp = temporaryFolder();
   const root = makeVault(join(tmp, "vault"));
   mkdirSync(join(root, "projects", "my-repo"), { recursive: true });
@@ -48,21 +48,19 @@ test("a worktree gets links named from the main checkout, once", () => {
     runHook("session-start", { cwd: worktree }, tmp, { root, cwd: worktree, env: GIT_ENV });
   const first = session();
   expect(first.exitCode).toBe(0);
-  const home = join(tmp, "home");
   expect({
     docs: readlinkSync(join(worktree, ".agents", "docs")),
-    scratch: readlinkSync(join(worktree, ".agents", "scratch")),
     artifacts: readlinkSync(join(worktree, "artifacts")),
   }).toEqual({
     docs: join(root, "projects", "my-repo"),
-    scratch: join(home, "agent-scratch", "my-repo"),
     artifacts: custom,
   });
   const excluded = readFileSync(join(main, ".git", "info", "exclude"), "utf8").split("\n");
   for (const line of ["/.agents/docs", "/.agents/scratch", "/artifacts"]) {
     expect(excluded.filter((entry) => entry === line)).toHaveLength(1);
   }
-  expect(first.stdout).toContain(`${join(worktree, ".agents", "scratch")} links to`);
+  expect(existsSync(join(worktree, ".agents", "scratch"))).toBe(false);
+  expect(existsSync(join(tmp, "home", "agent-scratch"))).toBe(false);
 
   const second = session();
   expect(second.stdout).not.toContain("links to");
@@ -101,7 +99,7 @@ test("a dangling .agents/docs link is repaired when the vault project folder exi
     `${join(main, ".agents", "docs")} was broken; it now links to ${target}.`,
   );
   expect(result.stdout).not.toContain(old);
-  expect(readdirSync(join(main, ".agents")).sort()).toEqual(["docs", "scratch"]);
+  expect(readdirSync(join(main, ".agents")).sort()).toEqual(["docs"]);
   expect(session(tmp, root, main).stdout).not.toContain("broken");
 });
 
@@ -120,17 +118,20 @@ test("a dangling docs link stays when the computed target is not a directory", (
   expect(readlinkSync(join(main, ".agents", "docs"))).toBe(old);
 });
 
-test("dangling scratch and artifacts links are never redirected", () => {
+test("a scratch symlink and its target are left alone; a dangling artifacts link is never redirected", () => {
   const tmp = temporaryFolder();
   const { root, main } = projectCheckout(tmp, true);
   const unmounted = join(tmp, "unmounted-disk");
   mkdirSync(join(main, ".agents"));
-  symlinkSync(join(unmounted, "scratch"), join(main, ".agents", "scratch"));
+  const oldScratch = join(tmp, "old-scratch");
+  writeFile(join(oldScratch, "data.txt"), "keep\n");
+  symlinkSync(oldScratch, join(main, ".agents", "scratch"));
   symlinkSync(join(unmounted, "artifacts"), join(main, "artifacts"));
 
   const result = session(tmp, root, main);
 
-  expect(readlinkSync(join(main, ".agents", "scratch"))).toBe(join(unmounted, "scratch"));
+  expect(readlinkSync(join(main, ".agents", "scratch"))).toBe(oldScratch);
+  expect(readFileSync(join(oldScratch, "data.txt"), "utf8")).toBe("keep\n");
   expect(readlinkSync(join(main, "artifacts"))).toBe(join(unmounted, "artifacts"));
   expect(result.stdout).not.toContain("broken");
 });

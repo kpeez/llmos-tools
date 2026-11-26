@@ -11,7 +11,7 @@ const CLI_DIR = join(ROOT, "cli");
 /** Paths that a checkout does not hold, with the reason. */
 const ABSENT_BY_DESIGN = new Map([
   [".agents/docs", "a link to the vault, which Git ignores (AGENTS.md)"],
-  [".agents/scratch", "a per-branch scratch link that Git ignores"],
+  [".agents/scratch", "a per-worktree scratch folder that Git ignores"],
   ["artifacts", "run output that Git ignores"],
   [".claude/settings.local.json", "a file in each vault project, not in this repo"],
   ["node_modules", "installed by `bun install`, not committed"],
