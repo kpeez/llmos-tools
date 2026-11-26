@@ -11,7 +11,10 @@
  * It never replaces or changes a path that exists, with one exception: a
  * dangling `.agents/docs` link (`repairDangling`) is replaced when its new
  * target folder exists, because a moved vault leaves it broken for good. A
- * dangling scratch or artifacts link stays, since its disk may be unmounted.
+ * dangling artifacts link stays, since its disk may be unmounted.
+ * Scratch is not linked: `.agents/scratch` is a real folder that each worktree
+ * owns, so `wt remove` deletes it. The hook only keeps `/.agents/scratch` in
+ * the exclude file and never touches an existing scratch path or link.
  * It keeps each link it makes out of Git through the `info/exclude` file that all worktrees share,
  * not the repository's `.gitignore`. A second run changes nothing.
  */
@@ -59,6 +62,7 @@ interface LinkSpec {
   repairDangling: boolean;
 }
 
+const SCRATCH_REL = ".agents/scratch";
 const CLAUDE_SETTINGS_REL = ".claude/settings.local.json";
 
 const LINKS: LinkSpec[] = [
@@ -69,12 +73,6 @@ const LINKS: LinkSpec[] = [
       isUnder(root, main) ? null : joinPath(root, "projects", slug),
     makeTarget: false,
     repairDangling: true,
-  },
-  {
-    path: ".agents/scratch",
-    target: ({ main }) => joinPath(expandUser("~"), "agent-scratch", basename(main)),
-    makeTarget: true,
-    repairDangling: false,
   },
   {
     path: "artifacts",
@@ -179,6 +177,11 @@ export function linkAgentDirs(path: string, root: string): string[] {
     return [`Linking the agent folders of ${path} failed: ${message(error)}`];
   }
   const notes: string[] = [];
+  try {
+    exclude(repository, SCRATCH_REL);
+  } catch (error) {
+    notes.push(`Ignoring ${SCRATCH_REL} failed: ${message(error)}`);
+  }
   for (const spec of LINKS) {
     const link = joinPath(repository.top, spec.path);
     try {
