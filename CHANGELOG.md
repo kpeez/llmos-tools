@@ -6,6 +6,8 @@ Newest first. Versions are the `version` field shared by
 
 ## Unreleased
 
+## 2.15.0 — 2026-11-26
+
 - The session-start hook no longer links `.agents/scratch` to
   `~/agent-scratch/<repo>/` and no longer makes that target folder. Scratch is
   a real folder in each worktree, so `wt remove` deletes it. Before, the link
